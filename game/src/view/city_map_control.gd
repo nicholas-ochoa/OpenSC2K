@@ -66,6 +66,9 @@ var city: CityState:
 var city_source: CityMapSource
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
+# seconds of HD sprite animation. They advance with the palette animation, so
+# a pause or a blocking dialog keeps the current frame
+var artwork_animation_seconds := 0.0
 var dark_underground_palette_texture: Texture2D
 var dark_underground := false:
 	set(value):
@@ -186,6 +189,11 @@ func _gui_input(event: InputEvent) -> void:
 
 func _input(event: InputEvent) -> void:
 	interaction._input(event)
+
+
+func advance_artwork_animation(delta: float) -> void:
+	artwork_animation_seconds += maxf(delta, 0.0)
+	layers.sync_artwork_animation()
 
 
 func _process(delta: float) -> void:

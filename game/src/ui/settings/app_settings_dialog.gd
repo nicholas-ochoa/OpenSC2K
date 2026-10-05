@@ -27,6 +27,7 @@ var city_sounds_selector: OptionButton
 var sound_pack_edit: LineEdit
 var music_pack_edit: LineEdit
 var data_pack_edit: LineEdit
+var hd_pack_edit: LineEdit
 var pack_name_labels: Dictionary = {}
 var pack_edits: Dictionary = {}
 var pack_import_buttons: Dictionary = {}
@@ -83,6 +84,7 @@ func _ready() -> void:
 	fullscreen_check = %FullscreenCheck
 	music_pack_edit = %MusicPackEdit
 	data_pack_edit = %DataPackEdit
+	hd_pack_edit = %HdPackEdit
 	music_slider = %MusicSlider
 
 	overview_graphics_selector = %OverviewGraphicsSelector
@@ -119,6 +121,7 @@ func _ready() -> void:
 	_bind_pack_controls("sound", sound_pack_edit, %SoundPackName, %SoundBrowse)
 	_bind_pack_controls("music", music_pack_edit, %MusicPackName, %MusicBrowse)
 	_bind_pack_controls("data", data_pack_edit, %DataPackName, %DataBrowse)
+	_bind_pack_controls("hd", hd_pack_edit, %HdPackName, %HdBrowse)
 	_watch_clicks(tabs)
 	tabs.get_tab_bar().tab_clicked.connect(button_clicked.emit.unbind(1))
 	_build_controls_reset(content)
@@ -320,6 +323,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.sound_pack_folder = sound_pack_edit.text.strip_edges()
 	result.music_pack_folder = music_pack_edit.text.strip_edges()
 	result.data_pack_folder = data_pack_edit.text.strip_edges()
+	result.hd_pack_folder = hd_pack_edit.text.strip_edges()
 	result.zoom_graphics = _selected_zoom_graphics()
 	result.background_audio = background_audio_check.button_pressed
 	result.city_renderer = "cpu" if renderer_selector.selected == 1 else "gpu"
@@ -412,6 +416,15 @@ func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: But
 	browse.pressed.connect(func() -> void:
 		picker.popup_centered_ratio(0.8))
 
+	pack_name_labels[kind] = label
+	pack_edits[kind] = edit
+	edit.text_changed.connect(func(_text: String) -> void:
+		_refresh_pack_name(kind))
+
+	# an HD sprite pack is optional and has no import
+	if kind == "hd":
+		return
+
 	# Import only this pack kind from a copy of the game.
 	var import_button := Button.new()
 	import_button.name = kind.capitalize() + "Import"
@@ -421,11 +434,7 @@ func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: But
 	import_button.pressed.connect(_request_original_import.bind(PackedStringArray([kind])))
 	browse.get_parent().add_child(import_button)
 	pack_import_buttons[kind] = import_button
-	pack_name_labels[kind] = label
-	pack_edits[kind] = edit
 	edit.placeholder_text = "Automatic (%s)" % MediaPack.default_folder(kind).path_join("pack.json")
-	edit.text_changed.connect(func(_text: String) -> void:
-		_refresh_pack_name(kind))
 
 
 func set_loaded_pack(kind: String, pack_name: String, path: String) -> void:
@@ -460,7 +469,7 @@ static func pack_file_path(value: String) -> String:
 func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 	var picker := FileDialog.new()
 	picker.theme = AppUiTheme.file_dialog()
-	picker.title = "Select %s pack.json" % kind
+	picker.title = "Select %s pack.json" % ("HD sprite" if kind == "hd" else kind)
 	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	picker.filters = PackedStringArray(["pack.json ; OpenSC2K pack"])
 	picker.access = FileDialog.ACCESS_FILESYSTEM

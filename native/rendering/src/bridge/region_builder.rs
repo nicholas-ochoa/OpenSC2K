@@ -11,6 +11,9 @@ use godot::{
 
 use std::collections::HashMap;
 
+/// The decoded size limit of the animation strips of one view.
+const MAX_ANIMATION_BYTES: usize = 128 * 1024 * 1024;
+
 #[derive(GodotClass)]
 #[class(base=RefCounted)]
 pub struct NativeCityRegionBuilder {
@@ -48,6 +51,116 @@ fn sprite_from_image(image: &Gd<Image>) -> Result<Sprite, String> {
         h,
         rgba: data,
         la: la.get_data().to_vec(),
+    })
+}
+
+/// Reads the full-color art of the view from `request`:
+///
+/// - `hd_sprites`: sprite ID to RGBA image.
+/// - `hd_heights`: sprite ID to the logical height of the art, when it is not
+///   the height of the sprite.
+/// - `hd_animations`: sprite ID to a strip of equal frames, top to bottom.
+/// - `hd_frames`, `hd_fps`: sprite ID to the frame count and the frame rate.
+///
+/// A sprite with an animation shows the animation. The other images are still.
+fn configure_artwork(core: &mut Builder, request: &VarDictionary) -> Result<(), String> {
+    let dictionary = |name: &str| -> Result<Option<AnyDictionary>, String> {
+        request
+            .get(name)
+            .map(|value| value.try_to::<AnyDictionary>().map_err(|_| format!("invalid {name}")))
+            .transpose()
+    };
+
+    let Some(stills) = dictionary("hd_sprites")? else {
+        return Ok(());
+    };
+
+    let heights = dictionary("hd_heights")?;
+    let animations = dictionary("hd_animations")?;
+    let frame_counts = dictionary("hd_frames")?;
+    let frame_rates = dictionary("hd_fps")?;
+    let entry = |dictionary: &Option<AnyDictionary>, id: i64| dictionary.as_ref().and_then(|d| d.get(id));
+    let mut animation_bytes = 0_usize;
+
+    for (key, value) in stills.iter_shared() {
+        let id = key.try_to::<i64>().map_err(|_| "invalid HD sprite ID")?;
+        let image_key = id as u64 * 2;
+
+        let Some(original) = core.sprites.images.get(&image_key) else {
+            return Err(format!("HD sprite {id} has no indexed sprite"));
+        };
+
+        let original_height = original.h;
+        let height = match entry(&heights, id) {
+            Some(value) => value.try_to::<i64>().map_err(|_| "invalid HD sprite height")? as i32,
+            None => original_height,
+        };
+
+        if height < original_height || height > sprites::ATLAS_LIMIT {
+            return Err(format!("HD sprite {id} is shorter than its indexed sprite"));
+        }
+
+        let (image, frames, fps) = match entry(&animations, id) {
+            Some(strip) => {
+                let frames = entry(&frame_counts, id)
+                    .and_then(|value| value.try_to::<i64>().ok())
+                    .ok_or("missing HD animation frame count")?;
+                let fps = entry(&frame_rates, id).and_then(|value| value.try_to::<i64>().ok()).unwrap_or(8);
+
+                if !(2..=32).contains(&frames) || ![5, 8].contains(&fps) {
+                    return Err(format!("HD animation {id} needs 2 to 32 frames at 5 or 8 frames each second"));
+                }
+
+                let image = artwork_image(&strip)?;
+
+                let padding = (frames as i32 + 1) * sprites::ARTWORK_PADDING * 2;
+
+                if image.h % frames as i32 != 0 || image.h + padding > sprites::ATLAS_LIMIT {
+                    return Err(format!("HD animation {id} has frames of different sizes or does not fit the atlas"));
+                }
+
+                animation_bytes += image.rgba.len();
+                (image, frames as u8, fps as u8)
+            }
+            None => (artwork_image(&value)?, 1, 0),
+        };
+
+        if animation_bytes > MAX_ANIMATION_BYTES {
+            return Err("HD animations use more than 128 MiB in one view".into());
+        }
+
+        core.sprite_limit.1 = core.sprite_limit.1.max(height);
+        core.sprites.artwork.insert(
+            image_key,
+            sprites::Artwork {
+                image,
+                height,
+                frames,
+                fps,
+            },
+        );
+    }
+
+    Ok(())
+}
+
+/// The RGBA pixels of a full-color image.
+fn artwork_image(value: &Variant) -> Result<Sprite, String> {
+    let image = value.try_to::<Gd<Image>>().map_err(|_| "invalid HD sprite image")?;
+    let (w, h) = (image.get_width(), image.get_height());
+
+    if w <= 0 || h <= 0 || w + 2 > sprites::ATLAS_LIMIT || h + 2 > sprites::ATLAS_LIMIT {
+        return Err("invalid HD sprite dimensions".into());
+    }
+
+    let mut rgba = Image::create_from_data(w, h, false, image.get_format(), &image.get_data()).ok_or("invalid HD sprite pixels")?;
+    rgba.convert(Format::RGBA8);
+
+    Ok(Sprite {
+        w,
+        h,
+        rgba: rgba.get_data().to_vec(),
+        la: Vec::new(),
     })
 }
 
@@ -129,6 +242,10 @@ impl NativeCityRegionBuilder {
             let mut core = Builder::new(city, config, sprites, (target as u32).to_be_bytes(), atlas_edge, pack_atlas)?;
             core.atlas.revision += previous_revision;
 
+            if !config.underground {
+                configure_artwork(&mut core, &request)?;
+            }
+
             // Shadow pairs: each packed RGBA color and the color that a shadow makes of it.
             for pair in ints(&request, "shadow_colors").chunks_exact(2) {
                 core.shadows.insert((pair[0] as u32).to_be_bytes(), (pair[1] as u32).to_be_bytes());
@@ -202,6 +319,8 @@ impl NativeCityRegionBuilder {
         let uvs: PackedVector2Array = region.uvs.iter().map(|v| Vector2::new(v[0], v[1])).collect();
         result.set("vertices", &vertices);
         result.set("uvs", &uvs);
+        let colors: PackedColorArray = region.colors.iter().map(|c| Color::from_rgba(c[0], c[1], c[2], c[3])).collect();
+        result.set("colors", &colors);
         result.set("indices", &PackedInt32Array::from(region.indices.as_slice()));
         let (records, images) = Self::records(&mut self.images, &core.sprites, &region.draws);
         result.set("records", &records);
@@ -224,7 +343,7 @@ impl NativeCityRegionBuilder {
                 core.atlas.edge,
                 core.atlas.edge,
                 false,
-                Format::LA8,
+                Format::RGBA8,
                 &PackedByteArray::from(core.atlas.data.as_slice()),
             )
             .expect("validated atlas dimensions");

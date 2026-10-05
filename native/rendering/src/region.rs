@@ -1,5 +1,20 @@
-use super::sprites::Sprite;
+use super::sprites::{ARTWORK_PADDING, Sprite};
 use super::{Builder, Draw, Rect};
+
+/// Each quad has a vertex color that tells the shader how to draw it. These
+/// are byte values of the red channel. Other channels hold the details.
+const INDEXED: [f32; 4] = [1.0; 4];
+const ARTWORK_TAG: u8 = 2;
+/// The art of a power warning marker. The palette phase tints it.
+const POWER_WARNING_TAG: u8 = 50;
+/// An animation strip at 8 or 5 frames each second. Green is the frame count,
+/// and blue and alpha are the frame stride in texels.
+const ANIMATION_TAG: u8 = 64;
+const SLOW_ANIMATION_TAG: u8 = 65;
+/// Masked traffic: red from 80 through 111 and green give the x of a texel
+/// record, and blue and alpha give its y. Refer to `traffic_record`.
+const TRAFFIC_TAG: u8 = 80;
+const POWER_WARNING_SPRITE: i32 = 386;
 
 // The least recently used tiles leave the cache above this count. Regions keep
 // their own draw lists, so eviction never changes a published region.
@@ -32,6 +47,7 @@ impl Bounds {
 pub struct Region {
     pub vertices: Vec<[f32; 2]>,
     pub uvs: Vec<[f32; 2]>,
+    pub colors: Vec<[f32; 4]>,
     pub indices: Vec<i32>,
     pub draws: Vec<Draw>,
 }
@@ -65,7 +81,7 @@ impl Builder {
         let mut union: Option<Rect> = None;
 
         for draw in draws {
-            let r = draw.rect;
+            let r = self.sprites.artwork_rect(draw);
             union = Some(match union {
                 None => r,
                 Some(u) => {
@@ -151,7 +167,7 @@ impl Builder {
                     cache_full = cache_full || !self.evict();
 
                     if cache_full {
-                        out.extend(draws.into_iter().filter(|d| d.rect.clip(bounds).area()));
+                        out.extend(draws.into_iter().filter(|d| self.sprites.artwork_rect(d).clip(bounds).area()));
                         continue;
                     }
 
@@ -174,11 +190,112 @@ impl Builder {
                 }
 
                 tile.used = self.stamp;
-                out.extend(tile.draws.iter().filter(|d| d.rect.clip(bounds).area()).cloned());
+                out.extend(
+                    tile.draws
+                        .iter()
+                        .filter(|d| self.sprites.artwork_rect(d).clip(bounds).area())
+                        .cloned(),
+                );
             }
         }
 
         Ok(out)
+    }
+
+    /// Adds the art of the draws that meet `bounds` to the atlas, tallest first.
+    /// In painter order, small sprites first break up the atlas, and tall
+    /// animation strips then do not fit.
+    fn reserve_artwork(&mut self, draws: &[Draw], bounds: Rect) -> Result<(), String> {
+        let mut pending: Vec<u64> = draws
+            .iter()
+            .filter(|draw| !draw.shadow && self.sprites.artwork_rect(draw).clip(bounds).area())
+            .filter_map(|draw| self.sprites.artwork_source(draw.image).map(|(source, _)| source))
+            .filter(|&source| !self.atlas.has_artwork(source))
+            .collect();
+
+        pending.sort_unstable();
+        pending.dedup();
+        pending.sort_by_key(|key| {
+            let artwork = &self.sprites.artwork[key];
+            let height = artwork.image.h + i32::from(artwork.frames) * 2;
+            (std::cmp::Reverse(height), std::cmp::Reverse(artwork.image.w), *key)
+        });
+
+        for key in pending {
+            self.atlas.artwork_slot(key, &self.sprites.artwork[&key])?;
+        }
+
+        Ok(())
+    }
+
+    /// One quad of full-color art in the place of an indexed draw.
+    pub(super) fn artwork_quad(&mut self, out: &mut Region, draw: &Draw, source: u64, mirrored: bool, bounds: Rect) -> Result<(), String> {
+        let rect = self.sprites.artwork_rect(draw);
+        let clipped = rect.clip(bounds);
+
+        if !clipped.area() {
+            return Ok(());
+        }
+
+        let artwork = &self.sprites.artwork[&source];
+        let slot = self.atlas.artwork_slot(source, artwork)?;
+        let frames = i32::from(artwork.frames.max(1));
+        let frame_height = artwork.image.h / frames;
+        let (stride, top) = if frames > 1 {
+            (frame_height + ARTWORK_PADDING * 2, slot.y + ARTWORK_PADDING)
+        } else {
+            (0, slot.y)
+        };
+
+        // Physical texels for each logical pixel.
+        let sx = artwork.image.w as f32 / rect.w as f32;
+        let sy = frame_height as f32 / rect.h as f32;
+        let offset_x = (clipped.x - rect.x) as f32 * sx;
+        let width = clipped.w as f32 * sx;
+        let uv = [
+            slot.x as f32 + if mirrored { artwork.image.w as f32 - offset_x } else { offset_x },
+            top as f32 + (clipped.y - rect.y) as f32 * sy,
+            if mirrored { -width } else { width },
+            clipped.h as f32 * sy,
+        ];
+
+        let fps_tag = if artwork.fps == 5 { SLOW_ANIMATION_TAG } else { ANIMATION_TAG };
+        let color = if let Some(mask) = self.sprites.traffic_masks.get(&draw.image) {
+            let mask_slot = self.atlas.mask_slot(draw.image, mask)?;
+            let record = self.atlas.record_slot(
+                draw.image,
+                &[
+                    slot.x,
+                    top,
+                    artwork.image.w,
+                    frame_height,
+                    (frames << 8) | i32::from(artwork.fps),
+                    stride,
+                    mask_slot.x,
+                    mask_slot.y,
+                    mask.w,
+                    mask.h,
+                    i32::from(mirrored),
+                    0,
+                ],
+            )?;
+
+            [
+                byte(i32::from(TRAFFIC_TAG) + (record.x >> 8)),
+                byte(record.x & 255),
+                byte(record.y >> 8),
+                byte(record.y & 255),
+            ]
+        } else if frames > 1 {
+            [byte(i32::from(fps_tag)), byte(frames), byte(stride >> 8), byte(stride & 255)]
+        } else if !draw.moving && draw.sprite.rem_euclid(500) == POWER_WARNING_SPRITE {
+            [byte(i32::from(POWER_WARNING_TAG)), 0.0, 0.0, 1.0]
+        } else {
+            [byte(i32::from(ARTWORK_TAG)), 0.0, 0.0, 1.0]
+        };
+
+        quad(out, clipped, uv, bounds, color);
+        Ok(())
     }
 
     pub fn region(&mut self, bounds: Rect) -> Result<Region, String> {
@@ -194,20 +311,39 @@ impl Builder {
             });
 
             let slot = self.atlas.slot(key, &self.sprites.images[&key])?;
-            quad(&mut out, bounds, slot, bounds);
+            let uv = [slot.x as f32, slot.y as f32, slot.w as f32, slot.h as f32];
+            quad(&mut out, bounds, uv, bounds, INDEXED);
         }
 
-        // Split the borrows so sprite uploads need no tile or image clones.
-        for draw in self.collect(bounds)? {
-            let clipped = draw.rect.clip(bounds);
-            let slot = self.atlas.slot(draw.image, &self.sprites.images[&draw.image])?;
-            let uv = Rect::new(
-                slot.x + clipped.x - draw.rect.x,
-                slot.y + clipped.y - draw.rect.y,
-                clipped.w,
-                clipped.h,
-            );
-            quad(&mut out, clipped, uv, bounds);
+        let draws = self.collect(bounds)?;
+        let with_artwork = !self.config.underground && !self.sprites.artwork.is_empty();
+
+        if with_artwork {
+            self.reserve_artwork(&draws, bounds)?;
+        }
+
+        for draw in draws {
+            let artwork = if with_artwork && !draw.shadow {
+                self.sprites.artwork_source(draw.image)
+            } else {
+                None
+            };
+
+            match artwork {
+                Some((source, mirrored)) => self.artwork_quad(&mut out, &draw, source, mirrored, bounds)?,
+                None => {
+                    let clipped = draw.rect.clip(bounds);
+                    let slot = self.atlas.slot(draw.image, &self.sprites.images[&draw.image])?;
+                    let uv = [
+                        (slot.x + clipped.x - draw.rect.x) as f32,
+                        (slot.y + clipped.y - draw.rect.y) as f32,
+                        clipped.w as f32,
+                        clipped.h as f32,
+                    ];
+                    quad(&mut out, clipped, uv, bounds, INDEXED);
+                }
+            }
+
             out.draws.push(draw);
         }
 
@@ -222,13 +358,18 @@ impl Builder {
     }
 }
 
-fn quad(out: &mut Region, rect: Rect, uv: Rect, bounds: Rect) {
+fn quad(out: &mut Region, rect: Rect, uv: [f32; 4], bounds: Rect, color: [f32; 4]) {
     let at = out.vertices.len() as i32;
     let (x, y) = ((rect.x - bounds.x) as f32, (rect.y - bounds.y) as f32);
     let (r, b) = (x + rect.w as f32, y + rect.h as f32);
     out.vertices.extend([[x, y], [r, y], [r, b], [x, b]]);
-    let (x, y) = (uv.x as f32, uv.y as f32);
-    let (r, b) = (x + uv.w as f32, y + uv.h as f32);
+    let [x, y, w, h] = uv;
+    let (r, b) = (x + w, y + h);
     out.uvs.extend([[x, y], [r, y], [r, b], [x, b]]);
+    out.colors.extend([color; 4]);
     out.indices.extend([at, at + 1, at + 2, at, at + 2, at + 3]);
+}
+
+fn byte(value: i32) -> f32 {
+    value as f32 / 255.0
 }

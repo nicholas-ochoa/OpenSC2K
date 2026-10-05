@@ -4,6 +4,9 @@ OpenSC2K loads the original game assets from packs. A pack is a folder that
 contains a UTF-8 `pack.json` file and the files that it refers to. These are
 OpenSC2K formats. They are not original SimCity 2000 formats.
 
+An optional HD sprite pack can replace the look of the city sprites. It is not
+one of these pack kinds. Refer to [HD sprite pack format](hd-sprite-pack-format.md).
+
 There are four pack kinds:
 
 | Kind | `format` value | Content | Automatic location |
@@ -55,6 +58,7 @@ These variables select a pack for one run. They override the Settings value.
 | --- | --- |
 | `OPENSC2K_GRAPHICS_PACK` | Graphics pack folder or `pack.json` file |
 | `OPENSC2K_DATA_PACK` | Data pack folder or `pack.json` file |
+| `OPENSC2K_HD_PACK` | HD sprite pack folder or `pack.json` file. Refer to [HD sprite pack format](hd-sprite-pack-format.md). |
 | `OPENSC2K_SOUNDTRACK_DIR` | Folder of music recordings. Refer to [Music recordings](#music-recordings). |
 | `OPENSC2K_FFMPEG` | Path of the FFmpeg program that decodes FLAC recordings |
 

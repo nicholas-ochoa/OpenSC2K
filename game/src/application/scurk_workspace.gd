@@ -508,8 +508,9 @@ func combine_tile_sets(tile_sets: Array[ScurkMif]) -> bool:
 		base_large = Sc2kfixSpriteFixes.apply(base_large, "large", false)
 		base_small_medium = Sc2kfixSpriteFixes.apply(base_small_medium, "small_medium", false)
 
-	var large_archives: Array[Sc2SpriteArchive] = [base_large]
-	var small_medium_archives: Array[Sc2SpriteArchive] = [base_small_medium]
+	# a tile set sprite replaces the HD art of its ID
+	var large_archives: Array[Sc2SpriteArchive] = [app.assets.with_hd_sprites(base_large)]
+	var small_medium_archives: Array[Sc2SpriteArchive] = [app.assets.with_hd_sprites(base_small_medium)]
 
 	for tile_set in tile_sets:
 		large_archives.append(tile_set.overrides)

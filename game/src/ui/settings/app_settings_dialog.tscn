@@ -663,6 +663,43 @@ clip_text = true
 text_overrun_behavior = 3
 theme_type_variation = "HelpLabel"
 
+[node name="HdPackLabel" type="Label" parent="Tabs/Data/Content/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+size_flags_vertical = 0
+vertical_alignment = 1
+text = "HD sprite pack"
+
+[node name="HdPackControls" type="VBoxContainer" parent="Tabs/Data/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Data/Content/Fields/HdPackControls"]
+layout_mode = 2
+
+[node name="HdPackEdit" type="LineEdit" parent="Tabs/Data/Content/Fields/HdPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The pack.json file of an HD sprite pack. It replaces the look of the city sprites with full-color art. The GPU renderer shows it. Leave this empty to show the sprites of the graphics pack."
+placeholder_text = "None"
+
+[node name="HdBrowse" type="Button" parent="Tabs/Data/Content/Fields/HdPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Browse..."
+
+[node name="HdPackName" type="Label" parent="Tabs/Data/Content/Fields/HdPackControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+clip_text = true
+text_overrun_behavior = 3
+theme_type_variation = "HelpLabel"
+
 [node name="SoundPackLabel" type="Label" parent="Tabs/Data/Content/Fields"]
 custom_minimum_size = Vector2(150, 32)
 layout_mode = 2

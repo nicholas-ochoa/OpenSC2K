@@ -385,6 +385,14 @@ func _update_region_meshes(scale: float) -> bool:
 	return true
 
 
+func sync_artwork_animation() -> void:
+	if _base_material != null:
+		_base_material.set_shader_parameter("artwork_animation_seconds", map.artwork_animation_seconds)
+
+	if _dynamic_material != null:
+		_dynamic_material.set_shader_parameter("artwork_animation_seconds", map.artwork_animation_seconds)
+
+
 func _sync_base_material() -> void:
 	if _foreground_palette_material != null:
 		_foreground_palette_material.set_shader_parameter("foreground_palette", map.animated_palette_texture)

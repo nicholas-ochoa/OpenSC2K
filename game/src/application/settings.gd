@@ -83,6 +83,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
 	app.main_overlays.settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.music_pack_folder)
 	app.main_overlays.settings_dialog.data_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.data_pack_folder)
+	app.main_overlays.settings_dialog.hd_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.hd_pack_folder)
 	app.main_overlays.settings_dialog.show_control_bindings(preferences.control_bindings)
 	app.main_overlays.settings_dialog.show_values(
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
@@ -106,6 +107,8 @@ func _refresh_settings_pack_names() -> void:
 		app.main_overlays.settings_dialog.set_loaded_pack("music", app.audio_controller.music_pack.pack_name, preferences.music_pack_folder)
 
 	app.main_overlays.settings_dialog.set_loaded_pack("data", app.asset_state.data_pack.pack_name, preferences.data_pack_folder)
+	app.main_overlays.settings_dialog.set_loaded_pack("hd",
+		app.asset_state.hd_pack.pack_name if app.asset_state.hd_pack != null else "", preferences.hd_pack_folder)
 
 
 # apply the values in the Settings dialog. the dialog calls this for each
@@ -156,6 +159,15 @@ func apply_settings() -> void:
 		else:
 			app.assets.show_graphics_source_error(selected.error)
 			_show_saved_pack(dialog.folder_edit, preferences.graphics_folder if preferences.graphics_source == "folder" else "")
+
+	if not _same_pack(values.hd_pack_folder, preferences.hd_pack_folder):
+		var hd_error := app.assets.set_hd_pack(values.hd_pack_folder)
+
+		if hd_error.is_empty():
+			preferences.hd_pack_folder = values.hd_pack_folder
+		else:
+			app.assets.show_graphics_source_error(hd_error, "HD sprite pack")
+			_show_saved_pack(dialog.hd_pack_edit, preferences.hd_pack_folder)
 
 	preferences.check_for_updates = bool(values.check_for_updates)
 
@@ -286,6 +298,7 @@ func load_app_settings() -> void:
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)
 	preferences.data_pack_folder = str(values.data_pack_folder)
+	preferences.hd_pack_folder = str(values.hd_pack_folder)
 	preferences.dark_underground = bool(values.dark_underground)
 	app.menus.sync_map_style()
 	app.assets.set_sprite_corrections(bool(values.sprite_corrections))

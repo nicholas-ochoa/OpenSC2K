@@ -84,6 +84,9 @@ func _advance_palette_animation(delta: float, suspended: bool) -> void:
 	if suspended or app.simulation_state.speed_controller.speed == GameSpeed.Speed.PAUSED or app.debug_tools.state.palette_frozen:
 		return
 
+	if app.map_view != null:
+		app.map_view.advance_artwork_animation(delta)
+
 	palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
 	var ticks := int(palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC)
 

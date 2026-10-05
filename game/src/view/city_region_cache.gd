@@ -104,13 +104,14 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		new_signature: Array, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
 		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true,
 		changed: Array[Rect2i] = [], changes_listed := false, show_tunnels := true) -> void:
-	if (signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes
+	if (signature == new_signature and _palette == palette and _sprites == sprites
+			and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes
 			and _show_subways == show_subways and _show_water_mains == show_water_mains and _show_tunnels == show_tunnels
 			and region_edge == _wanted_region_edge(new_view)):
 		return
 
 	var reset := _needs_reset(
-		city, new_view, new_mode, visibility, sprites, show_pipes, show_subways, show_water_mains, show_tunnels
+		city, palette, new_view, new_mode, visibility, sprites, show_pipes, show_subways, show_water_mains, show_tunnels
 	)
 
 	# no region shows the change, so the drawn snapshot still matches the city
@@ -201,14 +202,16 @@ func _region_keys(rects: Array[Rect2i]) -> Dictionary[Vector2i, bool]:
 # size, rotation, altitude cut, view scale, view mode, sprite set, or layer
 # visibility. other changes keep the regions and mark only the dirty ones
 func _needs_reset(
-	city: CityState, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
+	city: CityState, palette: Sc2Palette, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
 	sprites: Sc2SpriteArchive, show_pipes: bool, show_subways: bool, show_water_mains: bool, show_tunnels: bool
 ) -> bool:
 	if _snapshot == null:
 		return true
 
+	# the native atlas layout belongs to one palette and one sprite archive
 	return (
 		_snapshot.map_size != city.map_size
+		or _palette != palette
 		or view_size != new_view
 		or mode != new_mode
 		or _snapshot.document.source_path != city.document.source_path

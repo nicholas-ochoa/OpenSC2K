@@ -472,6 +472,15 @@
     "lane": "product"
   },
   {
+    "id": "hd_sprite_pack_test",
+    "script": "tests/hd_sprite_pack_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
     "id": "independent_startup_test",
     "script": "tests/independent_startup_test.gd",
     "domain": "ui",

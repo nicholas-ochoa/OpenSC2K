@@ -100,6 +100,7 @@ func initialize_runtime() -> void:
 	app.static_render.update_palette_cycle_texture()
 	app.asset_state.base_large_sprites = original_assets.large_sprites
 	app.asset_state.base_small_medium_sprites = original_assets.small_medium_sprites
+	_load_startup_hd_pack()
 	use_default_sprites()
 	app.camera_input.refresh_child_tool_icons()
 
@@ -330,9 +331,68 @@ func use_default_sprites() -> void:
 		large = Sc2kfixSpriteFixes.apply(large, "large")
 		small_medium = Sc2kfixSpriteFixes.apply(small_medium, "small_medium")
 
-	app.asset_state.large_sprites = large
-	app.asset_state.small_medium_sprites = small_medium
+	app.asset_state.large_sprites = with_hd_sprites(large)
+	app.asset_state.small_medium_sprites = with_hd_sprites(small_medium)
 	use_dos_colors(corrections)
+
+
+# `archive` with the art of the HD sprite pack, when one is loaded.
+func with_hd_sprites(archive: Sc2SpriteArchive) -> Sc2SpriteArchive:
+	return app.asset_state.hd_pack.apply_to(archive) if app.asset_state.hd_pack != null else archive
+
+
+# The pack.json of the HD sprite pack. OPENSC2K_HD_PACK overrides the preference.
+func hd_pack_path() -> String:
+	var path := OS.get_environment("OPENSC2K_HD_PACK")
+
+	return path if not path.is_empty() else app.preferences.hd_pack_folder
+
+
+func _load_startup_hd_pack() -> void:
+	var path := hd_pack_path()
+
+	if path.is_empty():
+		return
+
+	var pack := HdSpritePack.load_root(path)
+
+	if pack.error.is_empty():
+		app.asset_state.hd_pack = pack
+	else:
+		ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, "HD sprite pack: %s" % pack.error)
+
+
+# Load the HD sprite pack at `path`, or remove the pack when `path` is empty.
+# Returns an error, and keeps the current pack, when the pack is not valid.
+func set_hd_pack(path: String) -> String:
+	var pack: HdSpritePack = null
+
+	if not path.strip_edges().is_empty():
+		pack = HdSpritePack.load_root(path.strip_edges())
+
+		if not pack.error.is_empty():
+			return pack.error
+
+	app.asset_state.hd_pack = pack
+
+	if app.asset_state.base_large_sprites == null:
+		return ""
+
+	app.map_render.close_region_cache()
+	app.static_render.stop_render_job()
+
+	if app.asset_state.active_scurk_tile_sets.is_empty():
+		use_default_sprites()
+	else:
+		app.scurk_workspace.combine_tile_sets(app.asset_state.active_scurk_tile_sets)
+
+	app.static_render.invalidate_rendered_city()
+	app.main_menu.city_background.replace_graphics(app.asset_state.palette, app.asset_state.large_sprites)
+
+	if app.document_state.city != null:
+		app.map_render.refresh_map()
+
+	return ""
 
 
 # Use the palette of the graphics source, with the sc2kfix DOS colours when

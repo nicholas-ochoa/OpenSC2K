@@ -62,6 +62,7 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	result.gpu_arrays.resize(Mesh.ARRAY_MAX)
 	result.gpu_arrays[Mesh.ARRAY_VERTEX] = data.vertices
 	result.gpu_arrays[Mesh.ARRAY_TEX_UV] = data.uvs
+	result.gpu_arrays[Mesh.ARRAY_COLOR] = data.colors
 	result.gpu_arrays[Mesh.ARRAY_INDEX] = data.indices
 	result.tile_builds = data.builds
 	result.tile_reuses = tile_reuses - prior_reuses
@@ -104,6 +105,11 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 				artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
 
 		var request := _snapshot(city)
+
+		# only GPU regions draw full-color art
+		if pack_atlas and mode != CityViewMode.Mode.UNDERGROUND:
+			request.merge(artwork_request(sprites, configuration.sprite_base))
+
 		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
 			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains), "tunnels": int(tunnels),
 			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge,
@@ -226,6 +232,33 @@ static func foreground_commands(records: PackedInt64Array, region_orders := fals
 
 # Shadows darken 0x5f to 0x64 and the 0x74 to 0x7e band to 0x7e. When colors
 # repeat, the first rule wins, so it is inserted last
+# The full-color art of the sprites of one view, for `NativeCityRegionBuilder.configure`.
+static func artwork_request(sprites: Sc2SpriteArchive, sprite_base: int) -> Dictionary:
+	var stills: Dictionary[int, Image] = {}
+	var heights: Dictionary[int, int] = {}
+	var animations: Dictionary[int, Image] = {}
+	var frames: Dictionary[int, int] = {}
+	var rates: Dictionary[int, int] = {}
+
+	for id: int in sprites.high_resolution:
+		if id < sprite_base or id >= sprite_base + 500 or not sprites.entries_by_id.has(id):
+			continue
+
+		var art := sprites.high_resolution[id]
+		stills[id] = art.image
+		heights[id] = art.height
+
+		if art.animation != null:
+			animations[id] = art.animation
+			frames[id] = art.frames
+			rates[id] = art.fps
+
+	if stills.is_empty():
+		return {}
+
+	return {"hd_sprites": stills, "hd_heights": heights, "hd_animations": animations, "hd_frames": frames, "hd_fps": rates}
+
+
 static func shadow_colors(palette: Sc2Palette) -> PackedInt32Array:
 	var pairs := PackedInt32Array()
 

@@ -83,7 +83,7 @@ fn atlas_growth_keeps_existing_slots_and_pixels() {
     atlas.slot(2, &sprite).unwrap();
     assert_eq!(atlas.edge, 4096);
     assert_eq!(atlas.slots[&1], first);
-    assert_eq!(atlas.data[((first.y * atlas.edge + first.x) * 2) as usize], 77);
+    assert_eq!(atlas.data[((first.y * atlas.edge + first.x) * 4) as usize], 77);
     let revision = atlas.revision;
     assert_eq!(atlas.slot(1, &sprite).unwrap(), first);
     assert_eq!(revision, atlas.revision);
@@ -658,4 +658,154 @@ fn missing_tiles_name_each_tile_and_its_sprite() {
 
     // painting afterwards reports the missing sprite again
     assert!(b.tile_draws(0, 0).is_err());
+}
+
+fn artwork(w: i32, h: i32, frames: u8, height: i32) -> sprites::Artwork {
+    sprites::Artwork {
+        image: Sprite {
+            w,
+            h,
+            rgba: (0..w * h).flat_map(|p| [(p % 251) as u8, 90, 200, 255]).collect(),
+            la: vec![],
+        },
+        height,
+        frames,
+        fps: if frames > 1 { 5 } else { 0 },
+    }
+}
+
+fn tag(region: &region::Region, quad: usize) -> [u8; 4] {
+    region.colors[quad * 4].map(|channel| (channel * 255.0).round() as u8)
+}
+
+#[test]
+fn artwork_replaces_its_draw_in_painter_order_and_keeps_indexed_draws() {
+    let mut b = fixture(4, 2);
+    let key = b.region(Rect::new(0, 0, 600, 700)).unwrap().draws[0].image & !1;
+    b.sprites.artwork.insert(key, artwork(8, 8, 1, 2));
+    b.tiles.clear();
+    let region = b.region(Rect::new(0, 0, 600, 700)).unwrap();
+    let artwork_quads: Vec<usize> = (0..region.draws.len()).filter(|&q| tag(&region, q)[0] == 2).collect();
+
+    assert!(!artwork_quads.is_empty());
+    assert_eq!(region.colors.len(), region.vertices.len());
+    assert_eq!(region.draws.len() * 4, region.vertices.len());
+
+    for (quad, draw) in region.draws.iter().enumerate() {
+        let shows_artwork = b.sprites.artwork_source(draw.image).is_some();
+        assert_eq!(tag(&region, quad)[0] == 2, shows_artwork);
+
+        if !shows_artwork {
+            assert_eq!(tag(&region, quad), [255; 4]);
+        }
+    }
+
+    // Each logical pixel of the 2 x 2 sprite covers 4 x 4 texels of the art.
+    let quad = artwork_quads[0];
+    let uv = &region.uvs[quad * 4..quad * 4 + 3];
+    let scale = b.atlas.edge as f32;
+    assert_eq!(((uv[1][0] - uv[0][0]) * scale).round(), 8.0);
+    assert_eq!(((uv[2][1] - uv[1][1]) * scale).round(), 8.0);
+}
+
+#[test]
+fn tall_artwork_extends_the_draw_bounds_upward_from_the_sprite_bottom() {
+    let mut b = fixture(4, 2);
+    b.sprites.artwork.insert(2512, artwork(4, 10, 1, 5));
+    let mut draw = Draw::new(2512, Rect::new(10, 20, 2, 2));
+    assert_eq!(b.sprites.artwork_rect(&draw), Rect::new(10, 17, 2, 5));
+    draw.image = 2513;
+    assert_eq!(b.sprites.artwork_rect(&draw), Rect::new(10, 17, 2, 5));
+    assert_eq!(b.sprites.artwork_source(2513), Some((2512, true)));
+    assert_eq!(b.sprites.artwork_source(sprites::PLACEHOLDER), None);
+}
+
+#[test]
+fn mirrored_artwork_reverses_its_texture_coordinates() {
+    let mut b = fixture(4, 2);
+    b.sprites.artwork.insert(2512, artwork(4, 4, 1, 2));
+    let mut out = region::Region::default();
+    let draw = Draw::new(2513, Rect::new(0, 0, 2, 2));
+    b.artwork_quad(&mut out, &draw, 2512, true, Rect::new(0, 0, 10, 10)).unwrap();
+    let slot = b.atlas.slots[&(2512 | sprites::ARTWORK_SLOT)];
+
+    assert_eq!(out.uvs[0], [(slot.x + 4) as f32, slot.y as f32]);
+    assert_eq!(out.uvs[1], [slot.x as f32, slot.y as f32]);
+}
+
+#[test]
+fn animation_strips_have_frame_gutters_and_a_frame_tag() {
+    let mut b = fixture(4, 2);
+    b.sprites.artwork.insert(2512, artwork(4, 12, 3, 2));
+    let mut out = region::Region::default();
+    let draw = Draw::new(2512, Rect::new(0, 0, 2, 2));
+    b.artwork_quad(&mut out, &draw, 2512, false, Rect::new(0, 0, 10, 10)).unwrap();
+    let slot = b.atlas.slots[&(2512 | sprites::ARTWORK_SLOT)];
+
+    // Three frames of four rows, each with two repeated rows above and below.
+    assert_eq!((slot.w, slot.h), (4, 24));
+    assert_eq!(tag(&out, 0), [65, 3, 0, 8]);
+    assert_eq!(out.uvs[0], [slot.x as f32, (slot.y + 2) as f32]);
+
+    let row = |y: i32| {
+        let at = ((slot.y + y) * b.atlas.edge + slot.x) as usize * 4;
+        b.atlas.data[at..at + 16].to_vec()
+    };
+    let image = &b.sprites.artwork[&2512].image.rgba;
+    assert_eq!(row(0), image[..16]);
+    assert_eq!(row(2), image[..16]);
+    assert_eq!(row(5), image[3 * 16..4 * 16]);
+    assert_eq!(row(7), image[3 * 16..4 * 16]);
+    assert_eq!(row(8), image[4 * 16..5 * 16]);
+    assert_eq!(row(10), image[4 * 16..5 * 16]);
+}
+
+#[test]
+fn masked_traffic_uses_the_traffic_art_and_a_road_mask_record() {
+    let mut b = fixture(4, 2);
+    let surface = b.sprites.get(1256, false).unwrap();
+    let traffic = b.sprites.get(1257, false).unwrap();
+    b.sprites.artwork.insert(traffic, artwork(4, 8, 2, 2));
+    let masked = b.sprites.traffic(traffic, surface);
+    assert_eq!(
+        b.sprites.traffic_masks[&masked]
+            .rgba
+            .chunks_exact(4)
+            .map(|p| p[3])
+            .collect::<Vec<_>>(),
+        [255, 0, 0, 0]
+    );
+    assert_eq!(b.sprites.artwork_source(masked), Some((traffic, false)));
+
+    let mut out = region::Region::default();
+    let draw = Draw::new(masked, Rect::new(0, 0, 2, 2));
+    b.artwork_quad(&mut out, &draw, traffic, false, Rect::new(0, 0, 10, 10)).unwrap();
+    let [red, green, blue, alpha] = tag(&out, 0);
+    assert!((80..=111).contains(&red));
+
+    let record = Rect::new(
+        i32::from(red - 80) * 256 + i32::from(green),
+        i32::from(blue) * 256 + i32::from(alpha),
+        6,
+        1,
+    );
+    let at = ((record.y * b.atlas.edge + record.x) * 4) as usize;
+    let words: Vec<i32> = b.atlas.data[at..at + 24]
+        .chunks_exact(2)
+        .map(|w| i32::from(u16::from_be_bytes([w[0], w[1]])))
+        .collect();
+    assert_eq!(words[2..6], [4, 4, (2 << 8) | 5, 8]);
+    assert_eq!(words[8..11], [2, 2, 0]);
+}
+
+#[test]
+fn underground_views_draw_no_artwork() {
+    let mut b = fixture(4, 2);
+    b.config.underground = true;
+    let key = b.region(Rect::new(0, 0, 600, 700)).unwrap().draws[0].image & !1;
+    b.sprites.artwork.insert(key, artwork(8, 8, 1, 2));
+    b.tiles.clear();
+    let region = b.region(Rect::new(0, 0, 600, 700)).unwrap();
+
+    assert!(region.colors.iter().all(|color| *color == [1.0; 4]));
 }

@@ -51,6 +51,7 @@ static func load_values(
 	result.sound_pack_folder = AppPaths.loaded_path(str(config.get_value("audio", "sound_pack_folder", result.sound_pack_folder)))
 	result.music_pack_folder = AppPaths.loaded_path(str(config.get_value("audio", "music_pack_folder", result.music_pack_folder)))
 	result.data_pack_folder = AppPaths.loaded_path(str(config.get_value("data", "pack_folder", result.data_pack_folder)))
+	result.hd_pack_folder = AppPaths.loaded_path(str(config.get_value("graphics", "hd_pack", result.hd_pack_folder)))
 
 	result.shuffle_music = bool(config.get_value("audio", "shuffle_music", false))
 	result.music_soundfont = SoundFontCatalog.normalize(str(config.get_value("audio", "music_soundfont", SoundFontCatalog.DEFAULT)))
@@ -268,6 +269,9 @@ static func save_values(
 	if options.data_pack_folder != null:
 		config.set_value("data", "pack_folder", AppPaths.stored_path(str(options.data_pack_folder).strip_edges()))
 
+	if options.hd_pack_folder != null:
+		config.set_value("graphics", "hd_pack", AppPaths.stored_path(str(options.hd_pack_folder).strip_edges()))
+
 	if options.control_bindings != null:
 		_write_bindings(config, options.control_bindings)
 
@@ -355,6 +359,7 @@ class Values extends RefCounted:
 	var sound_pack_folder := ""
 	var music_pack_folder := ""
 	var data_pack_folder := ""
+	var hd_pack_folder := ""
 	var check_for_updates := false
 	var control_bindings := ControlBindings.defaults()
 
@@ -395,5 +400,6 @@ class SaveOptions extends RefCounted:
 	var translucent_menus: Variant = null
 	var check_for_updates: Variant = null
 	var data_pack_folder: Variant = null
+	var hd_pack_folder: Variant = null
 	var ui_scale: Variant = null
 	var control_bindings: ControlBindings = null
