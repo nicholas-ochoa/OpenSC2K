@@ -67,6 +67,7 @@ func _initialize() -> void:
 
 	_check_region_quads(shown)
 	_check_export(shown)
+	_check_cpu_region(shown)
 	print("PASS: HD sprite packs")
 	quit()
 
@@ -123,6 +124,24 @@ func _check_export(sprites: Sc2SpriteArchive) -> void:
 	assert(art_pixels > 0, "The export shows the HD art")
 	options.artwork_factor = 0
 	assert(ScurkCityOutput.render(city, palette, sprites, 2, options).image.get_size() == size)
+
+
+# A CPU region has an HD image at ARTWORK_FACTOR pixels for each view pixel,
+# beside its indexed image, when it has an artwork palette.
+func _check_cpu_region(sprites: Sc2SpriteArchive) -> void:
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
+	var size := CityIsometricRenderer.output_size_for_view(2, city.map_size)
+	var bounds := Rect2i(size / 2 - Vector2i(128, 128), Vector2i(256, 256))
+
+	for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
+		var result := CityRegionRenderer.render(city, Sc2Palette.index_encoding(), sprites, bounds, 2, mode, true, true, true,
+			null, 0, true, FixtureGraphics.pack().palette)
+		assert(result.ok, result.error)
+		assert(result.image.get_size() == bounds.size)
+		assert(result.artwork_image.get_size() == bounds.size * CityRegionRenderer.ARTWORK_FACTOR)
+
+	var indexed := CityRegionRenderer.render(city, Sc2Palette.index_encoding(), sprites, bounds, 2)
+	assert(indexed.ok and indexed.artwork_image == null)
 
 
 func _load(manifest: Dictionary) -> HdSpritePack:

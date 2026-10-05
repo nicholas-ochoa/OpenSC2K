@@ -43,7 +43,10 @@ func refresh_map(force := true) -> void:
 	app.map_view.clear_data_view()
 	app.map_view.discard_data_geometry_for_other_city(app.document_state.city)
 
-	if ((app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer))
+	# the static view has no HD art; the CPU regions have it
+	var hd := app.asset_state.large_sprites != null and not app.asset_state.large_sprites.high_resolution.is_empty()
+
+	if ((app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer) or hd)
 			and CityViewMode.is_map(app.view_state.overlay_mode)):
 		refresh_region_map(force)
 
@@ -241,6 +244,8 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 			sprites, view_size, changed)
 
 	caches.region_cache.fit_zoom = app.map_view.zoom_factor < CityMapConstants.ZOOM_LEVELS[0] * 0.75
+	# CPU regions paint HD art with the colors of the palette
+	caches.region_cache.artwork_palette = app.asset_state.palette if not sprites.high_resolution.is_empty() else null
 	caches.region_cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, sprites, signature, view_size,
 		app.view_state.overlay_mode, app.view_state.surface_visibility, app.view_state.show_underground_pipes,
 		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains, changed, changes_listed,

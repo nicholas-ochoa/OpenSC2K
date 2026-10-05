@@ -14,6 +14,10 @@ var key := Vector2i.ZERO
 var generation := 0
 var last_visible := 0
 var texture: ImageTexture
+# the region with HD art, at CityRegionRenderer.ARTWORK_FACTOR pixels for each
+# view pixel, or null. `image` keeps the indexed pixels for masks and shadows
+var artwork_image: Image
+var artwork_texture: ImageTexture
 
 
 func candidate_grid() -> NativeRectIndex:

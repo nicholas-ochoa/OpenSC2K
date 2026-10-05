@@ -289,6 +289,7 @@ func _sync_base_nodes() -> void:
 		for entry in map.city_source.tiles:
 			var tile := TextureRect.new()
 			tile.texture = entry.texture
+			tile.self_modulate = entry.draw_color
 			tile.set_meta("source_position", entry.position)
 			tile.set_meta("source_size", entry.size)
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE

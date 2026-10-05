@@ -37,10 +37,15 @@ class TileEntry:
 	var texture: Texture2D
 
 
-	func _init(source_position: Vector2, source_size: Vector2, tile_texture: Texture2D) -> void:
+	# the vertex color of the tile: white, or the artwork tag of the shader
+	var draw_color := Color.WHITE
+
+
+	func _init(source_position: Vector2, source_size: Vector2, tile_texture: Texture2D, color := Color.WHITE) -> void:
 		position = source_position
 		size = source_size
 		texture = tile_texture
+		draw_color = color
 
 
 class MeshEntry:

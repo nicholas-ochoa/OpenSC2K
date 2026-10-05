@@ -18,16 +18,18 @@ builds an HD sprite pack.
 
 These show the HD art:
 
-- The city view with the GPU renderer (**Settings > General > Renderer > GPU**),
-  with its moving objects, network placement previews, and query previews.
+- The city view and the underground view, with the GPU and the CPU renderers,
+  with their moving objects, network placement previews, and query previews.
+  The CPU renderer paints HD regions at 2 pixels for each view pixel. The dark
+  underground view dims the art.
 - The title screen city, the tool icons, the bridge choices, and the New City
   terrain preview.
 - **File > Export City as PNG**, with its **Detail** option: the HD art at 1, 2
   or 4 image pixels for each view pixel.
 
-The CPU renderer, the underground view, and the SCURK editors show the original
-sprites. Palette animation, such as moving water and blinking lights, shows only
-on original sprites; the HD art animates with its strips.
+The SCURK editors show the original sprites. Palette animation, such as
+blinking lights, shows only on original sprites; HD art animates with its
+strips. The HD Graphics Pack animates its water with strips.
 
 A SCURK tile set sprite replaces the HD art of its sprite ID.
 

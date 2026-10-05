@@ -88,7 +88,8 @@ vec4 indexed_color(vec2 uv, vec4 base_color) {
 }
 
 // The atlas texel at texel coordinates `texel`. Only fragment() can read TEXTURE.
-#define ATLAS(texel) texture(TEXTURE, ((texel) + 0.5) * TEXTURE_PIXEL_SIZE)
+// Reads stay inside the texture: a CPU region texture ends at its edge texels.
+#define ATLAS(texel) texture(TEXTURE, (clamp(texel, vec2(0.0), 1.0 / TEXTURE_PIXEL_SIZE - 1.0) + 0.5) * TEXTURE_PIXEL_SIZE)
 
 void fragment() {
 	vec2 texel = UV / TEXTURE_PIXEL_SIZE;

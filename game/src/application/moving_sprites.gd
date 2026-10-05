@@ -501,7 +501,6 @@ func dynamic_sprite_resource(
 	resource.texture = texture
 	resource.index_texture = texture
 
-	# only the GPU city view shows HD art
 	if _shows_artwork(sprite_archive, sprite_id):
 		resource.artwork_image = HdSprite.scaled(sprite_archive.high_resolution[sprite_id].image, image.get_size())
 
@@ -516,8 +515,7 @@ func dynamic_sprite_resource(
 
 
 func _shows_artwork(sprite_archive: Sc2SpriteArchive, sprite_id: int) -> bool:
-	return (sprite_archive.high_resolution.has(sprite_id)
-		and caches.region_cache != null and caches.region_cache.gpu_enabled)
+	return sprite_archive.high_resolution.has(sprite_id) and caches.region_cache != null
 
 
 # The texel density of a moving sprite: 1, or up to 4 for HD art. Positions and

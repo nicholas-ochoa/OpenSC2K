@@ -228,10 +228,10 @@ func open_query(point: Vector2i) -> void:
 	if not action.is_empty():
 		action_text = str(QueryStrings.ACTIONS.get(action, ""))
 
-	# the GPU city view shows HD art, and so does its query
+	# the region views show HD art, and so does the query
 	var artwork: Array[Image] = []
 
-	if app.render_caches.region_cache != null and app.render_caches.region_cache.gpu_enabled:
+	if app.render_caches.region_cache != null:
 		artwork = QueryNeighborhood.render_artwork(app.document_state.city, point, app.asset_state.palette,
 			app.asset_state.large_sprites)
 

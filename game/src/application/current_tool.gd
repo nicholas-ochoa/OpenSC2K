@@ -395,8 +395,8 @@ func update_network_preview() -> void:
 	var sprites := app.asset_state.large_sprites if view == IsometricRenderer.VIEW_LARGE else app.asset_state.small_medium_sprites
 
 	if sprites != null and app.asset_state.palette != null:
-		# only the GPU city view shows HD art
-		app.network_preview.show_artwork = app.render_caches.region_cache != null and app.render_caches.region_cache.gpu_enabled
+		# the region views show HD art
+		app.network_preview.show_artwork = app.render_caches.region_cache != null
 		app.network_preview.request(
 			app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, view,
 			app.asset_state.palette, sprites,
