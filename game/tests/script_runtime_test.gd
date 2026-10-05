@@ -49,6 +49,11 @@ func _host(name: String, arguments: Array) -> Variant:
 			return arguments
 		"point":
 			return {"tile": Vector2i(3, -4), "ids": PackedInt32Array([7, 8]), "name": &"Road"}
+		"typed":
+			var names: Array[String] = ["city", "traffic"]
+			var counts: Dictionary[String, int] = {"roads": 3}
+
+			return {"names": names, "counts": counts}
 		"fail":
 			runtime.throw_error("the city refused")
 
@@ -72,6 +77,8 @@ func _check_values() -> void:
 	check(received[4] is Dictionary and int(received[4].x) == 1, "Objects arrive as dictionaries")
 	var point := runtime.eval_console("const p = __runtime.host('point'); [p.tile.x, p.tile.y, p.ids[1], p.name].join()")
 	check(point.text == "\"3,-4,8,Road\"", "Vectors, packed arrays and names become script values: " + point.text)
+	var typed := runtime.eval_console("const t = __runtime.host('typed'); t.names.join() + ' ' + t.counts.roads")
+	check(typed.text == "\"city,traffic 3\"", "Typed arrays and dictionaries become script values: " + str(typed))
 	var called := runtime.call_function("Math.max", [4, 9, 2])
 	check(bool(called.ok) and int(called.value) == 9, "The game can call a script function")
 

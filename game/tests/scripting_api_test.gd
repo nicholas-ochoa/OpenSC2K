@@ -120,6 +120,7 @@ func _check_view_and_simulation(main: CityApplication, city: CityState) -> void:
 	_eval(main, "view.rotate(false)")
 	assert(city.compass_rotation() == rotation)
 
+	assert(_eval(main, "view.modes.length") == str(CityViewMode.KEYS.size()), "A typed GDScript array reaches the script")
 	_eval(main, "view.mode = 'pollution'")
 	assert(main.view_state.overlay_mode == CityViewMode.Mode.POLLUTION and _eval(main, "seen.includes('view.mode')") == "true")
 	_eval(main, "view.mode = 'city'")

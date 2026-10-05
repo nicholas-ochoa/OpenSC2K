@@ -359,3 +359,26 @@ fn memory_usage_reports_the_heap() {
     assert!(matches!(usage.get("memory_limit"), Some(JsData::Int(bytes)) if *bytes > 0));
     assert!(!Engine::version().is_empty());
 }
+
+#[test]
+fn a_host_panic_becomes_a_script_error() {
+    let engine = Engine::new().unwrap();
+    engine.set_host(Some(Rc::new(|name: &str, _arguments: Vec<JsData>| {
+        if name == "broken" {
+            panic!("a bug in a host function");
+        }
+
+        Ok(JsData::Undefined)
+    })));
+
+    let caught = engine.eval_console("try { __runtime.host('broken') } catch (error) { error.message }");
+    assert_eq!(
+        caught,
+        Ok(Some("\"The game function broken failed inside the script runtime\"".to_string()))
+    );
+    assert_eq!(
+        engine.eval_console("1 + 1"),
+        Ok(Some("2".to_string())),
+        "the engine runs after the panic"
+    );
+}

@@ -60,9 +60,13 @@ pub unsafe extern "C" fn host_call(
             return JS_EXCEPTION;
         }
 
-        match host(&name, data) {
-            Ok(result) => to_js(context, &result),
-            Err(message) => throw_error(context, &message),
+        // a panic must not leave this C callback: the game would stop
+        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| host(&name, data)));
+
+        match outcome {
+            Ok(Ok(result)) => to_js(context, &result),
+            Ok(Err(message)) => throw_error(context, &message),
+            Err(_) => throw_error(context, &format!("The game function {name} failed inside the script runtime")),
         }
     }
 }

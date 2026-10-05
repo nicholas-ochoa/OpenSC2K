@@ -2,6 +2,7 @@
 //! becomes an object with named fields. A Godot value without a JavaScript
 //! form, such as an Object or a Callable, becomes its text.
 
+use godot::builtin::{AnyArray, AnyDictionary};
 use godot::prelude::*;
 
 use crate::value::{JsData, MAX_DEPTH};
@@ -43,24 +44,29 @@ fn copy_variant(value: &Variant, depth: usize) -> JsData {
         return JsData::Undefined;
     }
 
-    match value.get_type() {
+    // a value that does not convert as its type says becomes its text
+    copy_typed(value, depth).unwrap_or_else(|| JsData::String(value.to_string()))
+}
+
+fn copy_typed(value: &Variant, depth: usize) -> Option<JsData> {
+    let data = match value.get_type() {
         VariantType::NIL => JsData::Null,
-        VariantType::BOOL => JsData::Bool(value.to::<bool>()),
-        VariantType::INT => JsData::Int(value.to::<i64>()),
-        VariantType::FLOAT => JsData::Float(value.to::<f64>()),
+        VariantType::BOOL => JsData::Bool(value.try_to::<bool>().ok()?),
+        VariantType::INT => JsData::Int(value.try_to::<i64>().ok()?),
+        VariantType::FLOAT => JsData::Float(value.try_to::<f64>().ok()?),
         VariantType::STRING | VariantType::STRING_NAME | VariantType::NODE_PATH => JsData::String(value.to_string()),
         VariantType::VECTOR2 => {
-            let vector = value.to::<Vector2>();
+            let vector = value.try_to::<Vector2>().ok()?;
 
             point(vector.x as f64, vector.y as f64)
         }
         VariantType::VECTOR2I => {
-            let vector = value.to::<Vector2i>();
+            let vector = value.try_to::<Vector2i>().ok()?;
 
             JsData::object(vec![("x", JsData::Int(vector.x as i64)), ("y", JsData::Int(vector.y as i64))])
         }
         VariantType::VECTOR3I => {
-            let vector = value.to::<Vector3i>();
+            let vector = value.try_to::<Vector3i>().ok()?;
 
             JsData::object(vec![
                 ("x", JsData::Int(vector.x as i64)),
@@ -69,7 +75,7 @@ fn copy_variant(value: &Variant, depth: usize) -> JsData {
             ])
         }
         VariantType::RECT2I => {
-            let rect = value.to::<Rect2i>();
+            let rect = value.try_to::<Rect2i>().ok()?;
 
             JsData::object(vec![
                 ("x", JsData::Int(rect.position.x as i64)),
@@ -79,7 +85,7 @@ fn copy_variant(value: &Variant, depth: usize) -> JsData {
             ])
         }
         VariantType::COLOR => {
-            let color = value.to::<Color>();
+            let color = value.try_to::<Color>().ok()?;
 
             JsData::object(vec![
                 ("r", JsData::Float(color.r as f64)),
@@ -88,13 +94,14 @@ fn copy_variant(value: &Variant, depth: usize) -> JsData {
                 ("a", JsData::Float(color.a as f64)),
             ])
         }
+        // AnyArray and AnyDictionary also take typed collections, such as Array[String]
         VariantType::ARRAY => {
-            let array = value.to::<VarArray>();
+            let array = value.try_to::<AnyArray>().ok()?;
 
             JsData::Array(array.iter_shared().map(|item| copy_variant(&item, depth + 1)).collect())
         }
         VariantType::DICTIONARY => {
-            let dictionary = value.to::<VarDictionary>();
+            let dictionary = value.try_to::<AnyDictionary>().ok()?;
 
             JsData::Object(
                 dictionary
@@ -103,12 +110,13 @@ fn copy_variant(value: &Variant, depth: usize) -> JsData {
                     .collect(),
             )
         }
-        VariantType::PACKED_BYTE_ARRAY => ints(value.to::<PackedByteArray>().as_slice().iter().map(|item| *item as i64)),
-        VariantType::PACKED_INT32_ARRAY => ints(value.to::<PackedInt32Array>().as_slice().iter().map(|item| *item as i64)),
-        VariantType::PACKED_INT64_ARRAY => ints(value.to::<PackedInt64Array>().as_slice().iter().copied()),
+        VariantType::PACKED_BYTE_ARRAY => ints(value.try_to::<PackedByteArray>().ok()?.as_slice().iter().map(|item| *item as i64)),
+        VariantType::PACKED_INT32_ARRAY => ints(value.try_to::<PackedInt32Array>().ok()?.as_slice().iter().map(|item| *item as i64)),
+        VariantType::PACKED_INT64_ARRAY => ints(value.try_to::<PackedInt64Array>().ok()?.as_slice().iter().copied()),
         VariantType::PACKED_FLOAT32_ARRAY => JsData::Array(
             value
-                .to::<PackedFloat32Array>()
+                .try_to::<PackedFloat32Array>()
+                .ok()?
                 .as_slice()
                 .iter()
                 .map(|item| JsData::Float(*item as f64))
@@ -116,7 +124,8 @@ fn copy_variant(value: &Variant, depth: usize) -> JsData {
         ),
         VariantType::PACKED_FLOAT64_ARRAY => JsData::Array(
             value
-                .to::<PackedFloat64Array>()
+                .try_to::<PackedFloat64Array>()
+                .ok()?
                 .as_slice()
                 .iter()
                 .map(|item| JsData::Float(*item))
@@ -124,7 +133,8 @@ fn copy_variant(value: &Variant, depth: usize) -> JsData {
         ),
         VariantType::PACKED_STRING_ARRAY => JsData::Array(
             value
-                .to::<PackedStringArray>()
+                .try_to::<PackedStringArray>()
+                .ok()?
                 .as_slice()
                 .iter()
                 .map(|item| JsData::String(item.to_string()))
@@ -132,14 +142,17 @@ fn copy_variant(value: &Variant, depth: usize) -> JsData {
         ),
         VariantType::PACKED_VECTOR2_ARRAY => JsData::Array(
             value
-                .to::<PackedVector2Array>()
+                .try_to::<PackedVector2Array>()
+                .ok()?
                 .as_slice()
                 .iter()
                 .map(|item| point(item.x as f64, item.y as f64))
                 .collect(),
         ),
-        _ => JsData::String(value.to_string()),
-    }
+        _ => return None,
+    };
+
+    Some(data)
 }
 
 fn point(x: f64, y: f64) -> JsData {
