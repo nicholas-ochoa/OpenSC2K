@@ -304,6 +304,7 @@ mod tests {
             mains: true,
             redraw_ground: false,
             specials: false,
+            individual_traffic: false,
             phase: 0,
         };
         let w = config.hw() * 2;
