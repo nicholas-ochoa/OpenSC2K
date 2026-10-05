@@ -39,7 +39,7 @@ def write_zip(package, folder, name, *directories):
 
 
 # Native libraries are independent extensions with the same platform layout.
-NATIVE_MODULES = ('simulation', 'rendering', 'formats', 'audio')
+NATIVE_MODULES = ('simulation', 'rendering', 'formats', 'audio', 'scripting')
 NATIVE_PLATFORMS = {
     'windows-x64': ('windows-x86_64', 'opensc2k_{}.dll', 'opensc2k_{}.dll'),
     'windows-arm64': ('windows-arm64', 'opensc2k_{}.dll', 'opensc2k_{}.dll'),
@@ -101,6 +101,7 @@ def install_notices(source, folder, platform):
     """The notices and license texts of the third-party works in a package."""
     shutil.copy2(source / 'THIRD_PARTY_NOTICES.md', folder / 'THIRD_PARTY_NOTICES.md')
     shutil.copytree(source / 'game/assets/licenses/fluidsynth', folder / 'licenses' / 'fluidsynth')
+    shutil.copytree(source / 'game/assets/licenses/quickjs', folder / 'licenses' / 'quickjs')
     if platform.startswith('linux'):
         shutil.copytree(source / 'game/assets/licenses/fluidr3mono', folder / 'licenses' / 'fluidr3mono')
 

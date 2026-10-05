@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # one Cargo workspace holds every crate, so they share dependencies and build in parallel
 WORKSPACE = ROOT / 'native'
 TARGET = WORKSPACE / 'target'
-MODULES = ('simulation', 'rendering', 'formats', 'audio')
+MODULES = ('simulation', 'rendering', 'formats', 'audio', 'scripting')
 MACOS_TARGETS = ('aarch64-apple-darwin', 'x86_64-apple-darwin')
 # the Windows and Linux folders that desktop packages include, and their Rust targets.
 # An explicit target stops an emulated x86_64 toolchain from building the wrong library

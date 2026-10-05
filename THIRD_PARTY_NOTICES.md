@@ -4,8 +4,8 @@ OpenSC2K is MIT licensed (see `LICENSE`). The OpenSC2K source code, including
 the Rust code in `native/audio` that loads FluidSynth, is MIT licensed.
 
 OpenSC2K packages also contain the separate works below. Each keeps its own
-license. The license texts are in `game/assets/licenses/fluidsynth` (in packages:
-`licenses/fluidsynth`, and in the game under **About > Licenses**). Developer details are in `docs/fluidsynth.md`.
+license. The license texts are in `game/assets/licenses` (in packages:
+`licenses`, and in the game under **About > Licenses**). Developer details are in `docs/fluidsynth.md`.
 
 ## FluidSynth 2.6.1 shared library
 
@@ -37,6 +37,18 @@ license. The license texts are in `game/assets/licenses/fluidsynth` (in packages
 | Signalsmith Audio linear | 0.3.1 | MIT | `signalsmith-linear-LICENSE.txt` |
 | Signalsmith Audio DSP | 1.7.1 | MIT | `signalsmith-dsp-LICENSE.txt` |
 | Signalsmith Audio Hilbert IIR | 1.0.0 | 0BSD | `signalsmith-hilbert-iir-LICENSE.txt` |
+
+## QuickJS-ng 0.17.0
+
+- File: inside the scripting library, `opensc2k_scripting.dll` (Windows),
+  `libopensc2k_scripting.dylib` (macOS) and `libopensc2k_scripting.so` (Linux).
+- License: MIT. Copyright (c) 2017-2026 Fabrice Bellard, Copyright (c)
+  2017-2024 Charlie Gordon, Copyright (c) 2023-2026 Ben Noordhuis, Copyright (c)
+  2023-2026 Saúl Ibarra Corretgé.
+- License text: `game/assets/licenses/quickjs/QuickJS-ng-LICENSE.txt` (in
+  packages: `licenses/quickjs`, and in the game under **About > Licenses**).
+- Source: <https://github.com/quickjs-ng/quickjs>, tag `v0.17.0`, unchanged.
+  The used files are in `native/scripting/quickjs`. See `docs/native-scripting.md`.
 
 ## FluidR3Mono GM SoundFont (Linux packages only)
 

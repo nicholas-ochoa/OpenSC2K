@@ -66,6 +66,7 @@ jobs:
             game/bin/opensc2k_rendering/${{ matrix.platform }}/*
             game/bin/opensc2k_formats/${{ matrix.platform }}/*
             game/bin/opensc2k_audio/${{ matrix.platform }}/*
+            game/bin/opensc2k_scripting/${{ matrix.platform }}/*
           if-no-files-found: error
           retention-days: 1
 

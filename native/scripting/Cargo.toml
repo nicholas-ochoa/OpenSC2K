@@ -1,0 +1,18 @@
+[package]
+name = "opensc2k_scripting"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "QuickJS script runtime for OpenSC2K"
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+godot = { version = "0.5.5", features = ["api-4-7"] }
+
+[build-dependencies]
+# compiles the vendored QuickJS C sources with the C compiler of the target
+cc = "1.2"

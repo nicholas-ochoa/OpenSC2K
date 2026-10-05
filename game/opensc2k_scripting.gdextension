@@ -1,0 +1,18 @@
+[configuration]
+
+entry_symbol = "opensc2k_scripting_init"
+compatibility_minimum = 4.7
+reloadable = false
+
+[libraries]
+
+macos.debug = "res://bin/opensc2k_scripting/macos/libopensc2k_scripting.dylib"
+macos.release = "res://bin/opensc2k_scripting/macos/libopensc2k_scripting.dylib"
+linux.debug.x86_64 = "res://bin/opensc2k_scripting/linux-x86_64/libopensc2k_scripting.so"
+linux.release.x86_64 = "res://bin/opensc2k_scripting/linux-x86_64/libopensc2k_scripting.so"
+linux.debug.arm64 = "res://bin/opensc2k_scripting/linux-arm64/libopensc2k_scripting.so"
+linux.release.arm64 = "res://bin/opensc2k_scripting/linux-arm64/libopensc2k_scripting.so"
+windows.debug.x86_64 = "res://bin/opensc2k_scripting/windows-x86_64/opensc2k_scripting.dll"
+windows.release.x86_64 = "res://bin/opensc2k_scripting/windows-x86_64/opensc2k_scripting.dll"
+windows.debug.arm64 = "res://bin/opensc2k_scripting/windows-arm64/opensc2k_scripting.dll"
+windows.release.arm64 = "res://bin/opensc2k_scripting/windows-arm64/opensc2k_scripting.dll"

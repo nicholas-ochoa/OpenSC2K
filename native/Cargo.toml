@@ -1,7 +1,7 @@
 # One workspace, so the crates share one build of their dependencies and
 # Cargo builds them in parallel
 [workspace]
-members = ["simulation", "rendering", "formats", "audio"]
+members = ["simulation", "rendering", "formats", "audio", "scripting"]
 resolver = "3"
 
 [profile.release]
