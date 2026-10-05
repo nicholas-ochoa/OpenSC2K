@@ -1685,6 +1685,20 @@
     "requires": ["ext/graphics/pack.json"]
   },
   {
+    "id": "traffic_motion_test",
+    "script": "tests/traffic_motion_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": ["ext/graphics/pack.json"]
+  },
+  {
+    "id": "traffic_shadow_gpu_test",
+    "script": "tests/traffic_shadow_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
     "id": "city_life_gpu_test",
     "script": "tests/city_life_gpu_test.gd",
     "domain": "rendering",

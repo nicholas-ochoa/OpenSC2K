@@ -24,6 +24,7 @@ func _draw() -> void:
 			texture,
 			Rect2(source_position, source_size),
 			false,
+			Color(1, 0, 1) if visual.transparent_shadow else Color.WHITE,
 		)
 
 		if visual.emission_texture != null:

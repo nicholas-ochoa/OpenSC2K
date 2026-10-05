@@ -12,6 +12,9 @@ func _run() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
+	# Preferences load on startup. This regression covers the classic display.
+	for key in ["traffic_planes_enabled", "traffic_helicopters_enabled", "traffic_ships_enabled", "traffic_shadows_enabled"]:
+		main.preferences.visual_enhancements[key] = false
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	main.render_caches.dynamic_command_cache = FrozenCommands.new()

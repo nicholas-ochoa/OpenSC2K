@@ -3,6 +3,7 @@ extends RefCounted
 ## Presentation-only cloud field. Never writes city data or simulation RNG.
 
 const BODIES := preload("res://src/view/clouds/cloud_bodies.gdshader")
+const CUMULUS := preload("res://assets/clouds/cumulus_atlas.png")
 const FIELD_SPAN := 192.0
 const HEIGHT_PIXELS := 192.0
 const WIND := Vector2(0.32, 0.20)
@@ -12,7 +13,7 @@ var drift := Vector2.ZERO
 var opacity := 0.0
 var layer: ColorRect
 var material: ShaderMaterial
-var field: ImageTexture
+var field: Texture2D
 var parameters: Dictionary = {"cloud_enabled": false}
 var _initialized := false
 
@@ -52,6 +53,8 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 	var offset := app.map_view.camera._draw_offset(scale)
 	var source_to_canvas := app.map_view.get_global_transform() * Transform2D(Vector2(scale, 0), Vector2(0, scale), offset)
 	var canvas_to_grid := source_to_grid(edge, rotation) * source_to_canvas.affine_inverse()
+	var projection := source_to_grid(edge, rotation)
+	var grid_to_source := projection.affine_inverse()
 	var density := float(options.get("cloud_density", 0.4))
 	if options.weather_enabled and weather_kind != CityVisualWeather.Kind.SUNNY:
 		density = minf(1.0, density * 1.25)
@@ -62,11 +65,17 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 		"cloud_density": density,
 		"cloud_shadow_strength": float(options.get("cloud_shadow_strength", 0.22)) * (1.0 - darkness * 0.85),
 		"cloud_canvas_to_grid": shader_basis(canvas_to_grid),
+		"cloud_projection": Vector4(grid_to_source.x.x, grid_to_source.x.y, grid_to_source.y.x, grid_to_source.y.y) / 16.0,
+		"cloud_height_grid": projection.y * HEIGHT_PIXELS,
+		"cloud_level_grid": projection.y * IsometricConstants.ALTITUDE_STEP,
+		"cloud_map_edge": float(edge),
+		"cloud_opacity": opacity,
+		"cloud_light": Vector3(light.r, light.g, light.b),
 	})
-	_sync_layer(source_to_canvas, edge, rotation, light)
+	_sync_layer(source_to_canvas, edge, rotation)
 
 
-func _sync_layer(source_to_canvas: Transform2D, edge: int, rotation: int, light: Color) -> void:
+func _sync_layer(source_to_canvas: Transform2D, edge: int, rotation: int) -> void:
 	if layer == null and opacity <= 0.0:
 		return
 	if layer == null:
@@ -92,9 +101,6 @@ func _sync_layer(source_to_canvas: Transform2D, edge: int, rotation: int, light:
 		material.set_shader_parameter(key, parameters[key])
 	var lift := Transform2D(0.0, Vector2(0, HEIGHT_PIXELS))
 	material.set_shader_parameter("cloud_canvas_to_body_grid", shader_basis(source_to_grid(edge, rotation) * lift * source_to_canvas.affine_inverse()))
-	material.set_shader_parameter("cloud_map_edge", float(edge))
-	material.set_shader_parameter("cloud_opacity", opacity)
-	material.set_shader_parameter("cloud_light", Vector3(light.r, light.g, light.b))
 
 
 static func body_opacity(zoom: float) -> float:
@@ -120,14 +126,7 @@ static func source_to_grid(edge: int, rotation: int) -> Transform2D:
 	return projection
 
 
-static func make_field() -> ImageTexture:
-	var noise := FastNoiseLite.new()
-	noise.seed = 42791
-	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	noise.frequency = 0.009
-	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	noise.fractal_octaves = 4
-	noise.fractal_gain = 0.48
-	var pixels := noise.get_seamless_image(512, 512, false, false, 0.2)
-	pixels.generate_mipmaps()
-	return ImageTexture.create_from_image(pixels)
+static func make_field() -> Texture2D:
+	# Authored cloud colors and alpha are shared by tops, shadows and water.
+	# Placement is deterministic; no city RNG or per-frame image work is used.
+	return CUMULUS

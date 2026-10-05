@@ -17,7 +17,7 @@ func _ready() -> void:
 	content.add_theme_constant_override("separation", 12)
 	add_child(content)
 	var sections: Dictionary[String, VBoxContainer] = {}
-	for title in ["Seasons", "Day and Night Shift", "Weather Effects", "Water", "City Life", "Other Effects"]:
+	for title in ["Seasons", "Day and Night Shift", "Weather Effects", "Water", "Traffic & Movement", "Other Effects"]:
 		if not VisualEnhancementOptions.FIELDS.any(func(field: Array) -> bool: return _category_for(field[0]) == title):
 			continue
 		var section := VBoxContainer.new()
@@ -101,8 +101,8 @@ func _category_for(key: String) -> String:
 		return "Weather Effects"
 	if key.begins_with("water_"):
 		return "Water"
-	if key.begins_with("life_"):
-		return "City Life"
+	if key.begins_with("life_") or key.begins_with("traffic_"):
+		return "Traffic & Movement"
 	return "Other Effects"
 
 

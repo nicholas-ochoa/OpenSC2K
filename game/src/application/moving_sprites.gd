@@ -9,6 +9,7 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 
 var app: CityApplication
 var caches: RenderCaches
+var traffic_motion := CityTrafficMotion.new()
 
 
 func _init(application: CityApplication) -> void:
@@ -16,8 +17,29 @@ func _init(application: CityApplication) -> void:
 	caches = application.render_caches
 
 
+func process(delta: float) -> void:
+	if not _traffic_active():
+		traffic_motion.reset()
+		return
+	var controller := app.simulation_state.speed_controller
+	if controller == null or controller.speed == GameSpeedController.Speed.PAUSED \
+			or controller.interaction_blocked or controller.terminal_blocked or app.frame._simulation_suspended():
+		return
+	if traffic_motion.advance(delta):
+		refresh_moving_things()
+
+
+func _traffic_active() -> bool:
+	return app.document_state.city != null and app.map_view != null and app.view_state.show_vehicles \
+		and app.view_state.overlay_mode == CityViewMode.Mode.CITY and not app.tool_state.landscape_editor
+
+
 func refresh_moving_things(view_size := -1) -> void:
 	caches.dynamic_active_keys.clear()
+	if _traffic_active():
+		traffic_motion.observe(app.document_state.city, app.preferences.visual_enhancements)
+	else:
+		traffic_motion.reset()
 
 	if (app.document_state.city == null
 			or app.asset_state.palette == null
@@ -36,6 +58,8 @@ func refresh_moving_things(view_size := -1) -> void:
 
 	if caches.dynamic_visual_cache.size() > 4096:
 		caches.dynamic_visual_cache.clear()
+	if caches.dynamic_occluder_cache.size() > 4096:
+		caches.dynamic_occluder_cache.clear()
 
 	if view_size < 0:
 		view_size = app.static_render.city_view_size()
@@ -49,7 +73,10 @@ func refresh_moving_things(view_size := -1) -> void:
 	)
 	var visuals: Array[CityDynamicVisual] = []
 
-	for command in commands:
+	for source_command in commands:
+		var command := traffic_motion.draw_command(source_command, divisor, app.document_state.city.map_size)
+		var display_position := Vector2(source_command.position * divisor) + traffic_motion.display_offset(source_command, divisor)
+		var position := Vector2i(display_position.round())
 		if not app.view_state.show_vehicles and command.record >= 0 and _is_vehicle(int(command.record)):
 			continue
 
@@ -57,7 +84,9 @@ func refresh_moving_things(view_size := -1) -> void:
 				Vector2(Vector2i(256, 256)) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor))):
 			continue
 
-		var visual_cache_key := var_to_str([view_size, factor, sprite_archive.visual_revision, command.value_signature()])
+		var transparent_shadow: bool = command.shadow and app.preferences.visual_enhancements.traffic_shadows_enabled \
+			and command.record >= 0 and app.document_state.city.thing(command.record).type in [1, 2]
+		var visual_cache_key := var_to_str([view_size, factor, sprite_archive.visual_revision, transparent_shadow, position, command.value_signature()])
 		# Include fully hidden shadows: a static change can make them visible.
 		caches.dynamic_active_keys[visual_cache_key] = true
 
@@ -65,7 +94,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			var cached: CityDynamicVisual = caches.dynamic_visual_cache[visual_cache_key]
 
 			if cached != null and not cached.hidden:
-				visuals.append(cached)
+				visuals.append(_at_position(cached, display_position))
 
 			continue
 
@@ -76,7 +105,6 @@ func refresh_moving_things(view_size := -1) -> void:
 		if resource == null:
 			continue
 
-		var position := Vector2i(command.position) * divisor
 		var texture: Texture2D = resource.texture
 		var index_texture: Texture2D = resource.index_texture
 		var visual_image: Image = resource.image
@@ -89,15 +117,16 @@ func refresh_moving_things(view_size := -1) -> void:
 				resource if command.floating_altitude >= 0 else null, int(command.floating_altitude)
 			)
 
-		var samples_static := bool(command.shadow)
+		var samples_static: bool = bool(command.shadow) and not transparent_shadow
 
 		if command.shadow:
-			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask, factor)
+			var shadow_image := (CityAircraftShadow.create(resource.image, occluder_mask, position, app.map_render.static_image_size())
+				if transparent_shadow else _dynamic_shadow_image(resource.image, position, occluder_mask, factor))
 
 			if shadow_image == null:
 				var hidden := CityDynamicVisual.new(null, Vector2(position), Vector2(resource.native_size))
 				hidden.hidden = true
-				hidden.samples_static = true
+				hidden.samples_static = samples_static
 				caches.dynamic_visual_cache[visual_cache_key] = hidden
 				continue
 
@@ -144,7 +173,8 @@ func refresh_moving_things(view_size := -1) -> void:
 		visual.batch_cache_key = visual_cache_key
 		visual.depth_order = int(command.depth_order)
 		visual.shadow = bool(command.shadow)
-		visuals.append(visual)
+		visual.transparent_shadow = transparent_shadow
+		visuals.append(_at_position(visual, display_position))
 
 		if not visual_cache_key.is_empty():
 			caches.dynamic_visual_cache[visual_cache_key] = visual
@@ -159,6 +189,14 @@ func refresh_moving_things(view_size := -1) -> void:
 	app.map_view.set_dynamic_sprites(batched_visuals)
 	caches.foreground_view_rect = app.map_view.visible_source_rect()
 	caches.foreground_complete = true
+
+
+func _at_position(visual: CityDynamicVisual, position: Vector2) -> CityDynamicVisual:
+	if visual.position == position:
+		return visual
+	var result := visual.copy()
+	result.position = position
+	return result
 
 
 func _is_vehicle(record: int) -> bool:
