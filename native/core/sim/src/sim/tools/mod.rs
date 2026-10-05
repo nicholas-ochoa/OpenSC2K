@@ -4,6 +4,7 @@
 //! These are ports of the GDScript tool helpers that the simulation calls.
 
 pub mod availability;
+pub mod catalog;
 pub mod commands;
 pub mod demolish;
 pub mod highway;

@@ -6,7 +6,7 @@ use godot::prelude::*;
 use sc2k_sim::sim::geom::Rect2i as SimRect2i;
 use sc2k_sim::sim::geom::Vec2i;
 use sc2k_sim::sim::tools::commands::{network, scurk_place};
-use sc2k_sim::sim::tools::{availability, demolish, set_corners};
+use sc2k_sim::sim::tools::{availability, catalog, demolish, set_corners};
 
 /// Static tool queries for GDScript.
 #[derive(GodotClass)]
@@ -45,6 +45,53 @@ impl NativeCityTools {
         }
 
         result
+    }
+
+    /// The tool groups: `{id, name, tools}`, where each tool is `{id, name, cost, area}`.
+    #[func]
+    fn tool_catalog() -> VarArray {
+        let mut groups = VarArray::new();
+
+        for group in &catalog::GROUPS {
+            let mut tools = VarArray::new();
+
+            for entry in group.tools {
+                let mut tool = VarDictionary::new();
+                tool.set("id", entry.id);
+                tool.set("name", entry.name);
+                tool.set("cost", entry.cost);
+                tool.set("area", entry.area);
+                tools.push(&tool.to_variant());
+            }
+
+            let mut fields = VarDictionary::new();
+            fields.set("id", group.id);
+            fields.set("name", group.name);
+            fields.set("tools", &tools);
+            groups.push(&fields.to_variant());
+        }
+
+        groups
+    }
+
+    /// The Power Plants chooser values: `{subtool, output_mw, grid_capacity,
+    /// pollution, service_life, note}` of each plant.
+    #[func]
+    fn power_plant_details() -> VarArray {
+        let mut plants = VarArray::new();
+
+        for details in &catalog::POWER_PLANT_DETAILS {
+            let mut fields = VarDictionary::new();
+            fields.set("subtool", details.subtool);
+            fields.set("output_mw", details.output_mw);
+            fields.set("grid_capacity", details.grid_capacity);
+            fields.set("pollution", details.pollution);
+            fields.set("service_life", details.service_life);
+            fields.set("note", details.note);
+            plants.push(&fields.to_variant());
+        }
+
+        plants
     }
 
     /// True when a city with `misc` in `city_mode` allows the tool.
