@@ -14,3 +14,15 @@ static func failure(message: String) -> AssetBytesResult:
 	result.error = message
 
 	return result
+
+
+# a result from the `{ok, error, bytes}` of a native converter
+static func from_native(fields: Dictionary) -> AssetBytesResult:
+	var result := AssetBytesResult.new()
+	result.ok = fields.ok
+	result.error = fields.error
+
+	if result.ok:
+		result.bytes = fields.bytes
+
+	return result

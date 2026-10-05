@@ -1,6 +1,7 @@
 //! Godot classes of the codecs. Results are dictionaries with `ok` and `error`,
 //! plus the fields of each codec. The GDScript wrappers make result objects.
 
+mod audio_import;
 mod bmp;
 mod crc32;
 mod gif;
