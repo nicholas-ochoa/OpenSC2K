@@ -1,0 +1,910 @@
+{
+	"days": {
+		"BAYVIEW.SC2": {
+			"age": 41691,
+			"chunks": "0fc8eb9bd099e546da6f6918cf0ba4593ead0b31407a71457acc13bf5fcb671f",
+			"days": 30,
+			"funds": 216864,
+			"game_random": 789,
+			"gdscript_days": "508cdd46aeb2343a5c7f30c31588dbfd5239f88e49a2cbae473e76b04003e821",
+			"lfsr_random": 50380,
+			"random": 2769252778,
+			"saved": "c274592bec7de814bcca20dcf3a8506a0a2c7474d1e29c8c440d92bdb9198767",
+			"schedules": "f30ba11832d73f7dcc4ea5053e6b102418e622a19af066748794783442d4addb"
+		},
+		"CAPE.SC2": {
+			"age": 51751,
+			"chunks": "76c6315cc78e2cefdb20e27884142add2a47bd2c6f62dfe6af0ce1cdd2615213",
+			"days": 30,
+			"funds": 57447,
+			"game_random": 789,
+			"gdscript_days": "1f32fe9c849c452b55ffdab1456da41de7c0c797a301ffb0719133cac3452e90",
+			"lfsr_random": 9359,
+			"random": 3643401203,
+			"saved": "ad7283b2befea85843196e8a6be5bfb0be8567fae619a9ab9edaa34923d4d078",
+			"schedules": "802615a5216b64669d583807eaf563e564f8bc838137698f890848f1a4670040"
+		},
+		"HAWAII.SC2": {
+			"age": 736900,
+			"chunks": "101c4a46e664bb765bd4fd678e94dc814d75ec35c74eb983d066a20713abf459",
+			"days": 30,
+			"funds": 800353,
+			"game_random": 789,
+			"gdscript_days": "5ed0085714ca7711ebdf8a0b7c4d958f40f8e1277f49e98a777a9a3088a8ec69",
+			"lfsr_random": 40424,
+			"random": 866920109,
+			"saved": "29ede2c6a2b29545f28a915bb207ff0b22d5f13d0393bd8783a31bacc2644081",
+			"schedules": "c96a0b3aed0b5135a5e61f11f663ffaf077635b6c0dc7595cd1d2c7624835722"
+		},
+		"LASVEGAS.SC2": {
+			"age": 28536,
+			"chunks": "1f34ada4004b4c0b5c5770939cf7afaa30ab2d5cbbdd01c96c36a26bacf89bf8",
+			"days": 30,
+			"funds": 20000,
+			"game_random": 789,
+			"gdscript_days": "63ed44b809ae97fa2570d261f1ef1102a7c76797dade9ced844f8e01491e282a",
+			"lfsr_random": 42817,
+			"random": 2974065652,
+			"saved": "53ee478b47af7823f82086e47a1af93ca4d52652986dc90a39b1aeb3e6a917b2",
+			"schedules": "f13ddc151b03c2f6a54c6ef69fe0a65310bceab3f076f70fb9eec225a34147e6"
+		},
+		"generated-128.SC2": {
+			"age": 1560,
+			"chunks": "dfaf8be2cc855ce06c6218456c1202ad54d5954bc0bc7f6f15268a81e15335fb",
+			"days": 60,
+			"funds": 99279764,
+			"game_random": 789,
+			"gdscript_days": "577fd15cb5d10ebd6f4a7a268243a21106d9d8f64d0eb71831dd29ad7b9f4766",
+			"lfsr_random": 23714,
+			"random": 1791677922,
+			"saved": "c77ace65bd24261c2367693e17ffcb75b5d9edf24c6fe86bfe71f180761593ea",
+			"schedules": "6fdc7d1c70fe6b76032ac9eb241a0640238844db190e3f9fa61cde30450dbe91"
+		},
+		"generated-256.sc2x": {
+			"age": 1560,
+			"chunks": "7cdbbdfb9e373958b97545bfa554b986b881b057556bd0174ba7a0275d84a8b6",
+			"days": 60,
+			"funds": 99146194,
+			"game_random": 789,
+			"gdscript_days": "d1944c411a9e7c742945012a1c848ef69ddcbca3a57c08f5a3d7a9a52b6ac7ba",
+			"lfsr_random": 58611,
+			"random": 4173696512,
+			"saved": "33b39cbe4a1fbf61560ce9c05f9d8e53cf314018a1a3133f92d97da8a72d9644",
+			"schedules": "6fdc7d1c70fe6b76032ac9eb241a0640238844db190e3f9fa61cde30450dbe91"
+		},
+		"generated-384.sc2x": {
+			"age": 1560,
+			"chunks": "53115f9c6f16d8e556768cc2b6ee7c491adcc218b271fa3a1bc63a579eb77823",
+			"days": 60,
+			"funds": 99035353,
+			"game_random": 789,
+			"gdscript_days": "0c7f84bdc0d8e159bf69a65d1b58ff17f0fe66410be4553e124cd5dcb44c7d7d",
+			"lfsr_random": 19185,
+			"random": 1116333213,
+			"saved": "e59937a19304eca3e663f7c4d3b85044fd7911ad45428b387c202e223650ef85",
+			"schedules": "6fdc7d1c70fe6b76032ac9eb241a0640238844db190e3f9fa61cde30450dbe91"
+		},
+		"generated-512.sc2x": {
+			"age": 1560,
+			"chunks": "b3540dd89be9b771562e8e22324c8cb38a1db41a30ea64f3961c2ed2c273b7a6",
+			"days": 60,
+			"funds": 98900500,
+			"game_random": 789,
+			"gdscript_days": "28a960f305ef47585e1b1cff54b7216345ee65e8af97170138d9b586ad71f818",
+			"lfsr_random": 62940,
+			"random": 303888959,
+			"saved": "ffa24f3a5e99cc930874353642535f60e1665e9f7d07f48ab3a1cf78c603993d",
+			"schedules": "6fdc7d1c70fe6b76032ac9eb241a0640238844db190e3f9fa61cde30450dbe91"
+		}
+	},
+	"files": {
+		"349ARCO.SC2": {
+			"chunks": "057e901ebcfd1b2d5cdab2882263c350804a5b7bcd46fc42c3a617cc911edcb0",
+			"file": "28381e798f3de745ecc9e2788770ad3a1e29559a287538620cce5a7f294726dd",
+			"saved": "28381e798f3de745ecc9e2788770ad3a1e29559a287538620cce5a7f294726dd",
+			"sc2x": "53cea75d057043b3e4be6422faac319757f87bc0fa80141c7b648e43fd897f69",
+			"sc2x_issues": [
+				"Facility record 14 owns no tile; it was kept unchanged",
+				"Facility record 19 owns no tile; it was kept unchanged",
+				"Facility record 27 owns no tile; it was kept unchanged",
+				"Facility record 83 owns no tile; it was kept unchanged",
+				"Facility record 85 owns no tile; it was kept unchanged",
+				"Facility record 91 owns no tile; it was kept unchanged",
+				"Facility record 92 owns no tile; it was kept unchanged",
+				"Facility record 102 owns no tile; it was kept unchanged",
+				"Facility record 110 owns no tile; it was kept unchanged",
+				"Facility record 111 owns no tile; it was kept unchanged",
+				"Facility record 112 owns no tile; it was kept unchanged",
+				"Facility record 114 owns no tile; it was kept unchanged",
+				"Facility record 115 owns no tile; it was kept unchanged",
+				"Facility record 119 owns no tile; it was kept unchanged",
+				"Facility record 126 owns no tile; it was kept unchanged",
+				"Facility record 130 owns no tile; it was kept unchanged"
+			]
+		},
+		"AMAZINGC.SC2": {
+			"chunks": "43aa82463eca0a7d92d8471da73c2497880818578da2b6abd43723b17db98090",
+			"file": "78e1ae8180e27af5aa2496f090a577c51fce0128d0b3268e77f9d2399d323c79",
+			"saved": "78e1ae8180e27af5aa2496f090a577c51fce0128d0b3268e77f9d2399d323c79",
+			"sc2x": "b5490a0166202cd2b08828662b8ca182a86b4b97e48c5072aaf288244328571a",
+			"sc2x_issues": []
+		},
+		"ARCOONE.SC2": {
+			"chunks": "fd1ada9cdac8b5142a40e11072498b6a1d3e498ff393d83b18c3693734fd36fd",
+			"file": "2dfbb712dc3c27e2a2294eaf6deaa7d86a9adecad23dc27684d645b5f9fa4273",
+			"saved": "2dfbb712dc3c27e2a2294eaf6deaa7d86a9adecad23dc27684d645b5f9fa4273",
+			"sc2x": "22a3ddc7c68d217bca793bb5d8d39fa59101641aa1e58f865128bd6dca3aeec9",
+			"sc2x_issues": []
+		},
+		"ATLANTA.SCN": {
+			"chunks": "4e74041086019400364a322a2abea9c56e7a5e8f3d8da6dec729afb636a11e31",
+			"file": "7b5360aa129ba442b009f313c672de68cd85d5af1028ba24112886092b8362bb",
+			"saved": "7b5360aa129ba442b009f313c672de68cd85d5af1028ba24112886092b8362bb",
+			"sc2x": "736a714f7047e56431a6345a0d9d4c2a218a9ea0de72412f049c96a7b6b6fdc3",
+			"sc2x_issues": []
+		},
+		"BABAR.SC2": {
+			"chunks": "146f2ffb5e28f412e1fd3fa5e62e1304730ee8f35ef1f39c51bfd8f8257e9b2c",
+			"file": "42d86bd8972934d86bb756c7b5705b19639cceb48cf7b25e341df0a3066bb21d",
+			"saved": "42d86bd8972934d86bb756c7b5705b19639cceb48cf7b25e341df0a3066bb21d",
+			"sc2x": "ac1ed3b14acfcdd943d6cc1a8fa1a2d2baa21de01ff7b6cb9120151423096b78",
+			"sc2x_issues": []
+		},
+		"BARCELON.SCN": {
+			"chunks": "ff4d476b5788bda2f2c8099f9196cff29b3f95e32f21af0c5f2e5c1679c8fe3d",
+			"file": "1fb7ad5ef36f8508c7899fddc0889b6603dfe2a7fff6b8b51975644159549e35",
+			"saved": "1fb7ad5ef36f8508c7899fddc0889b6603dfe2a7fff6b8b51975644159549e35",
+			"sc2x": "3d910fef2177c920d84940c73cd29a086ef9e440bad7839c3c290f4ed4ce2483",
+			"sc2x_issues": []
+		},
+		"BAYVIEW.SC2": {
+			"chunks": "ec11aaea552dbecf565e72b29ffd83304d2564cfa5d199fe5a2c0024f1154529",
+			"file": "b2730e4fc6c8577d529d33ce75dd6d57c6217fb6b7e6442c870d13d127fd4678",
+			"saved": "b2730e4fc6c8577d529d33ce75dd6d57c6217fb6b7e6442c870d13d127fd4678",
+			"sc2x": "6984f938e9d0e1818d3d0047236e1640e3f765d7acf3de51c824cd20a130d61e",
+			"sc2x_issues": []
+		},
+		"BIGGESTC.SC2": {
+			"chunks": "7deff786f18e89d70bd3fa38a5f4b3e168a8aa50107fb36e6a6f4badf7cd1cce",
+			"file": "85c6139f3efd75bb6de69bc391e8fd4dbfaf19b9b20d72a1faeaf587cc6c449b",
+			"saved": "85c6139f3efd75bb6de69bc391e8fd4dbfaf19b9b20d72a1faeaf587cc6c449b",
+			"sc2x": "9484a066c2405cf4a543046ca86579c84d3209717149b25ef729211b69006f72",
+			"sc2x_issues": []
+		},
+		"BRIDGEPO.SC2": {
+			"chunks": "de5b7f63a319074c6256bd63f74601b9ffa2c5195f05b9125a1b7be40dee89cb",
+			"file": "116a5198656567cecb0eb260589fd1c66bd2ce40b82ca074657ec4f206da75a1",
+			"saved": "116a5198656567cecb0eb260589fd1c66bd2ce40b82ca074657ec4f206da75a1",
+			"sc2x": "810a5717a493458a9e1f7ff560f3248801cba550af95c0c46b4911d067ba2a6f",
+			"sc2x_issues": []
+		},
+		"CAPE.SC2": {
+			"chunks": "7a48ca8ca882118906af33d037dcba4a08698a5bcc705e6f476028e78962f71e",
+			"file": "199dec5e6addfacc5d8f16b9c13413dffddf8b600f8bd24b7e48c38f969f3bf0",
+			"saved": "199dec5e6addfacc5d8f16b9c13413dffddf8b600f8bd24b7e48c38f969f3bf0",
+			"sc2x": "11ed3b7de19f84fadd5aa0bffbc8a8e4d51b2a99fc00ac5204ebfc72fea88c28",
+			"sc2x_issues": []
+		},
+		"CAPEQUES.SC2": {
+			"chunks": "1b953dc66abe64cfe6d0d2b75d92596eaac162cda9efbce5d10c94abc4cab1aa",
+			"file": "a2523447e03895eb1dbbaa14614eec2ec185644d788ed5f142d07c53f13ae164",
+			"saved": "a2523447e03895eb1dbbaa14614eec2ec185644d788ed5f142d07c53f13ae164",
+			"sc2x": "630184c6461182635056f0da820cfa7c89c230ffeb412b958a014bdda95a2132",
+			"sc2x_issues": []
+		},
+		"CENTERVL.SC2": {
+			"chunks": "4d27571ce6d2935392a157e984084a32aa8eafabea33a8bfc5b3e6f65e5bc8b5",
+			"file": "3ded696e433a95a62babb3b756718f65dc4a77ce1e372583ae9888703f64d79f",
+			"saved": "3ded696e433a95a62babb3b756718f65dc4a77ce1e372583ae9888703f64d79f",
+			"sc2x": "f7714d3ea75ac9c97dd4787fbab8b519aacc0b0042c05cb9a4af3170e8dd0606",
+			"sc2x_issues": [
+				"Tile (115, 3) links to object record 2, which is free, missing, or linked twice; the link was kept unchanged",
+				"Tile (120, 3) links to object record 4, which is free, missing, or linked twice; the link was kept unchanged"
+			]
+		},
+		"CERES.SC2": {
+			"chunks": "79c063863f692ebcb89081c5e49a453453ae7e925ed364cfa78589fb40aa53b5",
+			"file": "c02970ee765a3e82e976f7a31c1a3e98fab77a6bc81e195e7c24479c895cf52f",
+			"saved": "c02970ee765a3e82e976f7a31c1a3e98fab77a6bc81e195e7c24479c895cf52f",
+			"sc2x": "325f8614970267d2395dffb7d600ce3dcd2fbc3c8ad1939645b72925e9446851",
+			"sc2x_issues": []
+		},
+		"CHARLEST.SCN": {
+			"chunks": "94f2008fa8130b1a59a826cdb9b8d9fe82c5bbdbb25a393ef62790a52a75402b",
+			"file": "5e0a2a240fe09c717076aac9e8ea33f70fc8770c3213bd75879afd70e9aa3345",
+			"saved": "5e0a2a240fe09c717076aac9e8ea33f70fc8770c3213bd75879afd70e9aa3345",
+			"sc2x": "7a55f077c1e5c728b45a77ee95c61822b3c84bbcff7801a69ddedf46642a5768",
+			"sc2x_issues": []
+		},
+		"CHICAGO.SCN": {
+			"chunks": "b2239764d1342212359761ef54111050dfbd3e88033646419519b33a25bc64ee",
+			"file": "eb739217397ded2347bc4fbcc0be551df792a5ea551b7b7432dd3429148aa1fe",
+			"saved": "eb739217397ded2347bc4fbcc0be551df792a5ea551b7b7432dd3429148aa1fe",
+			"sc2x": "4273c3d00977a0b96b5aea0d5f2aa371c8462b23c27a4448a6d8926df6017431",
+			"sc2x_issues": []
+		},
+		"DAVENPOR.SCN": {
+			"chunks": "dcf658056518d3a257f8326f7d74da9df5a27535a5658d91434faa4998efefd1",
+			"file": "a545e0ed789df221837c7eb334177ab285c186e17b5a4a388fcf24c1ceab8fb5",
+			"saved": "a545e0ed789df221837c7eb334177ab285c186e17b5a4a388fcf24c1ceab8fb5",
+			"sc2x": "ab646dc110c3797ac13eeda3fa2ceaa2bc7287428ad05389973349dd10e1c7db",
+			"sc2x_issues": [
+				"Tile (81, 52) links to object record 5, which is free, missing, or linked twice; the link was kept unchanged"
+			]
+		},
+		"DEFAULT.SC2": {
+			"chunks": "ff8f69ad7867009115204363d8f2c06bdbf00f3b631720e777406add603e2efa",
+			"file": "ff59d947c171ed64919a728505aa7237f0c50bbe9dea1c156e5bf454593c233c",
+			"saved": "ff59d947c171ed64919a728505aa7237f0c50bbe9dea1c156e5bf454593c233c",
+			"sc2x": "0ee915847c72320563cdb4fbe190b53e1b646e3878442f68d78a14a10f9c734d",
+			"sc2x_issues": []
+		},
+		"DULLSVIL.SCN": {
+			"chunks": "4f90ee7be1a40782c29beeae94584ecf3cc23a054924663869d745e4d033717e",
+			"file": "2ee0f118ad0f3ee60a6cb1dcc86819baac38f428d8dba8c25bf043ae6efe7acb",
+			"saved": "2ee0f118ad0f3ee60a6cb1dcc86819baac38f428d8dba8c25bf043ae6efe7acb",
+			"sc2x": "5a135303abb9c6aff9a9bfac7a4e65c1c8bfdef749f3a536479aa1586e56598a",
+			"sc2x_issues": []
+		},
+		"EGYPTFAL.SC2": {
+			"chunks": "d413bce4ea6377535c6c3148d8977e4090d39c4f7f3b3874eece7513ab5be95b",
+			"file": "d3415823ca1675197cb1bc5bd6886cb70b6b7a204872e3c516a3ac5258cd616d",
+			"saved": "d3415823ca1675197cb1bc5bd6886cb70b6b7a204872e3c516a3ac5258cd616d",
+			"sc2x": "f9a85955b1ed6bb7e1acaa64fbc8334a1a5ed296a68951908d3e95d20973b5f6",
+			"sc2x_issues": []
+		},
+		"EM.SC2": {
+			"chunks": "528b50cff66143131edbba8c64d046e0928eaf1badcd6a1c7aaf1be8976c282f",
+			"file": "3a0fa90a15f8c931c12c94327b883eaf1a5c7a0f60e207d1587b675053b707bc",
+			"saved": "3a0fa90a15f8c931c12c94327b883eaf1a5c7a0f60e207d1587b675053b707bc",
+			"sc2x": "7af669c3c1f5ce84aa8c42fb1dcc3985b0840097a20d6efd9cc8699309bb5d31",
+			"sc2x_issues": []
+		},
+		"FLARANGE.SC2": {
+			"chunks": "7494ecee8b46f7f52f0034caabcd7505a707dd59d749fea7401158e2377c897b",
+			"file": "e47c79d6c4564b7c3bf74ad54d8c5602dc439d76b2baa0d0950bcac0df898782",
+			"saved": "e47c79d6c4564b7c3bf74ad54d8c5602dc439d76b2baa0d0950bcac0df898782",
+			"sc2x": "f8540bbb2068f7fcca8c223714c26c8fa985dcd561d4aca3ec86a91ee86aee1b",
+			"sc2x_issues": []
+		},
+		"FLINT.SCN": {
+			"chunks": "0649d903ab3a4bd6671c6b8958baed44c123869f156b71bb462b572e1180b7e8",
+			"file": "3a9f034898de0570f9229fd52030afa866f172304fc519254e522b8fcd3c656d",
+			"saved": "3a9f034898de0570f9229fd52030afa866f172304fc519254e522b8fcd3c656d",
+			"sc2x": "10fbf2b6c93f4f2a0cc4b5f78b12d0c73f00ca6852d3329c4b967da0a6325e4f",
+			"sc2x_issues": [
+				"Tile (124, 111) links to object record 2, which is free, missing, or linked twice; the link was kept unchanged"
+			]
+		},
+		"FLOATING.SC2": {
+			"chunks": "6d47a46d84ca79e6732e9b725abec07f82301139b2f25be49ae4a8ffe026ce28",
+			"file": "aad87f5750ae9175413be6daa80c52b8c5526505ff96d0d37c53ab427f1de0db",
+			"saved": "aad87f5750ae9175413be6daa80c52b8c5526505ff96d0d37c53ab427f1de0db",
+			"sc2x": "90f6a665297ad1a6a22f5d467e13cd1236c5e21f873e5f8c23d958e255c44315",
+			"sc2x_issues": [
+				"Tile (81, 91) links to object record 2, which is part of an incomplete train; the link was kept unchanged",
+				"Tile (81, 92) links to object record 3, which is part of an incomplete train; the link was kept unchanged",
+				"Object 2 is part of an incomplete train; it was kept unchanged",
+				"Object 3 is part of an incomplete train; it was kept unchanged"
+			]
+		},
+		"FOURCITI.SC2": {
+			"chunks": "010a1403c11666bbe0f2913519a82df8f0de2e3726b410331fa92a2cf6d0f810",
+			"file": "7d8652e5ea87fe7bc783f25d8c7a885cfbaef3c99ac9c28fddeeb8097df7b1e3",
+			"saved": "7d8652e5ea87fe7bc783f25d8c7a885cfbaef3c99ac9c28fddeeb8097df7b1e3",
+			"sc2x": "c04af71ee5cf28569c61ebf0fc0bdb0c6a6ba389893373ad85e0d37fed08320a",
+			"sc2x_issues": []
+		},
+		"GREENLAN.SC2": {
+			"chunks": "c753fa1d105b07c15f8bf23359019a26e3b48b782b179eda7be16ce46c6a4e67",
+			"file": "1772310dd76bff86714de545103dc78bc38d7a02da4206a044238ff3c7c8ffab",
+			"saved": "1772310dd76bff86714de545103dc78bc38d7a02da4206a044238ff3c7c8ffab",
+			"sc2x": "7a3e76242b4707bf97e7be71e42882512a697a0907d9c00854ae76eb91a41312",
+			"sc2x_issues": []
+		},
+		"HALENAPT.SC2": {
+			"chunks": "0d1f8b762b3e1fd07d562011e194a369be0c4b5298ee5db0d1731f4402e3777b",
+			"file": "2dcef61d245f396ec316223f819b6525f6e9352f6de994113b3b762f0e987be2",
+			"saved": "2dcef61d245f396ec316223f819b6525f6e9352f6de994113b3b762f0e987be2",
+			"sc2x": "1555561764ad91faaccb4dc7bd78552feaef07f0cd83975393ca1bda6b4707fa",
+			"sc2x_issues": []
+		},
+		"HAPPYGUY.SC2": {
+			"chunks": "a197c923fd32151829f628f62ddb1cbc809a129917c340c46890a5ebfe2276ab",
+			"file": "5cc493f5353f3c7d8f699a5f9a8f4527ce36ab9eb075ada49a41a2f6f5149184",
+			"saved": "5cc493f5353f3c7d8f699a5f9a8f4527ce36ab9eb075ada49a41a2f6f5149184",
+			"sc2x": "2f6986619cbbcb19a5291ea5842f90630c684a567cbe9cfd4bd3b60abfadf6e8",
+			"sc2x_issues": []
+		},
+		"HAPPYLND.SC2": {
+			"chunks": "622d13a75b25f5c85e09cbb5269482a845828c3f3c82c97f46a868c80fe2e5f9",
+			"file": "71b61727291d1b86262531cc12d749f210d0f4889ddc78152d7b5f2f70cbde3d",
+			"saved": "71b61727291d1b86262531cc12d749f210d0f4889ddc78152d7b5f2f70cbde3d",
+			"sc2x": "ca207d8cb6d7cdd182deed6ecf07c41736656ac206265ee68e365f6c4a685c46",
+			"sc2x_issues": []
+		},
+		"HAWAII.SC2": {
+			"chunks": "55a520d476e69355ee5873469857d0bf3fd8cdaae7639980f153d2f4b312d612",
+			"file": "9867a433486ed343da41def29850e9a545ee7cdd183713533315942eac0efb4d",
+			"saved": "9867a433486ed343da41def29850e9a545ee7cdd183713533315942eac0efb4d",
+			"sc2x": "e50562712238d74d55d505dd6967b833f624fc3eda5a2b7262e00907010f0c42",
+			"sc2x_issues": []
+		},
+		"HERMAN.SC2": {
+			"chunks": "5f66355f3f0e3a608ca50247820d4f1c7e54f837f44f61eaea141a27ef4c622c",
+			"file": "12cd220e62d6d27a7cc3c9a462eb1b8e5b1b31968d49d201dc98995a33aa7903",
+			"saved": "12cd220e62d6d27a7cc3c9a462eb1b8e5b1b31968d49d201dc98995a33aa7903",
+			"sc2x": "0f3a18c4cbd599a354d57c83fd99262a4b47e21ddf59fb8f3a9275aeab285525",
+			"sc2x_issues": []
+		},
+		"HILTON.SC2": {
+			"chunks": "d22a97d05099a72cbb5931ec11907d97bdb83f94e1a954352d0accbe69dfd2ae",
+			"file": "080204030d70cd0537aa639280ad67b5cfe910d70237cd6b1d183194ad68c140",
+			"saved": "080204030d70cd0537aa639280ad67b5cfe910d70237cd6b1d183194ad68c140",
+			"sc2x": "cf253fbf2ea8a4ff13467a192e71cc8fc6e5ae3d01f76a294992238aadee224b",
+			"sc2x_issues": [
+				"Facility record 39 owns no tile; it was kept unchanged"
+			]
+		},
+		"HIPPIVIL.SC2": {
+			"chunks": "bfca21da67ccdbdbc29a427736fcacf18d9f83bed24e8ac36a7fd44df2dc603e",
+			"file": "2a9e0ecba630e0abe5e9b6be3d198a39ab2661f8e8e034a3bdfe2d727c25bc10",
+			"saved": "2a9e0ecba630e0abe5e9b6be3d198a39ab2661f8e8e034a3bdfe2d727c25bc10",
+			"sc2x": "83387bbc383510e18e6bf04f4188feb521285f57fc7dd3beb333143f47287b52",
+			"sc2x_issues": [
+				"Facility record 12 owns no tile; it was kept unchanged",
+				"Facility record 16 owns no tile; it was kept unchanged",
+				"Facility record 22 owns no tile; it was kept unchanged",
+				"Facility record 36 owns no tile; it was kept unchanged",
+				"Facility record 48 owns no tile; it was kept unchanged"
+			]
+		},
+		"HI_LOH2O.SC2": {
+			"chunks": "733c6efe3d41c5a507ae2f206ed6c0f331b5ff862e90ed04e06df1b9521b80af",
+			"file": "39e5d300b580a8d078f3c8d1f970d928d5d81356ed161c3b5f42e8c8fe86c85b",
+			"saved": "39e5d300b580a8d078f3c8d1f970d928d5d81356ed161c3b5f42e8c8fe86c85b",
+			"sc2x": "a9ab3d7b69c8f595c69f93b7f19f3a86277b13769c5b16e648c3ca511bddd648",
+			"sc2x_issues": []
+		},
+		"HOLLYWOO.SCN": {
+			"chunks": "e059e54b82100ba7fad3fdb9291f9795e3d50a1d82d031b03718e3b069d4098a",
+			"file": "f033b674f333a30c35abae82a84354be1b738b5ac125f74a11788e89feae5600",
+			"saved": "f033b674f333a30c35abae82a84354be1b738b5ac125f74a11788e89feae5600",
+			"sc2x": "52dfdbb7ece1c991ad6faf16b9d27f1b0c3338d87b377df43cb23d8c5fcaf44d",
+			"sc2x_issues": []
+		},
+		"HOMESTEA.SCN": {
+			"chunks": "bf7c68c09d709849188d21c296273c1356724547f104b39bbd2f588d54471fd5",
+			"file": "afc22cba7be24ddff9eb828c4a05624fb51cd24765cb1708a3348c2d8d46b28b",
+			"saved": "afc22cba7be24ddff9eb828c4a05624fb51cd24765cb1708a3348c2d8d46b28b",
+			"sc2x": "f4368c65251d4f51f7398fdb43d205c98fe2fe89847572ca8b04d5bf705e455e",
+			"sc2x_issues": []
+		},
+		"ISLAND.SC2": {
+			"chunks": "acb7cec6a1293e906895ba3ab61980e9b2212cd6eb3993ec6c61a99d1964c652",
+			"file": "99786dc2fc98a7371507093623447083cacee51b878890dbf681bdf9cfeb7eee",
+			"saved": "99786dc2fc98a7371507093623447083cacee51b878890dbf681bdf9cfeb7eee",
+			"sc2x": "fb75f1c58e23f8fd3517fedbe446b92f1f0ae510ce259092ae5b08b819e26a17",
+			"sc2x_issues": []
+		},
+		"JUNETOWN.SC2": {
+			"chunks": "7f8610e5dbf09cf20fe9ed1bc31a3331c690640ce9de999bda758bc8aae1d0c2",
+			"file": "af41f458dee92ebab67c5b2850a742242b46fe67997deedda9e0a04e89bfb6df",
+			"saved": "af41f458dee92ebab67c5b2850a742242b46fe67997deedda9e0a04e89bfb6df",
+			"sc2x": "9a68a8d88b5e13218d4ebc16c5696657a8cb36c0ca3ae6ab65c4b5fdd059b939",
+			"sc2x_issues": [
+				"Facility record 10 owns no tile; it was kept unchanged",
+				"Facility record 21 owns no tile; it was kept unchanged"
+			]
+		},
+		"KATVILLE.SC2": {
+			"chunks": "7d9157fa61c9fc509be8318efe7be62cd55ba6895db9f8210c39ac47298c09e4",
+			"file": "cff46df064c03011871bc35f44a004c6891aea8fa87450d3e40f84c8eea62e6e",
+			"saved": "cff46df064c03011871bc35f44a004c6891aea8fa87450d3e40f84c8eea62e6e",
+			"sc2x": "3799536906b4c42e9cb99468d5b4ea11209d472e5b9d7fa9a40f9cdd83fba0a5",
+			"sc2x_issues": []
+		},
+		"KEENLAND.SC2": {
+			"chunks": "c14702eb10048e8a30cac5c4f3edf07f787dc55e427c012c4b3865dcadf52022",
+			"file": "2e4343824cdc8c949920c3f5ae428ebe3454eb30c5be21ab25b2686bfb459d56",
+			"saved": "2e4343824cdc8c949920c3f5ae428ebe3454eb30c5be21ab25b2686bfb459d56",
+			"sc2x": "6f5e0aa41813e1325ff8a8f6509bbbce073bf31fa9115058e746599d0da32af9",
+			"sc2x_issues": []
+		},
+		"KEITH.SC2": {
+			"chunks": "0a49726f52077d17ee7f980f82304836dad01b2e35c82803275c31aa6e98717a",
+			"file": "9e8dd45d1ad5aeb5545a7d28a8bc3817ee84e7946336bedec3a74e6215c6520f",
+			"saved": "9e8dd45d1ad5aeb5545a7d28a8bc3817ee84e7946336bedec3a74e6215c6520f",
+			"sc2x": "84627252f2e4c05e2483e160d0beadddead32ea3ddd126a49a3df652a2736ac7",
+			"sc2x_issues": []
+		},
+		"LAKELAND.SC2": {
+			"chunks": "51a08c376aba0e46a9e7ffa1ec3e148d6102095f373c2abd7d29e5767aa69676",
+			"file": "0f440a03030ce80945adf52d06980089933e7c15c294c6e2ad3f1c3a77cfa9e2",
+			"saved": "0f440a03030ce80945adf52d06980089933e7c15c294c6e2ad3f1c3a77cfa9e2",
+			"sc2x": "cdd02dd9b0278ecdb72d0b8e39ea5f99157e2bc2559eba68f8116a179cd37eea",
+			"sc2x_issues": []
+		},
+		"LAKEVIEW.SC2": {
+			"chunks": "873cd2fd8c786b5de429e036f9110be6f9f5109df0f98f5cd824a5a30a91f21e",
+			"file": "910687eb3757d00979baf9e600181af0171196f39775c5538ff066ad8b120936",
+			"saved": "910687eb3757d00979baf9e600181af0171196f39775c5538ff066ad8b120936",
+			"sc2x": "a8ee2f82f3a5c33df0c996bc2538bcb731a7a2f5f385a9b25830d8ed5d761ed0",
+			"sc2x_issues": []
+		},
+		"LASVEGAS.SC2": {
+			"chunks": "f75d80e6af648c57af20dca954c33a008a0f35e0a7ca75b5f1c35c56af41e5b5",
+			"file": "f1c0d3904f291b76fb1fc2a770cb59701f120eab02dfe56a1d5043c02494e8e0",
+			"saved": "f1c0d3904f291b76fb1fc2a770cb59701f120eab02dfe56a1d5043c02494e8e0",
+			"sc2x": "d939ebb4ac27717d39bad644c28993a703492fdb8cc876c6c2db1212972d361e",
+			"sc2x_issues": []
+		},
+		"LASVEGAS.SCN": {
+			"chunks": "f32b8c0a3e49d26107830733ffefb75d073ad01fba82ad7aa47066ce09bd36ed",
+			"file": "4809e56b5c69f9a79f2b052507af74fc6378f34d0b99fb413972ff3497479398",
+			"saved": "4809e56b5c69f9a79f2b052507af74fc6378f34d0b99fb413972ff3497479398",
+			"sc2x": "ac0d585e0df27889d37280b08f3640eee8ecd5c608156af8dc0c24f61c96f5e1",
+			"sc2x_issues": []
+		},
+		"LINCOLN.SC2": {
+			"chunks": "7ddf86bf6ed11c25b5f7c7e9d72de5776d1ac2c3706bb9236d0dc07cdf98813a",
+			"file": "8e611783727d5914cacc23f65a1f31e8f82b512f8df1e60cc1295e71de03c106",
+			"saved": "8e611783727d5914cacc23f65a1f31e8f82b512f8df1e60cc1295e71de03c106",
+			"sc2x": "107275c2313f2d6a3e51097188c646d6eb70d318a985ed48cbe4bcb39875512a",
+			"sc2x_issues": []
+		},
+		"LOKEVILL.SC2": {
+			"chunks": "856fe455401c5c451ef40cf7a2a43c1ff67c4db7d9ccd432d1e68a7328ab8dd3",
+			"file": "ab841ed03384df28083fd683bf46bfc028ba521e340491b3e4ac546d8e47552b",
+			"saved": "ab841ed03384df28083fd683bf46bfc028ba521e340491b3e4ac546d8e47552b",
+			"sc2x": "7f75602f4ee53a29030953db1349eff7dbe743bac802c1b6316be63ff710897c",
+			"sc2x_issues": []
+		},
+		"LONDON.SC2": {
+			"chunks": "c7cedb4b507ce5712956191f6cdba0aa6971987358b859d1cf35e2c2ab2bb730",
+			"file": "77da99dc215be43d21354777fb4b5166855c84b7da86f500ed26b4657c64ee82",
+			"saved": "77da99dc215be43d21354777fb4b5166855c84b7da86f500ed26b4657c64ee82",
+			"sc2x": "3dd376060b5e5fd8e69e97943716ccc2437d85ffd74604d7a09919afeccac125",
+			"sc2x_issues": []
+		},
+		"MALIBU.SCN": {
+			"chunks": "dd33038ca5ac034488bfb673830e0e6f42f1ab2a513fade7e27b88461dfbfee2",
+			"file": "cf126adde51368e70a8b18b4d578a6ba6ae063793e634ad0248ce4d139ca1b05",
+			"saved": "cf126adde51368e70a8b18b4d578a6ba6ae063793e634ad0248ce4d139ca1b05",
+			"sc2x": "d2d41acdf3d230b387bfcf6714d05f54b14c41695d1f3bb6efa49a83f32b3787",
+			"sc2x_issues": []
+		},
+		"MALTRON.SC2": {
+			"chunks": "ea7e88054dbb7f3961743960cb85e19e5808f0f826b254d5a0a23e454daff5d7",
+			"file": "1f77343e7e25871c0e1972e8beba441b60eb85f2e69b6b1187c94dfc65ee9845",
+			"saved": "1f77343e7e25871c0e1972e8beba441b60eb85f2e69b6b1187c94dfc65ee9845",
+			"sc2x": "ab5f5af651d575298c83e04f30f682f93cbfeb5e3ad44ac1f8c31c55b85b614d",
+			"sc2x_issues": []
+		},
+		"MANHATTA.SCN": {
+			"chunks": "990c94d04e0f5c182bb51876c7c75a18896e6e3500d09a72247f39bd93f43386",
+			"file": "7a2d71103e9e7bc1343797c8e38ea62835e5b003405359287a7ed5dc6b804e33",
+			"saved": "7a2d71103e9e7bc1343797c8e38ea62835e5b003405359287a7ed5dc6b804e33",
+			"sc2x": "5571e587c649e32de362cd7af4be826ed3209c41e2dde5be31ed9af0e99ddd50",
+			"sc2x_issues": []
+		},
+		"MAXISLND.SC2": {
+			"chunks": "c5ee69902d73e78a66abb03a6170af726dda10e5524255417ac60ea53bcd98e1",
+			"file": "aafec0c7aa43b702ec4dff76c3bdb1b9dfd2e9a322d7d1036c3564ae651553c4",
+			"saved": "aafec0c7aa43b702ec4dff76c3bdb1b9dfd2e9a322d7d1036c3564ae651553c4",
+			"sc2x": "d6e7ebd71e265214189c3ad65357a12add0a0318937d742cf83322424fc13b62",
+			"sc2x_issues": []
+		},
+		"MUNS_ISL.SC2": {
+			"chunks": "226fd61b56fe846034b7145b9f3983ad08f5e8cbea55349823aff22b3f9e4600",
+			"file": "932d453217d5a59664cff8e927b764fed6acac12fb724a379a4249f817ba931c",
+			"saved": "932d453217d5a59664cff8e927b764fed6acac12fb724a379a4249f817ba931c",
+			"sc2x": "27257b5460d1c3503fcb77160ba33a57dc85670093401e46124913b4228abe1d",
+			"sc2x_issues": [
+				"Tile (100, 41) links to object record 5, which is free, missing, or linked twice; the link was kept unchanged"
+			]
+		},
+		"MXBURG.SC2": {
+			"chunks": "92b5f32c6ea5931e9eb44999835b1a52a685075323ad7909e6a0c1fd99319e8b",
+			"file": "5330aa7a78fd6dd76ab270d1b2baf73850e7514d1e795093c076d40ddbfd8b7f",
+			"saved": "5330aa7a78fd6dd76ab270d1b2baf73850e7514d1e795093c076d40ddbfd8b7f",
+			"sc2x": "d33625b996cc2c75143a957124f515c25106569b7d3de6d5dee660c3e2c609bc",
+			"sc2x_issues": []
+		},
+		"NEWMONRO.SC2": {
+			"chunks": "d51bfd17afafcdfbaf2f14bc3c3fa5bff1918167b4ab1c4f705074e7211d730f",
+			"file": "47d79e5640c48dc3a6fb7da67de8305f183f64b88e0c37f6dba780cbdcfa6c7c",
+			"saved": "47d79e5640c48dc3a6fb7da67de8305f183f64b88e0c37f6dba780cbdcfa6c7c",
+			"sc2x": "beb40660137a81953cab4c9c354cc7633de734f34d26e0c6b6db2fae0bab5ad5",
+			"sc2x_issues": []
+		},
+		"NEWORLEA.SC2": {
+			"chunks": "8edc3ff9b19fbb14e38ecf0e35f58af273149d3b021c0c9bb149d89a793ab372",
+			"file": "f705a297c242042371fda6818f0939e21773d366c61654768623f6aa8e473fc1",
+			"saved": "f705a297c242042371fda6818f0939e21773d366c61654768623f6aa8e473fc1",
+			"sc2x": "5ddb812ed30afc1f45f20121d1f43c6763b7f89600e7599ad1306b1af2a0bcc0",
+			"sc2x_issues": []
+		},
+		"NYC.SC2": {
+			"chunks": "8d546e331b06a2b3f54dfdf7b21eaab103ddcbe08dcad2a3fd39e93dd7e5fe10",
+			"file": "c53b16f03c7be602b96b490e3c0184298a7de946b8c17d13268fea3dbf739512",
+			"saved": "c53b16f03c7be602b96b490e3c0184298a7de946b8c17d13268fea3dbf739512",
+			"sc2x": "f47d5b3b095ebfa8dccd2c206a169df5d5111fe6bdba523d8c06b62f3aab7ad5",
+			"sc2x_issues": []
+		},
+		"OAKLAND.SCN": {
+			"chunks": "430631144a1faf788dc913d745e85fbd939e1ef36682f13ce6dc74b6c6479469",
+			"file": "75664666ab97f1c754dd416287e133dba0219adb1c4dbccc50f82d10b6c94e33",
+			"saved": "75664666ab97f1c754dd416287e133dba0219adb1c4dbccc50f82d10b6c94e33",
+			"sc2x": "71c16065ec31afa9bdd671b08701b5c25a0f0ce1eaed1a2fa8518d1618377a0b",
+			"sc2x_issues": []
+		},
+		"PARADE.SC2": {
+			"chunks": "5bbf26aa61263b07ea04aba6debe21d4faf1fee3e56f8b7226ccff220af71ea7",
+			"file": "08b0c6e5a8242282a1c83d667fb76bf03812b997972ee3b7e31c9dbcc7165dd5",
+			"saved": "08b0c6e5a8242282a1c83d667fb76bf03812b997972ee3b7e31c9dbcc7165dd5",
+			"sc2x": "0fc5d2cfc5ac7347efeecdfe101e73c92b5fd19804b10b26f3b9e96d78a71e4d",
+			"sc2x_issues": []
+		},
+		"PARIS.SC2": {
+			"chunks": "f91d2ad4fd217260395fffa653e2afd49a3f847ab7a01edeefc657aebb8327e4",
+			"file": "709920908736ea36f0de3608c2b74c192ce3e608815fe13fed270e2ceeda14f8",
+			"saved": "709920908736ea36f0de3608c2b74c192ce3e608815fe13fed270e2ceeda14f8",
+			"sc2x": "c286f085d67fa13eaf2e973529906dd9806b6a44609606b47160d3ce46da2d37",
+			"sc2x_issues": []
+		},
+		"PARIS.SCN": {
+			"chunks": "932ebe19fe3455d08596feb55e49f01cb0f89b80e864f88ef5db7321e05bd0e7",
+			"file": "afe5a2a618b32e58c9f01e4cc979760e885969dd98b8a9255f42f38cca98e823",
+			"saved": "afe5a2a618b32e58c9f01e4cc979760e885969dd98b8a9255f42f38cca98e823",
+			"sc2x": "1e1ca09309fac1d607598da6b390996c5223c6ab093f0f6d8315bb489dcb7d03",
+			"sc2x_issues": []
+		},
+		"PETER2.SC2": {
+			"chunks": "ec10ace4edf54da0100db9b455a245b995dc0992ea401316154599c6350bdb0d",
+			"file": "efef6490fb132c42ae8af25f0027f5fba003265607fc710c0b243c0d8c0471b5",
+			"saved": "efef6490fb132c42ae8af25f0027f5fba003265607fc710c0b243c0d8c0471b5",
+			"sc2x": "a052227f2b2ddda02201df1298fbb964cefd1d9263618a2d6c5aefbe698a368b",
+			"sc2x_issues": []
+		},
+		"PETER3.SC2": {
+			"chunks": "368aa031f106a15dac26a907803a110e7873205995f3bc039c32bbeef22548de",
+			"file": "f81466276cb23000ec4a6ee09208a4560b465e8551bad1d57655bbe6974a67ea",
+			"saved": "f81466276cb23000ec4a6ee09208a4560b465e8551bad1d57655bbe6974a67ea",
+			"sc2x": "455ce80fd2b60adb16a5c6111bd8095a730918ba2512cb7219352dca70e52912",
+			"sc2x_issues": [
+				"Tile (113, 96) links to object record 27, which is free, missing, or linked twice; the link was kept unchanged"
+			]
+		},
+		"PORTLAND.SCN": {
+			"chunks": "36762d2ebd36917b7a4266d361280de628c27e8aa5227c47ce8e77e4d24fc928",
+			"file": "fc381cffad5406012bb22969cc74de477d218ad0fafa6e25d4c926aca3f9b575",
+			"saved": "fc381cffad5406012bb22969cc74de477d218ad0fafa6e25d4c926aca3f9b575",
+			"sc2x": "ebab90447ee54c7549f7122c7284e12c3e02e689021a238d4f535204df963e22",
+			"sc2x_issues": []
+		},
+		"RETREAT.SC2": {
+			"chunks": "4c54e083c5a4de79eee358cb6e4a3c5b672d08b414ca6976674bdcca6735423f",
+			"file": "b9a00066b309002cb51e8bae78a9364b30a44611327232fde6e571892405da80",
+			"saved": "b9a00066b309002cb51e8bae78a9364b30a44611327232fde6e571892405da80",
+			"sc2x": "5791cfeb534550e44edfe750bae17ffe012ef04676b1d601feac37415f952a67",
+			"sc2x_issues": []
+		},
+		"RIO.SC2": {
+			"chunks": "6b760dd44d44472afeaf737416419fd03261624c2815191239d98fe20a648f2c",
+			"file": "bec659c2017d4e7d1b88e5d9218278fee9342182eeb898e7cf63fb490f308a0f",
+			"saved": "bec659c2017d4e7d1b88e5d9218278fee9342182eeb898e7cf63fb490f308a0f",
+			"sc2x": "13fcea3b380deae2bd5234c44a47852044017c9a6cb263cc45ad8da793659458",
+			"sc2x_issues": []
+		},
+		"RIVER5.SC2": {
+			"chunks": "ffd5c6ce9e4e478193e4ac3478edeb7f3a7cca3f4a9326936c03d49617e51c22",
+			"file": "5a403f0d274dfc3be75d745532c8c3665044b7cae447b03ec9672a2a41f5e158",
+			"saved": "5a403f0d274dfc3be75d745532c8c3665044b7cae447b03ec9672a2a41f5e158",
+			"sc2x": "4219b9f70719c81e1a51bcd2df2ac53268a6bc592d0097bb550e8ec13451bfb0",
+			"sc2x_issues": []
+		},
+		"ROME.SC2": {
+			"chunks": "84ca3321734adc63e01f6aeeed32ac0e945c47ddab800661164da38f760c73e2",
+			"file": "c438516ad1c1b5698a905952bfb191526f505e26677b11f8a08c934bb1289c95",
+			"saved": "c438516ad1c1b5698a905952bfb191526f505e26677b11f8a08c934bb1289c95",
+			"sc2x": "96fb14049d719dee2886b9ac3d58d1d719befa219be460e33baa3a7301d02adf",
+			"sc2x_issues": []
+		},
+		"SAM_STOW.SC2": {
+			"chunks": "97974bc0bf67a1227aa6c3c96b4e95025f170e04f11f6f15da444b95cc02ddbe",
+			"file": "9c5bdb3553114a666a65540044e177714c4ddd5a179041a9786f697edf258374",
+			"saved": "9c5bdb3553114a666a65540044e177714c4ddd5a179041a9786f697edf258374",
+			"sc2x": "f0871ec08a855f1d1c39a5a8d420430846218f281212f07c40031e047c98227b",
+			"sc2x_issues": []
+		},
+		"SANFRANC.SCN": {
+			"chunks": "106714937a30b5ddd9b2d7b465abb6962a38f93f5557c89ee826502388fc9d97",
+			"file": "e65f96816c35ca9dd449b0b5be27be0261e6ee23f6351c0b544ba7ea2b9e4de7",
+			"saved": "e65f96816c35ca9dd449b0b5be27be0261e6ee23f6351c0b544ba7ea2b9e4de7",
+			"sc2x": "c612fd4be59c54065e1a9416313b45862f0990e14cff1ff6694effb0b6a387b8",
+			"sc2x_issues": []
+		},
+		"SILICONV.SCN": {
+			"chunks": "822e861ce20b50c98bb10e2b07962a75a97a83252284c353a487cd9072a5bfdb",
+			"file": "07899d11a514c74e4bda89307e8570b9133c21aad6c9d0d1db8028819b2cb9d9",
+			"saved": "07899d11a514c74e4bda89307e8570b9133c21aad6c9d0d1db8028819b2cb9d9",
+			"sc2x": "789f1403d707a1fd7c01ca28849196d02932b40c984f377394836c32f8bc4f8f",
+			"sc2x_issues": []
+		},
+		"SIMCITY.SC2": {
+			"chunks": "03e9e0ef337cfcd5a7ccfe748cd46494a3aa0880f5e2dfd79479afd816c831b2",
+			"file": "bb1238ba3cff9c7afc0fea8e8f8ad0b9b88771934d1e5bcebcc958f69f155809",
+			"saved": "bb1238ba3cff9c7afc0fea8e8f8ad0b9b88771934d1e5bcebcc958f69f155809",
+			"sc2x": "e2a2395d4923a48fffe88a8fe41d3bf77dc39834b8f30286b4986969cc58a1a8",
+			"sc2x_issues": []
+		},
+		"SPIRALOP.SC2": {
+			"chunks": "f3d9ec425f51c9e356cf36c1f71c3cffa0b25c6e5527c9c0e3d3054c9e7e206c",
+			"file": "cc00baf4b9710f672e9402264af832884ae2e7038aa7e038beeb41c3cce7f46a",
+			"saved": "cc00baf4b9710f672e9402264af832884ae2e7038aa7e038beeb41c3cce7f46a",
+			"sc2x": "d2e1612f3284287a8774d03147e0718aab1ce8a6cde270ccd4014e542578ed1f",
+			"sc2x_issues": []
+		},
+		"STARTER.SC2": {
+			"chunks": "9bc907534a654d6c3870bc8b048a48dddbeff40f8fb29c37a4318e4a01b83090",
+			"file": "58577cdfe82ae805609b4a3b069c48a208f4ae29c902b157d3e5d1f545c23bef",
+			"saved": "58577cdfe82ae805609b4a3b069c48a208f4ae29c902b157d3e5d1f545c23bef",
+			"sc2x": "1e28fe18a03903c5f2a9eeb0f4f75afdfcd1aab92ef47ff7026d1d11c5742a69",
+			"sc2x_issues": []
+		},
+		"STCHRISC.SC2": {
+			"chunks": "d08c62265de723fc487530b2d58753192d45c9b5e0e67c78bed7028bffa0790b",
+			"file": "ed8bb43c18c5886610ed375695e836fbad655c78a4f0ad345c6d6ff4e5f19ac8",
+			"saved": "ed8bb43c18c5886610ed375695e836fbad655c78a4f0ad345c6d6ff4e5f19ac8",
+			"sc2x": "c309ae413e97c964ceb5374d60dfe6b0df936cd605d7ecf6d39f72e64641db33",
+			"sc2x_issues": []
+		},
+		"SYDNEY.SC2": {
+			"chunks": "95b3669fe8f3156f7bc60288c9469cef576f8361aae299b29ab51ba6375d436d",
+			"file": "89a7b597d30087b637e23562e21181d378e433582d03190de6575fe795aa723a",
+			"saved": "89a7b597d30087b637e23562e21181d378e433582d03190de6575fe795aa723a",
+			"sc2x": "e654cfa33a7c6cb46b5bc5b34b70a812ec4b06cee6bce83833a7f436b2809033",
+			"sc2x_issues": []
+		},
+		"SYMCITY.SC2": {
+			"chunks": "3926a848970e79aac5378523b8dee462182d1ba0cd2d837f1f5095f781bfd2cc",
+			"file": "4588189c854cbf547ae85ca538739aed28baa432f920d4e0f1f35eaa56c100f9",
+			"saved": "4588189c854cbf547ae85ca538739aed28baa432f920d4e0f1f35eaa56c100f9",
+			"sc2x": "60f7038798b3b9f21199d24ef3785d02b995e25f72a83472b25bed2f9263d4a8",
+			"sc2x_issues": []
+		},
+		"THEBAHAM.SC2": {
+			"chunks": "ae4348d0dbcddb4f2bab2c97032e717eb42577e31bb0b64dbea0e71708f04029",
+			"file": "baf58ad258ee29a6c78e44cb469da8b7c0c85b61c9a0b344517ae9ff314a0819",
+			"saved": "baf58ad258ee29a6c78e44cb469da8b7c0c85b61c9a0b344517ae9ff314a0819",
+			"sc2x": "bc9acc363023a128c7898bd56e7e54e754f3a8f50d25394291ef53adcc88243c",
+			"sc2x_issues": []
+		},
+		"TOKYO.SC2": {
+			"chunks": "422c257409ce517b248442c940c643b3b1fc164e86f9b8988dc3ba6a105a920e",
+			"file": "848e3d8bfec76313114c9f564f20a067aec647f1b66491d42e16c8b7f58dccf3",
+			"saved": "848e3d8bfec76313114c9f564f20a067aec647f1b66491d42e16c8b7f58dccf3",
+			"sc2x": "e3155d9c3a45ac6acc4cf28bbfb33330550b40a2aa29a556ffb85892ab8a4a37",
+			"sc2x_issues": [
+				"Tile (115, 36) links to object record 10, which is free, missing, or linked twice; the link was kept unchanged"
+			]
+		},
+		"TOMG_B1.SC2": {
+			"chunks": "bc30135e75536d689d68f31829d0edaa06f632b8c2ac5de3b866515c241ee02a",
+			"file": "71f79bdef83d9b443fa9875f535523b66f81117db2d88e7e021e64b42d50381a",
+			"saved": "71f79bdef83d9b443fa9875f535523b66f81117db2d88e7e021e64b42d50381a",
+			"sc2x": "8e237742400cda05ebf39a69538f772255a0d8d4fb44de4b0cbebf1719aaec25",
+			"sc2x_issues": []
+		},
+		"TOMG_B2.SC2": {
+			"chunks": "7b39ee10d52b1216a7464ef59fa66432452426cd541cc365ad70e04381e2b333",
+			"file": "347585416d70441ad421ed8b833c4a2d2120c703664fca60644031ffd15a7ede",
+			"saved": "347585416d70441ad421ed8b833c4a2d2120c703664fca60644031ffd15a7ede",
+			"sc2x": "aec57aede7b935dc1bda1eb63ea0954597ea004bc30c3d9b9f31b06f541c55b4",
+			"sc2x_issues": []
+		},
+		"TOMG_B3.SC2": {
+			"chunks": "22861b7cc67856591cab43326f16706f52bb32577ec752b245e43f145e43a455",
+			"file": "1060461345620f20680c155ebb69d09012f0cbace1cdc43ef7d92ce519cd9d4b",
+			"saved": "1060461345620f20680c155ebb69d09012f0cbace1cdc43ef7d92ce519cd9d4b",
+			"sc2x": "ce71d1e091090733d3eeb90457f7d9b9411faaada1e02c32eb87b7cab00b4d30",
+			"sc2x_issues": []
+		},
+		"TOMG_B4.SC2": {
+			"chunks": "591783d63aa62be24d1d01d400b4b821aa8e0d9f2a21f3b79de361af47f0a7bf",
+			"file": "010ed5cb2def2c1cae3f9730faaa6f6a93d8900b316b3d70374a4b79b87e3ec2",
+			"saved": "010ed5cb2def2c1cae3f9730faaa6f6a93d8900b316b3d70374a4b79b87e3ec2",
+			"sc2x": "3a7df95ee783aa1eec3e567359bf2affc5eacc011e15542b9a1429840064efea",
+			"sc2x_issues": []
+		},
+		"TOMG_C1.SC2": {
+			"chunks": "907f12905769025ce4f2f93942f3f41aa1931acaded59fbaedc27ae16404bcfc",
+			"file": "1f0671492e82626c103740c63e95a05e0803e4eedf61a403098b2758e0c04631",
+			"saved": "1f0671492e82626c103740c63e95a05e0803e4eedf61a403098b2758e0c04631",
+			"sc2x": "b7f0331790f6e0f2a4b6797827e8e595cfed59913ee0557680b8a1f8c200d181",
+			"sc2x_issues": []
+		},
+		"TOMG_C2.SC2": {
+			"chunks": "3bbc854cc31c5962d6c3b741fc9c36ccb14a46243a155e0c133c591605a40200",
+			"file": "95ba5e3550ba0b4deea19a14dde2529b044da958e909ccba14536147eb8f677e",
+			"saved": "95ba5e3550ba0b4deea19a14dde2529b044da958e909ccba14536147eb8f677e",
+			"sc2x": "4f8dec134c3fb5a2e788525d6334b11d40581b5ad00041abc8e22615590f93e5",
+			"sc2x_issues": []
+		},
+		"TOMG_C3.SC2": {
+			"chunks": "b853d578985afed34ed52bd039ab83e32db8cfc0b21a7436a6ad690790cf9ef8",
+			"file": "1291d7a3c4daee57ddde8a378039acb9366e3a45589a57c2b29551274fff655d",
+			"saved": "1291d7a3c4daee57ddde8a378039acb9366e3a45589a57c2b29551274fff655d",
+			"sc2x": "1b7fcb1ba6d97f7285b299a248a2a7c34db25785628de95364da3351084e267b",
+			"sc2x_issues": []
+		},
+		"TOMG_C4.SC2": {
+			"chunks": "528a069aa372d09306c23424d4ae6c09df9c96ceed15caeec99a73d8e938605e",
+			"file": "0453359a6566db973acb47655257774e753e31008ce34b7e82a40b3b0fdb599a",
+			"saved": "0453359a6566db973acb47655257774e753e31008ce34b7e82a40b3b0fdb599a",
+			"sc2x": "2cdb9a136f5e3d0640c9cd8c41493e7c97c8fd70631a0b1d37d4e4c04bffe842",
+			"sc2x_issues": []
+		},
+		"TORONTO.SC2": {
+			"chunks": "fb14421bf7ee1083b58d1551011eb944a14581c4d1bee1381db1587f47968a48",
+			"file": "92911519f9807ee651cbffb617b629e558d4b2bc7d7c0c723b558b9e3ba37044",
+			"saved": "92911519f9807ee651cbffb617b629e558d4b2bc7d7c0c723b558b9e3ba37044",
+			"sc2x": "ddd4ffc6e5a2821e4e0497aedec29de8298debd7226a66a0d3912837bc97494e",
+			"sc2x_issues": []
+		},
+		"UTOPIA.SC2": {
+			"chunks": "1709395f5bd99ddf38495f0b6b8d6acb571f92c1623b1a01ce4f8407d70772a5",
+			"file": "dfffb825de6f91bf46da0b715c863fe97e87370defd031f8476829d24a74e0b2",
+			"saved": "dfffb825de6f91bf46da0b715c863fe97e87370defd031f8476829d24a74e0b2",
+			"sc2x": "acd339731a13aab00332f2cf75eb16831459a86242b3b101c897a4a637052677",
+			"sc2x_issues": [
+				"Tile (44, 120) links to object record 0, which is free, missing, or linked twice; the link was kept unchanged",
+				"Tile (61, 120) links to object record 0, which is free, missing, or linked twice; the link was kept unchanged",
+				"Tile (62, 120) links to object record 39, which is part of an incomplete train; the link was kept unchanged",
+				"Object 39 is part of an incomplete train; it was kept unchanged"
+			]
+		},
+		"VENICE.SC2": {
+			"chunks": "f59ab61d22bfe79f968a9ba237884c29d8e89304af7d9dc92f4eb3510aa4d068",
+			"file": "4a48bc4a844334e206e9bdcee7abb75295fb4b83452d19f16dcdccb88763fe8a",
+			"saved": "4a48bc4a844334e206e9bdcee7abb75295fb4b83452d19f16dcdccb88763fe8a",
+			"sc2x": "85a0031fe4f26e111a412fd121caced4e4d89b8355d6f98e704a3b48eef3934d",
+			"sc2x_issues": []
+		},
+		"VIRTUALV.SC2": {
+			"chunks": "575b44bf6877fdd1d3fd19ca141cd20d7bcc85d6a19f16a48efd0afb1b0998e1",
+			"file": "6b953f5e7f853b06c34538b3a8d6f9f2fe2c9eb2c858eb4c1d2ac8822efb6930",
+			"saved": "6b953f5e7f853b06c34538b3a8d6f9f2fe2c9eb2c858eb4c1d2ac8822efb6930",
+			"sc2x": "87d2d1dbca86ff71ffa94820b3ff75203b2446161d70e6e399fd2166e6620b91",
+			"sc2x_issues": []
+		},
+		"VOLCANO.SC2": {
+			"chunks": "fbac13f332e97fa846c9f4d7aeb7093afdaabb104414dc9122413ad39986079c",
+			"file": "ed02ae1670e7e6203f5ccbc71a90afd729df99d0547fb085b69f7ae057587bb8",
+			"saved": "ed02ae1670e7e6203f5ccbc71a90afd729df99d0547fb085b69f7ae057587bb8",
+			"sc2x": "80b3f6693e8ca839eae5db77ec2a8c50c46d8125da954e222b90ba343fa3ed13",
+			"sc2x_issues": []
+		},
+		"WASHINGT.SCN": {
+			"chunks": "104345e1a6b4685243b8c12bfe66bf459644a3c85f6a549db804f1d662bc8de8",
+			"file": "b391d6b6ddccef916449192aed7cc3cb6ee54cd927823df3802baefc3b4144dc",
+			"saved": "b391d6b6ddccef916449192aed7cc3cb6ee54cd927823df3802baefc3b4144dc",
+			"sc2x": "6e0a42097f08c6f1cfa4e9b9e890637005809026db445da29ae78b59ad8aa0c6",
+			"sc2x_issues": []
+		},
+		"ZUTHERLA.SC2": {
+			"chunks": "8303cbbfa375cf96fc44584876b6aff67149a456bef7a55a761dd708cc0345ff",
+			"file": "22cb812bf75267f288abc56639764ffbcdfcd1c52646c905b7bb65b86c1a4d46",
+			"saved": "22cb812bf75267f288abc56639764ffbcdfcd1c52646c905b7bb65b86c1a4d46",
+			"sc2x": "f931ff71fc64aa6b902ed5c40e91df3d31be4193f690e0c441119cedf8dc476a",
+			"sc2x_issues": []
+		},
+		"generated-128.SC2": {
+			"chunks": "870ad6ca5e0da908cf30e6108758c3705813a16dd33b3d29f592262df4ea3c39",
+			"file": "cebc36e7b277cdc84726dfd30933956aa23e9a85e69034d105dfccc18f7dfbf0",
+			"saved": "cebc36e7b277cdc84726dfd30933956aa23e9a85e69034d105dfccc18f7dfbf0",
+			"sc2x": "f840a83b01361888a34644465086a0b45469f04ab7d817e5816b9bcdc7889c42",
+			"sc2x_issues": []
+		},
+		"generated-256.sc2x": {
+			"chunks": "830a91a09a41f9b6f38f4e21a73f2671a50fbdaa481e115f44408ad6314cace2",
+			"file": "103161e3ab4d016ae6f83e604ca607ac7187cf6e6efe5d0c83607726a099d236",
+			"saved": "103161e3ab4d016ae6f83e604ca607ac7187cf6e6efe5d0c83607726a099d236",
+			"sc2x": "707f397dd602d7cf9dcc10fc6fd0775973883d92bc5feb5ccc1785d9028eabd4",
+			"sc2x_issues": []
+		},
+		"generated-384.sc2x": {
+			"chunks": "ce68fd871f6fd0e18602f6a3dd6475bc6e8dc498da3bc02b37cb8c1ec29bb88b",
+			"file": "ac23ca09068dbbfb8c84812f1b4931e07fdc53f01c24359d86dad3619f9415f6",
+			"saved": "ac23ca09068dbbfb8c84812f1b4931e07fdc53f01c24359d86dad3619f9415f6",
+			"sc2x": "c084ea35eb8af250beca5b2d4689fbc1810f50d118866cd5d391908215d71651",
+			"sc2x_issues": []
+		},
+		"generated-512.sc2x": {
+			"chunks": "64adf49dc185c344cc8a553e45f6a42cc34745a7c82d6f2ef4e691c80f3cd52f",
+			"file": "7143f743b7dcd663825d03b9963f18ecc3b63779b45ca638e5ffe34d0208504c",
+			"saved": "7143f743b7dcd663825d03b9963f18ecc3b63779b45ca638e5ffe34d0208504c",
+			"sc2x": "219c62fe41482abb36c97d46e91751ff31ec5c993e49d07c09bca6cd7cd41185",
+			"sc2x_issues": []
+		}
+	},
+	"format": "opensc2k-golden-corpus",
+	"images": {
+		"BAYVIEW.SC2": {
+			"minimap_colleges": "076ede75d5e15ec5bba1e2dc2378913e888f354f088f339f16a52124162e08fc",
+			"minimap_crime": "ff9b6da3802eac43f45177bd1f92f9219c71ff68ba0ad0c9a67d8a02a8c7e8b6",
+			"minimap_density": "12cd326c0464e769fc98babc98ac1d1e488fdcfa86aae5ada920d83e76268e87",
+			"minimap_fire_power": "ccad0392c4740385500f2d8558174980dbed07a4aa34648bbb365ca412376010",
+			"minimap_fire_stations": "15c1a33245f72468d356e426326ab93490e4574a44139593b3cc3f45793902fe",
+			"minimap_growth": "f218221ce7eb19ccb0f4111472fb8253961b3266e880c6b0c84aea7b3d019926",
+			"minimap_land_value": "dfa0e9ea28f8298d505ba3df8313170edec62bf11a50d575b6ddd32e3cddedc7",
+			"minimap_police_power": "1560bd073da0719cd23253b084f150e16d91a2024eeb3c88910b39851136f6ee",
+			"minimap_police_stations": "ab46252ab96220f64502063617eb6264d22a6f747a228b288d9ba22f79e2823f",
+			"minimap_pollution": "6dcf62617c16bed8355992eff1651ec50404804f68c37eb406fb9aab922caf13",
+			"minimap_power": "53dc85bf5c997b8d95121836043bcabd9db878c2d53c53661403fb6917e40c2e",
+			"minimap_rail": "a6ac0b0f1223fdc237f6e7a1250de3a081101aecf0e1607f586751c932b39632",
+			"minimap_roads": "9e6db3ddcf12cc656abdb8ec344bf2a327782ddadae1092315eabf106c2e9fd0",
+			"minimap_schools": "92231f3e9f97a6fcbcfd0c0b0eb28131950dcbb26c029d0b3e8eaef298815f89",
+			"minimap_structures": "a6ac0b0f1223fdc237f6e7a1250de3a081101aecf0e1607f586751c932b39632",
+			"minimap_traffic": "0330166751f52b024efb29eafe5d6cd820d94b9ba589029b1eb6087c79718077",
+			"minimap_water": "c86e9fd1a2bc4695a635976455d0a58084a0171d0bfb979fcad1cf870d6eda45",
+			"minimap_zones": "42f94e8d358bff33c671674ae931c22fde256b133697a64b8f998b21498efc01",
+			"render_city_0": "cadd59a91a4c96dc8182e961a8162c2e45259f09d1c42bbc0699a1b2e46dd237",
+			"render_city_1": "2d0838df3efb46332a4ca3c9a2f490cef590252d5cdcc794f9aa33bd57a10aca",
+			"render_city_2": "d0475f884aa2e799129935aad2c7e98a37d8a3330f952055903d69474b19311b",
+			"render_underground_0": "12ad81b0635369f13f4da86a46b16a811cec5108aafbc978d667d647548edd98",
+			"render_underground_1": "5855401b27f4e7794ee40e55519174f0c34d7d0508bc642db18ec7baaa06a56d",
+			"render_underground_2": "36a2d8f0929ac1d2f2e603b06454973c597cafabe34323819fb57debf0402213"
+		},
+		"generated-128.SC2": {
+			"minimap_colleges": "e3c6a620a4ed6f6437435ee697b68d2499de875d14fb47ec31581751b16cd06f",
+			"minimap_crime": "f1adcea2c0ba092df9ec460b75f3bb4c9f99a42501719d9ded0156043c8d5888",
+			"minimap_density": "cfccc277f935f27aade57317fd316a5400166a95f3204f5d4ae517aa27e28395",
+			"minimap_fire_power": "726965290f7f42cbfafe6b43d7267fe90ad18b68133e884539b41e28e709c113",
+			"minimap_fire_stations": "f9a65d8fd4fe7c22ebc25cc118bcfc72c4719d6d4663984e4edec124a854c365",
+			"minimap_growth": "5ee48fea1b4fa11ae6a275708bf681709ebd08ecccce532108552d99fe363d3e",
+			"minimap_land_value": "b9db1d3f685a0f8874c9138ae784c16e05f1ddf7d92e5de84af4f7aa8f5d23b6",
+			"minimap_police_power": "0ef9c9e4a1aff94939493137e6083f1907daf084a3504bf11196bc71aae4ef82",
+			"minimap_police_stations": "5c62fedb8e4dd5f5662196201742cd7f4b289d57f505c55e66ee3d3ebaa39264",
+			"minimap_pollution": "18fcc64050825038e102f78851eace122194550ca147a4cb8c8b278aabe71657",
+			"minimap_power": "58d1ee2b0956f053bc1800669571a31fc2b825f0b649802391d8857e8c8ac88f",
+			"minimap_rail": "19d2720ddf950854de1465cf10624fbb0d7455a1869ed86214ffc988d414c73c",
+			"minimap_roads": "4af762ff99a07169276887d6efa09979267e368c30c22eb6de47f32dd0a05651",
+			"minimap_schools": "71427dace7d423d9c1f07d2dddd784bf60743ea9e9a5328496b490af729ba482",
+			"minimap_structures": "fc07f7dc88dfe56a0be74bf79f9f9f3f52e4a9b4f21979d2eebc348264712244",
+			"minimap_traffic": "4285b6586824a4ea28021b2e3edbb7e1d2336e529344b2cf766666606ca51c09",
+			"minimap_water": "a3b1cc5e0c36bde74e1350cefcc14c4f604e70516de6d5a49becfd1894c39d65",
+			"minimap_zones": "44d8166cc7b945987894db65d31a5fe8bbd5bf2780be83dd5e5cd1e791005945",
+			"render_city_0": "47fb8f760fac663d94801bae5092ad24b33be937c0ed0e0650847b0b168717e9",
+			"render_city_1": "d1d5e9886096510246059d16803dcff4b26d9c7f8cc4dc84321da4e264200fdb",
+			"render_city_2": "0cf0317b980d048cffd9db8b79850ce0f3b46d6fdbffbf6b7da8e7731912a966",
+			"render_underground_0": "3e057d707806e15e77a0caa27ad2bba729977c3dafc700422f3057fe92539c71",
+			"render_underground_1": "d3c8eed27f0556000512482cd0a08c9ab8e4affee9ea6ff9a6563eca32c02677",
+			"render_underground_2": "842833e36e385dae8385b9e48a71e3e1238d12549fb7dd09187f8e5b30c8eea2"
+		}
+	},
+	"new_cities": {
+		"bay-native-256": {
+			"city": "1f608af17f975e7ac7adcb241eb3c83518edb1fce92be4477b725a24c390288a",
+			"preview": "e6a5a283a08b8538ccb4e402ab738fa950dc584670621d757596593c2cfa86f2"
+		},
+		"canyon-native-128": {
+			"city": "c37413820917e8b1443359492751f0edc2bf0a26e5fc6adb3209820b7780038d",
+			"preview": "11dd230f7b565dff8c8f8426cf817b127a122ab0606713438292269a00f1d405"
+		},
+		"classic-128": {
+			"city": "ab2ff90384490c26bf7d3716eb3321c8b10d7a41529dd9614ca8ee4d51307558",
+			"preview": "f4637c502b6049c846832cfabe556e3117f1afe104db09f95cb18408d34eae75"
+		},
+		"classic-256": {
+			"city": "49276ead81385e88e511a417ec5afd3e42e3e65160b8808e3264b1428a8fd37e",
+			"preview": "793721fccc30723d1e9fca272b03020739dd03e453b9eb7d1ec512fa5b52121a"
+		},
+		"island-128": {
+			"city": "16eb517d9b898e929f696d510efce7ff2481425da714812cba3b3ca0241b91cd",
+			"preview": "f41a703be10db8c3f1548dd44ae20ead30cf75ac35812c552ccd10117052e9f2"
+		}
+	},
+	"version": 1
+}

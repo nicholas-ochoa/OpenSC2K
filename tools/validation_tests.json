@@ -1764,5 +1764,19 @@
     "lane": "native",
     "requires": ["ext/graphics/pack.json"],
     "driver": "scene-batch"
+  },
+  {
+    "id": "golden_corpus_test",
+    "script": "tests/golden_corpus_test.gd",
+    "domain": "formats",
+    "lane": "product",
+    "requires": ["references/SIMCITY2000", "ext/graphics/pack.json"]
+  },
+  {
+    "id": "golden_corpus_import_test",
+    "script": "tests/golden_corpus_import_test.gd",
+    "domain": "formats",
+    "lane": "product",
+    "requires": ["references/SIMCITY2000"]
   }
 ]
