@@ -485,4 +485,89 @@ mod tests {
             assert_eq!(contact_row(&draw, x, false), 100);
         }
     }
+
+    #[test]
+    fn bridge_contact_tracks_the_diagonal_axis_across_spans_and_flips() {
+        use crate::ids::building_tile_ids::*;
+        for building in (SUSPENSION_BRIDGE_1..=POWER_BRIDGE).chain([HIGHWAY_BRIDGE, REINFORCED_HIGHWAY_BRIDGE]) {
+            let width = 64;
+            for flip in [false, true] {
+                let mut first = Draw::new(0, Rect::new(100, 200, width, 40));
+                first.flip = flip;
+                let mut next = first.clone();
+                let stride = width / 2;
+                next.rect.x += if flip { stride } else { -stride };
+                next.rect.y += stride / 2;
+                for column in 0..width {
+                    let adjacent_column = first.rect.x + column - next.rect.x;
+                    assert_eq!(
+                        contact_twice(&first, column, building),
+                        contact_twice(&next, adjacent_column, building)
+                    );
+                    if column + 2 < width {
+                        let delta = contact_twice(&first, column + 2, building) - contact_twice(&first, column, building);
+                        assert_eq!(delta, if flip { 2 } else { -2 });
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn bridge_sprite_pixels_reflect_without_rotating_in_both_directions() {
+        use crate::ids::{building_tile_ids::ROAD_BRIDGE, sc2tile_flags::FLIPPED};
+        for view in 0..3 {
+            for flip in [false, true] {
+                let mut builder = fixture(view);
+                let c = builder.config;
+                let width = c.hw() * 2;
+                let height = c.height() + 12 / c.divisor();
+                let mut image = Sprite {
+                    w: width,
+                    h: height,
+                    rgba: vec![0; (width * height * 4) as usize],
+                    la: vec![0; (width * height * 2) as usize],
+                };
+                for x in 0..width {
+                    let plane = (2 * height + width / 2 - 1 - x).div_euclid(2);
+                    let row = plane - 10 / c.divisor();
+                    let at = (row * width + x) as usize;
+                    let index = 40 + x as u8;
+                    image.rgba[at * 4..at * 4 + 4].copy_from_slice(&[index, index, index, 255]);
+                    image.la[at * 2..at * 2 + 2].copy_from_slice(&[index, 255]);
+                }
+                builder.city.buildings[0] = ROAD_BRIDGE;
+                builder.city.flags[0] = if flip { FLIPPED } else { 0 };
+                builder
+                    .sprites
+                    .images
+                    .insert(((c.base() + i32::from(ROAD_BRIDGE)) * 2) as u64, image);
+                let bounds = Rect::new(c.side(), c.top() - 32 / c.divisor(), 160 / c.divisor(), 160 / c.divisor());
+                let mut indices = [0; 256];
+                indices[96] = 1;
+                let out = builder.water_pixels(bounds, &indices, &HashMap::new(), &HashMap::new()).unwrap();
+                let draw = builder
+                    .collect(bounds)
+                    .unwrap()
+                    .into_iter()
+                    .find(|d| d.sprite == c.base() + i32::from(ROAD_BRIDGE))
+                    .unwrap();
+                let mut pixels = 0;
+                for x in 0..width {
+                    let original_x = if flip { width - 1 - x } else { x };
+                    let source_row = (2 * height + width / 2 - 1 - original_x).div_euclid(2) - 10 / c.divisor();
+                    let axis = 2 * (draw.rect.y + height) + if flip { x - width / 2 } else { width / 2 - 1 - x };
+                    let y = axis - (draw.rect.y + source_row) - 1;
+                    let at = (((y - bounds.y) * bounds.w + draw.rect.x + x - bounds.x) * 4) as usize;
+                    if out.surface[at + 3] == 0 {
+                        continue;
+                    }
+                    assert_eq!(out.reflected[at], 40 + original_x as u8, "view {view}, flip {flip}, column {x}");
+                    assert!(out.reflected[at + 3] > 0);
+                    pixels += 1;
+                }
+                assert!(pixels >= width / 2, "bridge reflection was clipped in view {view}, flip {flip}");
+            }
+        }
+    }
 }
