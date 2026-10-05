@@ -8,3 +8,4 @@ description = "SimCity 2000 simulation of OpenSC2K, without engine types"
 
 [dependencies]
 sc2k_formats = { path = "../formats" }
+sc2k_assets = { path = "../assets" }

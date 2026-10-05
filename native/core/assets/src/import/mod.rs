@@ -1,6 +1,7 @@
 //! Converters of the supplied game files to portable formats.
 
 pub mod container;
+pub mod newspaper;
 pub mod voc;
 pub mod wave;
 pub mod xmi;

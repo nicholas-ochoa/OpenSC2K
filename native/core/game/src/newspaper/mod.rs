@@ -5,6 +5,8 @@ use sc2k_assets::data_usa::DataUsa;
 use sc2k_assets::text::johab;
 use sc2k_sim::sim::random::SimRandom;
 
+pub use sc2k_assets::data_usa::EXTENDED_TOKEN_BYTES;
+
 const MAX_OUTPUT_BYTES: usize = 2047;
 const MAX_RECURSION_DEPTH: usize = 128;
 /// The seed offset of each story slot. -1 marks a slot without a published story.
@@ -13,12 +15,6 @@ pub const PUBLISHED_SEED_OFFSETS: [i64; 9] = [28, 49, 56, 63, 70, -1, -1, 42, 35
 const PAPER_COUNT: i64 = 6;
 const PAPER_SEED_STRIDE: i64 = 500;
 const DAYS_PER_MONTH: i64 = crate::clock::DAYS_PER_MONTH;
-/// The bytes of the grammar tokens from phrase 32. Tokens 1 to 31 name their phrase.
-pub const EXTENDED_TOKEN_BYTES: [u8; 60] = [
-    0x7f, 0x9e, 0x9f, 0xa9, 0xaa, 0xab, 0xac, 0xae, 0xaf, 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
-    0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xdf, 0xee, 0xef,
-    0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
-];
 const FIRST_EXTENDED_PHRASE: usize = 32;
 /// The code page 437 characters of the grammar. Other high bytes are U+FFFD.
 const CP437_LITERALS: [(u8, char); 40] = [

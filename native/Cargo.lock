@@ -255,6 +255,7 @@ dependencies = [
 name = "sc2k_sim"
 version = "0.1.0"
 dependencies = [
+ "sc2k_assets",
  "sc2k_formats",
 ]
 

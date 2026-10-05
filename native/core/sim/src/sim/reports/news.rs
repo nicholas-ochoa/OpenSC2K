@@ -7,6 +7,8 @@ use crate::sim::events::NewsEvent;
 use crate::sim::ids::sc2misc_layout as misc_layout;
 use crate::sim::phase::PhaseBase;
 
+pub use sc2k_assets::data_usa::{STORY_DECAYS, STORY_PRIORITIES};
+
 pub const PAPER_COUNT: i64 = 6;
 pub const PAPER_FIELD_COUNT: i64 = 5;
 pub const PAPER_RECORD_SIZE: i64 = PAPER_FIELD_COUNT * 4;
@@ -38,18 +40,6 @@ pub const STORY_FIELD_COUNT: i64 = 6;
 pub const STORY_RECORD_SIZE: i64 = STORY_FIELD_COUNT * 4;
 const ARGUMENT_FIELD: i64 = 2;
 const FIRST_AUXILIARY_FIELD: i64 = 3;
-
-/// The data_usa resources 1004 and 1005: big-endian unsigned 16-bit tables.
-pub const STORY_PRIORITIES: [i64; 80] = [
-    0, 0, 1000, 1000, 1000, 1000, 360, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 1000, 1000, 1000, 1000,
-    1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 200, 200, 300, 200, 200, 0, 0, 0, 0, 500, 500, 500, 500, 500, 500,
-    500, 500, 500, 500, 500, 500, 500, 500, 500, 200, 200, 200, 200, 200, 200, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-];
-pub const STORY_DECAYS: [i64; 80] = [
-    0, 0, 500, 500, 250, 250, 10, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 250, 250, 250, 250, 250, 250, 250, 250, 250,
-    250, 250, 250, 250, 250, 100, 50, 50, 50, 50, 50, 0, 0, 0, 0, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
-    500, 50, 50, 50, 50, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-];
 
 pub fn is_story_type(story_type: i64) -> bool {
     (0..STORY_PRIORITIES.len() as i64).contains(&story_type)

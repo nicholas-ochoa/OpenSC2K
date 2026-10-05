@@ -5,6 +5,7 @@ mod audio_import;
 mod bmp;
 mod container;
 mod crc32;
+mod data_import;
 mod gif;
 mod johab;
 mod pe;

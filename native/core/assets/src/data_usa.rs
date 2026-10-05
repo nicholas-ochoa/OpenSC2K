@@ -13,6 +13,31 @@ pub const GRAMMAR_RESOURCE_ID: u32 = 1003;
 pub const TABLE_ENTRY_COUNT: usize = 250;
 pub const PHRASE_COUNT: usize = 2500;
 
+/// Resource 1004: the initial priority of each story type.
+pub const STORY_PRIORITIES: [i64; 80] = [
+    0, 0, 1000, 1000, 1000, 1000, 360, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200,
+    200, 200, 200, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000,
+    1000, 1000, 200, 200, 300, 200, 200, 0, 0, 0, 0, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 200, 200, 200, 200, 200, 200, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,
+];
+
+/// Resource 1005: the monthly priority decay of each story type.
+pub const STORY_DECAYS: [i64; 80] = [
+    0, 0, 500, 500, 250, 250, 10, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 250,
+    250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 100, 50, 50, 50, 50, 50, 0, 0,
+    0, 0, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 50, 50, 50,
+    50, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+/// The bytes of the grammar tokens from phrase 32. Tokens 1 to 31 name their phrase.
+pub const EXTENDED_TOKEN_BYTES: [u8; 60] = [
+    0x7f, 0x9e, 0x9f, 0xa9, 0xaa, 0xab, 0xac, 0xae, 0xaf, 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb8, 0xb9,
+    0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf, 0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc8, 0xc9, 0xca, 0xcb,
+    0xcc, 0xcd, 0xce, 0xcf, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xdf, 0xee, 0xef, 0xf0, 0xf1, 0xf2, 0xf3,
+    0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
+];
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DataUsa {
     /// The first phrase of each table.
