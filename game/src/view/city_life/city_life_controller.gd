@@ -4,6 +4,8 @@ extends RefCounted
 
 const MAX_FIGURES := 600
 const UPDATE_SECONDS := 0.08
+const FADE_IN_SECONDS := 0.65
+const FADE_OUT_SECONDS := 0.9
 const BUS_RADIUS := 8
 const TRUCK_SHARE := 0.06
 const BUS_SHARE := 0.03
@@ -60,12 +62,15 @@ func process(delta: float) -> void:
 	var viewport := Rect2i(map.visible_source_rect().grow(96))
 	if geometry != _geometry_signature or not _viewport.encloses(viewport):
 		var changed_geometry := geometry != _geometry_signature
+		var changed_view := _geometry_signature.is_empty() or geometry.slice(3) != _geometry_signature.slice(3)
 		_geometry_signature = geometry
 		_viewport = viewport.grow(96)
 		_collect_tiles(city)
-		if changed_geometry:
-			# Geometry edits and rotations invalidate lane positions, not the city.
+		if changed_view:
+			# Rotations and altitude cutaways replace the coordinate space.
 			figures.clear()
+		elif changed_geometry:
+			_revalidate_lanes(city)
 		_activity_signature.clear()
 	var activity := [city.chunk_revision("XPOP"), city.chunk_revision("XTRF"), options.life_cars_enabled,
 		options.life_people_enabled, options.life_car_amount, options.life_people_amount, app.view_state.show_vehicles]
@@ -78,6 +83,7 @@ func process(delta: float) -> void:
 	var speed := app.simulation_state.speed_controller.speed if app.simulation_state.speed_controller != null else 1
 	if options.pause_freezes and (speed == 1 or app.frame._simulation_suspended()):
 		elapsed = 0.0
+	var fade_elapsed := elapsed
 	if options.speed_link and speed > 1:
 		elapsed *= VisualEnhancementOptions.speed_factor(speed)
 	_elapsed += elapsed
@@ -93,6 +99,7 @@ func process(delta: float) -> void:
 			_advance(city, step)
 			remaining -= step
 		_elapsed = 0.0
+	_fade(fade_elapsed)
 	_render_elapsed += maxf(delta, 0.0)
 	if _render_elapsed >= UPDATE_SECONDS or canvas.texture == null:
 		_render_elapsed = 0.0
@@ -193,6 +200,29 @@ func _spawn(city: CityState, options: Dictionary) -> void:
 			counts[key] = count + 1
 
 
+func _revalidate_lanes(city: CityState) -> void:
+	# Simulation updates anywhere in the city must not reset all visible traffic.
+	for figure in figures:
+		if figure.retiring:
+			continue
+		var ports := CityLifePaths.ports(city, figure.tile)
+		if not (ports & (1 << figure.enter)) or not (ports & (1 << figure.exit)) \
+				or not CityLifePaths.can_turn(city, figure.tile, figure.enter, figure.exit) \
+				or (figure.walking and not CityLifePaths.walkable(city, figure.tile)):
+			figure.retiring = true
+		elif not figure.position.is_equal_approx(CityLifePaths.point(city, figure.tile, figure.enter,
+				figure.exit, figure.progress, figure.walking)):
+			figure.retiring = true
+
+
+func _fade(elapsed: float) -> void:
+	# Wall-clock fades remain readable at African Swallow; pause still freezes them.
+	for figure in figures:
+		var duration := FADE_OUT_SECONDS if figure.retiring else FADE_IN_SECONDS
+		figure.visibility = move_toward(figure.visibility, 0.0 if figure.retiring else 1.0, elapsed / duration)
+	figures = figures.filter(func(f: Figure) -> bool: return not f.retiring or f.visibility > 0.0)
+
+
 func _exit(city: CityState, figure: Figure) -> int:
 	var choices: Array[int] = []
 	for direction in 4:
@@ -243,7 +273,9 @@ func _advance(city: CityState, elapsed: float) -> void:
 	_rebuild_buckets()
 	for figure in figures:
 		figure.age += elapsed
-		if figure.age >= figure.lifetime or figure.retiring:
+		if figure.age >= figure.lifetime:
+			figure.retiring = true
+		if figure.retiring:
 			continue
 		if figure.wait > 0.0:
 			figure.wait = maxf(0.0, figure.wait - elapsed)
@@ -265,7 +297,6 @@ func _advance(city: CityState, elapsed: float) -> void:
 			continue
 		var next: Vector2i = figure.tile + CityLifePaths.DIRECTIONS[figure.exit]
 		if not CityLifePaths.connected(city, figure.tile, figure.exit, figure.walking) or not _viewport.has_point(Vector2i(position)):
-			figure.lifetime = figure.age + 0.5
 			figure.retiring = true
 			continue
 		figure.enter = (figure.exit + 2) % 4
@@ -273,11 +304,9 @@ func _advance(city: CityState, elapsed: float) -> void:
 		figure.exit = _exit(city, figure)
 		figure.progress = 0.0
 		if figure.exit < 0:
-			figure.lifetime = figure.age + 0.5
 			figure.retiring = true
 		elif figure.walking and random.randf() < 0.08:
 			figure.wait = random.randf_range(0.4, 1.6)
-	figures = figures.filter(func(f: Figure) -> bool: return f.age < f.lifetime)
 
 
 func _crowded(figure: Figure, position: Vector2, spawning: bool = true) -> bool:
@@ -341,6 +370,11 @@ class Figure extends RefCounted:
 	var lifetime := 40.0
 	var wait := 0.0
 	var retiring := false
+	var visibility := 0.0
+
+
+	func opacity() -> float:
+		return smoothstep(0.0, 1.0, visibility)
 
 
 	func extra_spacing() -> float:
