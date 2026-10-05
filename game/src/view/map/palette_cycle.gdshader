@@ -11,9 +11,11 @@ uniform bool dark_underground = false;
 uniform sampler2D dark_underground_palette : source_color, filter_nearest, repeat_disable;
 
 varying flat float emission_draw;
+varying flat float transparent_shadow_draw;
 varying vec2 cloud_ground_grid;
 void vertex() {
 	emission_draw = float(COLOR.rgb == vec3(0.0, 1.0, 1.0));
+	transparent_shadow_draw = float(COLOR.rgb == vec3(1.0, 0.0, 1.0));
 	cloud_ground_grid = cloud_grid_at((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy);
 }
 
@@ -34,7 +36,9 @@ void fragment() {
 	} else {
 		COLOR = base_color;
 	}
-	if (emission_draw > 0.5) {
+	if (transparent_shadow_draw > 0.5) {
+		COLOR = vec4(vec3(0.0), base_color.a);
+	} else if (emission_draw > 0.5) {
 		COLOR = vec4(base_color.rgb, base_color.a * environment_night * float(environment_enabled));
 	} else if (dark_underground) {
 		COLOR.rgb = texture(dark_underground_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;

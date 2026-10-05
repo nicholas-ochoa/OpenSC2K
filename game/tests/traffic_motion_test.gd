@@ -1,0 +1,238 @@
+extends SceneTree
+
+const DocumentState = preload("res://tests/support/document_state.gd")
+const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
+	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1)]
+
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	_check_motion()
+	_check_subpixels()
+	_check_lifecycle()
+	_check_shadow()
+	await _check_application()
+	print("PASS: traffic interpolation, directions, tile crossings, shadows, ship reflections, toggles and unchanged city/RNG")
+	quit()
+
+
+func _check_motion() -> void:
+	var options := VisualEnhancementOptions.normalize({})
+	for type in [1, 2, 3, 9]:
+		for direction in 8:
+			var city := fixture(type)
+			var motion := CityTrafficMotion.new()
+			motion.observe(city, options)
+			var old := motion.tracks[1].current
+			var step: Vector2i = DIRECTIONS[direction] * 4
+			write_thing(city, 1, {"px": 8 + step.x, "py": 8 + step.y})
+			var before := DocumentState.capture(city.document)
+			motion.observe(city, options)
+			assert(motion.tracks[1].current == old, "A published tick must not jump the display")
+			var source := command()
+			for divisor in [1, 2, 4]:
+				var at_start := motion.draw_command(source, divisor, 128)
+				assert(at_start.position != source.position)
+			assert(motion.advance(0.1))
+			assert(motion.tracks[1].current.is_equal_approx(old.lerp(motion.tracks[1].target, 0.5)))
+			assert(motion.advance(0.1))
+			assert(motion.draw_command(source, 1, 128) == source)
+			assert(not motion.advance(0.1), "Stopped objects must not redraw forever")
+			assert(DocumentState.capture(city.document) == before)
+	# Crossing a tile boundary keeps continuous sub-tile geometry and draw depth.
+	var city := fixture(1)
+	write_thing(city, 1, {"px": 14})
+	var motion := CityTrafficMotion.new()
+	motion.observe(city, options)
+	var old := motion.tracks[1].current
+	city.set_text_overlay_id(64, 64, 0)
+	write_thing(city, 1, {"x": 65, "px": 2})
+	motion.observe(city, options)
+	var source := command()
+	source.depth_order = (65 + 64) * 128 + 64
+	assert(motion.draw_command(source, 1, 128).depth_order == (64 + 64) * 128 + 64)
+	motion.advance(0.1)
+	assert(motion.tracks[1].current.is_equal_approx(old.lerp(motion.tracks[1].target, 0.5)))
+	assert(source.position == Vector2i(100, 200), "Cached source commands must stay immutable")
+	# A climb moves the aircraft, while its shadow stays on the ground.
+	city = fixture(2)
+	motion = CityTrafficMotion.new()
+	motion.observe(city, options)
+	write_thing(city, 1, {"z": 5})
+	motion.observe(city, options)
+	assert(motion.draw_command(source, 1, 128).position.y == 208)
+	source.shadow = true
+	assert(motion.draw_command(source, 1, 128).position == source.position)
+	motion.advance(0.1)
+	source.shadow = false
+	assert(motion.draw_command(source, 1, 128).position.y == 204)
+	# An early next snapshot continues at the displayed point, with no jump.
+	old = motion.tracks[1].current
+	write_thing(city, 1, {"px": 12})
+	motion.observe(city, options)
+	assert(motion.tracks[1].current == old)
+
+
+func _check_lifecycle() -> void:
+	var city := fixture(1)
+	var motion := CityTrafficMotion.new()
+	var options := VisualEnhancementOptions.normalize({})
+	motion.observe(city, options)
+	write_thing(city, 1, {"px": 12})
+	motion.observe(city, options)
+	options.traffic_planes_enabled = false
+	motion.observe(city, options)
+	assert(motion.tracks.is_empty())
+	options.traffic_planes_enabled = true
+	motion.observe(city, options)
+	assert(motion.tracks[1].current == motion.tracks[1].target)
+	write_thing(city, 1, {"x": 100})
+	motion.observe(city, options)
+	assert(motion.tracks[1].current == motion.tracks[1].target, "Teleports must not fly across the map")
+	write_thing(city, 1, {"type": 6})
+	motion.observe(city, options)
+	assert(motion.tracks.is_empty(), "Crashes must remove the old interpolated vehicle immediately")
+	city = fixture(9)
+	write_thing(city, 1, {"state": 1})
+	motion.observe(city, options)
+	assert(motion.tracks.is_empty(), "Nessie is not a ship enhancement")
+	city = fixture(3)
+	motion.observe(city, options)
+	write_thing(city, 1, {"px": 12})
+	motion.observe(city, options)
+	motion.observe(fixture(3), options)
+	assert(motion.tracks[1].current == motion.tracks[1].target, "A new city cannot inherit another city's motion")
+
+
+func _check_application() -> void:
+	var graphics := OS.get_environment("OPENSC2K_GRAPHICS_PACK")
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	var app := (load("res://main.tscn") as PackedScene).instantiate() as CityApplication
+	root.add_child(app)
+	await process_frame
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", graphics)
+	app.set_process(false)
+	app.main_menu.city_background.set_process(false)
+	assert(app.city_session.activate_document(fixture(3).document))
+	app.map_view.zoom_factor = 2.0
+	app.map_view.center_on_tile(Vector2i(64, 64))
+	var deadline := Time.get_ticks_msec() + 10000
+	while app.map_view.city_source == null and Time.get_ticks_msec() < deadline:
+		app.static_render.poll_static_render()
+		app.static_render.start_pending_static_render()
+		await process_frame
+	assert(app.map_view.city_source != null)
+	var city := app.document_state.city
+	app.moving_sprites.refresh_moving_things()
+	write_thing(city, 1, {"px": 12})
+	app.moving_sprites.refresh_moving_things()
+	var before := DocumentState.capture(city.document)
+	var engine := app.simulation_state.simulation_engine
+	var random_before := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
+	var motion := app.moving_sprites.traffic_motion
+	var old := motion.tracks[1].current
+	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+	app.moving_sprites.process(0.1)
+	assert(motion.tracks[1].current == old, "Pause must freeze real vehicle interpolation")
+	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.TURTLE
+	app.moving_sprites.process(0.1)
+	assert(motion.tracks[1].current != old)
+	var ships := app.map_view.dynamic_sprites.filter(func(v: CityDynamicVisual) -> bool: return v.water_reflection != null)
+	assert(not ships.is_empty())
+	assert(Vector2(ships[0].water_reflection.position).distance_to(ships[0].position) <= 0.71,
+		"Raster reflections must stay within half a native pixel of the displayed ship")
+	app.view_state.show_vehicles = false
+	app.moving_sprites.refresh_moving_things()
+	assert(motion.tracks.is_empty() and app.map_view.dynamic_sprites.is_empty())
+	app.view_state.show_vehicles = true
+	app.moving_sprites.refresh_moving_things()
+	assert(motion.tracks[1].current == motion.tracks[1].target)
+	assert(DocumentState.capture(city.document) == before)
+	write_thing(city, 1, {"type": 2, "z": 4})
+	before = DocumentState.capture(city.document)
+	app.moving_sprites.refresh_moving_things()
+	var shadows := app.map_view.dynamic_sprites.filter(func(v: CityDynamicVisual) -> bool: return v.transparent_shadow)
+	assert(not shadows.is_empty(), "Aircraft shadows must use alpha silhouettes")
+	assert(not shadows[0].samples_static and shadows[0].shadow)
+	app.preferences.visual_enhancements.traffic_shadows_enabled = false
+	app.moving_sprites.refresh_moving_things()
+	assert(app.map_view.dynamic_sprites.all(func(v: CityDynamicVisual) -> bool: return not v.transparent_shadow))
+	app.moving_sprites.process(0.1)
+	assert(DocumentState.capture(city.document) == before)
+	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	var tab := app.main_overlays.settings_dialog.visual_tab
+	var selected := tab.selected_values()
+	assert(selected.traffic_planes_enabled and selected.traffic_helicopters_enabled and selected.traffic_ships_enabled)
+	selected.traffic_planes_enabled = false
+	tab.show_values(selected)
+	assert(not tab.selected_values().traffic_planes_enabled and tab.selected_values().traffic_ships_enabled)
+	var save := AppSettingsStore.SaveOptions.new()
+	save.visual_enhancements = tab.selected_values()
+	var path := "user://traffic-motion-settings.cfg"
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, save) == OK)
+	assert(AppSettingsStore.load_values(path).visual_enhancements == save.visual_enhancements)
+	DirAccess.remove_absolute(path)
+	app.queue_free()
+	await process_frame
+
+
+static func _check_shadow() -> void:
+	var source := Image.create(4, 1, false, Image.FORMAT_RGBA8)
+	source.fill(Color.WHITE)
+	source.set_pixel(3, 0, Color.TRANSPARENT)
+	var occluder := Image.create(4, 1, false, Image.FORMAT_RGBA8)
+	occluder.set_pixel(1, 0, Color.WHITE)
+	var shadow := CityAircraftShadow.create(source, occluder, Vector2i.ZERO, Vector2i(3, 1))
+	assert(shadow.get_pixel(0, 0).r == 0 and is_equal_approx(shadow.get_pixel(0, 0).a, 89.0 / 255.0))
+	assert(shadow.get_pixel(1, 0).a == 0, "Buildings must hide shadow pixels")
+	assert(shadow.get_pixel(2, 0).a > 0 and shadow.get_pixel(3, 0).a == 0)
+	assert(CityAircraftShadow.create(source, null, Vector2i(4, 0), Vector2i(3, 1)) == null)
+	assert(source.get_pixel(0, 0) == Color.WHITE, "Shadow generation cannot edit the source artwork")
+
+
+static func _check_subpixels() -> void:
+	for divisor in [1, 2, 4]:
+		var city := fixture(3)
+		var motion := CityTrafficMotion.new()
+		var options := VisualEnhancementOptions.normalize({})
+		motion.observe(city, options)
+		var source := command()
+		source.position = Vector2i(0, int(8.0 / divisor))
+		var initial := Vector2(source.position * divisor) + motion.display_offset(source, divisor)
+		write_thing(city, 1, {"px": 9})
+		motion.observe(city, options)
+		source.position = Vector2i(int(1.0 / divisor), int(8.5 / divisor))
+		assert((Vector2(source.position * divisor) + motion.display_offset(source, divisor)).is_equal_approx(initial))
+		motion.advance(0.1)
+		var middle := Vector2(source.position * divisor) + motion.display_offset(source, divisor)
+		assert(middle.is_equal_approx(initial + Vector2(0.5, 0.25)),
+			"Even one-pixel ship steps must move through fractional display positions at every artwork size")
+
+
+static func fixture(type: int) -> CityState:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	city.set_land_altitude(64, 64, 0)
+	city.set_terrain_id(64, 64, 0)
+	write_thing(city, 1, {"type": type, "direction": 2, "state": 0, "x": 64, "y": 64, "z": 4, "px": 8, "py": 8})
+	return city
+
+
+static func write_thing(city: CityState, record: int, values: Dictionary) -> void:
+	var chunk := city.document.find_chunk("XTHG")
+	var data := chunk.decoded_payload.duplicate()
+	for field in values:
+		ThingData.write(data, record * CityState.THING_RECORD_SIZE + ThingRecord.FIELDS.find(field), values[field])
+	assert(chunk.set_decoded_payload(data))
+	var thing := city.thing(record)
+	city.set_text_overlay_id(thing.x, thing.y, OverlayData.thing_id(record))
+
+
+static func command() -> CityDynamicCommand:
+	var result := CityDynamicCommand.new()
+	result.record = 1
+	result.position = Vector2i(100, 200)
+	result.depth_order = 128 * 128 + 64
+	return result

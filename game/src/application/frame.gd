@@ -16,6 +16,7 @@ func _init(application: CityApplication) -> void:
 func process(delta: float) -> void:
 	app.visual_environment.process(delta)
 	app.city_life.process(delta)
+	app.moving_sprites.process(delta)
 	app.new_city.poll_new_city_preview()
 	app.current_tool.update_network_preview()
 	app.camera_input.update_keyboard_camera(delta)
