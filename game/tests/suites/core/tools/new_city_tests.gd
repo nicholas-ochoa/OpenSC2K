@@ -241,15 +241,15 @@ func test_new_city_setup(_reference_root: String) -> void:
 			"Easy new city stores its mode, difficulty, year, and funds",
 		)
 		_check(
-			document.misc_u32(NewCity.MISC_BONDS) == 0
-			and document.misc_u32(NewCity.MISC_NATIONAL_POPULATION) == 10000
-			and document.misc_u32(NewCity.MISC_NATIONAL_FEDERAL_RATE) == 3
-			and document.misc_u32(NewCity.MISC_NATIONAL_ECONOMY_TREND) == 0,
+			document.misc_u32(Sc2MiscLayout.BONDS) == 0
+			and document.misc_u32(Sc2MiscLayout.NATIONAL_POPULATION) == 10000
+			and document.misc_u32(Sc2MiscLayout.NATIONAL_FEDERAL_RATE) == 3
+			and document.misc_u32(Sc2MiscLayout.NATIONAL_ECONOMY_TREND) == 0,
 			"Easy new city stores its national settings without a bond",
 		)
 		_check(
-			city.graph_series(NewCity.GRAPH_GNP).year[0] == 3
-			and city.graph_series(NewCity.GRAPH_NATIONAL_POPULATION).year[0] == 10000,
+			city.graph_series(13).year[0] == 3
+			and city.graph_series(14).year[0] == 10000,
 			"New city seeds GNP and national-population history",
 		)
 		_check(
@@ -264,7 +264,7 @@ func test_new_city_setup(_reference_root: String) -> void:
 			document.find_chunk("MISC").decoded_payload, 0
 		)
 		_check(
-			founding_story.type == NewCity.FOUNDING_STORY_TYPE
+			founding_story.type == 2
 			and founding_story.priority == 1000,
 			"New city inserts the founding newspaper story",
 		)
@@ -304,7 +304,7 @@ func test_new_city_setup(_reference_root: String) -> void:
 		if reparsed.is_valid():
 			_check(
 				reparsed.city_name() == "Test City"
-				and reparsed.misc_u32(NewCity.MISC_START_YEAR) == 1900,
+				and reparsed.misc_u32(Sc2MiscLayout.START_YEAR) == 1900,
 				"Reparsed new city preserves its identity and starting year",
 			)
 
@@ -324,8 +324,8 @@ func test_new_city_setup(_reference_root: String) -> void:
 		_check(
 			medium_city.difficulty() == 2
 			and medium_city.funds() == 10000
-			and medium.document.misc_u32(NewCity.MISC_NATIONAL_POPULATION) == 60000
-			and medium.document.misc_u32(NewCity.MISC_NATIONAL_ECONOMY_TREND) == 1,
+			and medium.document.misc_u32(Sc2MiscLayout.NATIONAL_POPULATION) == 60000
+			and medium.document.misc_u32(Sc2MiscLayout.NATIONAL_ECONOMY_TREND) == 1,
 			"Medium year 2000 uses the recovered economy settings",
 		)
 		_check(
@@ -345,7 +345,7 @@ func test_new_city_setup(_reference_root: String) -> void:
 	if hard.ok:
 		var hard_city := CityModel.from_document(hard.document)
 		var bond_budget := (
-			NewCity.MISC_BUDGETS + NewCity.BUDGET_BONDS * NewCity.BUDGET_RECORD_SIZE
+			Sc2MiscLayout.BUDGETS + Sc2BudgetLayout.BONDS * Sc2BudgetLayout.RECORD_SIZE
 		)
 		_check(
 			hard_city.city_name() == "New City"
@@ -355,21 +355,21 @@ func test_new_city_setup(_reference_root: String) -> void:
 		_check(
 			hard_city.difficulty() == 3
 			and hard_city.funds() == 10000
-			and hard.document.misc_u32(NewCity.MISC_BONDS) == 1
-			and hard.document.misc_u32(NewCity.MISC_BOND_RATES) == 3,
+			and hard.document.misc_u32(Sc2MiscLayout.BONDS) == 1
+			and hard.document.misc_u32(Sc2MiscLayout.BOND_RATES) == 3,
 			"Hard new city stores its 3 percent starting bond",
 		)
 		_check(
-			hard.document.misc_i32(bond_budget + NewCity.BUDGET_CURRENT) == 1
-			and hard.document.misc_i32(bond_budget + NewCity.BUDGET_FUNDING) == 30000
-			and hard.document.misc_i32(bond_budget + NewCity.BUDGET_YEAR_TO_DATE) == 30000
-			and hard.document.misc_i32(bond_budget + NewCity.BUDGET_COUNT_MONTH_0) == 1
-			and hard.document.misc_i32(bond_budget + NewCity.BUDGET_FUND_MONTH_0) == 30000,
+			hard.document.misc_i32(bond_budget + Sc2BudgetLayout.CURRENT) == 1
+			and hard.document.misc_i32(bond_budget + Sc2BudgetLayout.FUNDING) == 30000
+			and hard.document.misc_i32(bond_budget + Sc2BudgetLayout.YEAR_TO_DATE) == 30000
+			and hard.document.misc_i32(bond_budget + Sc2BudgetLayout.MONTHS) == 1
+			and hard.document.misc_i32(bond_budget + (Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING)) == 30000,
 			"Hard new city initializes the saved Bonds budget record",
 		)
 		_check(
-			hard.document.misc_u32(NewCity.MISC_NATIONAL_POPULATION) == 150000
-			and hard.document.misc_u32(NewCity.MISC_NATIONAL_ECONOMY_TREND) == 2,
+			hard.document.misc_u32(Sc2MiscLayout.NATIONAL_POPULATION) == 150000
+			and hard.document.misc_u32(Sc2MiscLayout.NATIONAL_ECONOMY_TREND) == 2,
 			"Hard year 2050 uses the recovered national settings",
 		)
 
@@ -458,7 +458,7 @@ func _test_new_city_neighbors(template: Sc2File) -> void:
 	_check(
 		ocean.ok
 		and ocean_records[0] == [0, 0, 0]
-		and ocean.document.misc_u32(Sc2MiscLayout.NEIGHBORS + NewCity.NEIGHBOR_FAME) == 0
+		and ocean.document.misc_u32(Sc2MiscLayout.NEIGHBORS + 12) == 0
 		and ocean_records.slice(1).all(func(record: Array) -> bool: return record[0] > 0),
 		"An ocean map makes only the first neighbor the ocean",
 	)
@@ -490,10 +490,10 @@ func _neighbor_records(document: Sc2File) -> Array:
 	var records := []
 
 	for slot in CityNeighbors.COUNT:
-		var offset := Sc2MiscLayout.NEIGHBORS + slot * NewCity.NEIGHBOR_STRIDE
+		var offset := Sc2MiscLayout.NEIGHBORS + slot * CityNeighbors.STRIDE
 		records.append([
-			document.misc_u32(offset), document.misc_u32(offset + NewCity.NEIGHBOR_POPULATION),
-			document.misc_u32(offset + NewCity.NEIGHBOR_VALUE),
+			document.misc_u32(offset), document.misc_u32(offset + 4),
+			document.misc_u32(offset + 8),
 		])
 
 	return records

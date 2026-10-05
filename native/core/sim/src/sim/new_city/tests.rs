@@ -333,3 +333,75 @@ mod rules {
         assert!((3..=4).contains(&turns), "keep bends broad: {turns} turns");
     }
 }
+
+/// Found the cities of the `new_cities` section of golden.json, as
+/// NewCityTerrainSession.create_city does after its preview.
+#[test]
+fn founded_cities_match_the_corpus() {
+    use super::setup::{self, Founding};
+    use crate::sim::random::{GameLcgRandom, SimRandom};
+
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../game/tests/fixtures/corpus/golden.json");
+    let corpus = json::parse(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let cities = corpus.as_object().unwrap().get("new_cities").unwrap().as_object().unwrap();
+
+    let cases: [(&str, i64, &str, &[&str], bool); 5] = [
+        ("classic-128", 128, "classic", &[], false),
+        ("island-128", 128, "island", &[], false),
+        ("canyon-native-128", 128, "classic", &["canyon"], true),
+        ("classic-256", 256, "classic", &[], false),
+        ("bay-native-256", 256, "classic", &["bay", "meander"], true),
+    ];
+
+    for (key, size, layout, features, native_maps) in cases {
+        let terrain = Options {
+            ocean: false,
+            river: true,
+            hills: 12,
+            water: 5,
+            trees: 15,
+            layout: layout.into(),
+            features: features.iter().map(|name| name.to_string()).collect(),
+            smooth_slopes: false,
+        };
+
+        let settings = Preview {
+            size,
+            native_maps,
+            terrain: terrain.clone(),
+            process_start: 123 + key.len() as i64,
+            game_start: 456,
+        };
+
+        let (preview_document, _, process, game) = preview(&settings).unwrap();
+        let expected = cities.get(key).unwrap().as_object().unwrap();
+        assert_eq!(
+            Some(&Value::String(chunks_hash(&preview_document))),
+            expected.get("preview"),
+            "{key} preview"
+        );
+
+        let founding = Founding {
+            city_name: "Corpus".into(),
+            mayor_name: "Mayor".into(),
+            difficulty: 2,
+            starting_year: 1950,
+            terrain: None,
+            newspaper_session: Vec::new(),
+            island: super::is_island(layout, &terrain.features),
+        };
+
+        let founded = setup::create(
+            &preview_document,
+            &founding,
+            &mut SimRandom::new(process),
+            Some(&mut GameLcgRandom::new(game)),
+        )
+        .unwrap();
+        assert_eq!(
+            Some(&Value::String(chunks_hash(&founded.document))),
+            expected.get("city"),
+            "{key} city"
+        );
+    }
+}

@@ -58,24 +58,12 @@ static func generate(
 
 	process_random.state = response.randoms[0]
 	game_random.state = response.randoms[2]
-	var summary: Dictionary = response.result
+	var options := Options.new()
+	options.hills = hills
+	options.water = water
+	options.trees = trees
 
-	var result := Result.new()
-	result.ok = true
-	result.has_ocean = summary.has_ocean
-	result.has_river = summary.has_river
-	result.hills = hills
-	result.water = water
-	result.trees = trees
-	result.water_level = summary.water_level
-	result.water_tiles = summary.water_tiles
-	result.salt_water_tiles = summary.salt_water_tiles
-	result.tree_tiles = summary.tree_tiles
-	result.minimum_altitude = summary.minimum_altitude
-	result.maximum_altitude = summary.maximum_altitude
-	result.error = ""
-
-	return result
+	return Result.from_summary(response.result, options)
 
 
 # an island map has ocean on all four sides
@@ -142,5 +130,24 @@ class Result extends RefCounted:
 	static func failure(message: String) -> Result:
 		var result := Result.new()
 		result.error = message
+
+		return result
+
+	# the result of native terrain: its settings and counts
+	static func from_summary(summary: Dictionary, options: Options) -> Result:
+		var result := Result.new()
+		result.ok = true
+		result.has_ocean = summary.has_ocean
+		result.has_river = summary.has_river
+		result.hills = options.hills
+		result.water = options.water
+		result.trees = options.trees
+		result.water_level = summary.water_level
+		result.water_tiles = summary.water_tiles
+		result.salt_water_tiles = summary.salt_water_tiles
+		result.tree_tiles = summary.tree_tiles
+		result.minimum_altitude = summary.minimum_altitude
+		result.maximum_altitude = summary.maximum_altitude
+		result.error = ""
 
 		return result

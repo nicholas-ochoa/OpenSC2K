@@ -12,6 +12,7 @@ pub mod features;
 pub mod gd;
 pub mod heights;
 pub mod noise;
+pub mod setup;
 pub mod template;
 
 #[cfg(test)]

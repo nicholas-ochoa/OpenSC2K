@@ -244,6 +244,35 @@ pub fn document_from(fields: &VarDictionary) -> Document {
     }
 }
 
+/// New City terrain options from `{ocean, river, hills, water, trees, layout, features, smooth_slopes}`.
+pub fn terrain_options(fields: &VarDictionary) -> sc2k_sim::sim::new_city::Options {
+    sc2k_sim::sim::new_city::Options {
+        ocean: convert::boolean(fields, "ocean", false),
+        river: convert::boolean(fields, "river", false),
+        hills: convert::int(fields, "hills", 0),
+        water: convert::int(fields, "water", 0),
+        trees: convert::int(fields, "trees", 0),
+        layout: convert::string(fields, "layout"),
+        features: convert::strings(fields, "features"),
+        smooth_slopes: convert::boolean(fields, "smooth_slopes", false),
+    }
+}
+
+/// The settings and counts of generated terrain.
+pub fn generated_value(generated: &sc2k_sim::sim::new_city::Generated) -> VarDictionary {
+    let summary = &generated.summary;
+    let mut result = VarDictionary::new();
+    result.set("has_ocean", generated.has_ocean);
+    result.set("has_river", generated.has_river);
+    result.set("water_level", generated.water_level);
+    result.set("water_tiles", summary.water_tiles);
+    result.set("salt_water_tiles", summary.salt_water_tiles);
+    result.set("tree_tiles", summary.tree_tiles);
+    result.set("minimum_altitude", summary.minimum_altitude);
+    result.set("maximum_altitude", summary.maximum_altitude);
+    result
+}
+
 /// The SC2X state after a call that may change it, or an empty dictionary.
 fn sc2x_of(document: &Document) -> VarDictionary {
     document.sc2x.as_ref().map(sc2x_value).unwrap_or_default()
@@ -452,6 +481,56 @@ impl NativeCityDocument {
             Ok(bytes) => {
                 let mut result = success();
                 result.set("bytes", &packed(&bytes));
+                result
+            }
+            Err(error) => failure(&error),
+        }
+    }
+
+    /// `{ok, error, document, city_name, mayor_name, invention_years, terrain,
+    /// random_state, game_state}`: found a new city from `template`. `settings`
+    /// has `city_name`, `mayor_name`, `difficulty`, `starting_year`,
+    /// `newspaper_session`, `island`, and optional `terrain` options. A negative
+    /// `game_state` means no game generator.
+    #[func]
+    fn found_city(template: VarDictionary, settings: VarDictionary, random_state: i64, game_state: i64) -> VarDictionary {
+        use sc2k_sim::sim::new_city::setup::{self, Founding};
+        use sc2k_sim::sim::random::{GameLcgRandom, SimRandom};
+
+        let terrain = convert::dictionary(&settings, "terrain");
+        let founding = Founding {
+            city_name: convert::string(&settings, "city_name"),
+            mayor_name: convert::string(&settings, "mayor_name"),
+            difficulty: convert::int(&settings, "difficulty", 0),
+            starting_year: convert::int(&settings, "starting_year", 0),
+            terrain: (!terrain.is_empty()).then(|| terrain_options(&terrain)),
+            newspaper_session: convert::bytes(&settings, "newspaper_session"),
+            island: convert::boolean(&settings, "island", false),
+        };
+
+        let mut random = SimRandom::new(random_state);
+        let mut game = (game_state >= 0).then(|| GameLcgRandom::new(game_state));
+
+        match setup::create(&document_from(&template), &founding, &mut random, game.as_mut()) {
+            Ok(founded) => {
+                let mut result = success();
+                result.set("document", &document_value(&founded.document));
+                result.set("city_name", founded.city_name.as_str());
+                result.set("mayor_name", founded.mayor_name.as_str());
+                result.set(
+                    "invention_years",
+                    &PackedInt32Array::from(
+                        founded
+                            .invention_years
+                            .iter()
+                            .map(|year| *year as i32)
+                            .collect::<Vec<_>>()
+                            .as_slice(),
+                    ),
+                );
+                result.set("terrain", &founded.terrain.as_ref().map(generated_value).unwrap_or_default());
+                result.set("random_state", random.state);
+                result.set("game_state", game.map_or(-1, |game| game.state));
                 result
             }
             Err(error) => failure(&error),
