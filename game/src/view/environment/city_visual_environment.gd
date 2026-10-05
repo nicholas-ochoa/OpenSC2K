@@ -56,7 +56,7 @@ func reload_luts() -> void:
 		message += "\n" + "\n".join(profiles.issues)
 	if not app.preferences.visual_enhancements.lut_path.is_empty() and lut == null:
 		message += "\nOptional color LUT: missing or invalid; neutral fallback"
-	app.assets.show_graphics_source_error(message, "Visual Enhancements")
+	app.main_overlays.settings_dialog.show_visual_message(message)
 
 
 func export_luts() -> void:
@@ -69,7 +69,7 @@ func export_luts() -> void:
 		values.lut_folder = folder
 		app.main_overlays.settings_dialog.visual_tab.show_values(values)
 		app.settings.apply_settings()
-	app.assets.show_graphics_source_error(error if not error.is_empty() else "Editable LUT profiles and neutral template exported to:\n" + folder + "\nExisting files were preserved.", "Visual Enhancements")
+	app.main_overlays.settings_dialog.show_visual_message(error if not error.is_empty() else "Editable LUT profiles and neutral template exported to:\n" + folder + "\nExisting files were preserved.")
 
 
 func _configure_water(options: Dictionary, refresh := true) -> void:

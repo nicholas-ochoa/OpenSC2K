@@ -60,6 +60,7 @@ var reset_controls_dialog: ConfirmationDialog
 # true while the application fills the controls with the saved values
 var loading_values := false
 var visual_tab: VisualEnhancementsTab
+var visual_message_dialog: AcceptDialog
 
 
 func _ready() -> void:
@@ -177,6 +178,19 @@ func _build_controls_reset(content: VBoxContainer) -> void:
 	reset_controls_dialog.canceled.connect(button_clicked.emit)
 	add_child(reset_controls_dialog)
 	_update_use_defaults(tabs.current_tab)
+
+
+func show_visual_message(message: String) -> void:
+	if visual_message_dialog == null:
+		visual_message_dialog = AcceptDialog.new()
+		visual_message_dialog.title = "Visual Enhancements"
+		visual_message_dialog.dialog_autowrap = true
+		visual_message_dialog.exclusive = true
+		visual_message_dialog.confirmed.connect(button_clicked.emit)
+		visual_message_dialog.canceled.connect(button_clicked.emit)
+		add_child(visual_message_dialog)
+	visual_message_dialog.dialog_text = message
+	visual_message_dialog.popup_centered(Vector2i(620, 220))
 
 
 func _update_use_defaults(tab: int) -> void:
