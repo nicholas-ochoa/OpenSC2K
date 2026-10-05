@@ -11,6 +11,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_check_motion()
+	_check_trains()
 	_check_subpixels()
 	_check_lifecycle()
 	_check_shadow()
@@ -163,9 +164,26 @@ func _check_application() -> void:
 	app.moving_sprites.process(0.1)
 	assert(DocumentState.capture(city.document) == before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	# Exercise the actual train draw pipeline, retaining native crossing masks.
+	for x in range(64, 67):
+		city.set_building_id(x, 64, BuildingTileIds.RAIL_STRAIGHT_2)
+	write_thing(city, 1, {"type": 10, "x": 64, "y": 64})
+	app.moving_sprites.refresh_moving_things()
+	var train_position := app.map_view.dynamic_sprites[0].position
+	city.set_text_overlay_id(64, 64, 0)
+	write_thing(city, 1, {"x": 65})
+	app.moving_sprites.refresh_moving_things()
+	assert(app.map_view.dynamic_sprites[0].position == train_position)
+	before = DocumentState.capture(city.document)
+	app.moving_sprites.process(0.0125)
+	assert(app.map_view.dynamic_sprites[0].position.is_equal_approx(train_position + Vector2(1, 0.5)))
+	app.preferences.visual_enhancements.traffic_trains_enabled = false
+	app.moving_sprites.refresh_moving_things()
+	assert(motion.tracks.is_empty() and app.map_view.dynamic_sprites[0].position == train_position + Vector2(16, 8))
+	assert(DocumentState.capture(city.document) == before)
 	var tab := app.main_overlays.settings_dialog.visual_tab
 	var selected := tab.selected_values()
-	assert(selected.traffic_planes_enabled and selected.traffic_helicopters_enabled and selected.traffic_ships_enabled)
+	assert(selected.traffic_planes_enabled and selected.traffic_helicopters_enabled and selected.traffic_ships_enabled and selected.traffic_trains_enabled)
 	selected.traffic_planes_enabled = false
 	tab.show_values(selected)
 	assert(not tab.selected_values().traffic_planes_enabled and tab.selected_values().traffic_ships_enabled)
@@ -210,6 +228,48 @@ static func _check_subpixels() -> void:
 		var middle := Vector2(source.position * divisor) + motion.display_offset(source, divisor)
 		assert(middle.is_equal_approx(initial + Vector2(0.5, 0.25)),
 			"Even one-pixel ship steps must move through fractional display positions at every artwork size")
+
+
+static func _check_trains() -> void:
+	var options := VisualEnhancementOptions.normalize({})
+	for type in [10, 11]:
+		for direction in 4:
+			var city := fixture(type)
+			city.set_building_id(64, 64, BuildingTileIds.RAIL_STRAIGHT_1 if direction % 2 == 0 else BuildingTileIds.RAIL_STRAIGHT_2)
+			var motion := CityTrafficMotion.new()
+			motion.observe(city, options)
+			var old := motion.tracks[1].current
+			var tile: Vector2i = Vector2i(64, 64) + CityLifePaths.DIRECTIONS[direction]
+			city.set_building_id(tile.x, tile.y, city.building_id(64, 64))
+			city.set_text_overlay_id(64, 64, 0)
+			write_thing(city, 1, {"x": tile.x, "y": tile.y, "px": 255, "py": 255, "z": 255})
+			motion.observe(city, options)
+			assert(motion.tracks[1].current == old, "Both engine and car must retain their displayed position on publication")
+			var before := DocumentState.capture(city.document)
+			motion.advance(0.0125)
+			var moved := motion.tracks[1].current - old
+			assert(is_equal_approx(absf(moved.x), 1.0) and is_equal_approx(absf(moved.y), 0.5), "Trains must advance through individual source pixels")
+			motion.advance(0.1875)
+			assert(motion.tracks[1].current == motion.tracks[1].target)
+			assert(DocumentState.capture(city.document) == before)
+			options.traffic_trains_enabled = false
+			motion.observe(city, options)
+			assert(motion.tracks.is_empty())
+			options.traffic_trains_enabled = true
+	# Rail artwork offsets and elevated bridge decks belong to the displayed anchor.
+	var city := fixture(10)
+	city.set_building_id(64, 64, BuildingTileIds.RAIL_BRIDGE)
+	city.set_water_altitude(64, 64, 4)
+	var motion := CityTrafficMotion.new()
+	motion.observe(city, options)
+	assert(motion.tracks[1].target.y == 128 * 8 - 5 * 12)
+	city.set_building_id(64, 64, BuildingTileIds.RAIL_CURVE_1)
+	motion.observe(city, options)
+	var train := IsometricMovingVisuals.train_sprite(city, 64, 64, city.thing(1))
+	assert(motion.tracks[1].target.x == train.screen_x and motion.tracks[1].target.y == 128 * 8 + train.screen_y - train.elevation)
+	write_thing(city, 1, {"type": 12})
+	motion.observe(city, options)
+	assert(motion.tracks.is_empty(), "Entering the subway must remove the surface train immediately")
 
 
 static func fixture(type: int) -> CityState:

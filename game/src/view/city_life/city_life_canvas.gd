@@ -9,7 +9,7 @@ const MAX_TEXTURE_EDGE := 4096
 var image: Image
 var texture: ImageTexture
 var source_bounds := Rect2i()
-var _occluders: Dictionary[Vector2i, Array] = {}
+var _occluders: Dictionary[Vector3i, Array] = {}
 var _occlusion_signature: Array = []
 
 
@@ -48,7 +48,7 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 		var origin := Vector2i(figure.position.round()) - Vector2i(sprite.get_width() / 2, sprite.get_height() - 1)
 		if not source_bounds.intersects(Rect2i(origin, sprite.get_size())):
 			continue
-		var candidates := _candidates(app, figure.tile)
+		var candidates := _candidates(app, figure.tile, figure.enter)
 		var opacity := clampf(minf(figure.age / 0.3, (figure.lifetime - figure.age) / 0.5), 0.0, 1.0)
 		stamp(image, source_bounds.position, sprite, origin, candidates, opacity)
 	texture.update(image)
@@ -69,25 +69,56 @@ func sync_view(app: CityApplication) -> void:
 	app.map_view.layers._apply_environment(material as ShaderMaterial)
 
 
-func _candidates(app: CityApplication, tile: Vector2i) -> Array:
-	if _occluders.has(tile):
-		return _occluders[tile]
+func _candidates(app: CityApplication, tile: Vector2i, enter: int = 0) -> Array:
 	var city := app.document_state.city
-	var center := CityLifePaths.point(city, tile, 0, 2, 0.5, false)
+	var key := Vector3i(tile.x, tile.y, enter % 2)
+	if _occluders.has(key):
+		return _occluders[key]
+	var center := CityLifePaths.point(city, tile, enter, (enter + 2) % 4, 0.5, false)
 	var bounds := Rect2i(Vector2i(center) - Vector2i(32, 28), Vector2i(64, 48))
 	var view := app.static_render.city_view_size()
 	var archive := app.static_render.sprite_archive_for_view(view)
 	var divisor := IsometricGeometry.view_configuration(view).divisor
 	var depth := (tile.x + tile.y) * city.map_size + tile.y
+	var id := city.building_id(tile.x, tile.y)
+	var tunnel := id in [BuildingTileIds.TUNNEL_ENTRANCE_1, BuildingTileIds.TUNNEL_ENTRANCE_2]
+	var own_structure := tunnel or (id >= BuildingTileIds.SUSPENSION_BRIDGE_1 and id <= BuildingTileIds.RAISING_BRIDGE_CLOSED) \
+		or (id >= BuildingTileIds.HIGHWAY_STRAIGHT_1 and id <= BuildingTileIds.HIGHWAY_POWER_CROSSING_2) \
+		or (id >= BuildingTileIds.HIGHWAY_SLOPE_1 and id <= BuildingTileIds.REINFORCED_HIGHWAY_BRIDGE)
+	var section := CityLifePaths.section_origin(city, tile)
+	var lower_crossing := id in [BuildingTileIds.HIGHWAY_ROAD_CROSSING_1, BuildingTileIds.HIGHWAY_ROAD_CROSSING_2] \
+		and CityLifePaths.edge_height(city, tile, enter) < city.land_altitude(tile.x, tile.y) + 1.0
 	var candidates: Array = []
 	for command in app.moving_sprites.static_occlusion_candidates(bounds):
-		if command.depth_order <= depth:
+		var command_tile := Vector2i(command.depth_order % city.map_size, 0)
+		command_tile = Vector2i(int(command.depth_order / city.map_size) - command_tile.x, command_tile.x)
+		var own := own_structure and (command_tile == tile or (id >= BuildingTileIds.HIGHWAY_SLOPE_1 \
+			and command.sprite_id % 500 == id and CityLifePaths.section_origin(city, command_tile) == section))
+		if command.depth_order <= depth and not own:
 			continue
 		var resource := app.moving_sprites.dynamic_sprite_resource(archive, command.sprite_id, command.flip, divisor)
 		if resource != null:
-			candidates.append({"origin": Vector2i(command.position) * divisor, "image": resource.image})
-	_occluders[tile] = candidates
+			var origin := Vector2i(command.position) * divisor
+			var mask: Image = resource.image
+			if own:
+				if lower_crossing:
+					mask = app.moving_sprites._dynamic_train_foreground_image(archive, command, divisor, mask)
+				elif not tunnel:
+					# The deck is beneath the car; its towers and rails remain foreground.
+					mask = deck_foreground(mask, origin, center, -0.5 if enter % 2 == 0 else 0.5)
+			candidates.append({"origin": origin, "image": mask})
+	_occluders[key] = candidates
 	return candidates
+
+
+static func deck_foreground(source: Image, origin: Vector2i, surface: Vector2, slope: float) -> Image:
+	var mask := source.duplicate() as Image
+	for x in mask.get_width():
+		var cutoff := surface.y + (origin.x + x - surface.x) * slope - 2.0
+		for y in mask.get_height():
+			if origin.y + y >= cutoff:
+				mask.set_pixel(x, y, Color.TRANSPARENT)
+	return mask
 
 
 static func stamp(destination: Image, offset: Vector2i, sprite: Image, origin: Vector2i, occluders: Array, opacity: float = 1.0) -> void:

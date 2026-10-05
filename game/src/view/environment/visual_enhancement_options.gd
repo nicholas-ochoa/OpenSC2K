@@ -16,6 +16,7 @@ const FIELDS := [
 	["traffic_helicopters_enabled", "Smooth helicopters", "bool", true],
 	["traffic_planes_enabled", "Smooth airplanes", "bool", true],
 	["traffic_ships_enabled", "Smooth ships and sailboats", "bool", true],
+	["traffic_trains_enabled", "Smooth trains", "bool", true],
 	["traffic_shadows_enabled", "Transparent aircraft shadows", "bool", true],
 	["day_enabled", "Day and night", "bool", true],
 	["day_lut_strength", "Time of day LUT strength", "number", 0.5, 0.0, 1.0, 0.05],

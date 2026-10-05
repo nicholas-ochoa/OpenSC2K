@@ -3,7 +3,8 @@ extends RefCounted
 ## Interpolate completed moving-object positions. Never predict or write a route.
 
 const STEP_SECONDS := GameSpeedController.BASE_TICK_MSEC / 1000.0
-const OPTION_BY_TYPE := {1: "traffic_planes_enabled", 2: "traffic_helicopters_enabled", 3: "traffic_ships_enabled", 9: "traffic_ships_enabled"}
+const OPTION_BY_TYPE := {1: "traffic_planes_enabled", 2: "traffic_helicopters_enabled", 3: "traffic_ships_enabled", 9: "traffic_ships_enabled",
+	10: "traffic_trains_enabled", 11: "traffic_trains_enabled"}
 
 var tracks: Dictionary[int, Track] = {}
 var _signature: Array = []
@@ -33,6 +34,15 @@ func observe(city: CityState, options: Dictionary) -> void:
 		var tile := Vector2(thing.x, thing.y) + Vector2(thing.px, thing.py) / 16.0
 		var point := Vector3((tile.x - tile.y) * 16.0,
 			(tile.x + tile.y) * 8.0 - city.object_altitude(thing.x, thing.y) * 12.0, thing.z * 8.0)
+		if thing.type in [10, 11]:
+			# Trains use whole-tile records and artwork-specific rail offsets, not px/py/z.
+			var train := IsometricMovingVisuals.train_sprite(city, thing.x, thing.y, thing)
+			if train == null:
+				seen.erase(record)
+				continue
+			tile = Vector2(thing.x, thing.y)
+			point = Vector3((tile.x - tile.y) * 16.0 + train.screen_x,
+				(tile.x + tile.y) * 8.0 + train.screen_y - train.elevation, 0.0)
 		var track: Track = tracks.get(record)
 		if track == null or track.type != thing.type or track.target.distance_to(point) > 64.0:
 			# New records and teleports appear at their actual position.
@@ -49,7 +59,7 @@ func observe(city: CityState, options: Dictionary) -> void:
 			track.target = point
 			track.target_tile = tile
 			track.elapsed = 0.0
-		track.subtile = Vector2(thing.px - thing.py, (thing.px + thing.py) * 0.5)
+		track.subtile = Vector2.ZERO if thing.type in [10, 11] else Vector2(thing.px - thing.py, (thing.px + thing.py) * 0.5)
 	for record in tracks.keys():
 		if not seen.has(record):
 			tracks.erase(record)

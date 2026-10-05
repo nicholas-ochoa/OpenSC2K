@@ -196,11 +196,15 @@ func _spawn(city: CityState, options: Dictionary) -> void:
 func _exit(city: CityState, figure: Figure) -> int:
 	var choices: Array[int] = []
 	for direction in 4:
-		if direction != figure.enter and CityLifePaths.connected(city, figure.tile, direction, figure.walking):
+		if direction != figure.enter and CityLifePaths.can_turn(city, figure.tile, figure.enter, direction) \
+				and CityLifePaths.connected(city, figure.tile, direction, figure.walking):
 			if figure.vehicle_kind == CityLifeSprites.Vehicle.BUS and not _bus_tiles.has(figure.tile + CityLifePaths.DIRECTIONS[direction]):
 				continue
 			choices.append(direction)
 	if choices.is_empty():
+		if city.building_id(figure.tile.x, figure.tile.y) in [BuildingTileIds.TUNNEL_ENTRANCE_1, BuildingTileIds.TUNNEL_ENTRANCE_2]:
+			# Finish the visible lane inside the portal, then retire; do not simulate a tunnel route.
+			return (figure.enter + 2) % 4
 		return -1
 	var straight := (figure.enter + 2) % 4
 	if straight in choices and random.randf() < 0.7:

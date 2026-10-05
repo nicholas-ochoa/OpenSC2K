@@ -331,7 +331,12 @@ impl Builder {
     }
 
     fn traffic_sprite(&self, x: i32, y: i32, b: u8) -> Option<(i32, bool)> {
-        if self.config.individual_traffic && ((0x1d..=0x2b).contains(&b) || (0x43..=0x50).contains(&b)) {
+        if self.config.individual_traffic
+            && ((tiles::ROAD_STRAIGHT_1..=tiles::ROAD_CROSSROADS).contains(&b)
+                || (tiles::TUNNEL_ENTRANCE_1..=tiles::TUNNEL_ENTRANCE_2).contains(&b)
+                || (tiles::ROAD_POWER_CROSSING_1..=tiles::RAISING_BRIDGE_CLOSED).contains(&b)
+                || (tiles::HIGHWAY_ONRAMP_1..=tiles::REINFORCED_HIGHWAY_BRIDGE).contains(&b))
+        {
             return None;
         }
         let mut variant = *TRAFFIC.get(usize::from(b.checked_sub(tiles::ROAD_STRAIGHT_1)?))?;

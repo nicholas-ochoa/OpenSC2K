@@ -1,3 +1,5 @@
+use super::ids::building_tile_ids as tiles;
+use super::painter::TRAFFIC;
 use super::*;
 
 #[test]
@@ -12,7 +14,21 @@ fn individual_traffic_replaces_supported_patterns_without_changing_the_city() {
     let enhanced = original.paint(3, 3).unwrap();
     assert!(classic.iter().any(|draw| draw.image >= 1_u64 << 32));
     assert!(!enhanced.iter().any(|draw| draw.image >= 1_u64 << 32));
-    assert!(original.paint(3, 4).unwrap().iter().any(|draw| draw.image >= 1_u64 << 32));
+    assert!(!original.paint(3, 4).unwrap().iter().any(|draw| draw.image >= 1_u64 << 32));
+    for tile in
+        (tiles::ROAD_STRAIGHT_1..=tiles::REINFORCED_HIGHWAY_BRIDGE).filter(|tile| TRAFFIC[usize::from(tile - tiles::ROAD_STRAIGHT_1)] != 0)
+    {
+        original.city.buildings[3 * 8 + 3] = tile;
+        original.city.zones[3 * 8 + 3] = 0x80;
+        original.config.individual_traffic = false;
+        let classic = original.paint(3, 3).unwrap();
+        original.config.individual_traffic = true;
+        let enhanced = original.paint(3, 3).unwrap();
+        assert!(classic.iter().any(|draw| draw.image >= 1_u64 << 32), "classic tile {tile:#x}");
+        assert!(!enhanced.iter().any(|draw| draw.image >= 1_u64 << 32), "enhanced tile {tile:#x}");
+    }
+    original.city.buildings = before.buildings.clone();
+    original.city.zones = before.zones.clone();
     assert_eq!(before.traffic, original.city.traffic);
     assert_eq!(before.buildings, original.city.buildings);
 }

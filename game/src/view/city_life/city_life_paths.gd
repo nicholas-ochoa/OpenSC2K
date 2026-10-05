@@ -16,16 +16,73 @@ static func ports(city: CityState, tile: Vector2i) -> int:
 		return ROAD_PORTS[id - Tiles.ROAD_STRAIGHT_1]
 	if id >= Tiles.ROAD_POWER_CROSSING_1 and id <= Tiles.ROAD_RAIL_CROSSING_2:
 		return 5 if (id - Tiles.ROAD_POWER_CROSSING_1) % 2 == 0 else 10
+	if id in [Tiles.TUNNEL_ENTRANCE_1, Tiles.TUNNEL_ENTRANCE_2]:
+		return 10 if id == Tiles.TUNNEL_ENTRANCE_1 else 5
 	if id >= Tiles.HIGHWAY_STRAIGHT_1 and id <= Tiles.HIGHWAY_POWER_CROSSING_2:
+		if id in [Tiles.HIGHWAY_ROAD_CROSSING_1, Tiles.HIGHWAY_ROAD_CROSSING_2]:
+			return 15
 		return 5 if (id - Tiles.HIGHWAY_STRAIGHT_1) % 2 == 0 else 10
-	# Bridge decks and ramps need separate artwork-specific geometry. Keep their
-	# classic traffic until they have verified lane templates.
+	if id >= Tiles.SUSPENSION_BRIDGE_1 and id <= Tiles.RAISING_BRIDGE_CLOSED:
+		return 10 if city.is_flipped(tile.x, tile.y) else 5
+	if id >= Tiles.HIGHWAY_ONRAMP_1 and id <= Tiles.HIGHWAY_ONRAMP_4:
+		return (1 << ramp_highway_direction(city, tile)) | (1 << ramp_road_direction(city, tile))
+	if id >= Tiles.HIGHWAY_SLOPE_1 and id <= Tiles.HIGHWAY_SLOPE_4:
+		return 10 if (id - Tiles.HIGHWAY_SLOPE_1) % 2 == 0 else 5
+	if id >= Tiles.HIGHWAY_CURVE_1 and id <= Tiles.HIGHWAY_CURVE_4:
+		var quarter := tile - section_origin(city, tile)
+		var rotation := id - Tiles.HIGHWAY_CURVE_1
+		# The two decks join at the outside corner; one footprint cell is empty.
+		for turn in rotation:
+			quarter = Vector2i(quarter.y, 1 - quarter.x)
+		var mask := 3 if quarter in [Vector2i.ZERO, Vector2i.ONE] else (15 if quarter == Vector2i(1, 0) else 0)
+		for turn in rotation:
+			mask = ((mask << 1) | (mask >> 3)) & 15
+		return mask
+	if id == Tiles.HIGHWAY_INTERSECTION:
+		return 15
+	if id in [Tiles.HIGHWAY_BRIDGE, Tiles.REINFORCED_HIGHWAY_BRIDGE]:
+		return 10 if city.is_flipped(tile.x, tile.y) else 5
 	return 0
 
 
 static func walkable(city: CityState, tile: Vector2i) -> bool:
 	var id := city.building_id(tile.x, tile.y)
-	return id >= Tiles.ROAD_STRAIGHT_1 and id <= Tiles.ROAD_CROSSROADS
+	return (id >= Tiles.ROAD_STRAIGHT_1 and id <= Tiles.ROAD_CROSSROADS) \
+		or (id >= Tiles.SUSPENSION_BRIDGE_1 and id <= Tiles.RAISING_BRIDGE_CLOSED)
+
+
+static func section_origin(city: CityState, tile: Vector2i) -> Vector2i:
+	var corner := city.building_corners(tile.x, tile.y)
+	var corners := [0x10, 0x20, 0x40, 0x80]
+	var index := corners.find(corner)
+	if index < 0:
+		return tile
+	var quarter: Vector2i = [Vector2i.ZERO, Vector2i(1, 0), Vector2i.ONE, Vector2i(0, 1)][posmod(index - city.compass_rotation(), 4)]
+	return tile - quarter
+
+
+static func ramp_highway_direction(city: CityState, tile: Vector2i) -> int:
+	var direction: int = [0, 0, 2, 2][city.building_id(tile.x, tile.y) - Tiles.HIGHWAY_ONRAMP_1]
+	return 3 - direction if city.is_flipped(tile.x, tile.y) else direction
+
+
+static func ramp_road_direction(city: CityState, tile: Vector2i) -> int:
+	var direction: int = [1, 3, 3, 1][city.building_id(tile.x, tile.y) - Tiles.HIGHWAY_ONRAMP_1]
+	return 3 - direction if city.is_flipped(tile.x, tile.y) else direction
+
+
+static func can_turn(city: CityState, tile: Vector2i, enter: int, exit: int) -> bool:
+	var id := city.building_id(tile.x, tile.y)
+	# A road crossing underneath a highway has two separate display levels.
+	if id in [Tiles.HIGHWAY_ROAD_CROSSING_1, Tiles.HIGHWAY_ROAD_CROSSING_2]:
+		return exit == (enter + 2) % 4
+	if id >= Tiles.HIGHWAY_CURVE_1 and id <= Tiles.HIGHWAY_CURVE_4:
+		var rotation := id - Tiles.HIGHWAY_CURVE_1
+		var local_enter := posmod(enter - rotation, 4)
+		var local_exit := posmod(exit - rotation, 4)
+		# Inside and outside carriageways do not turn into each other at the shared cell.
+		return local_exit == (local_enter ^ 1)
+	return true
 
 
 static func connected(city: CityState, tile: Vector2i, direction: int, walking := false) -> bool:
@@ -38,10 +95,26 @@ static func connected(city: CityState, tile: Vector2i, direction: int, walking :
 
 
 static func edge_height(city: CityState, tile: Vector2i, direction: int) -> float:
+	var id := city.building_id(tile.x, tile.y)
+	if (id >= Tiles.SUSPENSION_BRIDGE_1 and id <= Tiles.RAISING_BRIDGE_CLOSED) \
+			or id in [Tiles.HIGHWAY_BRIDGE, Tiles.REINFORCED_HIGHWAY_BRIDGE]:
+		return city.object_altitude(tile.x, tile.y) + 1.0
+	var raised := 0.0
+	if id >= Tiles.HIGHWAY_ONRAMP_1 and id <= Tiles.HIGHWAY_ONRAMP_4:
+		raised = 1.0 if direction == ramp_highway_direction(city, tile) else 0.0
+	elif (id >= Tiles.HIGHWAY_STRAIGHT_1 and id <= Tiles.HIGHWAY_POWER_CROSSING_2) \
+			or (id >= Tiles.HIGHWAY_SLOPE_1 and id <= Tiles.HIGHWAY_INTERSECTION):
+		raised = 1.0
+		if id in [Tiles.HIGHWAY_ROAD_CROSSING_1, Tiles.HIGHWAY_ROAD_CROSSING_2]:
+			var highway_axis := 0 if id == Tiles.HIGHWAY_ROAD_CROSSING_1 else 1
+			if direction % 2 != highway_axis:
+				raised = 0.0
+	if raised > 0.0 and city.is_water(tile.x, tile.y):
+		return city.object_altitude(tile.x, tile.y) + raised
 	var shape := city.terrain_id(tile.x, tile.y) & 15
 	var mask: int = IsometricConstants.TERRAIN_SURFACE_CORNER_MASKS[shape] if shape < 15 else 0
 	var corners: Array = EDGE_CORNERS[direction]
-	return city.land_altitude(tile.x, tile.y) + float(((mask >> corners[0]) & 1) + ((mask >> corners[1]) & 1)) * 0.5
+	return city.land_altitude(tile.x, tile.y) + raised + float(((mask >> corners[0]) & 1) + ((mask >> corners[1]) & 1)) * 0.5
 
 
 static func point(city: CityState, tile: Vector2i, enter: int, exit: int, progress: float, walking: bool) -> Vector2:
