@@ -1723,5 +1723,19 @@
     "domain": "rendering",
     "lane": "native",
     "driver": "scene-batch"
+  },
+  {
+    "id": "vehicle_lights_test",
+    "script": "tests/vehicle_lights_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": ["ext/graphics/pack.json"]
+  },
+  {
+    "id": "vehicle_lights_gpu_test",
+    "script": "tests/vehicle_lights_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
   }
 ]

@@ -10,6 +10,7 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 var app: CityApplication
 var caches: RenderCaches
 var traffic_motion := CityTrafficMotion.new()
+var moving_lights := CityMovingLights.new()
 
 
 func _init(application: CityApplication) -> void:
@@ -163,11 +164,11 @@ func refresh_moving_things(view_size := -1) -> void:
 		visual.size = Vector2(resource.native_size)
 		visual.image = visual_image
 		if not command.shadow:
-			var emission := CityBrightmaps.transform_mask(sprite_archive.visual_emission.get(command.sprite_id), visual_image, command.flip)
+			var emission := CityBrightmaps.transform_mask(moving_lights.mask(sprite_archive, command.sprite_id), visual_image, command.flip)
 			if emission != null:
 				visual.emission_texture = ImageTexture.create_from_image(emission)
 		if sprite_archive.water_reflections and command.floating_altitude >= 0 and not command.shadow:
-			var lights := CityBrightmaps.transform_mask(sprite_archive.visual_emission.get(command.sprite_id), resource.image, command.flip)
+			var lights := CityBrightmaps.transform_mask(moving_lights.mask(sprite_archive, command.sprite_id), resource.image, command.flip)
 			visual.water_reflection = WaterReflectionSprite.create(resource.image, lights, position, int(command.floating_altitude))
 		visual.special_overlay = command.overlay >= 0
 		visual.batch_cache_key = visual_cache_key
