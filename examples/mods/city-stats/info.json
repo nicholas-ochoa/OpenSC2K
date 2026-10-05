@@ -1,0 +1,10 @@
+{
+  "id": "city-stats",
+  "name": "City Statistics",
+  "version": "1.0.0",
+  "description": "Records the population, funds and demand each month. The stats command shows them as a table, and other mods receive each month as a city-stats.recorded event.",
+  "main": "main.mjs",
+  "author": "OpenSC2K",
+  "website": "https://github.com/nicholas-ochoa/OpenSC2K",
+  "license": "MIT"
+}

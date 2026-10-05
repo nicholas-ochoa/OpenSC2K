@@ -2,11 +2,13 @@
 //! C sources in `quickjs`. `engine` runs one runtime and `prelude.js` defines
 //! its core: console, timers, events and script commands. `godot_class`
 //! holds `ScriptRuntime`, the Godot class. The game functions of scripts are
-//! GDScript host functions. Modules without Godot types run under `cargo test`.
+//! GDScript host functions. `sandbox` keeps a mod in its own folder. Modules
+//! without Godot types run under `cargo test`.
 mod engine;
 mod ffi;
 mod godot_class;
 mod inspector;
+mod sandbox;
 mod value;
 
 use godot::prelude::*;

@@ -6,6 +6,10 @@
 
   const { host, events, command } = global.__runtime;
 
+  // the file functions of a mod; only the runtime of a mod has them
+  const nativeFiles = global.__files;
+  delete global.__files;
+
   // a tile point from (x, y), ({ x, y }) or ([x, y])
   function point(x, y) {
     if (Array.isArray(x)) {
@@ -29,12 +33,18 @@
       return host('game.events');
     },
 
+    // the info of each mod that runs: [{ id, name, version, ... }]
+    get mods() {
+      return host('game.mods');
+    },
+
     on: events.on,
     once: events.once,
     off: events.off,
     listenerCount: events.listenerCount,
 
-    // sends an event to the script listeners only. The game does not see it
+    // sends an event to the script listeners of the console and of each mod,
+    // with a copy of the detail. The game does not see it
     emit: events.emit,
 
     // adds a console command: command(name, description, (...words) => text)
@@ -45,7 +55,8 @@
       host('game.status', String(text));
     },
 
-    // values that stay after the game closes. Each value must be JSON data
+    // values that stay after the game closes. Each value must be JSON data.
+    // Each mod has its own values, in storage.json in its folder
     storage: Object.freeze({
       get: (key, fallback) => host('storage.get', String(key), fallback === undefined ? null : fallback),
       set: (key, value) => host('storage.set', String(key), value),
@@ -353,9 +364,64 @@
     },
   });
 
+  // the bytes of a Uint8Array, another typed array, a DataView, an ArrayBuffer or an array of numbers
+  function bytes(data) {
+    if (data instanceof Uint8Array) {
+      return data;
+    }
+
+    if (data instanceof ArrayBuffer) {
+      return new Uint8Array(data);
+    }
+
+    if (ArrayBuffer.isView(data)) {
+      return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    }
+
+    if (Array.isArray(data)) {
+      return Uint8Array.from(data);
+    }
+
+    throw new TypeError('The data must be a Uint8Array, an ArrayBuffer, a typed array or an array of bytes');
+  }
+
+  // the files of the mod folder. Each path is relative to the folder; a path
+  // outside it throws an Error
+  function modFiles(native) {
+    return Object.freeze({
+      readText: (path) => native.readText(String(path)),
+      readBytes: (path) => native.readBytes(String(path)),
+      readJSON: (path) => JSON.parse(native.readText(String(path))),
+      writeText: (path, text) => native.write(String(path), String(text), false),
+      appendText: (path, text) => native.write(String(path), String(text), true),
+      writeBytes: (path, data) => native.write(String(path), bytes(data), false),
+      writeJSON: (path, value, space = 2) => native.write(String(path), JSON.stringify(value, null, space), false),
+      exists: (path) => native.exists(String(path)),
+      stat: (path) => native.stat(String(path)),
+      list: (path = '.') => native.list(String(path)),
+      makeFolder: (path) => native.makeFolder(String(path)),
+      remove: (path, options) => native.remove(String(path), Boolean(options && options.recursive)),
+      rename: (from, to) => native.rename(String(from), String(to)),
+    });
+  }
+
+  const globals = { game, city, budget, sim, tools, view, ui };
+  const info = nativeFiles ? host('mod.info') : null;
+
+  if (info) {
+    globals.mod = Object.freeze({
+      id: info.id,
+      name: info.name,
+      version: info.version,
+      // all fields of info.json
+      info: Object.freeze(info),
+      files: modFiles(nativeFiles),
+    });
+  }
+
   const fixed = { configurable: true, enumerable: true, writable: false };
 
-  for (const [name, value] of Object.entries({ game, city, budget, sim, tools, view, ui })) {
+  for (const [name, value] of Object.entries(globals)) {
     Object.defineProperty(global, name, { value, ...fixed });
   }
 })(globalThis);

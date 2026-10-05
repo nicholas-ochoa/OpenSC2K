@@ -275,7 +275,8 @@
 
       this.type = type;
       this.cancelable = Boolean(cancelable);
-      this.cancelled = false;
+      // a listener of an earlier runtime can cancel the event
+      this.cancelled = this.cancelable && detail !== null && typeof detail === 'object' && detail.cancelled === true;
     }
 
     // stops the action of a cancelable event, such as tool.beforeApply
@@ -499,7 +500,9 @@
     settle,
     reportUncaught,
     taps,
-    events: Object.freeze({ on, once, off, listenerCount, emit: (type, detail) => dispatch(type, detail, false) }),
+    // the game sends an event of a script to the listeners of each runtime:
+    // the console scripts and each mod
+    events: Object.freeze({ on, once, off, listenerCount, emit: (type, detail) => host('emit', String(type), detail) }),
     command,
   });
 

@@ -291,6 +291,29 @@ static func save_debug_mode(enabled: bool, path := default_path()) -> Error:
 	return config.save(path)
 
 
+# the ids of the mods that the player turned off (ApplicationMods)
+static func load_disabled_mods(path := default_path()) -> PackedStringArray:
+	var config := ConfigFile.new()
+
+	if config.load(path) != OK:
+		return PackedStringArray()
+
+	var value: Variant = config.get_value("mods", "disabled", PackedStringArray())
+
+	return PackedStringArray(value) if value is PackedStringArray or value is Array else PackedStringArray()
+
+
+static func save_disabled_mods(ids: PackedStringArray, path := default_path()) -> Error:
+	var config := ConfigFile.new()
+
+	if FileAccess.file_exists(path):
+		config.load(path)
+
+	config.set_value("mods", "disabled", ids)
+
+	return config.save(path)
+
+
 static func save_update_state(
 	last_check: int, skipped_version: String, checked_at: int, error: String, path := default_path()
 ) -> Error:

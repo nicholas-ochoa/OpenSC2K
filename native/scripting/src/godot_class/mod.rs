@@ -69,6 +69,36 @@ impl ScriptRuntime {
         GString::from(self.error.as_str())
     }
 
+    /// Keeps the scripts of this runtime in the folder of a mod: they import
+    /// only modules in it, and `mod.files` reads and writes only in it.
+    /// Call it before the first script. Returns an empty text, or why the
+    /// folder cannot be used.
+    #[func]
+    fn set_sandbox(&self, folder: GString) -> GString {
+        let Some(engine) = &self.engine else {
+            return GString::from(self.error.as_str());
+        };
+
+        match engine.set_sandbox(std::path::Path::new(&folder.to_string())) {
+            Ok(()) => GString::new(),
+            Err(error) => GString::from(error.as_str()),
+        }
+    }
+
+    /// Runs a file of the mod folder, such as the main file of a mod:
+    /// `{ok, error}`. The path is relative to the folder.
+    #[func]
+    fn run_sandbox_file(&self, path: GString) -> VarDictionary {
+        let Some(engine) = &self.engine else {
+            return self.missing_engine();
+        };
+
+        match engine.run_sandbox_file(&path.to_string()) {
+            Ok(()) => result(true, "value", Variant::nil(), ""),
+            Err(error) => result(false, "value", Variant::nil(), &error),
+        }
+    }
+
     #[func]
     fn set_host(&self, host: Callable) {
         let Some(engine) = &self.engine else {

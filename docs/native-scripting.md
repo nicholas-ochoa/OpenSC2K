@@ -13,6 +13,11 @@ and `build.rs` compiles them with the `cc` crate. The crate dependencies are
 - `src/ffi` holds the C API declarations. `shim.c` exports the static inline
   functions of `quickjs.h` that Rust cannot call. Only 64-bit targets are
   supported. There, a `JSValue` is a 16-byte struct, and `shim.c` checks this.
+- `src/sandbox` holds `Sandbox`, the folder of a mod. It turns a path relative
+  to the folder into a full path, and refuses a path that leaves the folder: an
+  absolute path, `..` above the folder, a link to a place outside, and names that
+  some systems change. `files.rs` holds the file operations. The tests are in
+  `tests.rs`.
 - `src/value.rs` holds `JsData`, a JavaScript value without Godot types, and
   its conversion to and from QuickJS values.
 - `src/engine` holds `Engine`, one runtime and its context:
@@ -20,7 +25,11 @@ and `build.rs` compiles them with the `cc` crate. The crate dependencies are
     The C callbacks read it through the opaque pointers.
   - `callbacks.rs` holds `__host`, the interrupt check of the time limit and the
     promise rejection tracker.
-  - `modules.rs` loads ES modules from files.
+  - `modules.rs` loads ES modules from files. With a sandbox, it loads only
+    the modules in the mod folder.
+  - `files_native.rs` holds `__files`, the file functions of a mod. Only a
+    runtime with a sandbox has them; the game API makes them `mod.files`.
+  - `sandbox_tests.rs` tests the files and modules of a mod.
   - `tests.rs` holds the unit tests.
 - `src/prelude.js` is the runtime core: `console`, the timers, the event bus,
   `inspect` and the script commands. It keeps `__host` as `__runtime.host`.
@@ -53,6 +62,15 @@ The first call from the game starts the time limit (5 seconds by default) and
 records the stack top. A nested call uses the same deadline. After the
 outermost call, the engine runs the promise jobs and reports each rejection
 without a handler through the host `console` function.
+
+## Mods
+
+The game makes one `ScriptRuntime` for each mod. `set_sandbox(folder)` gives
+the runtime its folder before the first script, and cannot change it later.
+`run_sandbox_file(path)` runs the main script of the mod; the path is relative
+to the folder. Each runtime has its own heap and time limit. GDScript binds the
+`ScriptContext` of the runtime to its host Callable, and copies the events of
+`game.emit` to the other runtimes. See [Mods](mods.md).
 
 ## Inspector
 

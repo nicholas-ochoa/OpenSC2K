@@ -1,0 +1,10 @@
+{
+  "id": "tax-advisor",
+  "name": "Tax Advisor",
+  "version": "1.0.0",
+  "description": "Moves each tax rate one point toward the demand each month.",
+  "main": "main.js",
+  "author": "OpenSC2K",
+  "website": "https://github.com/nicholas-ochoa/OpenSC2K",
+  "license": "MIT"
+}

@@ -1,10 +1,12 @@
 extends SceneTree
-## The example mods in examples/mods load and do what their comments say.
+## The example mods in examples/mods load from the mods folder, each in its
+## own runtime, and do what their comments say.
 
 const AppFixture = preload("res://tests/support/app_fixture.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const EXAMPLES := "res://../examples/mods"
+const MODS := ["city-stats", "disaster-response", "monthly-report", "protected-zones", "road-grid", "tax-advisor", "yearly-grant"]
 
 
 func _initialize() -> void:
@@ -12,6 +14,10 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	# copies, thus the files that the mods write stay out of the repository
+	for folder in MODS:
+		_copy(ProjectSettings.globalize_path(EXAMPLES.path_join(folder)), ModCatalog.default_folder().path_join(folder))
+
 	var main := (load("res://main.tscn") as PackedScene).instantiate() as CityApplication
 	AppFixture.configure(main)
 	root.add_child(main)
@@ -20,13 +26,13 @@ func _run() -> void:
 	main.frame.select_speed(GameSpeed.Speed.PAUSED)
 	var city := main.document_state.city
 
-	for file in ["yearly-grant.js", "disaster-response.js", "city-stats/main.mjs", "protected-zones.mjs", "road-grid.js",
-			"tax-advisor.js"]:
-		assert(main.scripting.run_file(ProjectSettings.globalize_path(EXAMPLES.path_join(file))), "%s runs" % file)
+	var running := main.scripting.mods.contexts().map(func(context: ScriptContext) -> String: return context.id)
+	assert(running == MODS, "Each example mod runs: %s" % str(running))
 
 	_check_grant(main, city)
 	_check_disaster_response(main)
 	_check_stats(main)
+	_check_monthly_report(main)
 	_check_protected_zones(main, city)
 	_check_road_grid(main, city)
 	_check_tax_advisor(main, city)
@@ -60,7 +66,7 @@ func _check_disaster_response(main: CityApplication) -> void:
 	assert(alert != null and alert.title == "Emergency", "A message window explains the pause")
 	alert.hide()
 	main.console_window.commands.execute("sim.endDisaster()")
-	assert(ConsoleLog.entries_since(0).any(func(entry: ConsoleLog.Entry) -> bool: return entry.text.begins_with("Fire ended.")))
+	assert(ConsoleLog.entries_since(0).any(func(entry: ConsoleLog.Entry) -> bool: return entry.text.begins_with("[disaster-response] Fire ended.")))
 
 
 func _check_stats(main: CityApplication) -> void:
@@ -69,6 +75,15 @@ func _check_stats(main: CityApplication) -> void:
 	var table := _command(main, "stats")
 	assert(table.split("\n").size() == 3 and table.split("\n")[0].contains("Month") and table.split("\n")[0].contains("Population"),
 		"Each month adds a row: " + table)
+
+
+func _check_monthly_report(main: CityApplication) -> void:
+	var reports := ModCatalog.default_folder().path_join("monthly-report/reports")
+	var files := DirAccess.get_files_at(reports)
+	assert(files.size() == 1 and files[0].ends_with(".csv"), "The report mod writes a file in its folder: %s" % str(files))
+	var lines := FileAccess.get_file_as_string(reports.path_join(files[0])).strip_edges().split("\n")
+	assert(lines.size() == 2 and lines[0].begins_with("month,population"), "The report has the month that city-stats sent")
+	assert(_command(main, "report").begins_with("month,population"), "The report command reads the file")
 
 
 func _check_protected_zones(main: CityApplication, city: CityState) -> void:
@@ -99,3 +114,13 @@ func _check_tax_advisor(main: CityApplication, city: CityState) -> void:
 		var rate: int = before[pair[0]]
 		var expected := mini(12, rate + 1) if pair[1] > 500 else (maxi(5, rate - 1) if pair[1] < -500 else rate)
 		assert(after[pair[0]] == expected, "The advisor moves each tax rate one point toward the demand")
+
+
+func _copy(from: String, to: String) -> void:
+	DirAccess.make_dir_recursive_absolute(to)
+
+	for file in DirAccess.get_files_at(from):
+		DirAccess.copy_absolute(from.path_join(file), to.path_join(file))
+
+	for folder in DirAccess.get_directories_at(from):
+		_copy(from.path_join(folder), to.path_join(folder))

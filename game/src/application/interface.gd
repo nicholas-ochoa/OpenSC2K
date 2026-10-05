@@ -180,6 +180,11 @@ func _build_main_menu() -> void:
 	app.main_overlays.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
 	app.main_overlays.settings_dialog.update_check_requested.connect(app.updates.check_now)
 	app.main_overlays.settings_dialog.controls_reset_requested.connect(app.settings.reset_controls)
+	var mods_panel := app.main_overlays.settings_dialog.mods_panel
+	mods_panel.mod_enabled_changed.connect(app.settings.set_mod_enabled)
+	mods_panel.reload_requested.connect(app.scripting.mods.reload)
+	mods_panel.open_folder_requested.connect(app.settings.open_mods_folder)
+	app.scripting.mods.changed.connect(app.settings.show_mods)
 	app.updates.bind_ui(app, app.main_overlays.update_dialog)
 	app.updates.running_changed.connect(app.main_overlays.settings_dialog.set_update_check_running)
 	app.updates.status_changed.connect(app.main_overlays.settings_dialog.set_update_status)

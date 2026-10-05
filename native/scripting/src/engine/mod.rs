@@ -3,12 +3,14 @@
 //! method takes `&self` and holds no borrow while JavaScript runs.
 
 mod callbacks;
+mod files_native;
 mod inspector_native;
 mod modules;
 mod state;
 
 use std::cell::{Cell, RefCell};
 use std::ffi::{CString, c_char, c_void};
+use std::path::Path;
 use std::time::Duration;
 
 pub use state::HostFunction;
@@ -16,6 +18,7 @@ use state::{EngineState, Entry};
 
 use crate::ffi::*;
 use crate::inspector::{Activity, Inspector};
+use crate::sandbox::Sandbox;
 use crate::value::{JsData, Owned, from_js, get_property, to_js, to_text};
 
 // the heap of one runtime. A larger script stops with an out-of-memory error
@@ -104,6 +107,46 @@ impl Engine {
 
             crate::value::set_property(self.context, global.value(), inspector_native::GLOBAL_NAME, native);
         }
+    }
+
+    /// Keeps the scripts of this runtime in the folder of a mod: they import
+    /// only modules in it, and `__files` reads and writes only in it. The
+    /// folder cannot change later.
+    pub fn set_sandbox(&self, root: &Path) -> Result<(), String> {
+        if self.state.sandbox.get().is_some() {
+            return Err("The script runtime already has a mod folder.".to_string());
+        }
+
+        let sandbox = Sandbox::new(root)?;
+        let _ = self.state.sandbox.set(sandbox);
+
+        unsafe {
+            let global = Owned::new(self.context, JS_GetGlobalObject(self.context));
+            let files = JS_NewObject(self.context);
+
+            for (name, magic, length) in files_native::FUNCTIONS {
+                let function = JS_NewCFunctionData(self.context, files_native::call, length, magic, 0, std::ptr::null_mut());
+                crate::value::set_property(self.context, files, name, function);
+            }
+
+            crate::value::set_property(self.context, global.value(), files_native::GLOBAL_NAME, files);
+        }
+
+        Ok(())
+    }
+
+    /// Runs a file of the mod folder, such as the main file of the mod. The
+    /// path is relative to the folder.
+    pub fn run_sandbox_file(&self, relative: &str) -> Result<(), String> {
+        let Some(sandbox) = self.state.sandbox.get() else {
+            return Err("The script runtime has no mod folder.".to_string());
+        };
+
+        let path = sandbox.resolve(relative)?;
+        let bytes = sandbox.read(relative)?;
+        let source = String::from_utf8(bytes).map_err(|_| format!("{relative} is not UTF-8 text."))?;
+
+        self.run_script(&source, &crate::sandbox::script_name(&path))
     }
 
     pub fn set_host(&self, host: Option<HostFunction>) {
@@ -544,5 +587,7 @@ impl Drop for Engine {
 
 #[cfg(test)]
 mod inspector_tests;
+#[cfg(test)]
+mod sandbox_tests;
 #[cfg(test)]
 mod tests;

@@ -337,6 +337,22 @@
     ]
   },
   {
+    "id": "mod_manifest_test",
+    "script": "tests/mod_manifest_test.gd",
+    "domain": "scripting",
+    "lane": "product"
+  },
+  {
+    "id": "mods_workflow_test",
+    "script": "tests/mods_workflow_test.gd",
+    "domain": "scripting",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "scripting_workflow_test",
     "script": "tests/scripting_workflow_test.gd",
     "domain": "scripting",

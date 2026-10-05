@@ -123,6 +123,7 @@ func _ready() -> void:
 		asset_state.reference_root = DataPack.default_folder()
 
 	settings.load_app_settings()
+	scripting.mods.load_all(ModCatalog.default_folder(), preferences.settings_path)
 	get_window().size_changed.connect(_on_window_size_changed)
 	assets.build_reference_import_dialogs()
 	assets.initialize_runtime()

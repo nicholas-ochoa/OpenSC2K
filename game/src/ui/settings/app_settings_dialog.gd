@@ -15,6 +15,7 @@ signal controls_reset_requested
 
 const CONTROLS_TAB := 3
 const DATA_TAB := 4
+const MODS_TAB := 5
 
 var pack_error_label: Label
 var shuffle_music_check: CheckBox
@@ -53,6 +54,7 @@ var check_for_updates_check: CheckBox
 var check_updates_now_button: Button
 var update_status_label: Label
 var controls_list: ControlsBindingList
+var mods_panel: ModsSettingsPanel
 var use_defaults_button: Button
 var reset_controls_dialog: ConfirmationDialog
 # true while the application fills the controls with the saved values
@@ -121,6 +123,16 @@ func _ready() -> void:
 	tabs.get_tab_bar().tab_clicked.connect(button_clicked.emit.unbind(1))
 	_build_controls_reset(content)
 	_watch_changes(tabs)
+	# a mod check box applies at once, not through settings_changed
+	var mods_scroll := ScrollContainer.new()
+	mods_scroll.name = "Mods"
+	mods_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	mods_panel = ModsSettingsPanel.new()
+	mods_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mods_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	mods_scroll.add_child(mods_panel)
+	tabs.add_child(mods_scroll)
+	_watch_clicks(mods_panel)
 	controls_list.bindings_changed.connect(_notify_change)
 	# closing the dialog applies a text field that still has focus
 	visibility_changed.connect(func() -> void:

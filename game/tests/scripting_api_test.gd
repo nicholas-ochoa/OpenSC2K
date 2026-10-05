@@ -160,7 +160,7 @@ func _check_ui_and_storage(main: CityApplication) -> void:
 	_eval(main, "game.storage.set('grant', { amount: 500, years: [2050, 2051] })")
 	assert(_eval(main, "game.storage.get('grant').years[1]") == "2051", "Storage keeps a value")
 	assert(_eval(main, "game.storage.get('missing', 'fallback')") == "\"fallback\"")
-	var stored: Variant = JSON.parse_string(FileAccess.get_file_as_string(ScriptingUiApi.storage_path()))
+	var stored: Variant = JSON.parse_string(FileAccess.get_file_as_string(ApplicationScripting.console_storage_path()))
 	assert(stored is Dictionary and int(stored.grant.amount) == 500, "Storage writes its file")
 	assert(_eval(main, "game.storage.remove('grant') && game.storage.keys().length") == "0")
 

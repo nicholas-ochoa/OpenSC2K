@@ -1,0 +1,13 @@
+{
+  "id": "monthly-report",
+  "name": "Monthly Report",
+  "version": "1.0.0",
+  "description": "Writes each month of City Statistics to a CSV file in its own folder. Shows how mods talk through events and use files.",
+  "main": "main.js",
+  "author": "OpenSC2K",
+  "website": "https://github.com/nicholas-ochoa/OpenSC2K",
+  "license": "MIT",
+  "dependencies": [
+    "city-stats"
+  ]
+}

@@ -31,7 +31,39 @@ func open_import_settings() -> void:
 	app.main_overlays.settings_dialog.tabs.current_tab = AppSettingsDialog.DATA_TAB
 
 
+func open_mods_settings() -> void:
+	open_settings_dialog()
+	app.main_overlays.settings_dialog.tabs.current_tab = AppSettingsDialog.MODS_TAB
+
+
+## Shows the mods in the Mods tab of Settings.
+func show_mods() -> void:
+	if app.main_overlays == null or app.main_overlays.settings_dialog == null:
+		return
+
+	var mods := app.scripting.mods
+	app.main_overlays.settings_dialog.mods_panel.show_mods(mods.rows(), mods.folder)
+
+
+func set_mod_enabled(id: String, enabled: bool) -> void:
+	var error := app.scripting.mods.set_enabled(id, enabled)
+
+	if not error.is_empty():
+		ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, error)
+
+	# the check box of a mod that cannot change goes back
+	show_mods()
+
+
+## Opens the mods folder in the file manager. Makes it first when it is missing.
+func open_mods_folder() -> void:
+	var folder := app.scripting.mods.folder
+	DirAccess.make_dir_recursive_absolute(folder)
+	OS.shell_open(folder)
+
+
 func open_settings_dialog() -> void:
+	show_mods()
 	app.main_overlays.settings_dialog.loading_values = true
 	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
 	app.main_overlays.settings_dialog.sprite_corrections_check.button_pressed = preferences.sprite_corrections

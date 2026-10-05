@@ -1,0 +1,10 @@
+{
+  "id": "protected-zones",
+  "name": "Protected Zones",
+  "version": "1.0.0",
+  "description": "The bulldozer and the terrain tools cannot change the tiles of a protected rectangle.",
+  "main": "main.mjs",
+  "author": "OpenSC2K",
+  "website": "https://github.com/nicholas-ochoa/OpenSC2K",
+  "license": "MIT"
+}

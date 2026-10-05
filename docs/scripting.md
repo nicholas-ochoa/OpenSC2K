@@ -5,12 +5,15 @@ OpenSC2K runs JavaScript for mods and developer tools. The runtime is
 the native `scripting` library (see [Native scripting](native-scripting.md)).
 Scripts can read and change the city, use the player tools, control the
 simulation, and react to game events. Chrome DevTools can connect to the runtime.
+A mod is a folder with an `info.json` file that the game loads at start; see
+[Mods](mods.md).
 
 This API is new. Names and fields can change.
 
 - [Run scripts](#run-scripts)
 - [Chrome DevTools](#chrome-devtools)
 - [Example mods](#example-mods)
+- [Mods](mods.md): the mod folder, info.json, the sandbox, `mod.files`, the Mods tab
 - [Rules for scripts](#rules-for-scripts)
 - [Globals](#globals)
 - [game](#game): events, console commands, storage, status bar
@@ -57,13 +60,16 @@ import { money } from './lib/format.mjs';
 | Command | Effect |
 | --- | --- |
 | `run <path>` | Runs a script file. |
-| `reset` | Stops all scripts: their listeners, timers and console commands. Also **Debug > Reset Script Runtime**. |
-| `scripts` | Shows the listeners, timers, commands and memory of the runtime. |
+| `reset` | Stops all scripts: their listeners, timers and console commands. The mods load again. Also **Debug > Reset Script Runtime**. |
+| `scripts` | Shows the listeners, timers, commands and memory of each runtime. |
 | `inspect [port]`, `inspect off` | Starts or stops the DevTools inspector. See [Chrome DevTools](#chrome-devtools). |
+| `inspect <mod id> [port]`, `inspect <mod id> off` | Starts or stops the DevTools inspector of a mod. Port 0, the default, selects a free port. |
+| `mods`, `mods enable <id>`, `mods disable <id>`, `mods reload` | Lists, turns on, turns off or reloads the mods. See [Mods](mods.md). |
 
-The runtime starts at its first use. All scripts share one global scope. A
-script stays active until a reset: its listeners, timers and commands continue
-after the file ran.
+The console runtime starts at its first use. All console input and script files
+share its global scope. A script stays active until a reset: its listeners,
+timers and commands continue after the file ran. Mods do not run in this
+runtime; see [Mods](mods.md).
 
 ## Chrome DevTools
 
@@ -97,31 +103,36 @@ address, and DevTools can reconnect.
 
 ## Example mods
 
-The folder `examples/mods` holds example mods. Run one with `run <path>` or
-**Debug > Run Script File**.
+The folder `examples/mods` holds example mods. Copy a mod folder into the
+`mods` folder of the data folder; see [Install a mod](mods.md#install-a-mod).
 
 | Mod | It shows |
 | --- | --- |
-| `yearly-grant.js` | A yearly event, funds, `game.storage`, a console command with an argument. |
-| `disaster-response.js` | Disaster events, pausing, a message window. |
-| `city-stats/main.mjs` | An ES module with a helper import, monthly records in storage, a text table. |
-| `protected-zones.mjs` | A cancelable tool event that protects areas from the bulldozer, signs. |
-| `road-grid.js` | Building with `tools.select` and `tools.apply`. |
-| `tax-advisor.js` | Monthly tax changes from the demand with the `budget` API. |
+| `yearly-grant` | A yearly event, funds, `game.storage`, a console command with an argument. |
+| `disaster-response` | Disaster events, pausing, a message window. |
+| `city-stats` | An ES module with a helper import, monthly records in storage, a text table, an event for other mods. |
+| `monthly-report` | A dependency, the event of another mod, CSV files with `mod.files`. |
+| `protected-zones` | A cancelable tool event that protects areas from the bulldozer, signs. |
+| `road-grid` | Building with `tools.select` and `tools.apply`. |
+| `tax-advisor` | Monthly tax changes from the demand with the `budget` API. |
 
 ## Rules for scripts
 
 - **Time.** One call from the game into scripts can take 5 seconds at most. A
   longer script stops with `InternalError: interrupted`. This applies to console
   input, a file, each event, timer and command.
-- **Memory.** The runtime can use 256 MiB.
+- **Memory.** Each runtime can use 256 MiB.
 - **Thread.** Scripts run on the main thread, between simulation ticks. A change
   that a script makes to the city stops the simulation tick that runs at that time.
   The simulation then runs the tick again with the change.
 - **Errors.** An uncaught error in a listener, a timer or a promise shows in the
   Console with its stack. It does not stop the other listeners.
 - **Access.** There is no file, network or process access, except `game.storage`
-  and the import of module files.
+  and the import of module files. A mod can use files and import modules only in
+  its own folder; see [The sandbox](mods.md#the-sandbox).
+- **Runtimes.** Console input and script files share the console runtime. Each
+  mod has its own runtime. Runtimes share no variables; they talk through
+  `game.emit` events.
 - **Game rules.** The tool, budget and disaster functions follow the game rules,
   costs and prompts, as the player's actions do. Some functions are cheats, as in
   the Debug window: `city.funds = ...`, `city.addFunds`, `sim.startDisaster`,
@@ -183,7 +194,8 @@ console.log(text); // { outer: [Object] }
 | `game.once(type, listener)` | Listens to the next event of the type only. |
 | `game.off(type, listener)` | Removes a listener. Returns true when it was there. |
 | `game.listenerCount(type)` | The number of listeners of the type. |
-| `game.emit(type, detail)` | Sends an event to the script listeners only. Use it to connect mods. |
+| `game.emit(type, detail)` | Sends an event to the script listeners of the console and of each mod. Each runtime gets a copy of `detail`, with `source`: the id of the sending mod, or `console`. A mod cannot send a game event. Use it to connect mods. |
+| `game.mods` | The info of each mod that runs: `[{ id, name, version, ... }]`. |
 | `game.command(name, description, handler)` | Adds a console command. `handler(...words)` returns the text to show, a value, or a promise. A script cannot replace a game command. |
 | `game.status(text)` | Shows a message on the status bar. |
 | `game.storage.get(key, fallback)` | A stored value, or the fallback. |
@@ -192,8 +204,8 @@ console.log(text); // { outer: [Object] }
 | `game.version` | `{ game, godot, quickjs }`. |
 | `game.events` | The event types and their descriptions. |
 
-All scripts share one storage file, `scripts/storage.json` in the user data
-folder. Start each key with the name of the mod.
+The console scripts share one storage file, `scripts/storage.json` in the user
+data folder. Each mod has its own values, in `storage.json` in its folder.
 
 ```js
 // a listener for one event, removed after five days
@@ -593,9 +605,13 @@ nothing. `game.events` lists the types.
 | `tool.undone` | `command` | The last edit was undone. |
 | `view.mode` | `mode` | The view changed. |
 | `frame` | `delta` | A frame started. `delta` is in seconds. Timers are better for most work. |
+| `mod.loaded` | `id`, `name`, `version` | A mod started. |
+| `mod.unloaded` | `id` | A mod stopped. |
 
 `tool` is `{ group, subtool, groupName, name, cost }`. `start` and `finish` are
-`{ x, y }`.
+`{ x, y }`. The console runtime receives each event first, then each mod in load
+order. When a listener cancels a cancelable event, the later runtimes see
+`event.cancelled`.
 
 ```js
 // no bulldozer on the first ten rows
@@ -647,6 +663,10 @@ game.on('tool.applied', (event) => {
 });
 game.on('tool.undone', (event) => console.log(`Undid a ${event.command} edit`));
 
+// mods that start and stop
+game.on('mod.loaded', (event) => console.log(`${event.name} ${event.version} runs`));
+game.on('mod.unloaded', (event) => console.log(`${event.id} stopped`));
+
 // the view, and one frame
 game.on('view.mode', (event) => console.log(`View: ${event.mode}`));
 game.once('frame', (event) => console.log(`The frame took ${(event.delta * 1000).toFixed(1)} ms`));
@@ -664,7 +684,8 @@ a `Rect2i` becomes `{ x, y, width, height }`, and a packed array becomes an arra
 The game API has three parts:
 
 1. `game/assets/scripting/api.js` defines the JavaScript objects. Each member calls
-   `__runtime.host(name, ...arguments)`.
+   `__runtime.host(name, ...arguments)`. `game/assets/scripting/opensc2k.d.ts`
+   declares their types; add each new member there too.
 2. GDScript functions answer the host calls. `ApplicationScriptingApi` in
    `game/src/application/scripting_api.gd` holds `game`, `sim`, `tools` and `view`;
    `ScriptingCityApi`, `ScriptingBudgetApi` and `ScriptingUiApi` hold the others.
@@ -675,6 +696,8 @@ The game API has three parts:
 3. `ApplicationScripting.emit(type, detail, cancelable)` sends an event.
    `cancelled(type, detail)` sends a cancelable event and returns true when a
    listener cancelled it. Add each new event type to `ApplicationScripting.EVENTS`.
+   `ApplicationScripting._host` receives the `ScriptContext` of the calling
+   runtime, for functions that differ between mods, such as `game.storage`.
 
 Add a test to the `scripting` validation domain for each new function and event:
 `tools/validate_project.sh --suite scripting`.

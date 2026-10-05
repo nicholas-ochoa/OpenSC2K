@@ -7,7 +7,8 @@
 //
 // A module: it imports its helpers from ./format.mjs. The history stays in
 // game.storage, thus it is there after the game restarts.
-// Uses: game.on('sim.month'), city.info, game.storage, game.command, ES modules.
+// Each recorded month goes to the other mods as a city-stats.recorded event.
+// Uses: game.on('sim.month'), city.info, game.storage, game.emit, game.command, ES modules.
 
 import { money, table } from './format.mjs';
 
@@ -30,6 +31,9 @@ function record() {
     demand: info.demand,
   });
   game.storage.set(STORAGE_KEY, rows.slice(-LIMIT));
+
+  // other mods, such as monthly-report, receive a copy of the row
+  game.emit('city-stats.recorded', rows[rows.length - 1]);
 }
 
 game.on('sim.month', record);

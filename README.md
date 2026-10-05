@@ -69,7 +69,7 @@ sound, and music.
 - More zoom levels, layer controls, and optional dark underground views
 - Detailed simulation data available including simulation timings, inspection tools
 - Support for external graphics, sound, and music packs
-- A JavaScript runtime for mods and developer scripts, with game events, a game API, example mods in `examples/mods`, and a Chrome DevTools console. See [Scripting](docs/scripting.md)
+- A JavaScript runtime for mods and developer scripts, with game events, a game API, example mods in `examples/mods`, and a Chrome DevTools console. Mods load from the `mods` folder, each in its own sandbox, and the Mods tab of Settings turns them on and off. See [Scripting](docs/scripting.md) and [Mods](docs/mods.md)
 
 Larger cities and per-tile data maps use `.sc2x` saves: ZIP archives with one raw entry per
 city structure, city names of up to 64 characters, and signs that can share a tile with any

@@ -181,6 +181,8 @@ unsafe extern "C" {
         data: *mut JSValue,
     ) -> JSValue;
 
+    pub fn JS_NewUint8ArrayCopy(ctx: *mut JSContext, buf: *const u8, len: usize) -> JSValue;
+    pub fn JS_GetUint8Array(ctx: *mut JSContext, psize: *mut usize, object: JSValue) -> *mut u8;
     pub fn JS_IsArray(value: JSValue) -> bool;
     pub fn JS_IsFunction(ctx: *mut JSContext, value: JSValue) -> bool;
     pub fn JS_ToBool(ctx: *mut JSContext, value: JSValue) -> c_int;

@@ -2,7 +2,7 @@
 //! box, thus its address stays the same; the runtime and the context hold
 //! that address as their opaque pointer.
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, OnceCell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -10,6 +10,7 @@ use std::sync::mpsc::Sender;
 
 use crate::ffi::*;
 use crate::inspector::Outgoing;
+use crate::sandbox::Sandbox;
 use crate::value::JsData;
 
 /// Runs a host function: `(name, arguments)`. An error becomes a JavaScript
@@ -34,6 +35,8 @@ pub struct EngineState {
     pub scripts: RefCell<Vec<ScriptRecord>>,
     // the connection of an attached DevTools window
     pub inspector_out: RefCell<Option<Sender<Outgoing>>>,
+    // the folder of a mod. Its scripts use files and modules only in it
+    pub sandbox: OnceCell<Sandbox>,
 }
 
 /// A script file or module that the runtime ran.
@@ -53,6 +56,7 @@ impl EngineState {
             rejections: RefCell::new(Vec::new()),
             scripts: RefCell::new(Vec::new()),
             inspector_out: RefCell::new(None),
+            sandbox: OnceCell::new(),
         }
     }
 
