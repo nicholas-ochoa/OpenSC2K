@@ -62,6 +62,7 @@ func open_export_dialog() -> void:
 		CityViewMode.key(view_state.overlay_mode),
 		bool(view_state.surface_visibility.get("signs", true)),
 		asset_state.reference_root,
+		asset_state.hd_pack != null,
 	)
 	dialog.show_options()
 
@@ -92,6 +93,7 @@ func start_export(options: CityPngExportJob.Options) -> void:
 	job.surface_visibility = view_state.surface_visibility.duplicate()
 	job.show_underground_pipes = view_state.show_underground_pipes
 	job.show_underground_water_mains = view_state.show_underground_water_mains
+	job.artwork_factor = int(options.artwork_factor)
 	job.path = String(options.path)
 	last_folder = job.path.get_base_dir()
 	var error := job.start()

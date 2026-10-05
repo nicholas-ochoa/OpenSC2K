@@ -809,3 +809,64 @@ fn underground_views_draw_no_artwork() {
 
     assert!(region.colors.iter().all(|color| *color == [1.0; 4]));
 }
+
+#[test]
+fn artwork_raster_blends_filtered_art_at_each_scale() {
+    let mut b = fixture(4, 2);
+    let ground = floating::Ground {
+        edge: b.city.edge,
+        config: b.config,
+    };
+    let mut art = artwork(4, 4, 1, 2);
+    art.image.rgba = [200, 100, 50, 255].repeat(16);
+    // the right column of the art is transparent
+    for y in 0..4 {
+        art.image.rgba[(y * 4 + 3) * 4 + 3] = 0;
+    }
+    b.sprites.artwork.insert(2512, art);
+    let draws = [Draw::new(2512, Rect::new(0, 0, 2, 2)), Draw::new(2514, Rect::new(1, 1, 1, 1))];
+    let bounds = Rect::new(0, 0, 2, 2);
+
+    assert!(raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [0, 0, 0, 0], ground, 3, 0).is_err());
+
+    for factor in [1, 2, 4] {
+        let pixels = raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [10, 20, 30, 255], ground, factor, 0).unwrap();
+        let w = (2 * factor) as usize;
+        assert_eq!(pixels.len(), w * w * 4);
+        // the top left pixel is opaque art
+        assert_eq!(pixels[..4], [200, 100, 50, 255]);
+        // the indexed sprite 2514 repeats its first pixel over the bottom right view pixel
+        let last = (w * w - 1) * 4;
+        assert_eq!(pixels[last..last + 4], b.sprites.images[&2514].rgba[..4]);
+    }
+
+    // next to the transparent right column, the filtered art blends with the
+    // background; over the column itself the background shows
+    let pixels = raster::composite_artwork(&draws[..1], &b.sprites, &b.shadows, bounds, [10, 20, 30, 255], ground, 4, 0).unwrap();
+    assert_eq!(pixels[6 * 4..6 * 4 + 4], [58, 40, 35, 255]);
+    assert_eq!(pixels[7 * 4..7 * 4 + 4], [10, 20, 30, 255]);
+}
+
+#[test]
+fn artwork_raster_selects_animation_frames_and_traffic_masks() {
+    let mut b = fixture(4, 2);
+    let ground = floating::Ground {
+        edge: b.city.edge,
+        config: b.config,
+    };
+    let mut art = artwork(2, 4, 2, 2);
+    art.image.rgba = [[255, 0, 0, 255].repeat(4), [0, 0, 255, 255].repeat(4)].concat();
+    let surface = b.sprites.get(1256, false).unwrap();
+    let traffic = b.sprites.get(1257, false).unwrap();
+    b.sprites.artwork.insert(traffic, art);
+    let masked = b.sprites.traffic(traffic, surface);
+    let draws = [Draw::new(masked, Rect::new(0, 0, 2, 2))];
+    let bounds = Rect::new(0, 0, 2, 2);
+
+    for (frame, color) in [(0, [255, 0, 0, 255]), (1, [0, 0, 255, 255]), (2, [255, 0, 0, 255])] {
+        let pixels = raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [0; 4], ground, 1, frame).unwrap();
+        // only the road pixel of the surface (top left) shows the traffic
+        assert_eq!(pixels[..4], color);
+        assert_eq!(pixels[4..16], [0; 12]);
+    }
+}

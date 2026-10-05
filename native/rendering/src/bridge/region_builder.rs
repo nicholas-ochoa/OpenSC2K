@@ -412,6 +412,55 @@ impl NativeCityRegionBuilder {
         result
     }
 
+    /// CPU pixels of `bounds` with the full-color art, at `factor` (1, 2 or 4)
+    /// pixels for each view pixel: `{image, bounds}`, or `{error}`. `frame`
+    /// selects the frame of animation strips.
+    #[func]
+    fn raster_artwork(&mut self, bounds: Rect2i, background: i64, factor: i64, frame: i64) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        let Some(core) = self.core.as_mut() else {
+            result.set("error", "native region builder is not configured");
+
+            return result;
+        };
+
+        let clipped = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y).clip(Rect::new(
+            0,
+            0,
+            (64 + core.city.edge * 32) / core.config.divisor(),
+            (896 + core.city.edge * 16) / core.config.divisor(),
+        ));
+
+        if !clipped.area() {
+            result.set("error", "empty region");
+
+            return result;
+        }
+
+        let factor = factor as i32;
+
+        let pixels = match core.raster_artwork(clipped, (background as u32).to_be_bytes(), factor, frame) {
+            Ok((pixels, _)) => pixels,
+            Err(error) => {
+                result.set("error", &GString::from(&error));
+
+                return result;
+            }
+        };
+
+        let image = Image::create_from_data(
+            clipped.w * factor,
+            clipped.h * factor,
+            false,
+            Format::RGBA8,
+            &PackedByteArray::from(pixels.as_slice()),
+        )
+        .expect("clipped region dimensions");
+        result.set("image", &image);
+        result.set("bounds", Rect2i::from_components(clipped.x, clipped.y, clipped.w, clipped.h));
+        result
+    }
+
     /// Moving object draws for raster jobs. Each draw has a map `cell`, a native
     /// `position`, a sprite `id`, `flip`, `shadow` and the `floating` water altitude
     /// of a ship or sailboat, or -1. `images` holds the sprite images by ID.

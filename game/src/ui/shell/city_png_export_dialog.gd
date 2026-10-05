@@ -8,11 +8,15 @@ const FileDialogs = preload("res://src/ui/shared/file_dialog_factory.gd")
 const NumberFormat = preload("res://src/ui/shared/display_number_format.gd")
 const VIEWS := [["City", "city"], ["Underground", "underground"]]
 const SURFACE_ONLY_TOOLTIP := "The underground view has no signs or moving things."
+# [name, HD art factor]. 0 draws the original sprites
+const DETAILS := [["Original sprites", 0], ["HD", 1], ["HD 2×", 2], ["HD 4×", 4]]
 
 var folder_input: LineEdit
 var browse_button: Button
 var file_name_input: LineEdit
 var graphics_selector: OptionButton
+var detail_label: Label
+var detail_selector: OptionButton
 var view_selector: OptionButton
 var background_check: CheckBox
 var signs_check: CheckBox
@@ -33,6 +37,8 @@ func _ready() -> void:
 	browse_button = $Fields/Grid/FolderRow/BrowseButton
 	file_name_input = $Fields/Grid/FileNameInput
 	graphics_selector = $Fields/Grid/GraphicsSelector
+	detail_label = $Fields/Grid/DetailLabel
+	detail_selector = $Fields/Grid/DetailSelector
 	view_selector = $Fields/Grid/ViewSelector
 	background_check = $Fields/Grid/IncludeChecks/BackgroundCheck
 	signs_check = $Fields/Grid/IncludeChecks/SignsCheck
@@ -45,6 +51,9 @@ func _ready() -> void:
 	for index in VIEWS.size():
 		view_selector.add_item(VIEWS[index][0], index)
 
+	for index in DETAILS.size():
+		detail_selector.add_item(DETAILS[index][0], index)
+
 	folder_dialog = FileDialogs.folder_select()
 	folder_dialog.title = "Select Export Folder"
 	add_child(folder_dialog)
@@ -53,6 +62,7 @@ func _ready() -> void:
 	folder_input.text_changed.connect(_refresh.unbind(1))
 	file_name_input.text_changed.connect(_choose_file_name)
 	graphics_selector.item_selected.connect(_refresh_name.unbind(1))
+	detail_selector.item_selected.connect(_refresh_name.unbind(1))
 	view_selector.item_selected.connect(_choose_view)
 	confirmed.connect(_confirm)
 
@@ -60,7 +70,7 @@ func _ready() -> void:
 # set the defaults from the current city window
 func configure(
 	city_name: String, folder: String, map_edge: int, graphics_size: int, view: String,
-	show_signs: bool, protected_folder := ""
+	show_signs: bool, protected_folder := "", hd_available := false
 ) -> void:
 	_updating = true
 	_city_name = city_name
@@ -78,6 +88,10 @@ func configure(
 		selected -= 1
 
 	graphics_selector.select(graphics_selector.get_item_index(selected))
+	# HD art shows only when an HD sprite pack is loaded
+	detail_label.visible = hd_available
+	detail_selector.visible = hd_available
+	detail_selector.select(1 if hd_available else 0)
 	view_selector.select(1 if view == "underground" else 0)
 	background_check.button_pressed = true
 	signs_check.button_pressed = show_signs
@@ -101,6 +115,7 @@ func options() -> CityPngExportJob.Options:
 	result.transparent_background = not background_check.button_pressed
 	result.signs = surface and signs_check.button_pressed
 	result.moving_things = surface and moving_things_check.button_pressed
+	result.artwork_factor = artwork_factor()
 
 	return result
 
@@ -115,7 +130,15 @@ func output_path() -> String:
 
 
 func output_size() -> Vector2i:
-	return ExportJob.output_size(_map_edge, graphics_selector.get_selected_id())
+	return ExportJob.output_size(_map_edge, graphics_selector.get_selected_id(), artwork_factor())
+
+
+# the HD art factor of the export, or 0 for the original sprites
+func artwork_factor() -> int:
+	if not detail_selector.visible or not _surface_view():
+		return 0
+
+	return int(DETAILS[detail_selector.get_selected_id()][1])
 
 
 # return why the current options cannot export, or an empty string
@@ -136,9 +159,12 @@ func validation_error() -> String:
 	if file_name.is_empty():
 		return "Enter a file name."
 
-	if not ExportJob.fits(_map_edge, graphics_selector.get_selected_id()):
+	if not ExportJob.fits(_map_edge, graphics_selector.get_selected_id(), artwork_factor()):
 		if not ExportJob.fits(_map_edge, 0):
 			return "This city is too large to export as one image."
+
+		if artwork_factor() > 1:
+			return "The image is too large. Choose less detail or a smaller graphics size."
 
 		return "The image is too large. Choose a smaller graphics size."
 
@@ -190,6 +216,8 @@ func _choose_view(_index: int) -> void:
 	for check in [signs_check, moving_things_check]:
 		check.disabled = not surface
 		check.tooltip_text = "" if surface else SURFACE_ONLY_TOOLTIP
+
+	detail_selector.disabled = not surface
 
 	_refresh_name()
 

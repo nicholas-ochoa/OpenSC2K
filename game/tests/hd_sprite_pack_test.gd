@@ -66,6 +66,7 @@ func _initialize() -> void:
 	assert(CityGpuBuildContext.artwork_request(shown, 500).is_empty())
 
 	_check_region_quads(shown)
+	_check_export(shown)
 	print("PASS: HD sprite packs")
 	quit()
 
@@ -96,6 +97,31 @@ func _check_region_quads(sprites: Sc2SpriteArchive) -> void:
 			assert(context.atlas.get_format() == Image.FORMAT_RGBA8)
 		else:
 			assert(tags.keys() == [255])
+
+
+# A whole-city image with HD art has `factor` pixels for each view pixel, and
+# shows the art where the city has its sprites.
+func _check_export(sprites: Sc2SpriteArchive) -> void:
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
+	var palette := FixtureGraphics.pack().palette
+	var size := CityIsometricRenderer.output_size_for_view(2, city.map_size)
+	var options := ScurkCityOutput.Options.new()
+	options.artwork_factor = 2
+	var rendered := ScurkCityOutput.render(city, palette, sprites, 2, options)
+	assert(rendered.ok, rendered.error)
+	assert(rendered.image.get_size() == size * 2)
+	var art_pixels := 0
+
+	for y in range(0, rendered.image.get_height(), 7):
+		for x in range(0, rendered.image.get_width(), 7):
+			var color := rendered.image.get_pixel(x, y)
+
+			if color.is_equal_approx(Color.CORNFLOWER_BLUE) or color.is_equal_approx(Color.ORANGE):
+				art_pixels += 1
+
+	assert(art_pixels > 0, "The export shows the HD art")
+	options.artwork_factor = 0
+	assert(ScurkCityOutput.render(city, palette, sprites, 2, options).image.get_size() == size)
 
 
 func _load(manifest: Dictionary) -> HdSpritePack:

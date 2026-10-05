@@ -8,6 +8,8 @@ extends IsometricConstants
 const RASTER_BAND_HEIGHT := 128
 # Godot rejects an image with more pixels than this
 const MAXIMUM_IMAGE_PIXELS := 268435456
+# the largest band of the native full-color raster
+const MAXIMUM_ARTWORK_BAND_PIXELS := 16777216
 
 static var _patch_context: CityGpuBuildContext
 static var _patch_revision := 0
@@ -28,7 +30,8 @@ static func create_image(
 	validate_required_assets := true,
 	include_special_overlays := true,
 	progress := Callable(),
-	maximum_size := Vector2i.ZERO
+	maximum_size := Vector2i.ZERO,
+	artwork_factor := 0
 ) -> AssetImageResult:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -46,7 +49,7 @@ static func create_image(
 
 	var context := CityGpuBuildContext.new()
 	var failure := context.prepare(city, palette, sprites, view_size, CityViewMode.Mode.CITY, true, true, true, 0, false,
-		include_special_overlays, animation_phase)
+		include_special_overlays, animation_phase, true, artwork_factor > 0)
 
 	if failure.is_empty() and include_moving_things:
 		failure = context.set_moving(city, palette, sprites, _moving_commands(city, sprites, view_size, animation_phase))
@@ -61,6 +64,10 @@ static func create_image(
 			return AssetImageResult.failure(asset_errors[0])
 
 	var size := IsometricGeometry.output_size_for_view(view_size, map_edge)
+
+	if artwork_factor > 0:
+		return paint_whole_city_artwork(context, size, Color.TRANSPARENT if transparent_background else Color("18242c"),
+			artwork_factor, progress)
 
 	return paint_whole_city(context, size,
 		Color.TRANSPARENT if transparent_background else Color("18242c"), palette.is_index_encoding and transparent_background,
@@ -160,6 +167,43 @@ static func paint_whole_city(context: CityGpuBuildContext, size: Vector2i, backg
 		output.convert(Image.FORMAT_LA8)
 	elif index_opaque:
 		output.convert(Image.FORMAT_L8)
+
+	var result := AssetImageResult.new()
+	result.ok = true
+	result.image = output
+	result.error = ""
+
+	return result
+
+
+# The whole city with its full-color art, at `factor` (1, 2 or 4) pixels for
+# each view pixel. Call `prepare` with `with_artwork` first.
+static func paint_whole_city_artwork(context: CityGpuBuildContext, size: Vector2i, background: Color, factor: int,
+		progress := Callable()) -> AssetImageResult:
+	var output_size := size * factor
+
+	if output_size.x <= 0 or output_size.y <= 0:
+		return AssetImageResult.failure("city image is empty")
+
+	if output_size.x * output_size.y > MAXIMUM_IMAGE_PIXELS:
+		return AssetImageResult.failure("city image of %d × %d pixels is too large" % [output_size.x, output_size.y])
+
+	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
+	# each native band holds at most MAXIMUM_ARTWORK_BAND_PIXELS output pixels
+	var band_height := clampi(MAXIMUM_ARTWORK_BAND_PIXELS / (output_size.x * factor), 1, RASTER_BAND_HEIGHT)
+
+	for top in range(0, size.y, band_height):
+		var band := Rect2i(0, top, size.x, mini(band_height, size.y - top))
+		var painted := context.raster_artwork(band, background, factor)
+
+		if painted.has("error"):
+			return AssetImageResult.failure(painted.error)
+
+		var image: Image = painted.image
+		output.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(0, top * factor))
+
+		if progress.is_valid():
+			progress.call(float(band.end.y) / size.y)
 
 	var result := AssetImageResult.new()
 	result.ok = true

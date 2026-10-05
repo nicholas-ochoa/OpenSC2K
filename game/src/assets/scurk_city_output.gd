@@ -109,6 +109,7 @@ static func render(
 			options.surface_visibility
 		)
 		var display_city := ViewFilter.surface_copy(city, visibility)
+		var factor := int(options.artwork_factor)
 		result = Renderer.create_image(
 			display_city,
 			render_palette,
@@ -119,8 +120,15 @@ static func render(
 			transparent,
 			true,
 			bool(options.special_overlays),
-			progress
+			progress,
+			Vector2i.ZERO,
+			factor
 		)
+
+		if result.ok and factor > 0:
+			_draw_scaled_overlay(result.image, city, display_city, render_palette, sprites, view_size, show_signs, factor)
+
+			return result
 
 		if result.ok and show_signs:
 			_draw_signs(result.image, display_city, render_palette, view_size)
@@ -518,6 +526,26 @@ static func _fill_clipped(image: Image, rectangle: Rect2i, color: Color) -> void
 		image.fill_rect(clipped, color)
 
 
+# Signs and SCURK artwork stamps of an HD image, drawn at the view scale and
+# enlarged by `factor`.
+static func _draw_scaled_overlay(image: Image, city: CityState, display_city: CityState, palette: Sc2Palette,
+		sprites: Sc2SpriteArchive, view_size: int, show_signs: bool, factor: int) -> void:
+	var size := image.get_size() / factor
+	var overlay := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	overlay.fill(Color.TRANSPARENT)
+
+	if show_signs:
+		_draw_signs(overlay, display_city, palette, view_size)
+
+	_draw_artwork_stamps(overlay, city, palette, sprites, view_size)
+
+	if overlay.is_invisible():
+		return
+
+	overlay.resize(image.get_width(), image.get_height(), Image.INTERPOLATE_NEAREST)
+	image.blend_rect(overlay, Rect2i(Vector2i.ZERO, overlay.get_size()), Vector2i.ZERO)
+
+
 static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, view_size: int) -> void:
 	var configuration := Renderer.view_configuration(view_size)
 
@@ -567,6 +595,9 @@ class Options extends RefCounted:
 	var transparent_background := false
 	var progress := Callable()
 	var surface_visibility: Dictionary[String, bool] = {}
+	# 0 for the indexed sprites, or 1, 2 or 4 output pixels for each view pixel
+	# with the HD art of the sprites
+	var artwork_factor := 0
 
 	func _init() -> void:
 		surface_visibility.assign(ViewFilter.DEFAULT_VISIBILITY)
@@ -585,6 +616,7 @@ class Options extends RefCounted:
 		result.transparent_background = transparent_background
 		result.progress = progress
 		result.surface_visibility = surface_visibility.duplicate()
+		result.artwork_factor = artwork_factor
 
 		return result
 

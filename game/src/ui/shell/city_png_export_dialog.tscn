@@ -56,6 +56,14 @@ text = "Graphics"
 [node name="GraphicsSelector" type="OptionButton" parent="Fields/Grid"]
 layout_mode = 2
 
+[node name="DetailLabel" type="Label" parent="Fields/Grid"]
+layout_mode = 2
+text = "Detail"
+
+[node name="DetailSelector" type="OptionButton" parent="Fields/Grid"]
+layout_mode = 2
+tooltip_text = "Original sprites, or the art of the HD sprite pack at 1, 2 or 4 image pixels for each pixel of the graphics size."
+
 [node name="ViewLabel" type="Label" parent="Fields/Grid"]
 layout_mode = 2
 text = "View"

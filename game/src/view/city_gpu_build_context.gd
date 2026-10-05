@@ -83,7 +83,7 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 # gdstyle:ignore=quality/max-parameters
 func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, view: int,
 		mode := CityViewMode.Mode.CITY, pipes := true, subways := true, water_mains := true, revision := 0,
-		pack_atlas := true, special_overlays := false, animation_phase := 0, tunnels := true) -> String:
+		pack_atlas := true, special_overlays := false, animation_phase := 0, tunnels := true, with_artwork := false) -> String:
 	if not error.is_empty():
 		return error
 
@@ -91,7 +91,8 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 		return "invalid native region assets"
 
 	var layout := [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
-		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels]
+		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels,
+		with_artwork]
 	var configuration := CityIsometricRenderer.view_configuration(view)
 
 	if configuration == null:
@@ -106,8 +107,8 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 
 		var request := _snapshot(city)
 
-		# only GPU regions draw full-color art
-		if pack_atlas and mode != CityViewMode.Mode.UNDERGROUND:
+		# GPU regions and `raster_artwork` draw full-color art
+		if (pack_atlas or with_artwork) and mode != CityViewMode.Mode.UNDERGROUND:
 			request.merge(artwork_request(sprites, configuration.sprite_base))
 
 		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
@@ -182,6 +183,13 @@ func missing_sprite_errors() -> PackedStringArray:
 # or `{error}`. Call `prepare` first
 func raster(bounds: Rect2i, background: Color) -> Dictionary:
 	return builder.raster(bounds, background.to_rgba32())
+
+
+# CPU pixels of `bounds` with the full-color art, at `factor` (1, 2 or 4) pixels
+# for each view pixel: `{image, bounds}`, or `{error}`. Call `prepare` with
+# `with_artwork` first. `frame` selects the frame of animation strips
+func raster_artwork(bounds: Rect2i, background: Color, factor: int, frame := 0) -> Dictionary:
+	return builder.raster_artwork(bounds, background.to_rgba32(), factor, frame)
 
 
 # `{records, images}` of the draws that meet `bounds`, or `{error}`
