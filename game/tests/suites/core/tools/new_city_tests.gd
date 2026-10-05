@@ -80,11 +80,11 @@ func test_new_city_terrain(_reference_root: String) -> void:
 		)
 		_check(
 			direct.ok
-			and direct.water_tiles == 1456
+			and direct.water_tiles == 1521
 			and direct.tree_tiles == 2009
 			and direct.minimum_altitude == 2
 			and direct.maximum_altitude == 11
-			and direct_process.state == 981240924
+			and direct_process.state == 3001704195
 			and direct_game.state == 1692766423,
 			"Seed one preserves the recovered terrain pass and random-call order",
 		)
@@ -508,7 +508,7 @@ func _test_preview_random_cursors(options: NewCityTerrain.Options) -> void:
 		and terrain_session.matches(options)
 		and terrain_session.preview_process_start == 1
 		and terrain_session.preview_game_start == 1
-		and terrain_session.preview_process_cursor == 353119329
+		and terrain_session.preview_process_cursor == 3203905607
 		and terrain_session.preview_game_cursor == 1692766423,
 		"New City terrain session owns the preview seeds and current options (%d, %d)"
 		% [

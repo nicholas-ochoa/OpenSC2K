@@ -214,9 +214,18 @@ pub fn water_shape(flags: &[u8], x: i64, y: i64, map_edge: i64) -> i64 {
     DIAGONAL_WATER_SHAPES[missing_diagonal as usize]
 }
 
-/// LandscapeCommand._water_transition. Returns the new terrain and whether
-/// the original skips the update.
+/// LandscapeCommand._water_transition, as FUN_00446650. Returns the new terrain
+/// and whether the original skips the update. Forbidden coast and waterfalls
+/// keep their tile. Water on sloped land becomes a waterfall.
 pub fn water_transition(current: i64, shape: i64) -> (i64, bool) {
+    if current == terrain_ids::FORBIDDEN_COAST || current == terrain_ids::WATERFALL {
+        return (current, true);
+    }
+
+    if current > terrain_ids::FLAT && current < terrain_ids::DEEP_WATER_FIRST {
+        return (terrain_ids::WATERFALL, false);
+    }
+
     if current < terrain_ids::DEEP_WATER_FIRST {
         return (shape + terrain_ids::SURFACE_WATER_FIRST, false);
     }
@@ -452,5 +461,36 @@ mod tests {
         assert_eq!(terrain[index as usize] as i64, terrain_ids::DEEP_WATER_FLAT);
         assert_ne!(flags[index as usize] as i64 & flag_bits::WATER, 0);
         assert_eq!(zones[index as usize], 0);
+    }
+
+    /// FUN_00446650: water on any sloped land is a waterfall, and later water
+    /// beside it keeps the waterfall.
+    #[test]
+    fn water_on_sloped_land_is_a_waterfall() {
+        let mut city = crate::sim::testing::empty_city(128);
+        let corner = Vec2i::new(40, 41);
+        let raised = Vec2i::new(41, 41);
+        let flat = Vec2i::new(41, 42);
+        let index = |point: Vec2i| (point.x * 128 + point.y) as usize;
+        city.xter.data[index(corner)] = terrain_ids::CORNER_TOP as u8;
+        city.xter.data[index(raised)] = terrain_ids::RAISED_EXCEPT_BOTTOM as u8;
+
+        for point in [corner, raised, flat] {
+            assert!(place_water(&mut city.maps(), point));
+        }
+
+        let terrain = |point: Vec2i| city.xter.data[index(point)] as i64;
+        assert_eq!(terrain(corner), terrain_ids::WATERFALL);
+        assert_eq!(terrain(raised), terrain_ids::WATERFALL);
+        assert_eq!(terrain(flat), terrain_ids::SURFACE_WATER_FIRST + CARDINAL_WATER_SHAPES[1]);
+
+        for slope in terrain_ids::SLOPE_TOP_LEFT..terrain_ids::DEEP_WATER_FIRST {
+            assert_eq!(water_transition(slope, 0), (terrain_ids::WATERFALL, false), "slope {slope:#x}");
+        }
+
+        assert_eq!(
+            water_transition(terrain_ids::FORBIDDEN_COAST, 0),
+            (terrain_ids::FORBIDDEN_COAST, true)
+        );
     }
 }
