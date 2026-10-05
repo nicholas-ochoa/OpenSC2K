@@ -62,5 +62,62 @@ func _run() -> void:
 	assert(viewport.get_texture().get_image().get_pixel(4, 4).is_equal_approx(original))
 	viewport.queue_free()
 	await process_frame
+	await _check_weather_layer()
 	print("PASS: GPU uniform morning/evening tint, colored graded brightmaps and original pixels when disabled")
 	quit()
+
+
+func _check_weather_layer() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(256, 192)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var app := CityApplication.new()
+	var map := CityMapControl.new()
+	map.size = Vector2(viewport.size)
+	app.map_view = map
+	viewport.add_child(map)
+	var pixels := Image.create(256, 192, false, Image.FORMAT_RGBA8)
+	pixels.fill(Color(0.2, 0.3, 0.15))
+	map.city_source = CityMapSource.whole(ImageTexture.create_from_image(pixels))
+	map.source_center = Vector2(128, 96)
+	map.layers._sync_base_layer()
+	# The map can also publish direct draw commands before a texture layer
+	# exists. This path must not draw over the precipitation child.
+	map.layers.base_layer.hide()
+	map.layers.base_layer = null
+	map.queue_redraw()
+	var marker := ColorRect.new()
+	marker.color = Color(0.1, 0.9, 0.2)
+	marker.size = Vector2(12, 12)
+	marker.position = Vector2(100, 80)
+	map.layers.overlay_layer.add_child(marker)
+	app.preferences.visual_enhancements = VisualEnhancementOptions.normalize({"weather_mode": 2})
+	var weather := app.visual_environment.weather
+	weather.process(5.0, 0.0, true, 1.0)
+	await RenderingServer.frame_post_draw
+	var sunny := viewport.get_texture().get_image()
+	for kind in [CityVisualWeather.Kind.LIGHT_RAIN, CityVisualWeather.Kind.HEAVY_RAIN, CityVisualWeather.Kind.LIGHT_SNOW, CityVisualWeather.Kind.HEAVY_SNOW]:
+		app.preferences.visual_enhancements.weather_fixed = kind
+		weather.process(5.0, 0.0, true, 1.0)
+		await RenderingServer.frame_post_draw
+		var rendered := viewport.get_texture().get_image()
+		assert(rendered.get_pixel(104, 84).is_equal_approx(sunny.get_pixel(104, 84)), "Weather covered a tool overlay")
+		var changed := 0
+		for y in range(16, 176):
+			for x in range(16, 240):
+				if not rendered.get_pixel(x, y).is_equal_approx(sunny.get_pixel(x, y)):
+					changed += 1
+		assert(changed > 100 and changed < 20000, "Weather particles are absent or cover the entire city: %d" % changed)
+	weather.flash = 1.0
+	weather._sync_layer(true)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(30, 30).r > sunny.get_pixel(30, 30).r, "Lightning was hidden behind the city")
+	weather.flash = 0.0
+	app.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.SUNNY
+	weather.process(5.0, 0.0, true, 1.0)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == sunny.get_data(), "Sunny changed original city pixels")
+	viewport.queue_free()
+	app.free()
+	await process_frame

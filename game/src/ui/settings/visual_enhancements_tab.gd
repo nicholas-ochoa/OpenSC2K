@@ -16,6 +16,20 @@ func _ready() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", 12)
 	add_child(content)
+	var sections: Dictionary[String, VBoxContainer] = {}
+	for title in ["Seasons", "Day and Night Shift", "Weather Effects", "Water", "City Life", "Other Effects"]:
+		if not VisualEnhancementOptions.FIELDS.any(func(field: Array) -> bool: return _category_for(field[0]) == title):
+			continue
+		var section := VBoxContainer.new()
+		section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		section.add_theme_constant_override("separation", 8)
+		var heading := Label.new()
+		heading.text = title
+		heading.add_theme_font_size_override("font_size", get_theme_font_size("font_size") + 3)
+		section.add_child(heading)
+		section.add_child(HSeparator.new())
+		content.add_child(section)
+		sections[title] = section
 	for field in VisualEnhancementOptions.FIELDS:
 		var row := HBoxContainer.new()
 		var label := Label.new()
@@ -31,7 +45,7 @@ func _ready() -> void:
 				control = OptionButton.new()
 				for choice in field[4]:
 					(control as OptionButton).add_item(choice)
-				(control as OptionButton).item_selected.connect(func(_v: int) -> void: _changed())
+				(control as OptionButton).item_selected.connect(func(_v: int) -> void: _choice_changed(field[0]))
 			"number":
 				var spin := SpinBox.new()
 				spin.min_value = field[4]
@@ -45,9 +59,10 @@ func _ready() -> void:
 				(control as LineEdit).text_submitted.connect(func(_v: String) -> void: _changed())
 				control.focus_exited.connect(_changed)
 		row.add_child(control)
-		content.add_child(row)
+		sections[_category_for(field[0])].add_child(row)
 		controls[field[0]] = control
-	var buttons := HBoxContainer.new()
+	var buttons := HFlowContainer.new()
+	var brightmap_buttons := HFlowContainer.new()
 	for title in ["Disable all", "Use defaults", "Reload brightmaps", "Export PNG templates"]:
 		var button := Button.new()
 		button.text = title
@@ -67,14 +82,43 @@ func _ready() -> void:
 				reload_requested.emit()
 			elif title == "Export PNG templates":
 				export_requested.emit())
-		buttons.add_child(button)
+		if title in ["Reload brightmaps", "Export PNG templates"]:
+			brightmap_buttons.add_child(button)
+		else:
+			buttons.add_child(button)
+	sections["Day and Night Shift"].add_child(brightmap_buttons)
+	content.add_child(HSeparator.new())
 	content.add_child(buttons)
 	show_values({})
+
+
+func _category_for(key: String) -> String:
+	if key.begins_with("season_"):
+		return "Seasons"
+	if key.begins_with("day_") or key.begins_with("night_") or key in ["brightmaps", "brightmap_folder", "lut_path", "speed_link", "pause_freezes"]:
+		return "Day and Night Shift"
+	if key.begins_with("weather_") or key.begins_with("cloud_"):
+		return "Weather Effects"
+	if key.begins_with("water_"):
+		return "Water"
+	if key.begins_with("life_"):
+		return "City Life"
+	return "Other Effects"
 
 
 func _changed() -> void:
 	if not filling:
 		changed.emit()
+
+
+func _choice_changed(key: String) -> void:
+	if filling:
+		return
+	if key == "weather_fixed":
+		# Choosing a specific weather is a manual override, immediately.
+		(controls.weather_mode as OptionButton).select(2)
+		(controls.weather_enabled as CheckBox).set_pressed_no_signal(true)
+	_changed()
 
 
 func show_values(source: Dictionary) -> void:

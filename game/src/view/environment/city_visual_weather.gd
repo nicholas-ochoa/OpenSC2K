@@ -108,11 +108,15 @@ func _sync_layer(enabled: bool) -> void:
 		layer = ColorRect.new()
 		layer.name = "VisualWeather"
 		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.show_behind_parent = true
+		# Precipitation must draw after both the city's texture layers and its
+		# direct canvas commands, but before the selection/tool overlay.
 		material = ShaderMaterial.new()
 		material.shader = PARTICLES
 		layer.material = material
 		app.map_view.add_child(layer)
+	var overlay := app.map_view.layers.overlay_layer
+	if overlay != null and layer.get_index() > overlay.get_index():
+		app.map_view.move_child(layer, overlay.get_index())
 	var bounds := app.map_view.camera._camera_rect()
 	layer.position = bounds.position
 	layer.size = bounds.size

@@ -61,8 +61,35 @@ func _run() -> void:
 	main.visual_environment.process(5.0)
 	assert(main.visual_environment.weather.tint == Color.WHITE)
 	assert(main.visual_environment.weather.rain == 0.0 and main.visual_environment.weather.snow == 0.0)
+	# Select the actual settings control, starting from disabled Game weather.
+	main.preferences.visual_enhancements.weather_enabled = false
+	main.preferences.visual_enhancements.weather_mode = 0
+	main.settings.open_settings_dialog()
+	var tab := main.main_overlays.settings_dialog.visual_tab
+	var fixed := tab.controls.weather_fixed as OptionButton
+	fixed.select(CityVisualWeather.Kind.HEAVY_RAIN)
+	fixed.item_selected.emit(CityVisualWeather.Kind.HEAVY_RAIN)
+	assert(main.preferences.visual_enhancements.weather_enabled)
+	assert(main.preferences.visual_enhancements.weather_mode == 2)
+	main.visual_environment.process(5.0)
+	assert(main.visual_environment.weather.kind == CityVisualWeather.Kind.HEAVY_RAIN)
+	assert(main.visual_environment.weather.rain == 1.0)
+	assert(main.visual_environment.weather.layer.visible)
+	main.main_overlays.settings_dialog.hide()
 	assert(DocumentState.capture(main.document_state.city.document) == before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	# Change only a disposable fixture; Game weather must observe each change,
+	# even while the game is paused, without changing it or consuming its RNG.
+	main.preferences.visual_enhancements.weather_mode = 0
+	for pair in [[6, 5], [7, 1], [9, 6], [10, 3], [11, 4], [1, 0]]:
+		main.document_state.city.document.set_misc_u32(Sc2MiscLayout.WEATHER_TREND, pair[0])
+		before = DocumentState.capture(main.document_state.city.document)
+		main.visual_environment.weather.random.seed = 20
+		main.visual_environment.process(5.0)
+		var kind: int = main.visual_environment.weather.kind
+		assert(kind == pair[1] or (pair[0] == 7 and kind == 2))
+		assert(DocumentState.capture(main.document_state.city.document) == before)
+		assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
