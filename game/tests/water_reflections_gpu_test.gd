@@ -93,6 +93,7 @@ func _run() -> void:
 	var shadowed := viewport.get_texture().get_image().get_pixel(8, 8)
 	assert(shadowed.b < unshadowed.b, "Water pass erased cloud shadows")
 	material.set_shader_parameter("cloud_enabled", false)
+	await _check_seasonal_water(viewport, material)
 	material.set_shader_parameter("water_enabled", false)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == original.get_data(), "Off did not restore exact original pixels")
@@ -143,3 +144,55 @@ func _run() -> void:
 	await process_frame
 	print("PASS: GPU reflection source colors, static occlusion, region clipping, subtle attenuation, brightmaps, depth-dependent transmission and exact Off output")
 	quit()
+
+
+func _check_seasonal_water(viewport: SubViewport, material: ShaderMaterial) -> void:
+	for pair in [["water_geometry_preview", true], ["water_reflections_enabled", false], ["water_topography", false],
+		["environment_enabled", true], ["environment_has_emission", false], ["environment_tint", Vector3.ONE],
+		["environment_saturation", 1.0], ["environment_weather", Vector3.ONE], ["environment_frost", 0.0],
+		["environment_day_lut_strength", 0.0], ["environment_weather_lut_strength", 0.0],
+		["environment_season_lut_strength", 0.0], ["water_season_strength", 0.0]]:
+		material.set_shader_parameter(pair[0], pair[1])
+	await RenderingServer.frame_post_draw
+	var original := viewport.get_texture().get_image()
+	var water := original.get_pixel(8, 8)
+	var colors: Array[Color] = []
+	material.set_shader_parameter("water_season_strength", 1.0)
+	for season in range(4):
+		var weights := Vector4.ZERO
+		weights[season] = 1.0
+		material.set_shader_parameter("environment_seasons", weights)
+		await RenderingServer.frame_post_draw
+		var result := viewport.get_texture().get_image()
+		colors.append(result.get_pixel(8, 8))
+		assert(result.get_pixel(24, 8) == original.get_pixel(24, 8), "Seasonal water color reached dry land")
+		assert(colors[-1] != water, "Seasonal water color missing: %d" % season)
+	assert(colors[0].g > colors[1].g and colors[2].r > colors[0].r and colors[2].b < colors[1].b)
+	assert(colors[3].g > colors[1].g and colors[3].b > colors[2].b)
+	material.set_shader_parameter("environment_seasons", Vector4(0.5, 0.5, 0, 0))
+	await RenderingServer.frame_post_draw
+	var blended := viewport.get_texture().get_image().get_pixel(8, 8)
+	var expected := colors[0].lerp(colors[1], 0.5)
+	assert(maxf(absf(blended.r - expected.r), maxf(absf(blended.g - expected.g), absf(blended.b - expected.b))) < 0.01, "Water season transition is discontinuous")
+	material.set_shader_parameter("water_season_strength", 0.0)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(8, 8) == water, "Zero seasonal water strength changed pixels")
+	material.set_shader_parameter("water_season_strength", 1.0)
+	material.set_shader_parameter("environment_enabled", false)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(8, 8) == water, "Disabled environment still colored the water")
+	# A reflected fully emissive object retains its authored light color.
+	var reflected := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	reflected.fill(Color(40.0 / 255.0, 0, 0, 1))
+	(viewport.get_child(1) as Sprite2D).texture = ImageTexture.create_from_image(reflected)
+	var emission := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	emission.fill(Color(0.9, 0.15, 0.05, 1))
+	material.set_shader_parameter("environment_emission", ImageTexture.create_from_image(emission))
+	material.set_shader_parameter("environment_has_emission", true)
+	material.set_shader_parameter("environment_night", 1.0)
+	material.set_shader_parameter("environment_enabled", true)
+	material.set_shader_parameter("water_reflections_enabled", true)
+	await RenderingServer.frame_post_draw
+	var light := viewport.get_texture().get_image().get_pixel(8, 8)
+	assert(light.r > 0.89 and light.g < 0.16 and light.b < 0.06, "Water tint recolored reflected night lights")
+	material.set_shader_parameter("water_season_strength", 0.0)

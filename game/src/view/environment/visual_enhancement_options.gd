@@ -32,6 +32,7 @@ const FIELDS := [
 	["lut_folder", "Custom LUT profile folder (empty = built-in)", "path", ""],
 	["season_enabled", "Seasons", "bool", true],
 	["season_lut_strength", "Season LUT strength", "number", 0.5, 0.0, 1.0, 0.05],
+	["season_water_strength", "Seasonal water color strength", "number", 0.35, 0.0, 1.0, 0.05],
 	["season_mode", "Season source", "choice", 0, ["City calendar", "Visual cycle", "Fixed season"]],
 	["season_fixed", "Fixed season", "choice", 1, ["Spring", "Summer", "Autumn", "Winter"]],
 	["season_seconds", "Full year (seconds at Turtle)", "number", 2400.0, 120.0, 14400.0, 60.0],
@@ -65,3 +66,7 @@ static func normalize(source: Variant) -> Dictionary:
 
 static func speed_factor(speed: int) -> float:
 	return [0.0, 0.0, 1.0, 1.5, 2.0, 3.0][clampi(speed, 0, 5)]
+
+
+static func water_pass_enabled(options: Dictionary) -> bool:
+	return options.water_reflections == 1 or options.water_topography or (options.season_enabled and options.season_water_strength > 0.0)

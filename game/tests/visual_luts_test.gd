@@ -6,10 +6,24 @@ func _initialize() -> void:
 	profiles.reload("")
 	assert(profiles.issues.is_empty())
 	var options := VisualEnhancementOptions.normalize({})
+	var water_only := VisualEnhancementOptions.normalize({"water_reflections": 0, "water_topography": false})
+	assert(VisualEnhancementOptions.water_pass_enabled(water_only), "Seasonal water needs a pass with reflection and seabed off")
+	water_only.season_water_strength = 0.0
+	assert(not VisualEnhancementOptions.water_pass_enabled(water_only))
+	water_only.season_water_strength = 0.35
+	water_only.season_enabled = false
+	assert(not VisualEnhancementOptions.water_pass_enabled(water_only))
 	var neutral := profiles.parameters(options, 12.0, Vector4(0, 1, 0, 0))
 	assert(neutral.environment_day_lut_weights == Vector4.ZERO)
-	assert(neutral.environment_season_lut_weights == Vector4.ZERO)
+	assert(neutral.environment_season_lut_weights == Vector4(0, 1, 0, 0), "Summer's authored tonal LUT was bypassed")
 	assert(neutral.environment_weather_lut_weights_a == Vector4.ZERO)
+	# Authored grading has more color separation at the tonal ends than in
+	# middle gray; these numeric tables retain opaque black and legal RGB.
+	for name in ["day_morning", "day_evening", "day_night"] + CityVisualLuts.GROUPS.season:
+		var table := (CityVisualLuts.BUILTINS[name] as Texture2D).get_image()
+		var middle := _gray_difference(table, 15)
+		assert(_gray_difference(table, 4) > middle and _gray_difference(table, 28) > middle, "Tonal ends are not emphasized: " + name)
+		assert(table.get_pixel(0, 0) == Color.BLACK)
 	for hour in range(24):
 		var weights := CityVisualLuts.day_weights(hour)
 		assert(is_equal_approx(weights.x + weights.y + weights.z + weights.w, 1.0))
@@ -71,3 +85,9 @@ func _initialize() -> void:
 	assert(prefs.day_lut_strength == 0.5 and prefs.season_lut_strength == 0 and prefs.weather_lut_strength == 1)
 	print("PASS: LUT assets, identity bypass, time profiles, interrupted transitions, independent strengths, safe reload/export and neutral fallbacks")
 	quit()
+
+
+func _gray_difference(table: Image, sample: int) -> float:
+	var color := table.get_pixel(sample * 32 + sample, sample)
+	var input := float(sample) / 31.0
+	return maxf(absf(color.r - input), maxf(absf(color.g - input), absf(color.b - input)))

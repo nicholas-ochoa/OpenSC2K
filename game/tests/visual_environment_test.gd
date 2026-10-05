@@ -56,6 +56,8 @@ func _run() -> void:
 	main.preferences.visual_enhancements.day_mode = 1
 	main.preferences.visual_enhancements.day_hour = 7.0
 	main.preferences.visual_enhancements.weather_mode = 2
+	main.preferences.visual_enhancements.season_mode = 2
+	main.preferences.visual_enhancements.season_fixed = 3
 	for kind in range(7):
 		main.preferences.visual_enhancements.weather_fixed = kind
 		main.visual_environment.process(5.0)
@@ -108,6 +110,61 @@ func _run() -> void:
 		assert(kind == pair[1] or (pair[0] == 7 and kind == 2))
 		assert(DocumentState.capture(main.document_state.city.document) == before)
 		assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	# The same requested snow must react to seasons without a game-weather
+	# change, and leaving winter must clear particles even while paused.
+	for mode in [0, 2]:
+		main.preferences.visual_enhancements.weather_mode = mode
+		for pair in [[6, 5, 1], [9, 6, 2]]:
+			main.document_state.city.document.set_misc_u32(Sc2MiscLayout.WEATHER_TREND, pair[0])
+			main.preferences.visual_enhancements.weather_fixed = pair[1]
+			before = DocumentState.capture(main.document_state.city.document)
+			main.preferences.visual_enhancements.season_fixed = 3
+			main.visual_environment.process(5.0)
+			assert(main.visual_environment.weather.kind == pair[1] and main.visual_environment.weather.snow > 0.0)
+			for season in range(3):
+				main.preferences.visual_enhancements.season_fixed = season
+				main.visual_environment.process(0.0)
+				assert(main.visual_environment.weather.kind == pair[2])
+				assert(main.visual_environment.weather.snow == 0.0 and main.visual_environment.weather.frost == 0.0)
+			main.preferences.visual_enhancements.season_fixed = 3
+			main.visual_environment.process(5.0)
+			assert(main.visual_environment.weather.kind == pair[1] and main.visual_environment.weather.snow > 0.0)
+			assert(DocumentState.capture(main.document_state.city.document) == before)
+			assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	# Surface color stays available with reflection and seabed display off.
+	main.preferences.visual_enhancements.water_reflections = 0
+	main.preferences.visual_enhancements.water_topography = false
+	main.visual_environment.configure()
+	assert(main.map_view.layers.environment_parameters.water_enabled)
+	assert(main.map_view.layers.environment_parameters.water_season_strength == 0.35)
+	main.preferences.visual_enhancements.season_enabled = false
+	main.visual_environment.configure()
+	assert(not main.map_view.layers.environment_parameters.water_enabled)
+	assert(main.map_view.layers.environment_parameters.water_season_strength == 0.0)
+	# Turning off night lights must leave ambient night saturation intact.
+	main.preferences.visual_enhancements.day_hour = 0.0
+	main.preferences.visual_enhancements.brightmaps = false
+	main.visual_environment.process(0.0)
+	assert(is_equal_approx(main.map_view.layers.environment_parameters.environment_saturation, 0.78))
+	assert(main.map_view.layers.environment_parameters.environment_night == 0.0)
+	main.preferences.visual_enhancements.brightmaps = true
+	main.visual_environment.process(0.0)
+	assert(is_equal_approx(main.map_view.layers.environment_parameters.environment_saturation, 0.78))
+	assert(main.map_view.layers.environment_parameters.environment_night == 1.0)
+	# A newly loaded sunny document must not inherit the previous snowstorm.
+	main.preferences.visual_enhancements.season_enabled = true
+	main.preferences.visual_enhancements.weather_mode = 2
+	main.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.HEAVY_SNOW
+	main.visual_environment.process(5.0)
+	assert(main.visual_environment.weather.snow > 0.0)
+	var sunny_document := EmptyCityTemplate.create(128)
+	sunny_document.set_misc_u32(Sc2MiscLayout.WEATHER_TREND, 1)
+	main.preferences.visual_enhancements.weather_mode = 0
+	assert(main.city_session.activate_document(sunny_document))
+	main.visual_environment.process(0.0)
+	assert(main.visual_environment.weather.tint == Color.WHITE)
+	assert(main.visual_environment.weather.rain == 0.0 and main.visual_environment.weather.snow == 0.0 and main.visual_environment.weather.frost == 0.0)
+	assert(not main.visual_environment.weather.layer.visible)
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

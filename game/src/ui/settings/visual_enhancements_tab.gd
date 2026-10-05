@@ -61,6 +61,8 @@ func _ready() -> void:
 				(control as LineEdit).text_submitted.connect(func(_v: String) -> void: _changed())
 				control.focus_exited.connect(_changed)
 		row.add_child(control)
+		if field[0] == "weather_fixed":
+			control.tooltip_text = "Snow is shown only in winter. In other seasons, snow selections use rain of the same strength."
 		sections[_category_for(field[0])].add_child(row)
 		controls[field[0]] = control
 	var buttons := HFlowContainer.new()
