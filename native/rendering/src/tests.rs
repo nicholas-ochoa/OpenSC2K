@@ -1,5 +1,22 @@
 use super::*;
 
+#[test]
+fn individual_traffic_replaces_supported_patterns_without_changing_the_city() {
+    let mut original = fixture(8, 2);
+    original.city.traffic = vec![255; 16];
+    original.city.buildings[3 * 8 + 3] = 0x1d;
+    original.city.buildings[3 * 8 + 4] = 0x57;
+    let before = original.city.clone();
+    let classic = original.paint(3, 3).unwrap();
+    original.config.individual_traffic = true;
+    let enhanced = original.paint(3, 3).unwrap();
+    assert!(classic.iter().any(|draw| draw.image >= 1_u64 << 32));
+    assert!(!enhanced.iter().any(|draw| draw.image >= 1_u64 << 32));
+    assert!(original.paint(3, 4).unwrap().iter().any(|draw| draw.image >= 1_u64 << 32));
+    assert_eq!(before.traffic, original.city.traffic);
+    assert_eq!(before.buildings, original.city.buildings);
+}
+
 fn fixture(edge: i32, view: i32) -> Builder {
     let cells = (edge * edge) as usize;
     let city = City {
@@ -41,6 +58,7 @@ fn fixture(edge: i32, view: i32) -> Builder {
             mains: true,
             redraw_ground: false,
             specials: false,
+            individual_traffic: false,
             phase: 0,
         },
         images,

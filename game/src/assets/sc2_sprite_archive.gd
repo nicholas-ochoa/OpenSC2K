@@ -8,6 +8,7 @@ var visual_seasons: Dictionary[int, Image] = {}
 var visual_revision := 0
 var water_reflections := false
 var water_indices := PackedByteArray()
+var visual_city_life_traffic := false
 var parse_error := ""
 # alternate art can leave the ground visible below its small highway pieces
 var redraw_small_highway_ground := false

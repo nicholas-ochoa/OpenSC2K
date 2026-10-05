@@ -33,6 +33,7 @@ var render_caches := RenderCaches.new()
 var static_render_state := StaticRenderState.new()
 var palette_clock := PaletteAnimationClock.new()
 var visual_environment := CityVisualEnvironment.new(self)
+var city_life := CityLifeController.new(self)
 # scene controls and pending ui workflows
 var audio_controller: CityAudioController
 var map_view: CityMapControl

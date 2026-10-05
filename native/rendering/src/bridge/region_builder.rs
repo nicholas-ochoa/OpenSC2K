@@ -184,6 +184,7 @@ impl NativeCityRegionBuilder {
                 mains: int(&request, "mains", 1) != 0,
                 redraw_ground: int(&request, "redraw_ground", 0) != 0,
                 specials: int(&request, "special_overlays", 0) != 0,
+                individual_traffic: int(&request, "individual_traffic", 0) != 0,
                 phase: int(&request, "animation_phase", 0) as i32,
             };
 

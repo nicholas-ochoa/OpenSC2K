@@ -331,6 +331,9 @@ impl Builder {
     }
 
     fn traffic_sprite(&self, x: i32, y: i32, b: u8) -> Option<(i32, bool)> {
+        if self.config.individual_traffic && ((0x1d..=0x2b).contains(&b) || (0x43..=0x50).contains(&b)) {
+            return None;
+        }
         let mut variant = *TRAFFIC.get(usize::from(b.checked_sub(tiles::ROAD_STRAIGHT_1)?))?;
 
         if variant == 0 {

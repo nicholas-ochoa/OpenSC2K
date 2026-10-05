@@ -231,6 +231,8 @@ pub struct Config {
     /// Draw the animated fire, flood and radiation markers as tile sprites.
     /// Previews use this; the city view draws them as moving sprites.
     pub specials: bool,
+    /// Cosmetic cars replace the classic patterns on supported road tiles.
+    pub individual_traffic: bool,
     /// The animation phase of special overlays.
     pub phase: i32,
 }
