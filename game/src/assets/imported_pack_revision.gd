@@ -5,8 +5,9 @@ extends RefCounted
 ## Packs with an older revision are out of date and need a new import.
 
 const CURRENT: Dictionary[String, int] = { "graphics": 1, "sound": 1, "music": 1, "data": 1 }
-# a source platform whose content changed alone. DOS and Macintosh graphics use the Windows palette layout from 2
-const CURRENT_BY_PLATFORM: Dictionary[String, Dictionary] = { "graphics": { "DOS": 2, "Macintosh": 2 } }
+# a source platform whose content changed alone. DOS and Macintosh graphics use the Windows palette layout
+# from 2. DOS graphics have the toolbar from 3
+const CURRENT_BY_PLATFORM: Dictionary[String, Dictionary] = { "graphics": { "DOS": 3, "Macintosh": 2 } }
 # packs that importers wrote before they recorded a revision
 const UNRECORDED := 1
 # a pack that a person made, not an importer

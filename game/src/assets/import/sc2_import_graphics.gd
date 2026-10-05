@@ -96,6 +96,15 @@ func _read(source: Sc2ImportSource) -> void:
 		if _typed.has(key):
 			_add_ui(field, _typed[key], false)
 
+	# the DOS version has its toolbar as a raw image
+	if source.platform == "DOS" and _files.has("TOOL.RAW") and _files.has("MINE.PAL"):
+		var toolbar := Sc2ImportDosUi.toolbar(_files["TOOL.RAW"].bytes, _files["MINE.PAL"].bytes)
+
+		if toolbar.ok:
+			_ui["toolbar_art"] = toolbar
+		else:
+			warnings.append("toolbar_art: " + toolbar.error)
+
 	for pair in [["simnation_sprites", "NEIGHBOR.BMP"], ["forest_protest_image", "403.BMP"]]:
 		if _files.has(pair[1]):
 			_add_ui(pair[0], _files[pair[1]], true)

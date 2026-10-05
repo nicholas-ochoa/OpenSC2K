@@ -93,8 +93,10 @@ all four kinds.
 
 If the content changes for one source platform only, put the new revision for
 that platform in `ImportedPackRevision.CURRENT_BY_PLATFORM`. The game compares
-a pack with the revision for its `source_platform`. Graphics packs from `DOS` and
+a pack with the revision for its `source_platform`. Graphics packs from
 `Macintosh` sources have revision `2`, because the importer changed their palette.
+Graphics packs from `DOS` sources have revision `3`: the importer changed their
+palette, then added the toolbar from `TOOL.RAW`.
 
 When an importer adds content to a pack kind or changes it, increase the current
 revision of that kind. Packs of that kind with a lower revision are then out of

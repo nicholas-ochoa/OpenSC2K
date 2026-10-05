@@ -133,8 +133,15 @@ func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
 	var slow := PackedByteArray()
 	slow.resize(Sc2Palette.SLOW_CYCLE_TABLE.size() * 3)
 	slow.fill(80)
+	# TOOL.RAW: height and width, then pixels. Mark the first group button and the sign button.
+	var toolbar := PackedByteArray()
+	toolbar.resize(Sc2ImportDosUi.HEADER_SIZE + 72 * 312)
+	toolbar.encode_u16(0, 312)
+	toolbar.encode_u16(2, 72)
+	toolbar[Sc2ImportDosUi.HEADER_SIZE + 3 * 72 + 3] = 7
+	toolbar[Sc2ImportDosUi.HEADER_SIZE + 127 * 72 + 8] = 9
 	var files := { "LARGE.HED": header, "LARGE.DAT": pixels, "SMALL.HED": header, "SMALL.DAT": pixels, "MINE.PAL": palette,
-		"CULT1.RAW": fast, "CULT2.RAW": slow }
+		"CULT1.RAW": fast, "CULT2.RAW": slow, "TOOL.RAW": toolbar }
 	var archive := PackedByteArray()
 	archive.resize(files.size() * 16)
 	var record := 0
@@ -158,7 +165,7 @@ func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
 	file.store_buffer(archive)
 	file.close()
 	var imported := Sc2MediaImporter.import_assets(path, temporary.path_join("packs"), PackedStringArray(["graphics"]))
-	assert(imported.ok and imported.counts.graphics == 2 and imported.partial, imported.summary())
+	assert(imported.ok and imported.counts.graphics == 3 and imported.partial, imported.summary())
 	assert(imported.platform == "DOS" and imported.sound.is_empty() and imported.music.is_empty())
 	var pack := GraphicsPack.load_root(imported.graphics)
 	assert(pack.error.is_empty() and pack.partial, pack.error)
@@ -169,8 +176,15 @@ func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
 	assert(pack.palette.color(Sc2Palette.SLOW_CYCLE_START + 15) == Color8(80, 80, 80))
 	assert(not "\n".join(imported.warnings).contains("cycle colors"))
 	# Only the platforms whose graphics changed need a new import.
-	assert(pack.source_platform == "DOS" and pack.import_revision == 2)
+	assert(pack.source_platform == "DOS" and pack.import_revision == 3)
+	# The DOS toolbar fills the Windows toolbar strip, with the colors of MINE.PAL.
+	var strip: Image = pack.ui_images.toolbar_art
+	assert(strip.get_size() == Sc2ImportDosUi.STRIP_SIZE)
+	assert(strip.get_pixel(2, 2) == Color8(7, 248, 3))
+	assert(strip.get_pixel(350, 2) == Color8(9, 246, 4))
+	assert(strip.get_pixel(0, 0) == Color8(145, 110, 72))
 	assert(ImportedPackRevision.is_outdated("graphics", 1, "DOS") and ImportedPackRevision.is_outdated("graphics", 1, "Macintosh"))
+	assert(ImportedPackRevision.is_outdated("graphics", 2, "DOS") and not ImportedPackRevision.is_outdated("graphics", 2, "Macintosh"))
 	assert(not ImportedPackRevision.is_outdated("graphics", 1, "Windows") and not ImportedPackRevision.is_outdated("graphics", 1))
 	assert(FileAccess.get_file_as_bytes(path) == archive)
 	assert(OriginalGameInstaller.remove_tree(temporary) == OK)
