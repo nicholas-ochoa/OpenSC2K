@@ -3,6 +3,7 @@
 
 mod audio_import;
 mod bmp;
+mod container;
 mod crc32;
 mod gif;
 mod johab;
