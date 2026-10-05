@@ -26,6 +26,19 @@ func _set_city_renderer(value: String) -> void:
 	app.map_render.refresh_map()
 
 
+# Turn the optional HD effects on or off. The views draw again with them.
+func _set_hd_effects(value: int) -> void:
+	var changed := preferences.hd_effects != value
+	preferences.hd_effects = value
+	CityGpuBuildContext.hd_effects = value
+
+	if not changed or app.map_render == null or app.document_state.city == null:
+		return
+
+	app.map_render.close_region_cache()
+	app.map_render.refresh_map()
+
+
 func open_import_settings() -> void:
 	open_settings_dialog()
 	app.main_overlays.settings_dialog.tabs.current_tab = AppSettingsDialog.DATA_TAB
@@ -67,6 +80,9 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.loading_values = true
 	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
 	app.main_overlays.settings_dialog.sprite_corrections_check.button_pressed = preferences.sprite_corrections
+
+	for bit: int in app.main_overlays.settings_dialog.hd_effect_checks:
+		app.main_overlays.settings_dialog.hd_effect_checks[bit].button_pressed = preferences.hd_effects & bit != 0
 	app.main_overlays.settings_dialog.recent_autosaves_check.button_pressed = preferences.recent_autosaves
 	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
 	app.main_overlays.settings_dialog.language_selector.select(AppLocalization.codes().find(preferences.ui_language))
@@ -183,6 +199,7 @@ func apply_settings() -> void:
 		app.menus.sync_map_style()
 
 	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
+	_set_hd_effects(int(values.hd_effects))
 	preferences.recent_autosaves = bool(values.recent_autosaves)
 
 	if preferences.ui_language != str(values.ui_language):
@@ -307,6 +324,7 @@ func load_app_settings() -> void:
 	preferences.dark_underground = bool(values.dark_underground)
 	app.menus.sync_map_style()
 	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
+	_set_hd_effects(int(values.hd_effects))
 	preferences.recent_autosaves = bool(values.recent_autosaves)
 	preferences.ui_language = AppLocalization.normalize(values.ui_language)
 	AppLocalization.select(preferences.ui_language)

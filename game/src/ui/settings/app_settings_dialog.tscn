@@ -557,6 +557,38 @@ aligned buildings and the animated colours of the DOS and Macintosh versions.
 They do not apply while a SCURK tile set is loaded."
 text = "sc2kfix sprite corrections"
 
+[node name="HdEffectsLabel" type="Label" parent="Tabs/Graphics/Content"]
+layout_mode = 2
+text = "HD sprite pack effects"
+
+[node name="HdGridCheck" type="CheckBox" parent="Tabs/Graphics/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Draw thin grid lines along the edges of the tiles of HD ground."
+text = "HD tile grid"
+
+[node name="HdWaterfallCheck" type="CheckBox" parent="Tabs/Graphics/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Draw falling water and foam on the faces of HD waterfalls."
+text = "HD waterfall flow"
+
+[node name="HdPipeFlowCheck" type="CheckBox" parent="Tabs/Graphics/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Draw flowing water in the watered pipes of the HD underground view."
+text = "HD underground water flow"
+
+[node name="HdPaletteCheck" type="CheckBox" parent="Tabs/Graphics/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Draw the palette animation of the original sprites over HD art: blinking lights and shimmering water."
+text = "HD palette animation"
+
 [node name="Controls" type="ScrollContainer" parent="Tabs"]
 visible = false
 layout_mode = 2

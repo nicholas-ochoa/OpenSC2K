@@ -1,5 +1,5 @@
-use super::sprites::{ARTWORK_PADDING, Sprite};
-use super::{Builder, Draw, Rect};
+use super::sprites::{ARTWORK_PADDING, Sprite, TRAFFIC_KEY};
+use super::{Builder, Draw, Rect, effects, surface_grid};
 
 /// Each quad has a vertex color that tells the shader how to draw it. These
 /// are byte values of the red channel. Other channels hold the details.
@@ -15,6 +15,16 @@ const SLOW_ANIMATION_TAG: u8 = 65;
 /// record, and blue and alpha give its y. Refer to `traffic_record`.
 const TRAFFIC_TAG: u8 = 80;
 const POWER_WARNING_SPRITE: i32 = 386;
+/// HD effects. A waterfall: green is the view, and blue and alpha are the
+/// position in the sprite, from 0 to 1.
+const WATERFALL_TAG: u8 = 49;
+/// The indexed sprite under HD art: the shader draws its palette animation.
+const PALETTE_TAG: u8 = 51;
+/// The indexed sprite under underground HD art: the shader draws pipe water.
+const PIPE_FLOW_TAG: u8 = 52;
+const WATERFALL_SPRITE: i32 = 284;
+/// The pump has its own animation strip.
+const PUMP_SPRITE: i32 = 220;
 
 // The least recently used tiles leave the cache above this count. Regions keep
 // their own draw lists, so eviction never changes a published region.
@@ -286,6 +296,36 @@ impl Builder {
                 byte(record.y >> 8),
                 byte(record.y & 255),
             ]
+        } else if self.waterfall_flow(draw) {
+            // the sprite position of each corner selects the top and the falling faces
+            let corners = [
+                (
+                    (clipped.x - rect.x) as f32 / rect.w as f32,
+                    (clipped.y - rect.y) as f32 / rect.h as f32,
+                ),
+                (
+                    (clipped.x + clipped.w - rect.x) as f32 / rect.w as f32,
+                    (clipped.y - rect.y) as f32 / rect.h as f32,
+                ),
+                (
+                    (clipped.x + clipped.w - rect.x) as f32 / rect.w as f32,
+                    (clipped.y + clipped.h - rect.y) as f32 / rect.h as f32,
+                ),
+                (
+                    (clipped.x - rect.x) as f32 / rect.w as f32,
+                    (clipped.y + clipped.h - rect.y) as f32 / rect.h as f32,
+                ),
+            ];
+            let view = byte(self.config.view);
+            let colors = corners.map(|(u, v)| [byte(i32::from(WATERFALL_TAG)), view, u, v]);
+
+            // the falling water replaces the drift of a water strip: the UVs
+            // select frame 0, the still image
+            quad(out, clipped, uv, bounds, colors[0]);
+            let count = out.colors.len();
+            out.colors[count - 4..].copy_from_slice(&colors);
+
+            return Ok(());
         } else if frames > 1 {
             [byte(i32::from(fps_tag)), byte(frames), byte(stride >> 8), byte(stride & 255)]
         } else if !draw.moving && draw.sprite.rem_euclid(500) == POWER_WARNING_SPRITE {
@@ -295,6 +335,59 @@ impl Builder {
         };
 
         quad(out, clipped, uv, bounds, color);
+        Ok(())
+    }
+
+    /// Whether a draw is a waterfall with the falling water effect.
+    fn waterfall_flow(&self, draw: &Draw) -> bool {
+        self.config.effects & effects::WATERFALL != 0 && !draw.moving && draw.sprite.rem_euclid(500) == WATERFALL_SPRITE
+    }
+
+    /// The optional effects after the art of a draw: grid lines, and the
+    /// indexed sprite whose palette animation the shader draws over the art.
+    fn artwork_effects(&mut self, out: &mut Region, draw: &Draw, bounds: Rect) -> Result<(), String> {
+        let effects = self.config.effects;
+
+        if effects & effects::GRID != 0 && draw.surface_grid != 0 {
+            surface_grid::append(out, draw, bounds, &self.sprites.images[&draw.image]);
+        }
+
+        let tag = if self.config.underground {
+            if effects & effects::PIPE_FLOW == 0 {
+                return Ok(());
+            }
+
+            PIPE_FLOW_TAG
+        } else {
+            let sprite = draw.sprite.rem_euclid(500);
+
+            if effects & effects::PALETTE == 0
+                || draw.moving
+                || draw.image & TRAFFIC_KEY != 0
+                || [POWER_WARNING_SPRITE, PUMP_SPRITE].contains(&sprite)
+                || self.waterfall_flow(draw)
+                || !self.sprites.has_animated_colors(draw.image)
+            {
+                return Ok(());
+            }
+
+            PALETTE_TAG
+        };
+
+        let clipped = draw.rect.clip(bounds);
+
+        if !clipped.area() {
+            return Ok(());
+        }
+
+        let slot = self.atlas.slot(draw.image, &self.sprites.images[&draw.image])?;
+        let uv = [
+            (slot.x + clipped.x - draw.rect.x) as f32,
+            (slot.y + clipped.y - draw.rect.y) as f32,
+            clipped.w as f32,
+            clipped.h as f32,
+        ];
+        quad(out, clipped, uv, bounds, [byte(i32::from(tag)), 0.0, 0.0, 1.0]);
         Ok(())
     }
 
@@ -330,7 +423,10 @@ impl Builder {
             };
 
             match artwork {
-                Some((source, mirrored)) => self.artwork_quad(&mut out, &draw, source, mirrored, bounds)?,
+                Some((source, mirrored)) => {
+                    self.artwork_quad(&mut out, &draw, source, mirrored, bounds)?;
+                    self.artwork_effects(&mut out, &draw, bounds)?;
+                }
                 None => {
                     let clipped = draw.rect.clip(bounds);
                     let slot = self.atlas.slot(draw.image, &self.sprites.images[&draw.image])?;
@@ -349,9 +445,11 @@ impl Builder {
 
         let scale = 1.0 / self.atlas.edge as f32;
 
-        for uv in &mut out.uvs {
-            uv[0] *= scale;
-            uv[1] *= scale;
+        for (uv, color) in out.uvs.iter_mut().zip(&out.colors) {
+            if !surface_grid::is_grid_color(color) {
+                uv[0] *= scale;
+                uv[1] *= scale;
+            }
         }
 
         Ok(out)

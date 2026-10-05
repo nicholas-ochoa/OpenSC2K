@@ -212,6 +212,7 @@ impl NativeCityRegionBuilder {
                 redraw_ground: int(&request, "redraw_ground", 0) != 0,
                 specials: int(&request, "special_overlays", 0) != 0,
                 phase: int(&request, "animation_phase", 0) as i32,
+                effects: int(&request, "hd_effects", 0) as i32,
             };
 
             let mut sprites = HashMap::new();

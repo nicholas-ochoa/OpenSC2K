@@ -15,6 +15,9 @@ const GPU_SMALL_REGION_EDGE := 128
 # regions build the whole map with less overhead and fewer repeated edge tiles
 const GPU_FIT_REGION_EDGE := 512
 const GPU_WORKERS := 2
+# vertex color tags of palette_cycle.gdshader for the overlays of HD regions
+const OVERLAY_PALETTE_TAG := 51
+const OVERLAY_PIPE_FLOW_TAG := 52
 # chunks whose tile data the region renderers read
 const SOURCE_CHUNKS: Array[String] = ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "XUND", "XTRF"]
 # above this count, report the whole region as changed foreground geometry
@@ -421,13 +424,32 @@ func texture() -> CityMapSource:
 
 		# HD regions draw with the filtered full-color path of the shader
 		var artwork := entry.artwork_texture != null
-		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor),
-			entry.artwork_texture if artwork else entry.texture, CityDynamicSpriteCanvas.ARTWORK_TAG if artwork else Color.WHITE))
+		var position := Vector2(entry.bounds.position * divisor)
+		var size := Vector2(entry.bounds.size * divisor)
+		output.tiles.append(CityMapSource.TileEntry.new(position, size, entry.artwork_texture if artwork else entry.texture,
+			CityDynamicSpriteCanvas.ARTWORK_TAG if artwork else Color.WHITE))
+
+		# the palette animation of the indexed region over its HD art
+		var overlay := _overlay_tag()
+
+		if artwork and overlay != Color.WHITE:
+			output.tiles.append(CityMapSource.TileEntry.new(position, size, entry.texture, overlay))
 
 	_source_updates.clear()
 	_published_viewport = _viewport_serial
 	_published_source = output
 	return output
+
+
+# The vertex color of the indexed overlay of a CPU HD region, or white for none.
+# Refer to the tags of palette_cycle.gdshader.
+func _overlay_tag() -> Color:
+	var effects := CityGpuBuildContext.hd_effects
+
+	if mode == CityViewMode.Mode.UNDERGROUND:
+		return Color8(OVERLAY_PIPE_FLOW_TAG, 0, 0) if effects & CityGpuBuildContext.HD_PIPE_FLOW else Color.WHITE
+
+	return Color8(OVERLAY_PALETTE_TAG, 0, 0) if effects & CityGpuBuildContext.HD_PALETTE else Color.WHITE
 
 
 func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:

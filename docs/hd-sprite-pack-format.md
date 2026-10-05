@@ -27,6 +27,18 @@ These show the HD art:
 - **File > Export City as PNG**, with its **Detail** option: the HD art at 1, 2
   or 4 image pixels for each view pixel.
 
+## Effects
+
+**Settings > Graphics** has optional effects for HD art. They are off by
+default:
+
+| Option | Effect |
+| --- | --- |
+| HD tile grid | Thin grid lines along the tile edges of HD ground. Shore tiles show them only on land. |
+| HD waterfall flow | Falling water and foam on the faces of waterfalls, under a quiet top. With the GPU renderer only. |
+| HD underground water flow | Flowing water over the watered pipes of the underground view. |
+| HD palette animation | The palette animation of the original sprites over the HD art: blinking lights, and a shimmer on water. |
+
 The SCURK editors show the original sprites. Palette animation, such as
 blinking lights, shows only on original sprites; HD art animates with its
 strips. The HD Graphics Pack animates its water with strips.

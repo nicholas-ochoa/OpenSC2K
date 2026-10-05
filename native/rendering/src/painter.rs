@@ -5,7 +5,7 @@ use super::ids::{
     terrain_tile_ids as terrain, underground_tile_ids as under,
 };
 
-use super::{Builder, Draw, Rect};
+use super::{Builder, Draw, Rect, surface_grid};
 
 // Sprite offsets in each view's artwork.
 const TERRAIN_SPRITES: i32 = 256;
@@ -15,6 +15,8 @@ const WATER_SPRITE: i32 = 270;
 const CHANNEL_SPRITES: i32 = 285;
 const LAND_SIDE_SPRITE: i32 = 269;
 const WATER_SIDE_SPRITE: i32 = 284;
+/// The shore and channel sprites: flat land and water in one tile.
+const SHORE_SPRITES: [std::ops::RangeInclusive<i32>; 2] = [271..=283, 285..=290];
 
 /// One ground sprite for each zone type follows this offset.
 const ZONE_GROUND_SPRITES: i32 = 290;
@@ -193,7 +195,15 @@ impl Builder {
         let developed = b >= tiles::DEVELOPED_FIRST;
 
         if !developed && !composite {
-            self.add(&mut draws, c.base() + self.ground(i, t), false, sx, base)?;
+            let ground = self.ground(i, t);
+            self.add(&mut draws, c.base() + ground, false, sx, base)?;
+            let draw = draws.last_mut().expect("the ground draw was added");
+
+            if SHORE_SPRITES.iter().any(|range| range.contains(&ground)) {
+                surface_grid::mark_shore(draw, x, y, self.city.edge);
+            } else if t <= terrain::LAND_DRAW_LAST {
+                surface_grid::mark(draw, t, x, y, self.city.edge);
+            }
         }
 
         // Composite highways and buildings draw from one compass-selected corner.

@@ -19,6 +19,8 @@ var translucent_menus := true
 var dark_underground := false
 # the sc2kfix corrections of the original sprites (Sc2kfixSpriteFixes)
 var sprite_corrections := false
+# the optional effects on HD art: bits of CityGpuBuildContext.HD_EFFECTS
+var hd_effects := 0
 # autosaves of the last ten minutes in the temporary folder (ApplicationAutosave)
 var recent_autosaves := true
 var default_mayor_name := "Mayor"
@@ -67,6 +69,7 @@ func save_options(include_ui_scale := true) -> SettingsStore.SaveOptions:
 	options.ui_language = ui_language
 	options.dark_underground = dark_underground
 	options.sprite_corrections = sprite_corrections
+	options.hd_effects = hd_effects
 	options.recent_autosaves = recent_autosaves
 	options.translucent_menus = translucent_menus
 	options.check_for_updates = check_for_updates

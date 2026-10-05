@@ -7,6 +7,15 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const ATLAS_EDGE := 2048
+# Optional effects on HD art. Refer to `effects` in native/rendering/src/lib.rs.
+const HD_GRID := 1
+const HD_WATERFALL := 2
+const HD_PIPE_FLOW := 4
+const HD_PALETTE := 8
+const ALL_HD_EFFECTS := 15
+
+# the HD effects of every context: a setting of the application
+static var hd_effects := 0
 const RECORD_SIZE := 14
 
 var builder := NativeCityRegionBuilder.new()
@@ -92,7 +101,7 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 
 	var layout := [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
 		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels,
-		with_artwork]
+		with_artwork, hd_effects]
 	var configuration := CityIsometricRenderer.view_configuration(view)
 
 	if configuration == null:
@@ -115,7 +124,7 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains), "tunnels": int(tunnels),
 			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge,
 			"atlas": int(pack_atlas), "special_overlays": int(special_overlays), "animation_phase": animation_phase,
-			"shadow_colors": shadow_colors(palette)})
+			"shadow_colors": shadow_colors(palette), "hd_effects": hd_effects})
 		var failure := builder.configure(request, artwork, palette.color(0xa1).to_rgba32())
 		atlas = null
 		atlas_revision = -1

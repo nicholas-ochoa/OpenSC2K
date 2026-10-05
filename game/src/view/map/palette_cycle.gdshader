@@ -17,6 +17,22 @@ const float ANIMATION_TAG = 64.0;
 const float SLOW_ANIMATION_TAG = 65.0;
 const float TRAFFIC_TAG = 80.0;
 const float LAST_TRAFFIC_TAG = 111.0;
+// Optional HD effects. Refer to `effects` in native/rendering/src/lib.rs.
+// Grid lines: UV.y is the distance across the line, in view pixels.
+const float GRID_TAG = 48.0;
+// Waterfall art: green is the view, blue and alpha the sprite position.
+const float WATERFALL_TAG = 49.0;
+// The indexed sprite under HD art, for its palette animation.
+const float PALETTE_TAG = 51.0;
+// The indexed sprite under underground HD art, for the water in its pipes.
+const float PIPE_FLOW_TAG = 52.0;
+const vec3 GRID_COLOR = vec3(0.22, 0.19, 0.10);
+const float GRID_OPACITY = 0.36;
+const float GRID_WIDTH = 0.45;
+// Palette animation over HD art: animated colors tint the art this much.
+const float PALETTE_OPACITY = 0.3;
+const float WATER_SHIMMER_OPACITY = 0.22;
+const float PIPE_FLOW_OPACITY = 0.32;
 // The palette entry that makes the power warning blink.
 const float POWER_WARNING_INDEX = 195.0;
 // The dark underground view: art at least this light is the white background.
@@ -27,7 +43,15 @@ const float DARK_ARTWORK = 0.85;
 const float MAX_FOOTPRINT = 4.0;
 
 // 0: indexed sprite. 1: full-color art. 2: full-color traffic with a road mask.
+// 3: grid line. 4: palette animation over art. 5: water in underground pipes.
 varying flat float artwork_kind;
+varying flat float grid_width;
+// The view of waterfall art, or -1, and the position in its sprite in large
+// view pixels.
+varying flat float waterfall_view;
+varying vec2 waterfall_local;
+// The position in the city, in large view pixels.
+varying vec2 world_position;
 varying flat float power_warning;
 // The frame count, the frames each second, and the frame stride in texels.
 varying flat vec3 artwork_frames;
@@ -41,6 +65,10 @@ void vertex() {
 	power_warning = 0.0;
 	artwork_frames = vec3(1.0, 8.0, 0.0);
 	traffic_record = vec2(0.0);
+	grid_width = 0.0;
+	waterfall_view = -1.0;
+	waterfall_local = vec2(0.0);
+	world_position = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy / max(length(MODEL_MATRIX[0].xy), 0.00001);
 
 	if (tag == ARTWORK_TAG || tag == POWER_WARNING_TAG) {
 		artwork_kind = 1.0;
@@ -51,6 +79,20 @@ void vertex() {
 	} else if (tag >= TRAFFIC_TAG && tag <= LAST_TRAFFIC_TAG) {
 		artwork_kind = 2.0;
 		traffic_record = vec2((tag - TRAFFIC_TAG) * 256.0 + bytes.g, bytes.b * 256.0 + bytes.a);
+	} else if (tag == GRID_TAG) {
+		artwork_kind = 3.0;
+		grid_width = GRID_WIDTH / exp2(2.0 - bytes.g);
+	} else if (tag == WATERFALL_TAG) {
+		artwork_kind = 1.0;
+		waterfall_view = bytes.g;
+		// a small view pixel is 4 large view pixels
+		float divisor = exp2(2.0 - bytes.g);
+		world_position *= divisor;
+		waterfall_local = COLOR.ba * vec2(32.0, 28.0 + divisor);
+	} else if (tag == PALETTE_TAG) {
+		artwork_kind = 4.0;
+	} else if (tag == PIPE_FLOW_TAG) {
+		artwork_kind = 5.0;
 	}
 }
 
@@ -87,6 +129,96 @@ vec4 indexed_color(vec2 uv, vec4 base_color) {
 	return result;
 }
 
+vec4 palette_color(int index) {
+	return texture(animated_palette, vec2((float(index) + 0.5) / 256.0, 0.5));
+}
+
+bool animated_color(int index) {
+	return (index >= 171 && index <= 198) || (index >= 200 && index <= 219) || (index >= 224 && index <= 239);
+}
+
+int palette_index(vec4 encoded) {
+	return int(round(encoded.r * 255.0));
+}
+
+// Bilinear filtering of four premultiplied texels, with straight alpha out.
+vec4 filtered(vec4 a, vec4 b, vec4 c, vec4 d, vec2 weight) {
+	vec4 result = mix(mix(a, b, weight.x), mix(c, d, weight.x), weight.y);
+	return result.a > 0.0 ? vec4(result.rgb / result.a, result.a) : vec4(0.0);
+}
+
+// The water of a watered underground pipe (the water colors 200 to 207), premultiplied.
+vec4 pipe_water(vec4 encoded) {
+	int index = palette_index(encoded);
+
+	if (encoded.a <= 0.0 || index < 200 || index > 207) {
+		return vec4(0.0);
+	}
+
+	vec3 cycle = palette_color(index).rgb;
+	vec3 flow = mix(vec3(0.05, 0.45, 0.65), vec3(0.75, 1.0, 1.0), clamp(cycle.g * 1.6, 0.0, 1.0));
+	float alpha = encoded.a * PIPE_FLOW_OPACITY;
+
+	return vec4((dark_underground ? flow * DARK_ARTWORK : flow) * alpha, alpha);
+}
+
+bool water_color(vec4 encoded) {
+	int index = palette_index(encoded);
+	return encoded.a > 0.0 && index >= 200 && index <= 211;
+}
+
+// Transparent texels are not land, so the shimmer has no seam at tile edges.
+float water_support(vec4 encoded) {
+	return encoded.a <= 0.0 || water_color(encoded) ? 1.0 : 0.0;
+}
+
+// The shimmer of a water texel, premultiplied: the mean color of its palette
+// ramp, with a slow wave across the city. Land beside it fades it out.
+vec4 water_shimmer(vec4 encoded, float support, vec3 surface, vec3 falling) {
+	if (!water_color(encoded)) {
+		return vec4(0.0);
+	}
+
+	bool waterfall = palette_index(encoded) < 208;
+	float seconds = artwork_animation_seconds;
+	float wave = waterfall ? sin(world_position.y * 0.27 - seconds * 5.0) :
+		sin(dot(world_position, vec2(0.10, 0.19)) - seconds * 1.7) * 0.65 +
+		sin(dot(world_position, vec2(-0.16, 0.07)) + seconds * 1.1) * 0.35;
+	vec3 water = (waterfall ? falling : surface) * (0.98 + wave * 0.12);
+	float alpha = encoded.a * support * WATER_SHIMMER_OPACITY;
+
+	return vec4(water * alpha, alpha);
+}
+
+float flow_hash(vec2 cell) {
+	return fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float flow_noise(vec2 point) {
+	vec2 cell = floor(point);
+	vec2 phase = fract(point);
+	phase = phase * phase * (3.0 - 2.0 * phase);
+	return mix(mix(flow_hash(cell), flow_hash(cell + vec2(1.0, 0.0)), phase.x),
+		mix(flow_hash(cell + vec2(0.0, 1.0)), flow_hash(cell + vec2(1.0)), phase.x), phase.y);
+}
+
+// Falling water on the two vertical faces of a waterfall, under a quiet top.
+// The top face spans the upper half-tile diamond of the sprite.
+vec3 waterfall_flow(vec3 material) {
+	float edge_y = 16.0 - abs(waterfall_local.x - 16.0) * 0.5;
+	float face = smoothstep(-0.18, 0.18, waterfall_local.y - edge_y);
+	float seconds = artwork_animation_seconds;
+	float ripple = flow_noise(world_position * vec2(0.21, 0.27) - vec2(0.0, seconds * 0.55));
+	vec3 surface = material * (0.98 + ripple * 0.04);
+	float running = world_position.y - seconds * 12.0;
+	float ribbons = flow_noise(vec2(world_position.x * 0.62, running * 0.14));
+	float fine = flow_noise(vec2(world_position.x * 1.2 + 17.0, running * 0.29));
+	float foam = smoothstep(0.55, 0.86, ribbons) * 0.52 + smoothstep(0.72, 0.95, fine) * 0.16;
+	vec3 falling = mix(material * (0.94 + ribbons * 0.10), vec3(0.79, 0.94, 0.98), foam);
+
+	return mix(surface, falling, face);
+}
+
 // The atlas texel at texel coordinates `texel`. Only fragment() can read TEXTURE.
 // Reads stay inside the texture: a CPU region texture ends at its edge texels.
 #define ATLAS(texel) texture(TEXTURE, (clamp(texel, vec2(0.0), 1.0 / TEXTURE_PIXEL_SIZE - 1.0) + 0.5) * TEXTURE_PIXEL_SIZE)
@@ -97,6 +229,55 @@ void fragment() {
 
 	if (artwork_kind < 0.5) {
 		COLOR = indexed_color(UV, texture(TEXTURE, UV));
+	} else if (artwork_kind > 2.5 && artwork_kind < 3.5) {
+		// an antialiased line along the edge of a tile
+		float feather = max(fwidth(UV.y), 0.00001);
+		float coverage = clamp((grid_width * 0.5 + feather * 0.5 - abs(UV.y - grid_width * 0.5)) / feather, 0.0, 1.0);
+		COLOR = vec4(GRID_COLOR, coverage * GRID_OPACITY);
+	} else if (artwork_kind > 4.5) {
+		vec2 cell = texel - 0.5;
+		vec2 corner = floor(cell);
+		COLOR = filtered(pipe_water(ATLAS(corner)), pipe_water(ATLAS(corner + vec2(1.0, 0.0))),
+			pipe_water(ATLAS(corner + vec2(0.0, 1.0))), pipe_water(ATLAS(corner + vec2(1.0))), cell - corner);
+	} else if (artwork_kind > 3.5) {
+		// The animated colors of the indexed sprite tint the art. Water gets a
+		// smooth shimmer instead of the checkered pixels of its palette ramp.
+		vec4 encoded = texture(TEXTURE, UV);
+		int index = palette_index(encoded);
+		bool animated = animated_color(index);
+		COLOR = palette_cycle_enabled && animated ? vec4(palette_color(index).rgb, encoded.a * PALETTE_OPACITY) : vec4(0.0);
+		vec2 cell = texel - 0.5;
+		vec2 corner = floor(cell);
+		vec4 a = ATLAS(corner);
+		vec4 b = ATLAS(corner + vec2(1.0, 0.0));
+		vec4 c = ATLAS(corner + vec2(0.0, 1.0));
+		vec4 d = ATLAS(corner + vec2(1.0));
+
+		if (palette_cycle_enabled && (water_color(a) || water_color(b) || water_color(c) || water_color(d))) {
+			vec3 surface = vec3(0.0);
+			vec3 falling = vec3(0.0);
+
+			for (int offset = 0; offset < 8; offset++) {
+				falling += palette_color(200 + offset).rgb * 0.125;
+			}
+
+			for (int offset = 0; offset < 4; offset++) {
+				surface += palette_color(208 + offset).rgb * 0.25;
+			}
+
+			vec2 dx = vec2(1.0, 0.0);
+			vec2 dy = vec2(0.0, 1.0);
+			float support_a = water_support(ATLAS(corner - dx)) * water_support(b) * water_support(ATLAS(corner - dy)) * water_support(c);
+			float support_b = water_support(a) * water_support(ATLAS(corner + dx * 2.0)) * water_support(ATLAS(corner + dx - dy)) * water_support(d);
+			float support_c = water_support(ATLAS(corner - dx + dy)) * water_support(d) * water_support(a) * water_support(ATLAS(corner + dy * 2.0));
+			float support_d = water_support(c) * water_support(ATLAS(corner + dx * 2.0 + dy)) * water_support(b) * water_support(ATLAS(corner + dx + dy * 2.0));
+			vec4 water = filtered(water_shimmer(a, support_a, surface, falling), water_shimmer(b, support_b, surface, falling),
+				water_shimmer(c, support_c, surface, falling), water_shimmer(d, support_d, surface, falling), cell - corner);
+
+			if (water_color(encoded) || !animated) {
+				COLOR = water;
+			}
+		}
 	} else {
 		vec3 frames = artwork_frames;
 		vec4 origin = vec4(0.0);
@@ -144,6 +325,10 @@ void fragment() {
 				local.x = 1.0 - local.x;
 			}
 			COLOR.a *= ATLAS(mask.xy + floor(local * mask.zw)).a;
+		}
+
+		if (waterfall_view >= 0.0) {
+			COLOR.rgb = waterfall_flow(COLOR.rgb);
 		}
 
 		// the dark underground view makes the white background slate, and dims

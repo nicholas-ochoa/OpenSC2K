@@ -42,6 +42,7 @@ fn fixture(edge: i32, view: i32) -> Builder {
             redraw_ground: false,
             specials: false,
             phase: 0,
+            effects: 0,
         },
         images,
         [161, 161, 161, 255],
@@ -829,10 +830,11 @@ fn artwork_raster_blends_filtered_art_at_each_scale() {
     let draws = [Draw::new(2512, Rect::new(0, 0, 2, 2)), Draw::new(2514, Rect::new(1, 1, 1, 1))];
     let bounds = Rect::new(0, 0, 2, 2);
 
-    assert!(raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [0, 0, 0, 0], ground, 3, 0).is_err());
+    assert!(raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [0, 0, 0, 0], ground, 3, 0, false).is_err());
 
     for factor in [1, 2, 4] {
-        let pixels = raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [10, 20, 30, 255], ground, factor, 0).unwrap();
+        let pixels =
+            raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [10, 20, 30, 255], ground, factor, 0, false).unwrap();
         let w = (2 * factor) as usize;
         assert_eq!(pixels.len(), w * w * 4);
         // the top left pixel is opaque art
@@ -844,7 +846,7 @@ fn artwork_raster_blends_filtered_art_at_each_scale() {
 
     // next to the transparent right column, the filtered art blends with the
     // background; over the column itself the background shows
-    let pixels = raster::composite_artwork(&draws[..1], &b.sprites, &b.shadows, bounds, [10, 20, 30, 255], ground, 4, 0).unwrap();
+    let pixels = raster::composite_artwork(&draws[..1], &b.sprites, &b.shadows, bounds, [10, 20, 30, 255], ground, 4, 0, false).unwrap();
     assert_eq!(pixels[6 * 4..6 * 4 + 4], [58, 40, 35, 255]);
     assert_eq!(pixels[7 * 4..7 * 4 + 4], [10, 20, 30, 255]);
 }
@@ -866,9 +868,42 @@ fn artwork_raster_selects_animation_frames_and_traffic_masks() {
     let bounds = Rect::new(0, 0, 2, 2);
 
     for (frame, color) in [(0, [255, 0, 0, 255]), (1, [0, 0, 255, 255]), (2, [255, 0, 0, 255])] {
-        let pixels = raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [0; 4], ground, 1, frame).unwrap();
+        let pixels = raster::composite_artwork(&draws, &b.sprites, &b.shadows, bounds, [0; 4], ground, 1, frame, false).unwrap();
         // only the road pixel of the surface (top left) shows the traffic
         assert_eq!(pixels[..4], color);
         assert_eq!(pixels[4..16], [0; 12]);
     }
+}
+
+#[test]
+fn hd_effects_add_grid_lines_and_palette_overlays_only_when_enabled() {
+    let red = |region: &region::Region| -> Vec<u8> { region.colors.iter().map(|c| (c[0] * 255.0).round() as u8).collect() };
+
+    for effects in [0, effects::GRID | effects::PALETTE] {
+        let mut b = fixture(4, 2);
+        b.config.effects = effects;
+        let key = b.region(Rect::new(0, 0, 600, 700)).unwrap().draws[0].image & !1;
+        b.sprites.artwork.insert(key, artwork(8, 8, 1, 2));
+        // the art covers an indexed sprite with an animated color
+        b.sprites.images.get_mut(&key).unwrap().la[0] = 200;
+        b.tiles.clear();
+        let reds = red(&b.region(Rect::new(0, 0, 600, 700)).unwrap());
+
+        assert_eq!(reds.contains(&51), effects & effects::PALETTE != 0);
+    }
+}
+
+#[test]
+fn waterfalls_have_the_waterfall_tag_with_the_effect() {
+    let mut b = fixture(4, 2);
+    b.config.effects = effects::WATERFALL;
+    b.sprites.artwork.insert(2568, artwork(4, 16, 2, 2));
+    let mut draw = Draw::new(2568, Rect::new(0, 0, 2, 2));
+    draw.sprite = 1284;
+    let mut out = region::Region::default();
+    b.artwork_quad(&mut out, &draw, 2568, false, Rect::new(0, 0, 10, 10)).unwrap();
+
+    assert_eq!(tag(&out, 0)[..2], [49, 2]);
+    // blue and alpha give the position of each corner in the sprite
+    assert_eq!(out.colors[2][2..], [1.0, 1.0]);
 }

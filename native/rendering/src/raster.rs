@@ -6,6 +6,7 @@ use super::{
     Builder, Draw, Rect,
     floating::{self, Ground},
     sprites::{PLACEHOLDER, Sprite, Sprites},
+    surface_grid,
 };
 
 use std::collections::{BTreeSet, HashMap};
@@ -122,6 +123,7 @@ pub fn composite_artwork(
     ground: Ground,
     factor: i32,
     frame: i64,
+    grid: bool,
 ) -> Result<Vec<u8>, String> {
     if ![1, 2, 4].contains(&factor) {
         return Err("invalid artwork raster scale".into());
@@ -224,6 +226,10 @@ pub fn composite_artwork(
                     target.copy_from_slice(&color);
                 }
             }
+        }
+
+        if grid && artwork.is_some() && draw.surface_grid != 0 {
+            surface_grid::raster(draw, bounds, factor, &mut pixels, &owners, owner, sprite);
         }
     }
 
@@ -334,7 +340,18 @@ impl Builder {
             edge: self.city.edge,
             config: self.config,
         };
-        let pixels = composite_artwork(&draws, &self.sprites, &self.shadows, bounds, background, ground, factor, frame)?;
+        let grid = self.config.effects & super::effects::GRID != 0;
+        let pixels = composite_artwork(
+            &draws,
+            &self.sprites,
+            &self.shadows,
+            bounds,
+            background,
+            ground,
+            factor,
+            frame,
+            grid,
+        )?;
 
         Ok((pixels, draws))
     }

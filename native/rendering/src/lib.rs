@@ -16,6 +16,7 @@ mod rect_index;
 mod region;
 mod region_plan;
 mod sprites;
+mod surface_grid;
 
 use sprites::Sprite;
 use std::collections::HashMap;
@@ -231,6 +232,20 @@ pub struct Config {
     pub specials: bool,
     /// The animation phase of special overlays.
     pub phase: i32,
+    /// The optional HD effects: the bits of `effects`.
+    pub effects: i32,
+}
+
+/// Optional effects on HD art. Each bit turns on one effect.
+pub mod effects {
+    /// Thin tile grid lines on HD ground.
+    pub const GRID: i32 = 1;
+    /// Falling water on waterfalls.
+    pub const WATERFALL: i32 = 2;
+    /// Flowing water in watered underground pipes.
+    pub const PIPE_FLOW: i32 = 4;
+    /// Palette animation (lights, water shimmer) over HD art.
+    pub const PALETTE: i32 = 8;
 }
 
 impl Config {
@@ -287,6 +302,8 @@ pub struct Draw {
     pub shadow: bool,
     /// The water altitude under a ship or sailboat, or -1. See `floating.rs`.
     pub floating: i32,
+    /// The grid lines of HD ground. Refer to `surface_grid`.
+    pub surface_grid: u16,
 }
 
 impl Draw {
@@ -306,6 +323,7 @@ impl Draw {
             moving: false,
             shadow: false,
             floating: -1,
+            surface_grid: 0,
         }
     }
 }
