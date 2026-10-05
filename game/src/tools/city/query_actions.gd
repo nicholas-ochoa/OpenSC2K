@@ -1,74 +1,6 @@
 class_name QueryActions
 extends RefCounted
-
-@warning_ignore_start("integer_division")
-
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-const FIRST_BUILDING := Tiles.SMALL_PARK
-const CATEGORY_COUNT := 12
-const CATEGORY_UNCOUNTED := 0
-const CATEGORY_TRANSPORTATION := 1
-const CATEGORY_POWER := 2
-const CATEGORY_WATER := 3
-const CATEGORY_RESIDENTIAL := 4
-const CATEGORY_COMMERCIAL := 5
-const CATEGORY_INDUSTRIAL := 6
-const CATEGORY_PORTS := 7
-const CATEGORY_EDUCATION := 8
-const CATEGORY_HEALTH := 9
-const CATEGORY_RECREATION := 10
-const CATEGORY_ARCOLOGIES := 11
-const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
-const FIRST_MICROSIM_LABEL := 51
-const LAST_MICROSIM_LABEL := 200
-# a building belongs to the first row whose tile bound is above its id
-const CATEGORY_BY_TILE_BOUND := [
-	[Tiles.POWER_LINE_FIRST, CATEGORY_RECREATION],
-	[Tiles.FIRST_ROAD, CATEGORY_POWER],
-	[Tiles.DEVELOPED_FIRST, CATEGORY_TRANSPORTATION],
-	[Tiles.COMMERCIAL_1X1_FIRST, CATEGORY_RESIDENTIAL],
-	[Tiles.INDUSTRIAL_1X1_FIRST, CATEGORY_COMMERCIAL],
-	[Tiles.CONSTRUCTION_1X1_FIRST, CATEGORY_INDUSTRIAL],
-	[Tiles.RESIDENTIAL_2X2_FIRST, CATEGORY_UNCOUNTED],
-	[Tiles.COMMERCIAL_2X2_FIRST, CATEGORY_RESIDENTIAL],
-	[Tiles.INDUSTRIAL_2X2_FIRST, CATEGORY_COMMERCIAL],
-	[Tiles.CONSTRUCTION_2X2_FIRST, CATEGORY_INDUSTRIAL],
-	[Tiles.RESIDENTIAL_3X3_FIRST, CATEGORY_UNCOUNTED],
-	[Tiles.COMMERCIAL_3X3_FIRST, CATEGORY_RESIDENTIAL],
-	[Tiles.INDUSTRIAL_3X3_FIRST, CATEGORY_COMMERCIAL],
-	[Tiles.CONSTRUCTION_3X3_FIRST, CATEGORY_INDUSTRIAL],
-	[Tiles.HYDRO_POWER_1, CATEGORY_UNCOUNTED],
-	[Tiles.CITY_HALL, CATEGORY_POWER],
-	[Tiles.MUSEUM, CATEGORY_HEALTH],
-	[Tiles.BIG_PARK, CATEGORY_EDUCATION],
-	[Tiles.SCHOOL, CATEGORY_RECREATION],
-	[Tiles.STADIUM, CATEGORY_EDUCATION],
-	[Tiles.PRISON, CATEGORY_RECREATION],
-	[Tiles.COLLEGE, CATEGORY_HEALTH],
-	[Tiles.ZOO, CATEGORY_EDUCATION],
-	[Tiles.WATER_PUMP, CATEGORY_RECREATION],
-	[Tiles.RUNWAY, CATEGORY_WATER],
-	[Tiles.SUBWAY_STATION, CATEGORY_PORTS],
-	[Tiles.WATER_TOWER, CATEGORY_TRANSPORTATION],
-	[Tiles.BUS_DEPOT, CATEGORY_WATER],
-	[Tiles.PARKING_LOT_1, CATEGORY_TRANSPORTATION],
-	[Tiles.MAYOR_HOUSE, CATEGORY_PORTS],
-	[Tiles.WATER_TREATMENT, CATEGORY_UNCOUNTED],
-	[Tiles.LIBRARY, CATEGORY_WATER],
-	[Tiles.HANGAR_2, CATEGORY_EDUCATION],
-	[Tiles.CHURCH, CATEGORY_PORTS],
-	[Tiles.MARINA, CATEGORY_RESIDENTIAL],
-	[Tiles.MISSILE_SILO, CATEGORY_RECREATION],
-	[Tiles.DESALINIZATION, CATEGORY_PORTS],
-	[Tiles.PLYMOUTH_ARCOLOGY, CATEGORY_WATER],
-	[Tiles.LLAMA_DOME, CATEGORY_ARCOLOGIES],
-	[Tiles.EMPTY, CATEGORY_RECREATION],
-]
-const ANALYSIS_HEADER := "LAND USE\t\tACRES\t% of CITY"
-const CATEGORY_NAMES: Array[String] = [
-	"", "Transportation", "Power", "Water", "Residential", "Commercial", "Industrial",
-	"Ports/Airports", "Education", "Health/Safety", "Recreation", "Arcologies",
-]
+## Query dialog actions: facility names and the City Hall analysis.
 
 
 static func rename_facility(
@@ -104,51 +36,31 @@ static func rename_facility(
 	return result
 
 
+# the land use of the city from the MISC tile counts. See
+# native/core/sim/src/sim/tools/query/actions.rs
 static func city_analysis(city: CityState) -> Analysis:
 	if city == null or not city.is_valid():
 		return Analysis.failure("city is invalid")
 
-	var misc_chunk := city.document.find_chunk("MISC")
+	var fields: Dictionary = NativeSimulationBridge.run("query.analysis", city, null, null, null).result
 
-	if (
-		misc_chunk == null
-		or misc_chunk.decoded_payload.size() < MISC_TILE_COUNTS + Tiles.COUNT * 4
-	):
-		return Analysis.failure("MISC tile counts are missing or invalid")
+	if not fields.ok:
+		return Analysis.failure(fields.error)
 
-	var counts := PackedInt32Array()
-	counts.resize(CATEGORY_COUNT)
-
-	for building in range(FIRST_BUILDING, Tiles.COUNT):
-		var building_count := city.document.misc_i32(MISC_TILE_COUNTS + building * 4)
-
-		for bound_row: Array in CATEGORY_BY_TILE_BOUND:
-			if building >= int(bound_row[0]):
-				continue
-
-			counts[int(bound_row[1])] += building_count
-			break
-
-	var total := 0
-
-	for category_id in range(1, CATEGORY_COUNT):
-		total += counts[category_id]
-
+	var names: PackedStringArray = fields.names
+	var counts: PackedInt32Array = fields.counts
+	var percents: PackedInt32Array = fields.percents
 	var categories: Array[Category] = []
 
-	for category_id in range(1, CATEGORY_COUNT):
-		categories.append(Category.new(
-			category_id, CATEGORY_NAMES[category_id], counts[category_id],
-			int((counts[category_id] * 100) / total) if total != 0 else 0
-		))
+	for category_id in range(1, counts.size()):
+		categories.append(Category.new(category_id, names[category_id], counts[category_id], percents[category_id]))
 
 	var result := Analysis.new()
 	result.ok = true
-	result.header = ANALYSIS_HEADER
+	result.header = fields.header
 	result.counts = counts
-	result.total = total
+	result.total = fields.total
 	result.categories = categories
-	result.error = ""
 
 	return result
 

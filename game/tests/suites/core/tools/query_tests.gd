@@ -317,10 +317,10 @@ func _test_facility_queries(city: CityState, document: Sc2File) -> void:
 func _test_city_analysis(city: CityState, document: Sc2File) -> void:
 	var analysis_misc := document.find_chunk("MISC").decoded_payload.duplicate()
 
-	for tile_id in range(QueryFacilityActions.FIRST_BUILDING, 0x100):
+	for tile_id in range(BuildingTileIds.SMALL_PARK, 0x100):
 		_write_u32_be(
 			analysis_misc,
-			QueryFacilityActions.MISC_TILE_COUNTS + tile_id * 4,
+			Sc2MiscLayout.TILE_COUNTS + tile_id * 4,
 			0,
 		)
 
@@ -341,18 +341,18 @@ func _test_city_analysis(city: CityState, document: Sc2File) -> void:
 	for tile_id in category_examples:
 		_write_u32_be(
 			analysis_misc,
-			QueryFacilityActions.MISC_TILE_COUNTS + tile_id * 4,
+			Sc2MiscLayout.TILE_COUNTS + tile_id * 4,
 			1,
 		)
 
 	_write_u32_be(
 		analysis_misc,
-		QueryFacilityActions.MISC_TILE_COUNTS + 0x88 * 4,
+		Sc2MiscLayout.TILE_COUNTS + 0x88 * 4,
 		1,
 	)
 	_write_u32_be(
 		analysis_misc,
-		QueryFacilityActions.MISC_TILE_COUNTS + 0xff * 4,
+		Sc2MiscLayout.TILE_COUNTS + 0xff * 4,
 		1,
 	)
 	_check(
@@ -363,7 +363,7 @@ func _test_city_analysis(city: CityState, document: Sc2File) -> void:
 	_check(analysis.ok, "City Hall analysis succeeds: %s" % analysis.error)
 	_check(analysis.total == 11 and analysis.counts[0] == 1, "City Hall analysis excludes hidden and unmatched tiles from its total")
 
-	for category_id in range(1, QueryFacilityActions.CATEGORY_COUNT):
+	for category_id in range(1, analysis.counts.size()):
 		_check(
 			analysis.counts[category_id] == 1
 			and analysis.categories[category_id - 1].percent == 9,
@@ -371,7 +371,7 @@ func _test_city_analysis(city: CityState, document: Sc2File) -> void:
 		)
 
 	_check(
-		analysis.header == QueryFacilityActions.ANALYSIS_HEADER
+		analysis.header == "LAND USE\t\tACRES\t% of CITY"
 		and analysis.categories[0].name == "Transportation",
 		"City Hall analysis labels its table",
 	)

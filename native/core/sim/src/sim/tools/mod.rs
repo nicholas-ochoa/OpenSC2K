@@ -11,6 +11,7 @@ pub mod highway;
 pub mod ids;
 pub mod network;
 pub mod new_terrain;
+pub mod query;
 pub mod rotation;
 pub mod terrain;
 pub mod underground;

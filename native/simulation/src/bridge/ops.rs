@@ -23,10 +23,15 @@ use sc2k_sim::sim::growth::{aftermath, demand};
 use sc2k_sim::sim::infrastructure::{power, traffic, water};
 use sc2k_sim::sim::random::Randoms;
 use sc2k_sim::sim::reports::graphs;
+use sc2k_sim::sim::tools::query;
 use sc2k_sim::sim::value::{ToValue, Value};
 
 pub const OPERATIONS: &[&str] = &[
     "echo",
+    "query.inspect",
+    "query.analysis",
+    "query.tile_name",
+    "query.template",
     "growth",
     "pollution",
     "data_maps.native",
@@ -375,6 +380,35 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 .to_value(),
             )
         }
+        "query.inspect" => Outcome::value(
+            match query::inspect(city, convert::point(args, "point", sc2k_sim::sim::geom::Vec2i::NONE)) {
+                Ok(info) => info.to_value(),
+                Err(error) => query::failure(&error),
+            },
+        ),
+        "query.analysis" => Outcome::value(query_analysis(city)),
+        "query.tile_name" => {
+            let point = convert::point(args, "point", sc2k_sim::sim::geom::Vec2i::NONE);
+            let given = convert::int(args, "building", -1);
+            let building = if given < 0 { city.building_id(point.x, point.y) } else { given };
+
+            Outcome::value(Value::Str(query::tile_name(city, point, building)))
+        }
+        "query.template" => {
+            let microsim = query::Microsim {
+                tile_id: convert::int(args, "tile_id", 0),
+                stat_0: convert::int(args, "stat_0", 0),
+                stat_1: convert::int(args, "stat_1", 0),
+                stat_2: convert::int(args, "stat_2", 0),
+                stat_3: convert::int(args, "stat_3", 0),
+            };
+
+            Outcome::value(Value::Str(query::text::expand_specific_template(
+                city,
+                &microsim,
+                &convert::string(args, "template"),
+            )))
+        }
         "military.reserve" => Outcome::value(
             sc2k_sim::sim::civic::military::reserve_land_site(
                 city,
@@ -584,5 +618,33 @@ fn new_terrain(args: &VarDictionary, city: &mut City, randoms: &mut Randoms) -> 
             ))
         }
         Err(error) => Outcome::failure(error),
+    }
+}
+
+/// `{ok, error, header, counts, total, names, percents}` of the City Hall analysis.
+fn query_analysis(city: &City) -> Value {
+    let field = |name: &str, value: Value| (Value::Str(name.to_string()), value);
+
+    match query::actions::city_analysis(city) {
+        Ok(analysis) => {
+            let percents = (0..query::actions::CATEGORY_COUNT)
+                .map(|category| analysis.percent(category) as i32)
+                .collect();
+            let counts = analysis.counts.iter().map(|&count| count as i32).collect();
+
+            Value::Dict(vec![
+                field("ok", Value::Bool(true)),
+                field("error", Value::Str(String::new())),
+                field("header", Value::Str(query::actions::HEADER.into())),
+                field("counts", Value::Ints32(counts)),
+                field("total", Value::Int(analysis.total)),
+                field(
+                    "names",
+                    Value::Strings(query::actions::CATEGORY_NAMES.iter().map(|name| name.to_string()).collect()),
+                ),
+                field("percents", Value::Ints32(percents)),
+            ])
+        }
+        Err(error) => Value::Dict(vec![field("ok", Value::Bool(false)), field("error", Value::Str(error))]),
     }
 }

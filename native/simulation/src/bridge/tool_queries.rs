@@ -6,12 +6,105 @@ use godot::prelude::*;
 use sc2k_sim::sim::geom::Rect2i as SimRect2i;
 use sc2k_sim::sim::geom::Vec2i;
 use sc2k_sim::sim::tools::commands::{network, scurk_place};
+use sc2k_sim::sim::tools::query::{self, Microsim, QueryInfo, Thing};
 use sc2k_sim::sim::tools::{availability, catalog, demolish, set_corners};
 
 /// Static tool queries for GDScript.
 #[derive(GodotClass)]
 #[class(no_init, base = Object)]
 pub struct NativeCityTools {}
+
+/// A field of a script object.
+fn object_field<T: FromGodot>(object: &Gd<Object>, name: &str) -> Option<T> {
+    object.get(name).try_to::<T>().ok()
+}
+
+fn object_int(object: &Gd<Object>, name: &str) -> i64 {
+    object_field(object, name).unwrap_or(0)
+}
+
+fn object_text(object: &Gd<Object>, name: &str) -> String {
+    object_field::<GString>(object, name)
+        .map(|text| text.to_string())
+        .unwrap_or_default()
+}
+
+fn object_strings(object: &Gd<Object>, name: &str) -> Vec<String> {
+    object_field::<PackedStringArray>(object, name)
+        .map(|texts| texts.as_slice().iter().map(GString::to_string).collect())
+        .unwrap_or_default()
+}
+
+/// A QueryResult of the script, as the view completed it with its sprites.
+fn query_info(info: &Gd<Object>) -> QueryInfo {
+    let flag = |name: &str| object_field::<bool>(info, name).unwrap_or(false);
+    let microsim = object_field::<Gd<Object>>(info, "microsim").map(|microsim| Microsim {
+        tile_id: object_int(&microsim, "tile_id"),
+        stat_0: object_int(&microsim, "stat_0"),
+        stat_1: object_int(&microsim, "stat_1"),
+        stat_2: object_int(&microsim, "stat_2"),
+        stat_3: object_int(&microsim, "stat_3"),
+    });
+    // a typed script array does not convert to an untyped array; read its items
+    let things_value = info.get("things");
+    let count = things_value.call("size", &[]).try_to::<i64>().unwrap_or(0);
+    let things = (0..count)
+        .filter_map(|index| things_value.call("get", &[index.to_variant()]).try_to::<Gd<Object>>().ok())
+        .map(|thing| Thing {
+            record: object_int(&thing, "record"),
+            fields: ["type", "direction", "state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]
+                .map(|name| object_int(&thing, name)),
+            type_name: object_text(&thing, "type_name"),
+            direction_name: object_text(&thing, "direction_name"),
+        })
+        .collect();
+
+    QueryInfo {
+        kind: object_text(info, "kind"),
+        point: object_field::<Vector2i>(info, "point").map_or(Vec2i::NONE, point),
+        title: object_text(info, "title"),
+        shows_traffic: flag("shows_traffic"),
+        altitude_is_depth: flag("altitude_is_depth"),
+        shows_land_value: flag("shows_land_value"),
+        shows_utilities: flag("shows_utilities"),
+        powered: flag("powered"),
+        watered: flag("watered"),
+        zone_name: object_text(info, "zone_name"),
+        zone_density: object_text(info, "zone_density"),
+        crime_level: object_text(info, "crime_level"),
+        pollution_level: object_text(info, "pollution_level"),
+        water_detail: object_text(info, "water_detail"),
+        action: object_text(info, "action"),
+        corner_name: object_text(info, "corner_name"),
+        underground_name: object_text(info, "underground_name"),
+        microsim_label: object_text(info, "microsim_label"),
+        overlay_id: object_int(info, "overlay_id"),
+        zone_id: object_int(info, "zone_id"),
+        sprite_id: object_int(info, "sprite_id"),
+        building_id: object_int(info, "building_id"),
+        terrain_id: object_int(info, "terrain_id"),
+        traffic: object_int(info, "traffic"),
+        altitude_feet: object_int(info, "altitude_feet"),
+        land_value: object_int(info, "land_value"),
+        crime: object_int(info, "crime"),
+        pollution: object_int(info, "pollution"),
+        microsim_type: object_int(info, "microsim_type"),
+        tile_id: object_int(info, "tile_id"),
+        altitude_raw: object_int(info, "altitude_raw"),
+        land_value_raw: object_int(info, "land_value_raw"),
+        crime_raw: object_int(info, "crime_raw"),
+        pollution_raw: object_int(info, "pollution_raw"),
+        zone_raw: object_int(info, "zone_raw"),
+        flags_raw: object_int(info, "flags_raw"),
+        underground_id: object_int(info, "underground_id"),
+        microsim_id: object_int(info, "microsim_id"),
+        microsim,
+        lines: object_strings(info, "lines"),
+        flag_names: object_strings(info, "flag_names"),
+        sound_events: Vec::new(),
+        things,
+    }
+}
 
 fn point(value: Vector2i) -> Vec2i {
     Vec2i::new(value.x as i64, value.y as i64)
@@ -92,6 +185,81 @@ impl NativeCityTools {
         }
 
         plants
+    }
+
+    /// The name tables of the query dialog.
+    #[func]
+    fn query_strings() -> VarDictionary {
+        use query::strings;
+
+        let texts = |items: &[&str]| items.iter().map(|item| GString::from(*item)).collect::<PackedStringArray>();
+        let mut lines = VarArray::new();
+
+        for group in strings::MICROSIM_LINES {
+            lines.push(&texts(group).to_variant());
+        }
+
+        let mut flags = VarArray::new();
+
+        for (mask, name) in strings::FLAG_LABELS {
+            flags.push(&varray![mask, name].to_variant());
+        }
+
+        let bounds: Vec<i32> = strings::GENERAL_NAME_UPPER_BOUNDS.iter().map(|&bound| bound as i32).collect();
+        let mut result = VarDictionary::new();
+        result.set("tile_names", &texts(&strings::TILE_NAMES));
+        result.set("general_name_upper_bounds", &PackedInt32Array::from(bounds.as_slice()));
+        result.set("clear_terrain", strings::CLEAR_TERRAIN);
+        result.set("fresh_water", strings::FRESH_WATER);
+        result.set("salt_water", strings::SALT_WATER);
+        result.set("sailboat", strings::SAILBOAT);
+        result.set("sports", &texts(&strings::SPORTS));
+        result.set("microsim_lines", &lines);
+        result.set("grade_names", &texts(&strings::GRADE_NAMES));
+        result.set("zone_names", &texts(&strings::ZONE_NAMES));
+        result.set("zone_densities", &texts(&strings::ZONE_DENSITIES));
+        result.set("underground_names", &texts(&strings::UNDERGROUND_NAMES));
+        result.set("thing_names", &texts(&strings::THING_NAMES));
+        result.set("direction_names", &texts(&strings::DIRECTION_NAMES));
+        result.set("flag_labels", &flags);
+        result
+    }
+
+    /// The name of a building ID.
+    #[func]
+    fn query_tile_name(tile_id: i64) -> GString {
+        GString::from(query::strings::tile_name(tile_id))
+    }
+
+    /// The crime or pollution level of a data-map value.
+    #[func]
+    fn query_level_name(value: i64) -> GString {
+        GString::from(query::level_name(value))
+    }
+
+    /// The cars per minute of a road tile from the traffic map `values`.
+    #[func]
+    fn query_traffic(values: PackedByteArray, edge: i64, at: Vector2i, building: i64) -> i64 {
+        query::traffic(edge, values.as_slice(), point(at), building)
+    }
+
+    /// The sounds that a facility query plays.
+    #[func]
+    fn query_sound_events(tile_id: i64, statistic_0: i64) -> PackedInt32Array {
+        query::text::specific_sound_events(tile_id, statistic_0)
+            .iter()
+            .map(|&sound| sound as i32)
+            .collect()
+    }
+
+    /// The dialog text of a QueryResult.
+    #[func]
+    fn query_text(info: Gd<Object>) -> GString {
+        if !object_field::<bool>(&info, "ok").unwrap_or(false) {
+            return GString::from(query::text::failure_text(&object_text(&info, "error")).as_str());
+        }
+
+        GString::from(query::text::format_text(&query_info(&info)).as_str())
     }
 
     /// True when a city with `misc` in `city_mode` allows the tool.
