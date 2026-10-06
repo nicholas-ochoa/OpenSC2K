@@ -1,5 +1,5 @@
 {
-  "street": {"color": "ffe0a0", "radius": 0.55, "intensity": 0.32, "spacing": 4},
+  "street": {"color": "ffd080", "radius": 0.90, "intensity": 0.85, "spacing": 2},
   "entrances": {
     "124": {"color": "ffe7bd", "radius": 0.48, "intensity": 0.32},
     "125": {"color": "ffd19a", "radius": 0.36, "intensity": 0.24},

@@ -15,6 +15,8 @@ var visible_tiles: Array[Vector2i] = []
 var signature: Array = []
 var bounds := Rect2i()
 var cursor := 0
+var fixtures := Node2D.new()
+var clock := 0.0
 
 
 func _init() -> void:
@@ -24,6 +26,9 @@ func _init() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(masker)
 	masker.hide()
+	fixtures.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	add_child(fixtures)
+	fixtures.draw.connect(_draw_fixtures)
 
 
 func reset() -> void:
@@ -35,12 +40,18 @@ func reset() -> void:
 	bounds = Rect2i()
 	cursor = 0
 	queue_redraw()
+	fixtures.queue_redraw()
 
 
-func sync(app: CityApplication, strength: float) -> void:
+func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 	visible = strength > 0.001 and app.view_state.surface_visibility.networks and app.view_state.surface_visibility.buildings
 	if not visible:
 		return
+	var previous_second := floori(clock)
+	clock = fposmod(clock + maxf(elapsed, 0.0), 14.0)
+	if floori(clock) != previous_second:
+		fixtures.queue_redraw()
+	fixtures.modulate.a = smoothstep(0.0, 0.25, strength)
 	var map := app.map_view
 	var city := app.document_state.city
 	var revision := [city.document.get_instance_id(), app.static_render_state.epoch,
@@ -63,6 +74,7 @@ func sync(app: CityApplication, strength: float) -> void:
 			built += 1
 	if built > 0:
 		queue_redraw()
+		fixtures.queue_redraw()
 	var scale_value := map.camera._view_scale()
 	position = map.camera._draw_offset(scale_value)
 	scale = Vector2.ONE * scale_value
@@ -103,14 +115,15 @@ func _collect(city: CityState) -> void:
 		roads.roads.clear()
 		masker._occluders.clear()
 	queue_redraw()
+	fixtures.queue_redraw()
 
 
 func sources(city: CityState, tile: Vector2i) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	# Stable placement, independent of both simulation and cosmetic RNGs.
-	if posmod(tile.x * 7 + tile.y * 11, int(profiles.street.spacing)) == 0:
+	for fixture in CityNightFixtures.street_layout(city, tile, int(profiles.street.spacing)):
 		var street: Dictionary = profiles.street.duplicate()
-		street.position = Vector2(tile) + Vector2(0.12, 0.12)
+		street.position = Vector2(tile) + Vector2(fixture.offset) * 0.65
 		result.append(street)
 	# Only short, street-facing approaches for the explicitly listed shops.
 	# No guess at facade height and no illumination across unrelated buildings.
@@ -152,10 +165,24 @@ func _build(app: CityApplication, tile: Vector2i) -> Dictionary:
 					color += Color(str(light.color)) * falloff * float(light.intensity)
 				color.a = 1.0
 				image.set_pixelv(local, color.clamp())
-	return {"texture": ImageTexture.create_from_image(image), "origin": origin}
+	var result := CityNightFixtures.build(app, tile, origin,
+		CityNightFixtures.street_layout(city, tile, int(profiles.street.spacing)), masker)
+	result.merge({"texture": ImageTexture.create_from_image(image), "origin": origin})
+	return result
 
 
 func _draw() -> void:
 	for tile in visible_tiles:
 		if cache.has(tile):
 			draw_texture(cache[tile].texture, cache[tile].origin)
+
+
+func _draw_fixtures() -> void:
+	for tile in visible_tiles:
+		if not cache.has(tile):
+			continue
+		var entry: Dictionary = cache[tile]
+		fixtures.draw_texture(entry.fixtures, entry.origin)
+		for signal_light: Dictionary in entry.signals:
+			var lens := CityNightFixtures.signal_lens(tile, signal_light.axis, clock)
+			fixtures.draw_texture(signal_light.lenses[lens], signal_light.origin)

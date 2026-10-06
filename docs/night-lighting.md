@@ -32,5 +32,17 @@ the visible area. Daytime, disabled enhancements, and data/underground views
 disable the light passes. Three zero strengths restore the prior lighting, apart
 from the intentional separation of Night strength and artificial light activation.
 
+Street and junction lighting includes short pixel-art lamp posts with warm heads
+and wider pools on ordinary roads and road bridges. Fixtures use the same
+foreground silhouettes as their road receivers. Normal T and four-way junctions
+with at least three connected approaches also receive small signal heads. They
+cycle through green, amber and an all-red clearance on a separate presentation
+clock. Opposing approaches share a phase; crossing approaches never show green
+together. The clock follows the environment speed/pause options and resets for
+a newly loaded city. Signals are decorative: vehicles do not obey them, and no
+traffic rules or pathfinding data are changed. Highways, rail crossings, bridge
+decks and disconnected junction artwork do not receive traffic signals. Setting
+the street-light strength to zero hides fixtures, signals and light pools.
+
 All controls persist in local preferences. City documents, simulation state,
 power rules, disasters and simulation random state remain unchanged.

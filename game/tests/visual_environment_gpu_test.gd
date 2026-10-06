@@ -78,6 +78,8 @@ func _run() -> void:
 	await _check_weather_layer()
 	await _check_night_glow(false)
 	await _check_night_glow(true)
+	await _check_street_fixtures(false)
+	await _check_street_fixtures(true)
 	print("PASS: GPU uniform morning/evening tint, colored graded brightmaps and original pixels when disabled")
 	quit()
 
@@ -213,6 +215,57 @@ func _check_night_glow(hdr: bool) -> void:
 	assert(not lighting.output.visible)
 	for buffer in lighting.buffers:
 		assert(buffer.render_target_update_mode == SubViewport.UPDATE_DISABLED)
+	viewport.queue_free()
+	app.free()
+	await process_frame
+
+
+func _check_street_fixtures(hdr: bool) -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(96, 80)
+	viewport.use_hdr_2d = hdr
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var background := ColorRect.new()
+	background.size = Vector2(viewport.size)
+	background.color = Color(0.08, 0.09, 0.12)
+	viewport.add_child(background)
+	await RenderingServer.frame_post_draw
+	var before := viewport.get_texture().get_image()
+	var app := CityApplication.new()
+	app.document_state.city = load("res://tests/city_life_test.gd").fixture()
+	var ground := CityNightGround.new()
+	viewport.add_child(ground)
+	var tile := Vector2i(64, 64)
+	for axis in 2:
+		ground.masker._occluders[Vector3i(tile.x, tile.y, axis)] = []
+	var surface := ground._build(app, tile)
+	ground.position = Vector2(16, 8) - Vector2(surface.origin)
+	ground.cache[tile] = surface
+	ground.visible_tiles = [tile]
+	(ground.material as ShaderMaterial).set_shader_parameter("strength", 0.45)
+	ground.queue_redraw()
+	ground.fixtures.queue_redraw()
+	await RenderingServer.frame_post_draw
+	var after := viewport.get_texture().get_image()
+	var red := 0
+	var green := 0
+	var warm := 0
+	for y in after.get_height():
+		for x in after.get_width():
+			var pixel := after.get_pixel(x, y)
+			red += int(pixel.r > 0.6 and pixel.r > pixel.g * 2.0)
+			green += int(pixel.g > 0.6 and pixel.g > pixel.r * 1.5)
+			warm += int(pixel.r > before.get_pixel(x, y).r + 0.08 and pixel.r > pixel.b * 1.3)
+	assert(red >= 2 and green >= 2, "Junction lamps are missing red or green output on the GPU")
+	assert(warm > 50, "Street light pools remain too small or dim to read: hdr=%s warm=%d red=%d green=%d" % [hdr, warm, red, green])
+	ground.clock = 6.0
+	ground.fixtures.queue_redraw()
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() != after.get_data(), "Cosmetic signal phase failed to change visible lenses")
+	ground.hide()
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == before.get_data(), "Disabled street lighting left fixtures behind")
 	viewport.queue_free()
 	app.free()
 	await process_frame

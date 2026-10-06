@@ -46,7 +46,7 @@ const LABELS := {
 const HINTS := {
 	"night_ambient": "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate.",
 	"night_glow": "Soft colored light around visible brightmaps. Zero keeps only the sharp original lights.",
-	"night_ground": "Small warm light pools on visible streets and selected shop approaches. Zero disables these lights.",
+	"night_ground": "Street lamps, warm road lighting, cosmetic junction signals and selected shop approaches. Signals do not control traffic. Zero disables these lights.",
 	"traffic_vehicles_enabled": "Smooth movement of helicopters, airplanes, ships, sailboats and trains.",
 	"water_waves_enabled": "Moving waves and breaking surf along the terrain shoreline. Turn off for a still water surface.",
 	"disaster_enabled": "Enable additional presentation effects. Turning this off restores the original disaster visuals; disasters still occur.",

@@ -251,6 +251,13 @@ func _check_ground_lighting(main: CityApplication) -> void:
 	assert(not lights.is_empty())
 	var surface := ground._build(main, tile)
 	var image: Image = surface.texture.get_image()
+	assert(not surface.fixtures.get_image().is_invisible(), "Street poles and lamp heads are missing")
+	assert(surface.signals.size() == 4, "A connected four-way junction needs four signal faces")
+	for seconds in 28:
+		var a := CityNightFixtures.signal_lens(tile, 0, seconds * 0.5)
+		var b := CityNightFixtures.signal_lens(tile, 1, seconds * 0.5)
+		assert(a == 0 or b == 0, "Crossing cosmetic signals showed conflicting green or amber")
+	assert(CityNightFixtures.signal_directions(city, Vector2i(64, 65)).is_empty(), "Straight road received junction signals")
 	var lit := 0
 	for y in image.get_height():
 		for x in image.get_width():
@@ -261,11 +268,26 @@ func _check_ground_lighting(main: CityApplication) -> void:
 	cover.fill(Color.WHITE)
 	for axis in 2:
 		ground.masker._occluders[Vector3i(64, 64, axis)] = [{"origin": surface.origin, "image": cover}]
-	var hidden: Image = ground._build(main, tile).texture.get_image()
+	var hidden_surface := ground._build(main, tile)
+	var hidden: Image = hidden_surface.texture.get_image()
+	assert(hidden_surface.fixtures.get_image().is_invisible(), "Street fixture painted over an opaque foreground surface")
+	for signal_light: Dictionary in hidden_surface.signals:
+		for lens: Texture2D in signal_light.lenses:
+			assert(lens.get_image().is_invisible(), "Junction signal leaked through foreground geometry")
 	for y in hidden.get_height():
 		for x in hidden.get_width():
 			assert(hidden.get_pixel(x, y).r == 0.0, "Ground light painted over an opaque foreground surface")
 	assert(DocumentState.capture(city.document) == before)
+	# Only ordinary junctions receive signals, never grade-separated crossings.
+	var junctions := load("res://tests/city_life_test.gd").fixture() as CityState
+	junctions.set_building_id(64, 64, BuildingTileIds.ROAD_JUNCTION_1)
+	assert(CityNightFixtures.signal_directions(junctions, tile).size() == 3)
+	for id in [BuildingTileIds.HIGHWAY_INTERSECTION, BuildingTileIds.HIGHWAY_ROAD_CROSSING_1,
+		BuildingTileIds.ROAD_RAIL_CROSSING_1, BuildingTileIds.ROAD_BRIDGE]:
+		junctions.set_building_id(64, 64, id)
+		assert(CityNightFixtures.signal_directions(junctions, tile).is_empty())
+	junctions.set_building_id(0, 0, BuildingTileIds.ROAD_CROSSROADS)
+	assert(CityNightFixtures.signal_directions(junctions, Vector2i.ZERO).is_empty())
 	ground.queue_free()
 	await process_frame
 
