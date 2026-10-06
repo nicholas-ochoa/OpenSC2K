@@ -225,10 +225,12 @@ func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	assert(notifications[0] == 0, "Category navigation changed settings")
 	tab.changed.disconnect(count_change)
 	for field in VisualEnhancementOptions.FIELDS:
+		if field[0] == "lut_folder":
+			continue
 		assert(tab.controls.has(field[0]), "An option is missing from the settings pages")
 		if field[0] in VisualEnhancementsTab.PERCENT_FIELDS:
 			assert(is_equal_approx((tab.controls[field[0]] as SpinBox).value, float(original[field[0]]) * 100.0))
-	assert(tab.controls.size() == VisualEnhancementOptions.FIELDS.size())
+	assert(tab.controls.size() == VisualEnhancementOptions.FIELDS.size() - 1)
 	var saved := VisualEnhancementOptions.normalize({"lut_folder": "user://authored_luts", "disaster_strength": 0.35, "disaster_lights": 0.25, "disaster_shake": 0.0})
 	tab.show_values(saved)
 	assert(tab.selected_values() == saved, "Settings pages lost stored values")
@@ -244,7 +246,9 @@ func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	assert(not (tab.controls.disaster_shake as SpinBox).editable)
 	assert((tab.controls.disaster_motion as CheckBox).disabled)
 	assert(tab.selected_values().disaster_lights == 0.25)
+	assert(tab.selected_values().lut_folder == saved.lut_folder, "Unrelated edits lost the hidden profile path")
 	tab.show_values({})
+	assert(tab.selected_values().lut_folder.is_empty(), "Defaults must still clear custom profiles")
 	var fixed := tab.controls.season_fixed as OptionButton
 	var source := tab.controls.season_mode as OptionButton
 	assert(fixed.disabled and not (tab.controls.season_seconds as SpinBox).editable)

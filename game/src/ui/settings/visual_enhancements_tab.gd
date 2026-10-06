@@ -26,7 +26,7 @@ const SECTIONS := [
 	["Animation", "Shared timing for visual cycles and animated effects. Cycle durations use Turtle speed when linked; otherwise they use real time.",
 		["speed_link", "pause_freezes"]],
 	["Custom Graphics", "Optional files for custom colors and lights. Standard effects work without these fields.",
-		["lut_path", "lut_folder", "brightmap_folder"]],
+		["lut_path", "brightmap_folder"]],
 ]
 const PERCENT_FIELDS := ["day_lut_strength", "night_strength", "season_transition", "season_lut_strength",
 	"season_water_strength", "weather_strength", "weather_lut_strength", "cloud_density", "cloud_shadow_strength",
@@ -34,7 +34,7 @@ const PERCENT_FIELDS := ["day_lut_strength", "night_strength", "season_transitio
 const LABELS := {
 	"disaster_enabled": "Enhanced disaster visuals", "disaster_strength": "Additional effect intensity",
 	"disaster_crowds": "Animated riot crowds", "disaster_lights": "Fire and impact lighting",
-	"disaster_shake": "Earthquake camera shake", "lut_folder": "Custom color profile folder",
+	"disaster_shake": "Earthquake camera shake",
 	"pause_freezes": "Pause environment cycles with the game",
 	"day_mode": "Time source", "day_hour": "Fixed hour (0–24)", "day_seconds": "Day cycle duration",
 	"day_lut_strength": "Time-of-day color strength", "night_strength": "Night darkness",
@@ -55,7 +55,6 @@ const HINTS := {
 	"disaster_lights": "Local fire and impact lighting. Requires enhanced disaster visuals and effect intensity above 0%.",
 	"disaster_shake": "Strength of earthquake camera movement. Set to 0% to remove camera shake while enhanced disaster visuals are enabled.",
 	"pause_freezes": "Pause environment cycles and enhanced disaster animations. Rain, snow and dust from player demolition can continue.",
-	"lut_folder": "Optional folder of color profiles. Leave empty to use the built-in profiles.",
 	"weather_fixed": "Snow requires winter. In other seasons, snow selections use rain of the same strength.",
 	"day_hour": "24-hour time in quarter-hour steps: 7.5 means 07:30.",
 	"day_seconds": "Seconds for one complete day/night cycle. The Animation section controls speed and pause behavior.",
@@ -77,6 +76,7 @@ const HINTS := {
 
 var controls: Dictionary = {}
 var filling := false
+var profile_folder := ""
 var pages: Array[VBoxContainer] = []
 var category_buttons: Array[Button] = []
 var page_scroll: ScrollContainer
@@ -142,14 +142,6 @@ func _ready() -> void:
 	_add_button(asset_buttons, "Export PNG templates", func() -> void:
 		_changed()
 		export_requested.emit())
-	var color_buttons := HFlowContainer.new()
-	pages[-1].add_child(color_buttons)
-	_add_button(color_buttons, "Reload color profiles", func() -> void:
-		_changed()
-		luts_reload_requested.emit())
-	_add_button(color_buttons, "Export color profiles", func() -> void:
-		_changed()
-		luts_export_requested.emit())
 	pages[-1].add_child(_help("Reload after editing light masks. Export creates PNG templates for painting your own lights."))
 	add_child(HSeparator.new())
 	var actions := HFlowContainer.new()
@@ -332,6 +324,7 @@ func _update_availability() -> void:
 func show_values(source: Dictionary) -> void:
 	filling = true
 	var values := VisualEnhancementOptions.normalize(source)
+	profile_folder = str(values.lut_folder)
 	for key in controls:
 		var control: Control = controls[key]
 		if control is CheckBox:
@@ -347,7 +340,8 @@ func show_values(source: Dictionary) -> void:
 
 
 func selected_values() -> Dictionary:
-	var values := {}
+	# Retain the hidden profile path when editing unrelated settings.
+	var values := {"lut_folder": profile_folder}
 	for key in controls:
 		var control: Control = controls[key]
 		if control is CheckBox:
