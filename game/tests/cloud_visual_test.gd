@@ -8,6 +8,15 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	var sunny := CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.SUNNY, 1, 0.0)
+	var overcast := CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.SUNNY, 5, 0.0)
+	var storm := CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.RAIN_STORM, -1, 0.0)
+	assert(sunny < overcast and overcast < storm, "Cloud coverage must follow the actual weather")
+	assert(not is_equal_approx(sunny, CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.SUNNY, 1, 75.0)))
+	assert(is_equal_approx(sunny, CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.SUNNY, 1, 900.0)))
+	assert(CityVisualClouds.weather_density(0.0, CityVisualWeather.Kind.RAIN_STORM, -1, 75.0) == 0.0)
+	assert(CityVisualClouds.weather_fog(CityVisualWeather.Kind.SUNNY, 3, 0.0) > 0.15)
+	assert(CityVisualClouds.weather_fog(CityVisualWeather.Kind.SUNNY, 1, 0.0) == 0.0)
 	for pair in [[0.1, 1.0], [0.25, 1.0], [1.0, 0.0], [2.0, 0.0], [4.0, 0.0]]:
 		assert(is_equal_approx(CityVisualClouds.body_opacity(pair[0]), pair[1]))
 	assert(CityVisualClouds.body_opacity(0.5) > 0.0 and CityVisualClouds.body_opacity(0.5) < 1.0)
@@ -71,6 +80,21 @@ func _run() -> void:
 		var canvas_point := main.map_view.get_global_transform() * (main.map_view.camera._draw_offset(scale) + source_point * scale)
 		var grid: Vector3 = clouds.parameters.cloud_canvas_to_grid * Vector3(canvas_point.x, canvas_point.y, 1)
 		assert(Vector2(grid.x, grid.y).is_equal_approx(fixed_grid))
+	main.preferences.visual_enhancements.weather_enabled = true
+	main.preferences.visual_enhancements.weather_mode = 2
+	main.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.HEAVY_RAIN
+	var before_front := clouds.density
+	main.visual_environment.process(1.0)
+	assert(absf(clouds.density - before_front) <= 0.0061, "A weather change jumped the cloud coverage")
+	assert(clouds.parameters.cloud_formation > 0.0 and clouds.fog > 0.0)
+	main.preferences.visual_enhancements.pause_freezes = true
+	main.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+	var frozen := [clouds.density, clouds.fog, clouds.weather_clock]
+	main.visual_environment.process(60.0)
+	assert([clouds.density, clouds.fog, clouds.weather_clock] == frozen, "Paused weather coverage or mist moved")
+	main.preferences.visual_enhancements.weather_enabled = false
+	main.visual_environment.process(0.0)
+	assert(clouds.density == main.preferences.visual_enhancements.cloud_density and clouds.fog == 0.0)
 	main.view_state.overlay_mode = CityViewMode.Mode.HEIGHT
 	main.visual_environment.process(1.0)
 	assert(not clouds.parameters.cloud_enabled and not clouds.layer.visible)

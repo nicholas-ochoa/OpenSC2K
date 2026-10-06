@@ -7,6 +7,9 @@ uniform vec4 cloud_projection = vec4(1.0, 0.5, -1.0, 0.5);
 uniform vec2 cloud_drift = vec2(0.0);
 uniform float cloud_span = 192.0;
 uniform float cloud_density = 0.4;
+uniform float cloud_formation = 0.0;
+uniform float cloud_fog_density = 0.0;
+uniform vec2 cloud_fog_drift = vec2(0.0);
 uniform float cloud_shadow_strength = 0.4;
 uniform vec2 cloud_shadow_offset = vec2(4.0, 2.0);
 
@@ -58,6 +61,12 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 			vec2 delta = point - center;
 			vec2 sky = delta.x * cloud_projection.xy + delta.y * cloud_projection.zw;
 			float size_factor = mix(0.86, 1.06, cloud_hash(id + vec2(7.0, 11.0)));
+			// Weather changes grow/shrink the authored silhouette rather than
+			// fading its solid core or switching an entire cloud in one frame.
+			if (cloud_formation > 0.0) {
+				float growth = smoothstep(seed, seed + cloud_formation, cloud_density * 1.55);
+				size_factor *= max(sqrt(growth), 0.001);
+			}
 			float size = cloud_span / 3.0 * size_factor;
 			vec2 uv = sky / size + vec2(0.5);
 			if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { continue; }
@@ -66,6 +75,13 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 			vec2 atlas_uv = (quadrant + uv) * 0.5;
 			float lod = softness < 0.0 ? max(base_lod - log2(size_factor), 0.0) : softness;
 			vec4 cloud = textureLod(cloud_field, atlas_uv, lod);
+			if (cloud_formation > 0.0) {
+				// A newly forming speck covers only part of a screen pixel. Fade
+				// that subpixel footprint before it grows into a solid cloud.
+				vec2 edge = min(uv, vec2(1.0) - uv);
+				cloud.a *= smoothstep(0.0, footprint / size, min(edge.x, edge.y));
+				cloud.a *= smoothstep(0.0, 8.0, size / max(footprint, 0.001));
+			}
 			cloud.a *= amount;
 			combined.rgb = cloud.rgb * cloud.a + combined.rgb * (1.0 - cloud.a);
 			combined.a = cloud.a + combined.a * (1.0 - cloud.a);
@@ -87,7 +103,29 @@ vec4 cloud_body(vec2 grid_position, float map_edge, float opacity, vec3 light) {
 	return vec4(cloud.rgb * light, cloud.a * opacity);
 }
 
+float cloud_mist(vec2 point) {
+	vec2 cell = floor(point);
+	vec2 fraction = fract(point);
+	fraction = fraction * fraction * (3.0 - 2.0 * fraction);
+	// Four cells repeat over exactly one drift span, including the clock wrap.
+	float a = cloud_hash(mod(cell, vec2(4.0)));
+	float b = cloud_hash(mod(cell + vec2(1.0, 0.0), vec2(4.0)));
+	float c = cloud_hash(mod(cell + vec2(0.0, 1.0), vec2(4.0)));
+	float d = cloud_hash(mod(cell + vec2(1.0), vec2(4.0)));
+	return mix(mix(a, b, fraction.x), mix(c, d, fraction.x), fraction.y);
+}
+
 vec3 cloud_shadow(vec3 color, vec2 grid_position) {
-	if (!cloud_enabled || cloud_density <= 0.0 || cloud_shadow_strength <= 0.0) { return color; }
-	return color * (1.0 - cloud_cover(grid_position - cloud_shadow_offset) * cloud_shadow_strength);
+	if (!cloud_enabled) { return color; }
+	if (cloud_density > 0.0 && cloud_shadow_strength > 0.0) {
+		color *= 1.0 - cloud_cover(grid_position - cloud_shadow_offset) * cloud_shadow_strength;
+	}
+	if (cloud_fog_density > 0.0) {
+		vec2 point = (grid_position - cloud_fog_drift) / (cloud_span * 0.25);
+		float mist = 0.35 + 0.65 * cloud_mist(point);
+		// Applied to city pixels before ambient/night grading, never to UI or
+		// transparent map margins. The map remains readable through the mist.
+		color = mix(color, vec3(0.76, 0.8, 0.83), cloud_fog_density * mist);
+	}
+	return color;
 }

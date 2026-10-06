@@ -59,6 +59,16 @@ func _run() -> void:
 	material.set_shader_parameter("cloud_density", 0.0)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == original.get_data(), "Zero density left shadows behind")
+	material.set_shader_parameter("cloud_fog_density", 0.24)
+	await RenderingServer.frame_post_draw
+	var foggy := viewport.get_texture().get_image()
+	assert(foggy.get_pixel(48, 48).r > original.get_pixel(48, 48).r, "Fog did not soften the landscape")
+	assert(foggy.get_pixel(0, 0).a == 0.0, "Fog escaped the map silhouette")
+	assert(foggy.get_pixel(105, 105).is_equal_approx(original.get_pixel(105, 105)), "Fog reached the foreground UI")
+	material.set_shader_parameter("cloud_fog_drift", Vector2.ONE * CityVisualClouds.FIELD_SPAN)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == foggy.get_data(), "Fog jumped at the clock wrap")
+	material.set_shader_parameter("cloud_fog_density", 0.0)
 	material.set_shader_parameter("cloud_density", 0.4)
 	material.set_shader_parameter("cloud_drift", Vector2(13, 8))
 	await RenderingServer.frame_post_draw
@@ -181,6 +191,31 @@ func _check_overview_stability() -> void:
 			previous = current
 		assert(largest_change < 0.16, "Slow overview drift changed cloud opacity abruptly: %s at zoom %s" % [largest_change, zoom])
 		print("PASS: solid overview cores and stable moving atlas at zoom %s (maximum pixel change %s)" % [zoom, largest_change])
+		material.set_shader_parameter("cloud_formation", 0.18)
+		var site := Vector2(1, 1)
+		var jitter := Vector2(_cloud_hash(site + Vector2(5, 9)), _cloud_hash(site + Vector2(23, 3))) - Vector2(0.5, 0.5)
+		var center := (site + Vector2(0.5, 0.5) + jitter * 0.24) * 48.0
+		transform.origin = center - transform.basis_xform(Vector2(128, 128))
+		material.set_shader_parameter("cloud_canvas_to_body_grid", CityVisualClouds.shader_basis(transform))
+		material.set_shader_parameter("cloud_drift", Vector2.ZERO)
+		var threshold := _cloud_hash(Vector2(1, 1) + Vector2(17, 31)) / 1.55
+		material.set_shader_parameter("cloud_density", threshold - 0.0008)
+		await RenderingServer.frame_post_draw
+		previous = viewport.get_texture().get_image()
+		var largest_front := 0.0
+		for frame in range(1, 33):
+			material.set_shader_parameter("cloud_density", threshold - 0.0008 + frame * 0.0001)
+			await RenderingServer.frame_post_draw
+			var current := viewport.get_texture().get_image()
+			for y in range(0, 256, 2):
+				for x in range(0, 256, 2):
+					largest_front = maxf(largest_front, absf(previous.get_pixel(x, y).a - current.get_pixel(x, y).a))
+			previous = current
+		assert(largest_front < 0.16, "A weather front popped a whole cloud into view: %s" % largest_front)
+		assert(largest_front > 0.0, "The weather-front fixture did not show a forming cloud")
+		print("PASS: gradual weather front at zoom %s (maximum alpha change %s)" % [zoom, largest_front])
+		material.set_shader_parameter("cloud_formation", 0.0)
+		material.set_shader_parameter("cloud_density", 0.4)
 	viewport.queue_free()
 	await process_frame
 

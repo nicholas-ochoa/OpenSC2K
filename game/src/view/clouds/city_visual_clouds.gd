@@ -7,10 +7,15 @@ const CUMULUS := preload("res://assets/clouds/cumulus_atlas.png")
 const FIELD_SPAN := 192.0
 const HEIGHT_PIXELS := 192.0
 const WIND := Vector2(0.32, 0.20)
+const WEATHER_COVERAGE := [0.65, 1.05, 1.35, 1.55, 1.3, 1.0, 1.4]
+const FAIR_WEATHER_COVERAGE := [0.85, 0.6, 0.45, 0.7, 0.85, 1.25, 1.0, 1.0, 0.8]
 
 var app: CityApplication
 var drift := Vector2.ZERO
 var opacity := 0.0
+var density := 0.0
+var fog := 0.0
+var weather_clock := 0.0
 var layer: ColorRect
 var material: ShaderMaterial
 var field: Texture2D
@@ -25,6 +30,9 @@ func _init(application: CityApplication) -> void:
 func reset() -> void:
 	drift = Vector2.ZERO
 	opacity = 0.0
+	density = 0.0
+	fog = 0.0
+	weather_clock = 0.0
 	_initialized = false
 
 
@@ -45,7 +53,6 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 	drift = Vector2(fposmod(drift.x, FIELD_SPAN), fposmod(drift.y, FIELD_SPAN))
 	var target := body_opacity(app.map_view.zoom_factor)
 	opacity = move_toward(opacity, target, maxf(delta, 0.0) * 3.0) if _initialized else target
-	_initialized = true
 	var city := app.document_state.city
 	var edge := city.map_size
 	var rotation := city.compass_rotation()
@@ -55,14 +62,34 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 	var canvas_to_grid := source_to_grid(edge, rotation) * source_to_canvas.affine_inverse()
 	var projection := source_to_grid(edge, rotation)
 	var grid_to_source := projection.affine_inverse()
-	var density := float(options.get("cloud_density", 0.4))
-	if options.weather_enabled and weather_kind != CityVisualWeather.Kind.SUNNY:
-		density = minf(1.0, density * 1.25)
+	var base_density := float(options.get("cloud_density", 0.4))
+	var target_density := base_density
+	var target_fog := 0.0
+	if options.weather_enabled:
+		weather_clock = fposmod(weather_clock + maxf(phase_elapsed, 0.0), 900.0)
+		var game_weather := city.weather_type() if options.weather_mode == 0 else -1
+		target_density = weather_density(base_density, weather_kind, game_weather, weather_clock)
+		target_fog = weather_fog(weather_kind, game_weather, weather_clock) * float(options.weather_strength)
+	# Weather fronts form over many seconds, even at high simulation speed.
+	# Paused weather cycles retain their exact coverage. Manual disable/zero
+	# density still takes effect immediately.
+	if not _initialized or not options.weather_enabled or base_density <= 0.0:
+		density = target_density
+	elif phase_elapsed > 0.0:
+		density = move_toward(density, target_density, minf(maxf(delta, 0.0), phase_elapsed) * 0.006)
+	if not _initialized or not options.weather_enabled:
+		fog = target_fog
+	elif phase_elapsed > 0.0:
+		fog = move_toward(fog, target_fog, minf(maxf(delta, 0.0), phase_elapsed) * 0.004)
+	_initialized = true
 	parameters.merge({
 		"cloud_field": field,
 		"cloud_span": FIELD_SPAN,
 		"cloud_drift": drift,
 		"cloud_density": density,
+		"cloud_formation": 0.18 if options.weather_enabled else 0.0,
+		"cloud_fog_density": minf(fog, 0.3),
+		"cloud_fog_drift": Vector2.ONE * (weather_clock / 900.0 * FIELD_SPAN),
 		"cloud_shadow_strength": float(options.get("cloud_shadow_strength", 0.4)) * (1.0 - darkness * 0.85),
 		"cloud_canvas_to_grid": shader_basis(canvas_to_grid),
 		"cloud_projection": Vector4(grid_to_source.x.x, grid_to_source.x.y, grid_to_source.y.x, grid_to_source.y.y) / 16.0,
@@ -105,6 +132,27 @@ func _sync_layer(source_to_canvas: Transform2D, edge: int, rotation: int) -> voi
 
 static func body_opacity(zoom: float) -> float:
 	return 1.0 - smoothstep(0.25, 1.0, zoom)
+
+
+static func weather_density(base: float, kind: int, game_weather: int, clock: float) -> float:
+	var coverage: float = WEATHER_COVERAGE[clampi(kind, 0, WEATHER_COVERAGE.size() - 1)]
+	if kind == CityVisualWeather.Kind.SUNNY and game_weather >= 0 and game_weather < FAIR_WEATHER_COVERAGE.size():
+		coverage = FAIR_WEATHER_COVERAGE[game_weather]
+	# Both waves meet exactly at the 900-second wrap; no simulation random
+	# numbers are consumed and fixed weather still has gentle passing fronts.
+	var variation := 1.0 + 0.12 * sin(clock * TAU / 180.0) + 0.07 * sin(clock * TAU / 300.0 + 0.7)
+	return clampf(base * coverage * variation, 0.0, 1.0)
+
+
+static func weather_fog(kind: int, game_weather: int, clock: float) -> float:
+	var amount := 0.0
+	if game_weather == 3:
+		amount = 0.24
+	elif kind in [CityVisualWeather.Kind.LIGHT_RAIN, CityVisualWeather.Kind.LIGHT_SNOW]:
+		amount = 0.055
+	elif kind in [CityVisualWeather.Kind.HEAVY_RAIN, CityVisualWeather.Kind.RAIN_STORM, CityVisualWeather.Kind.HEAVY_SNOW]:
+		amount = 0.09
+	return amount * (0.8 + 0.2 * sin(clock * TAU / 300.0))
 
 
 static func shader_basis(transform: Transform2D) -> Basis:
