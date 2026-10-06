@@ -7,6 +7,7 @@
 pub mod art;
 pub mod camera;
 pub mod geometry;
+pub mod moving;
 pub mod picking;
 pub mod present;
 pub mod regions;

@@ -7,6 +7,7 @@ use sc2k_game::speed::BASE_TICK_MSEC;
 use sc2k_view::Frame;
 use sc2k_view::art::CityArt;
 use sc2k_view::camera::{Camera, Viewport};
+use sc2k_view::moving::{marker_cells, moving_draws};
 use sc2k_view::present::{cycled_colors, draw_map};
 use sc2k_view::regions::{Options, Regions};
 use sc2k_view::snapshot::painter_city;
@@ -22,6 +23,11 @@ pub struct CityView {
     revision: u64,
     pub cycle_ticks: i64,
     cycle_msec: f64,
+    /// The display clock of moving sprites, in tenths of a second.
+    pub animation_phase: i64,
+    pub show_vehicles: bool,
+    markers: Vec<(usize, i64)>,
+    moving_key: (u64, i64, usize),
 }
 
 impl CityView {
@@ -46,6 +52,10 @@ impl CityView {
             revision: u64::MAX,
             cycle_ticks: 0,
             cycle_msec: 0.0,
+            animation_phase: 0,
+            show_vehicles: true,
+            markers: Vec::new(),
+            moving_key: (u64::MAX, -1, usize::MAX),
         }
     }
 
@@ -75,7 +85,10 @@ impl CityView {
 
         if rebuild {
             match Regions::new(painter_city(&session.city, 32), art, view, self.options) {
-                Ok(regions) => self.regions = Some(regions),
+                Ok(regions) => {
+                    self.regions = Some(regions);
+                    self.moving_key = (u64::MAX, -1, usize::MAX);
+                }
                 Err(error) => {
                     eprintln!("Cannot paint the city: {error}");
                     return;
@@ -89,6 +102,32 @@ impl CityView {
             }
 
             self.revision = session.revision;
+        }
+
+        if self.regions.is_some() && !self.options.underground {
+            let key = (session.revision, self.animation_phase, view);
+
+            if key != self.moving_key {
+                if key.0 != self.moving_key.0 || self.moving_key.2 != view {
+                    self.markers = marker_cells(&session.city);
+                }
+
+                let draws = moving_draws(
+                    &session.city,
+                    &art.views[view],
+                    &self.markers,
+                    view,
+                    self.animation_phase,
+                    32,
+                    self.show_vehicles,
+                );
+
+                if let Some(regions) = &mut self.regions {
+                    regions.set_moving(draws);
+                }
+
+                self.moving_key = key;
+            }
         }
 
         let colors = cycled_colors(&art.palette, &palette::index_map(self.cycle_ticks));

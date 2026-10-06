@@ -506,6 +506,36 @@ impl Builder {
         self.revision += 1;
     }
 
+    /// Replaces the moving object draws, and paints again only the tiles whose
+    /// draws changed. Returns the old and new rectangles of the changed draws.
+    pub fn update_moving(&mut self, moving: HashMap<usize, Vec<Draw>>) -> Vec<Rect> {
+        let key = |draw: &Draw| (draw.image, draw.rect, draw.sprite, draw.flip, draw.shadow, draw.floating);
+        let same = |a: &[Draw], b: &[Draw]| a.len() == b.len() && a.iter().zip(b).all(|(x, y)| key(x) == key(y));
+        let mut changed = Vec::new();
+
+        for cell in self.moving.keys().chain(moving.keys()) {
+            let before = self.moving.get(cell).map_or(&[][..], Vec::as_slice);
+            let after = moving.get(cell).map_or(&[][..], Vec::as_slice);
+
+            if !same(before, after) {
+                changed.extend(before.iter().chain(after).map(|draw| draw.rect));
+
+                if *cell < self.bounds.len() {
+                    self.tiles.remove(cell);
+                    self.bounds[*cell] = region::Bounds::UNKNOWN;
+                }
+            }
+        }
+
+        if !changed.is_empty() {
+            self.revision += 1;
+        }
+
+        self.moving = moving;
+
+        changed
+    }
+
     pub fn cached_tiles(&self) -> usize {
         self.tiles.len()
     }

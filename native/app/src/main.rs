@@ -57,6 +57,7 @@ impl App {
         }
 
         self.game.view.advance_palette(delta);
+        self.game.view.animation_phase = elapsed / 100;
         let size = window.inner_size();
         let (width, height) = (size.width.max(1), size.height.max(1));
         let _ = surface.resize(

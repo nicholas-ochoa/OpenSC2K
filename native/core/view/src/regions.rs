@@ -149,6 +149,23 @@ impl Regions {
         self.builder.update(city);
     }
 
+    /// Replace the moving object draws. The regions under changed draws paint again.
+    pub fn set_moving(&mut self, mut moving: HashMap<usize, Vec<sc2k_render::Draw>>) {
+        // the painter keeps a mirrored copy of each flipped sprite
+        for draws in moving.values_mut() {
+            draws.retain(|draw| self.builder.sprites.get(draw.sprite, draw.flip).is_ok());
+        }
+
+        for rect in self.builder.update_moving(moving) {
+            self.regions.retain(|_, region| {
+                !intersects(
+                    rect,
+                    Rect::new(region.x, region.y, region.width, region.height),
+                )
+            });
+        }
+    }
+
     /// The view rectangle that the sprites of tile (x, y) can touch.
     fn potential_bounds(&self, x: i32, y: i32, edge: i32) -> Rect {
         let (tile_width, tile_height, half_width, half_height, step, side, top_margin) =
