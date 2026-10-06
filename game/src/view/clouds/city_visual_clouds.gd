@@ -21,6 +21,7 @@ var material: ShaderMaterial
 var field: Texture2D
 var parameters: Dictionary = {"cloud_enabled": false}
 var _initialized := false
+var _fog_enabled := false
 
 
 func _init(application: CityApplication) -> void:
@@ -38,9 +39,12 @@ func reset() -> void:
 
 func process(delta: float, phase_elapsed: float, active: bool, light: Color, darkness: float, weather_kind: int) -> void:
 	var options := app.preferences.visual_enhancements
-	var enabled: bool = active and options.get("cloud_enabled", true) and app.map_view.city_source != null
-	parameters = {"cloud_enabled": enabled}
+	var clouds_enabled: bool = options.get("cloud_enabled", true)
+	var fog_enabled: bool = options.weather_enabled and options.get("weather_fog_enabled", true)
+	var enabled: bool = active and (clouds_enabled or fog_enabled) and app.map_view.city_source != null
+	parameters = {"cloud_enabled": enabled and clouds_enabled}
 	if not enabled:
+		parameters["cloud_fog_density"] = 0.0
 		if layer != null:
 			layer.hide()
 		opacity = 0.0
@@ -51,7 +55,7 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 	var speed := float(options.get("cloud_speed", 1.0))
 	drift += WIND * maxf(phase_elapsed, 0.0) * speed
 	drift = Vector2(fposmod(drift.x, FIELD_SPAN), fposmod(drift.y, FIELD_SPAN))
-	var target := body_opacity(app.map_view.zoom_factor)
+	var target := body_opacity(app.map_view.zoom_factor) if clouds_enabled else 0.0
 	opacity = move_toward(opacity, target, maxf(delta, 0.0) * 3.0) if _initialized else target
 	var city := app.document_state.city
 	var edge := city.map_size
@@ -69,7 +73,8 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 		weather_clock = fposmod(weather_clock + maxf(phase_elapsed, 0.0), 900.0)
 		var game_weather := city.weather_type() if options.weather_mode == 0 else -1
 		target_density = weather_density(base_density, weather_kind, game_weather, weather_clock)
-		target_fog = weather_fog(weather_kind, game_weather, weather_clock) * float(options.weather_strength)
+		if fog_enabled:
+			target_fog = weather_fog(weather_kind, game_weather, weather_clock) * float(options.weather_strength)
 	# Weather fronts form over many seconds, even at high simulation speed.
 	# Paused weather cycles retain their exact coverage. Manual disable/zero
 	# density still takes effect immediately.
@@ -77,11 +82,12 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 		density = target_density
 	elif phase_elapsed > 0.0:
 		density = move_toward(density, target_density, minf(maxf(delta, 0.0), phase_elapsed) * 0.006)
-	if not _initialized or not options.weather_enabled:
+	if not _initialized or not fog_enabled or fog_enabled != _fog_enabled:
 		fog = target_fog
 	elif phase_elapsed > 0.0:
 		fog = move_toward(fog, target_fog, minf(maxf(delta, 0.0), phase_elapsed) * 0.004)
 	_initialized = true
+	_fog_enabled = fog_enabled
 	parameters.merge({
 		"cloud_field": field,
 		"cloud_span": FIELD_SPAN,

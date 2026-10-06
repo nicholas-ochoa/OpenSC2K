@@ -92,6 +92,19 @@ func _run() -> void:
 	var frozen := [clouds.density, clouds.fog, clouds.weather_clock]
 	main.visual_environment.process(60.0)
 	assert([clouds.density, clouds.fog, clouds.weather_clock] == frozen, "Paused weather coverage or mist moved")
+	main.preferences.visual_enhancements.weather_fog_enabled = false
+	main.visual_environment.process(0.0)
+	assert(clouds.fog == 0.0 and clouds.parameters.cloud_enabled and main.visual_environment.weather.rain > 0.0,
+		"Disabling fog must leave clouds and precipitation enabled, including while paused")
+	main.preferences.visual_enhancements.weather_fog_enabled = true
+	main.visual_environment.process(0.0)
+	assert(clouds.parameters.cloud_fog_density > 0.0, "Enabling fog while paused must take effect immediately")
+	main.preferences.visual_enhancements.cloud_enabled = false
+	main.preferences.visual_enhancements.pause_freezes = false
+	main.visual_environment.process(1.0)
+	assert(not clouds.parameters.cloud_enabled and clouds.parameters.cloud_fog_density > 0.0,
+		"Fog must remain available with clouds disabled")
+	main.preferences.visual_enhancements.cloud_enabled = true
 	main.preferences.visual_enhancements.weather_enabled = false
 	main.visual_environment.process(0.0)
 	assert(clouds.density == main.preferences.visual_enhancements.cloud_density and clouds.fog == 0.0)
@@ -102,6 +115,7 @@ func _run() -> void:
 	main.preferences.visual_enhancements.cloud_enabled = false
 	main.visual_environment.process(1.0)
 	assert(not main.map_view.layers.environment_parameters.cloud_enabled)
+	assert(main.map_view.layers.environment_parameters.cloud_fog_density == 0.0)
 	assert(DocumentState.capture(main.document_state.city.document) == before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == rng_before)
 	main.queue_free()

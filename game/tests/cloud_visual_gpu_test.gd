@@ -65,6 +65,10 @@ func _run() -> void:
 	assert(foggy.get_pixel(48, 48).r > original.get_pixel(48, 48).r, "Fog did not soften the landscape")
 	assert(foggy.get_pixel(0, 0).a == 0.0, "Fog escaped the map silhouette")
 	assert(foggy.get_pixel(105, 105).is_equal_approx(original.get_pixel(105, 105)), "Fog reached the foreground UI")
+	material.set_shader_parameter("cloud_enabled", false)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == foggy.get_data(), "Disabling clouds also disabled fog")
+	material.set_shader_parameter("cloud_enabled", true)
 	material.set_shader_parameter("cloud_fog_drift", Vector2.ONE * CityVisualClouds.FIELD_SPAN)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == foggy.get_data(), "Fog jumped at the clock wrap")

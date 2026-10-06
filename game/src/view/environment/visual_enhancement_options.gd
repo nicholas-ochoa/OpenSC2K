@@ -47,6 +47,7 @@ const FIELDS := [
 	["season_lut_strength", "Season LUT strength", "number", 0.5, 0.0, 1.0, 0.05],
 	["season_water_strength", "Seasonal water color strength", "number", 0.35, 0.0, 1.0, 0.05],
 	["weather_enabled", "Weather", "bool", true],
+	["weather_fog_enabled", "Fog", "bool", true],
 	["weather_mode", "Weather source", "choice", 0, ["Game weather", "Visual automation", "Fixed weather"]],
 	["weather_fixed", "Fixed weather", "choice", 0, ["Sunny", "Light rain", "Heavy rain", "Rain and thunderstorm", "Dry thunderstorm", "Light snow", "Heavy snow"]],
 	["weather_seconds", "Weather interval (seconds at Turtle)", "number", 180.0, 30.0, 3600.0, 15.0],

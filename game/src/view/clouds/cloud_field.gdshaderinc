@@ -116,8 +116,8 @@ float cloud_mist(vec2 point) {
 }
 
 vec3 cloud_shadow(vec3 color, vec2 grid_position) {
-	if (!cloud_enabled) { return color; }
-	if (cloud_density > 0.0 && cloud_shadow_strength > 0.0) {
+	if (!cloud_enabled && cloud_fog_density <= 0.0) { return color; }
+	if (cloud_enabled && cloud_density > 0.0 && cloud_shadow_strength > 0.0) {
 		color *= 1.0 - cloud_cover(grid_position - cloud_shadow_offset) * cloud_shadow_strength;
 	}
 	if (cloud_fog_density > 0.0) {
