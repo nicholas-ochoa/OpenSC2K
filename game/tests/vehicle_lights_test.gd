@@ -36,11 +36,11 @@ func _run() -> void:
 			assert(lights.surface(city, figure.tile, figure.enter, direction).texture == surface.texture)
 			var block := Image.create(96, 96, false, Image.FORMAT_RGBA8)
 			block.fill(Color.WHITE)
-			lights.surfaces.clear()
+			lights.clear_surfaces()
 			var hidden := lights.surface(city, figure.tile, figure.enter, direction,
 				func(_tile: Vector2i, _enter: int) -> Array: return [{"origin": surface.origin, "image": block}])
 			assert(hidden.image.is_invisible(), "Road surface leaked through a foreground silhouette")
-			lights.surfaces.clear()
+			lights.clear_surfaces()
 	assert(DocumentState.capture(city.document) == before, "Light generation changed city data")
 	await _check_moving_masks()
 	print("PASS: vehicle lamp faces, four forward cones, road clipping, occlusion, matching moving-art lights and unchanged city")

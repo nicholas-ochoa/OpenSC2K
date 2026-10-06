@@ -6,9 +6,16 @@ const HEADLIGHT := Color("ffe3a0")
 const TAILLIGHT := Color("ff3426")
 const FORWARD := [Vector2.UP, Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT]
 const REACH := 22.0
+const SURFACE_LIMIT := 1024
 var masks: Dictionary[String, Image] = {}
 var roads: Dictionary[Vector3i, Array] = {}
 var surfaces: Dictionary[Vector4i, Dictionary] = {}
+var visible_roads: Dictionary[Vector3i, Array] = {}
+
+
+func clear_surfaces() -> void:
+	surfaces.clear()
+	visible_roads.clear()
 
 
 func lamp_mask(sprite: Image, kind: int, direction: int) -> Image:
@@ -29,24 +36,51 @@ func lamp_mask(sprite: Image, kind: int, direction: int) -> Image:
 func surface(city: CityState, tile: Vector2i, enter: int, direction: int, lookup := Callable()) -> Dictionary:
 	var key := Vector4i(tile.x, tile.y, enter % 2, direction)
 	if surfaces.has(key):
-		return surfaces[key]
+		var cached := surfaces[key]
+		# Dictionary order tracks recent use. Evict one old surface, not the
+		# entire working set when vehicles reach the next road tile.
+		surfaces.erase(key)
+		surfaces[key] = cached
+		return cached
 	var center := CityLifePaths.point(city, tile, enter, (enter + 2) % 4, 0.5, false)
 	var bounds := Rect2i(Vector2i(center) - Vector2i(48, 48), Vector2i(96, 96))
 	# Numeric world coordinates let the GPU draw the cone on sloping roads and decks.
 	var image := Image.create(96, 96, false, Image.FORMAT_RGBAF)
+	var occlusion_keys: Array[Vector3i] = []
 	for step in 3:
-		var occluders: Array = lookup.call(tile, enter) if lookup.is_valid() else []
-		for road: Dictionary in _road_patches(city, tile, enter):
-			for sample: Vector4 in road.samples:
-				var point := Vector2i(int(sample.x), int(sample.y))
-				if bounds.has_point(point) and not CityLifeCanvas.hidden_at(point, occluders):
-					image.set_pixelv(point - bounds.position, Color(sample.z, sample.w, 0.0, 1.0))
+		occlusion_keys.append(Vector3i(tile.x, tile.y, enter % 2))
+		for road: Dictionary in _visible_road_patches(city, tile, enter, lookup):
+			image.blit_rect_mask(road.image, road.image, Rect2i(Vector2i.ZERO, road.image.get_size()), road.origin - bounds.position)
 		if not CityLifePaths.connected(city, tile, direction):
 			break
 		tile += CityLifePaths.DIRECTIONS[direction]
 		enter = (direction + 2) % 4
-	var result := {"image": image, "texture": ImageTexture.create_from_image(image), "origin": bounds.position}
+	var result := {"image": image, "texture": ImageTexture.create_from_image(image), "origin": bounds.position,
+		"occlusion_keys": occlusion_keys}
+	if surfaces.size() >= SURFACE_LIMIT:
+		surfaces.erase(surfaces.keys()[0])
 	surfaces[key] = result
+	return result
+
+
+func _visible_road_patches(city: CityState, tile: Vector2i, enter: int, lookup: Callable) -> Array:
+	var key := Vector3i(tile.x, tile.y, enter % 2)
+	if visible_roads.has(key):
+		return visible_roads[key]
+	var occluders: Array = lookup.call(tile, enter) if lookup.is_valid() else []
+	var result: Array = []
+	for road: Dictionary in _road_patches(city, tile, enter):
+		var pixels: Image = road.image.duplicate()
+		var bounds := Rect2i(road.origin, pixels.get_size())
+		for occluder: Dictionary in occluders:
+			var overlap := bounds.intersection(Rect2i(occluder.origin, occluder.image.get_size()))
+			if not overlap.has_area():
+				continue
+			var mask: Image = occluder.image.get_region(Rect2i(overlap.position - occluder.origin, overlap.size))
+			var clear := Image.create(overlap.size.x, overlap.size.y, false, Image.FORMAT_RGBAF)
+			pixels.blit_rect_mask(clear, mask, Rect2i(Vector2i.ZERO, overlap.size), overlap.position - bounds.position)
+		result.append({"image": pixels, "origin": road.origin})
+	visible_roads[key] = result
 	return result
 
 
@@ -86,14 +120,14 @@ func _road_patches(city: CityState, tile: Vector2i, enter: int) -> Array:
 			bounds = bounds.expand(transform * uv)
 		var inverse := transform.affine_inverse()
 		var raster := Rect2i(bounds.grow(1.0))
-		var samples: Array[Vector4] = []
+		var pixels := Image.create(raster.size.x, raster.size.y, false, Image.FORMAT_RGBAF)
 		for y in range(raster.position.y, raster.end.y):
 			for x in range(raster.position.x, raster.end.x):
 				var uv: Vector2 = inverse * Vector2(x + 0.5, y + 0.5)
 				if uv.x >= 0.0 and uv.x <= 1.0 and uv.y >= 0.0 and uv.y <= 1.0:
 					var world := Vector2(tile) + forward * uv.x * 0.5 + side * (uv.y - 0.5) * 0.5
-					samples.append(Vector4(x, y, world.x, world.y))
-		patches.append({"samples": samples})
+					pixels.set_pixel(x - raster.position.x, y - raster.position.y, Color(world.x, world.y, 0.0, 1.0))
+		patches.append({"origin": raster.position, "image": pixels})
 	roads[key] = patches
 	return patches
 

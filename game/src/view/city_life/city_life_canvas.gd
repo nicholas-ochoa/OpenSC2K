@@ -18,7 +18,10 @@ var _light_night := -1.0
 var _light_quads: Dictionary[int, Sprite2D] = {}
 var _light_occluders: Dictionary[Vector3i, Array] = {}
 var _occluders: Dictionary[Vector3i, Array] = {}
+var _occluder_bounds: Dictionary[Vector3i, Rect2i] = {}
 var _occlusion_signature: Array = []
+var _road_signature: Array = []
+var _visible_regions: Array[Vector2i] = []
 
 
 func _init() -> void:
@@ -56,20 +59,30 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	source_bounds = bounds
 	image.fill(Color.TRANSPARENT)
 	emission.fill(Color.TRANSPARENT)
-	var signature := [app.static_render_state.epoch, map.city_source, app.static_render.city_view_size()]
+	var city := app.document_state.city
+	var road_signature := [city.document.get_instance_id(), city.chunk_revision("ALTM"), city.chunk_revision("XBLD"),
+		city.chunk_revision("XTER"), city.chunk_revision("XZON"), city.chunk_revision("XBIT"), city.compass_rotation()]
+	if road_signature != _road_signature or lights.roads.size() > 4096:
+		lights.roads.clear()
+		lights.clear_surfaces()
+		_road_signature = road_signature
+	# Region publications also change while panning an unchanged city. Their
+	# affected silhouettes are invalidated separately by the map renderer.
+	var source: RefCounted = app.render_caches.region_cache if app.render_caches.region_cache != null else map.city_source
+	var signature := [app.document_state.city.document.get_instance_id(), app.static_render_state.epoch,
+		source, app.static_render.city_view_size(), app.render_caches.static_visual_signature]
 	if signature != _occlusion_signature or _occluders.size() > 4096:
 		_occluders.clear()
+		_occluder_bounds.clear()
 		_light_occluders.clear()
-		lights.roads.clear()
-		lights.surfaces.clear()
+		lights.clear_surfaces()
 		_occlusion_signature = signature
+	_sync_visible_regions(app.render_caches.region_cache)
 	figures.sort_custom(func(a: CityLifeController.Figure, b: CityLifeController.Figure) -> bool:
 		return a.position.y < b.position.y)
 	var light_active := app.visual_environment.night > 0.0
 	road_layer.visible = light_active
 	var seen: Dictionary[int, bool] = {}
-	if lights.surfaces.size() > 1024:
-		lights.surfaces.clear()
 	if light_active:
 		for figure: CityLifeController.Figure in figures:
 			if figure.walking:
@@ -167,8 +180,59 @@ func _candidates(app: CityApplication, tile: Vector2i, enter: int = 0) -> Array:
 					# The deck is beneath the car; its towers and rails remain foreground.
 					mask = deck_foreground(mask, origin, center, -0.5 if enter % 2 == 0 else 0.5)
 			candidates.append({"origin": origin, "image": mask})
-	_occluders[key] = candidates
-	return candidates
+	_occluder_bounds[key] = bounds
+	_occluders[key] = merged_occluders(candidates)
+	return _occluders[key]
+
+
+func _sync_visible_regions(cache: CityRegionCache) -> void:
+	if cache == null:
+		_visible_regions.clear()
+		return
+	# Queries include visible regions only. Publications report arriving regions;
+	# departing regions must also release their cached silhouettes.
+	var departed: Array[Rect2i] = []
+	for key in _visible_regions:
+		if not cache.visible_keys.has(key):
+			departed.append(Rect2i(key * cache.region_edge * cache.divisor,
+				Vector2i.ONE * cache.region_edge * cache.divisor))
+	invalidate_occlusion(departed)
+	_visible_regions.assign(cache.visible)
+
+
+func invalidate_occlusion(changes: Array[Rect2i]) -> void:
+	if changes.is_empty() or _occluder_bounds.is_empty():
+		return
+	var invalidated := {}
+	for key in _occluder_bounds:
+		for changed in changes:
+			if _occluder_bounds[key].intersects(changed):
+				invalidated[key] = true
+				break
+	for key in invalidated:
+		_occluders.erase(key)
+		_occluder_bounds.erase(key)
+		_light_occluders.erase(key)
+		lights.visible_roads.erase(key)
+	for key in lights.surfaces.keys():
+		for dependency in lights.surfaces[key].occlusion_keys:
+			if invalidated.has(dependency):
+				lights.surfaces.erase(key)
+				break
+
+
+static func merged_occluders(candidates: Array) -> Array:
+	if candidates.size() <= 1:
+		return candidates
+	# Keep the complete queried silhouettes, including pixels outside the query
+	# rectangle. Cars on slopes and long buses can reach beyond that rectangle.
+	var bounds := Rect2i(candidates[0].origin, candidates[0].image.get_size())
+	for candidate: Dictionary in candidates:
+		bounds = bounds.merge(Rect2i(candidate.origin, candidate.image.get_size()))
+	var mask := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
+	for candidate: Dictionary in candidates:
+		mask.blend_rect(candidate.image, Rect2i(Vector2i.ZERO, candidate.image.get_size()), candidate.origin - bounds.position)
+	return [{"origin": bounds.position, "image": mask}]
 
 
 func _light_candidates(app: CityApplication, tile: Vector2i, enter: int) -> Array:
@@ -199,6 +263,19 @@ static func deck_foreground(source: Image, origin: Vector2i, surface: Vector2, s
 
 static func stamp(destination: Image, offset: Vector2i, sprite: Image, origin: Vector2i, occluders: Array,
 		opacity: float = 1.0, lamp_destination: Image = null, lamps: Image = null) -> void:
+	if opacity == 1.0:
+		# Native image blits preserve replacement order and alpha without a
+		# GDScript callback for every opaque sprite pixel. Fades keep their exact
+		# per-pixel alpha rounding below.
+		var visible := visible_sprite(sprite, origin, occluders)
+		var rect := Rect2i(Vector2i.ZERO, sprite.get_size())
+		destination.blit_rect_mask(sprite, visible, rect, origin - offset)
+		if lamp_destination != null:
+			if lamps == null:
+				lamps = Image.create(sprite.get_width(), sprite.get_height(), false, Image.FORMAT_RGBA8)
+				lamps.fill(Color.TRANSPARENT)
+			lamp_destination.blit_rect_mask(lamps, visible, rect, origin - offset)
+		return
 	for y in sprite.get_height():
 		for x in sprite.get_width():
 			var color := sprite.get_pixel(x, y)
@@ -215,6 +292,21 @@ static func stamp(destination: Image, offset: Vector2i, sprite: Image, origin: V
 					var lamp := lamps.get_pixel(x, y) if lamps != null else Color.TRANSPARENT
 					lamp.a *= opacity
 					lamp_destination.set_pixelv(local, lamp)
+
+
+static func visible_sprite(sprite: Image, origin: Vector2i, occluders: Array) -> Image:
+	var visible := sprite
+	var bounds := Rect2i(origin, sprite.get_size())
+	for occluder: Dictionary in occluders:
+		var overlap := bounds.intersection(Rect2i(occluder.origin, occluder.image.get_size()))
+		if not overlap.has_area():
+			continue
+		if visible == sprite:
+			visible = sprite.duplicate()
+		var mask: Image = occluder.image.get_region(Rect2i(overlap.position - occluder.origin, overlap.size))
+		var clear := Image.create(overlap.size.x, overlap.size.y, false, sprite.get_format())
+		visible.blit_rect_mask(clear, mask, Rect2i(Vector2i.ZERO, overlap.size), overlap.position - origin)
+	return visible
 
 
 static func hidden_at(point: Vector2i, occluders: Array) -> bool:
