@@ -1,17 +1,38 @@
 {
-  "fill": {
-    "linear-gradient": [
-      "srgb:0.07059,0.10980,0.23922,1.00000",
-      "srgb:0.20392,0.36078,0.54902,1.00000"
-    ]
-  },
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.16471,0.39216,0.70588,1.00000",
+          "srgb:0.70588,0.86275,0.94902,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.05882,0.08627,0.21176,1.00000",
+          "srgb:0.81569,0.43922,0.36078,1.00000"
+        ]
+      }
+    }
+  ],
   "groups": [
     {
       "layers": [
         {
-          "image-name": "city.png",
-          "name": "city",
-          "glass": false
+          "name": "saucer",
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "saucer.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "saucer-dusk.svg"
+            }
+          ]
         }
       ],
       "shadow": {
@@ -27,9 +48,43 @@
     {
       "layers": [
         {
-          "image-name": "stars.png",
-          "name": "stars",
-          "glass": false
+          "name": "city",
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "city.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "city-dusk.svg"
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "specular": false
+    },
+    {
+      "layers": [
+        {
+          "name": "land",
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "land.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "land-dusk.svg"
+            }
+          ]
         }
       ],
       "shadow": {
