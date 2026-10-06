@@ -8,13 +8,14 @@ use sc2k_view::Frame;
 use sc2k_view::art::CityArt;
 use sc2k_view::camera::{Camera, Viewport};
 use sc2k_view::moving::{marker_cells, moving_draws};
-use sc2k_view::present::{cycled_colors, draw_map};
+use sc2k_view::present::{cycled_colors, draw_map, outline_tile};
 use sc2k_view::regions::{Options, Regions};
 use sc2k_view::snapshot::painter_city;
 
 /// The clear color of the window, as the Godot build: (0.035, 0.047, 0.059).
 pub const BACKGROUND: u32 = 0x00090c0f;
 const UNDERGROUND_BACKGROUND: u32 = 0x00ffffff;
+const HIGHLIGHT: u32 = 0x00ffff40;
 
 pub struct CityView {
     pub camera: Camera,
@@ -26,6 +27,8 @@ pub struct CityView {
     /// The display clock of moving sprites, in tenths of a second.
     pub animation_phase: i64,
     pub show_vehicles: bool,
+    /// The tiles that the selection outlines.
+    pub highlight: Vec<(i32, i32)>,
     markers: Vec<(usize, i64)>,
     moving_key: (u64, i64, usize),
 }
@@ -54,6 +57,7 @@ impl CityView {
             cycle_msec: 0.0,
             animation_phase: 0,
             show_vehicles: true,
+            highlight: Vec::new(),
             markers: Vec::new(),
             moving_key: (u64::MAX, -1, usize::MAX),
         }
@@ -139,6 +143,22 @@ impl CityView {
 
         if let Some(regions) = &mut self.regions {
             draw_map(frame, &self.camera, regions, &colors, background);
+
+            for tile in &self.highlight {
+                outline_tile(frame, &self.camera, regions.city(), *tile, HIGHLIGHT);
+            }
+        }
+    }
+}
+
+impl CityView {
+    /// The tile under a screen point.
+    pub fn tile_at(&self, session: &Session, point: (f64, f64)) -> Option<(i32, i32)> {
+        let source = self.camera.screen_to_source(point);
+
+        match &self.regions {
+            Some(regions) => sc2k_view::picking::tile_at(regions.city(), source),
+            None => sc2k_view::picking::tile_at(&painter_city(&session.city, 32), source),
         }
     }
 }

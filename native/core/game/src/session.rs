@@ -25,6 +25,8 @@ pub struct Session {
     pub path: PathBuf,
     /// Bumps on each change of the city, so views know when to copy the maps.
     pub revision: u64,
+    /// The undo of the last tool edit.
+    pub undo: Option<crate::edits::Undo>,
 }
 
 /// The simulation city of the chunks of a document.
@@ -62,6 +64,7 @@ impl Session {
             speed: SpeedState::default(),
             path,
             revision: 0,
+            undo: None,
         };
 
         session.speed.speed = session.city.simulation_speed().clamp(speed::PAUSED, speed::AFRICAN_SWALLOW);

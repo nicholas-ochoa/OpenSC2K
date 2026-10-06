@@ -8,6 +8,7 @@
 
 pub mod checkpoint;
 pub mod clock;
+pub mod edits;
 pub mod engine;
 pub mod newspaper;
 pub mod results;

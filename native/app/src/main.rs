@@ -7,7 +7,10 @@ mod settings;
 
 use city_view::CityView;
 use sc2k_assets::packs::graphics::GraphicsPack;
+use sc2k_game::edits::{self, Selection};
 use sc2k_game::session::Session;
+use sc2k_sim::sim::geom::Vec2i;
+use sc2k_sim::sim::tools::ids::group;
 use sc2k_view::Frame;
 use sc2k_view::art::CityArt;
 use sc2k_view::camera::Viewport;
@@ -40,6 +43,11 @@ struct App {
     started: Instant,
     cursor: (f64, f64),
     dragging: Option<(f64, f64)>,
+    /// The selected tool group and subtool.
+    tool: (i64, i64),
+    /// The tiles of a left-button drag, from the first.
+    selection: Vec<(i32, i32)>,
+    status: String,
 }
 
 impl App {
@@ -102,10 +110,12 @@ impl App {
             .draw(&mut frame, &self.game.session, &self.game.art);
         let _ = buffer.present();
         window.set_title(&format!(
-            "OpenSC2K — {} — {} — speed {}",
+            "OpenSC2K — {} — day {} — ${} — speed {} — {}",
             self.game.session.city_name(),
             self.game.session.city.age_in_days(),
-            self.game.session.speed.speed
+            edits::funds(&self.game.session),
+            self.game.session.speed.speed,
+            self.status
         ));
         window.request_redraw();
     }
@@ -131,6 +141,23 @@ impl App {
                     view.invalidate();
                 }
                 "p" => view.options.pipes = !view.options.pipes,
+                "b" => self.tool = (group::BULLDOZER, 0),
+                "x" => self.tool = (group::ROADS, 0),
+                "w" => self.tool = (group::POWER, 0),
+                "z" => self.tool = (group::RESIDENTIAL, 0),
+                "c" => self.tool = (group::COMMERCIAL, 0),
+                "i" => self.tool = (group::INDUSTRIAL, 0),
+                "t" => self.tool = (group::LANDSCAPE, 0),
+                "k" => self.tool = (group::POWER, 2),
+                "q" => self.tool = (group::QUERY, 0),
+                "y" => {
+                    if let Some(undo) = self.game.session.undo.take() {
+                        self.status = match undo.apply(&mut self.game.session) {
+                            Ok(()) => "Undid the last edit.".into(),
+                            Err(error) => error,
+                        };
+                    }
+                }
                 digit @ ("1" | "2" | "3" | "4" | "5") => {
                     self.game.session.set_speed(digit.parse().unwrap_or(1));
                 }
@@ -138,6 +165,39 @@ impl App {
             },
             _ => {}
         }
+    }
+}
+
+impl App {
+    fn apply_tool(&mut self) {
+        let path = std::mem::take(&mut self.selection);
+        let (Some(first), Some(last)) = (path.first(), path.last()) else {
+            return;
+        };
+
+        let point = |tile: &(i32, i32)| Vec2i::new(i64::from(tile.0), i64::from(tile.1));
+        let mut selection = Selection::new(self.tool.0, self.tool.1, point(first), point(last));
+        selection.path = path.iter().map(point).collect();
+        selection.underground = self.game.view.options.underground;
+
+        // a bridge or connection that the route asks for takes the first choice
+        selection.bridge = 0;
+        selection.connection = 0;
+        selection.confirmation = 1;
+        let outcome = edits::apply(&mut self.game.session, &selection);
+
+        for sound in &outcome.sounds {
+            self.game.audio.play_sound(*sound, false, false);
+        }
+
+        if outcome.music_track >= 0 {
+            self.game.audio.play_music_track(outcome.music_track, false);
+        }
+
+        self.status = match outcome.view_action {
+            Some(action) => format!("{action} at {}, {}", last.0, last.1),
+            None => outcome.message,
+        };
     }
 }
 
@@ -168,6 +228,20 @@ impl ApplicationHandler for App {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 let point = (position.x, position.y);
+                let tile = self.game.view.tile_at(&self.game.session, point);
+
+                if let Some(tile) = tile
+                    && !self.selection.is_empty()
+                    && self.selection.last() != Some(&tile)
+                {
+                    self.selection.push(tile);
+                }
+
+                self.game.view.highlight = if self.selection.is_empty() {
+                    tile.into_iter().collect()
+                } else {
+                    self.selection.clone()
+                };
 
                 if let Some(last) = self.dragging {
                     self.game
@@ -185,6 +259,22 @@ impl ApplicationHandler for App {
                 ..
             } => {
                 self.dragging = (state == ElementState::Pressed).then_some(self.cursor);
+            }
+            WindowEvent::MouseInput {
+                state,
+                button: MouseButton::Left,
+                ..
+            } => {
+                if state == ElementState::Pressed {
+                    self.selection = self
+                        .game
+                        .view
+                        .tile_at(&self.game.session, self.cursor)
+                        .into_iter()
+                        .collect();
+                } else {
+                    self.apply_tool();
+                }
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 let steps = match delta {
@@ -324,6 +414,9 @@ fn main() {
         started: Instant::now(),
         cursor: (0.0, 0.0),
         dragging: None,
+        tool: (group::BULLDOZER, 0),
+        selection: Vec::new(),
+        status: String::new(),
     };
 
     event_loop.run_app(&mut app).expect("the event loop");

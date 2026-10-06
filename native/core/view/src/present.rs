@@ -110,3 +110,40 @@ pub fn draw_map(
         }
     }
 }
+
+/// Outline the surface of tile (x, y) of the painter city in `color`.
+pub fn outline_tile(
+    frame: &mut Frame,
+    camera: &Camera,
+    city: &sc2k_render::City,
+    tile: (i32, i32),
+    color: u32,
+) {
+    let corners = super::picking::surface_polygon(city, tile.0, tile.1)
+        .map(|point| camera.source_to_screen(point));
+
+    for index in 0..4 {
+        line(frame, corners[index], corners[(index + 1) % 4], color);
+    }
+}
+
+/// A one-pixel line between two screen points.
+pub fn line(frame: &mut Frame, from: (f64, f64), to: (f64, f64), color: u32) {
+    let steps = (to.0 - from.0)
+        .abs()
+        .max((to.1 - from.1).abs())
+        .ceil()
+        .max(1.0) as usize;
+
+    for step in 0..=steps {
+        let t = step as f64 / steps as f64;
+        let (x, y) = (
+            (from.0 + (to.0 - from.0) * t).round(),
+            (from.1 + (to.1 - from.1) * t).round(),
+        );
+
+        if x >= 0.0 && y >= 0.0 && (x as usize) < frame.width && (y as usize) < frame.height {
+            frame.pixels[y as usize * frame.width + x as usize] = color;
+        }
+    }
+}
