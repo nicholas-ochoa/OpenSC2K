@@ -1,6 +1,7 @@
 //! Converters of the supplied game files to portable formats.
 
 pub mod container;
+pub mod graphics;
 pub mod newspaper;
 pub mod source;
 pub mod sprites;

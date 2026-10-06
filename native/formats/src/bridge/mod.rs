@@ -7,6 +7,7 @@ mod container;
 mod crc32;
 mod data_import;
 mod gif;
+mod graphics_import;
 mod import_source;
 mod johab;
 mod palette;

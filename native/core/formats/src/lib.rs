@@ -9,4 +9,5 @@ pub mod pe;
 pub mod png;
 pub mod sha256;
 pub mod sprite;
+pub mod sprite_archive;
 pub mod zip;

@@ -7,14 +7,17 @@ const BMP_HEADER_SIZE: usize = 14;
 const MIN_DIB_SIZE: usize = 40;
 const BMP_MIN_SIZE: usize = 54;
 const INDEXED_BITS: usize = 8;
-const FAST_CYCLE_START: usize = 0xab;
+pub const FAST_CYCLE_START: usize = 0xab;
+pub const FAST_CYCLE_COUNT: usize = 49;
 /// The groups have their own cycles, so the entries cannot simply rotate.
-const FAST_CYCLE_TABLE: [usize; 49] = [
+const FAST_CYCLE_TABLE: [usize; FAST_CYCLE_COUNT] = [
     1, 2, 3, 4, 5, 6, 7, 0, 9, 10, 11, 12, 13, 14, 15, 8, 17, 18, 19, 20, 21, 22, 23, 16, 25, 26,
     27, 24, 28, 36, 29, 30, 31, 32, 33, 34, 35, 40, 37, 38, 39, 48, 41, 42, 43, 44, 45, 46, 47,
 ];
-const SLOW_CYCLE_START: usize = 0xe0;
-const SLOW_CYCLE_TABLE: [usize; 16] = [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 14, 0];
+pub const SLOW_CYCLE_START: usize = 0xe0;
+pub const SLOW_CYCLE_COUNT: usize = 16;
+const SLOW_CYCLE_TABLE: [usize; SLOW_CYCLE_COUNT] =
+    [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 14, 0];
 const FAST_CYCLE_LENGTH: i64 = 8;
 const SLOW_CYCLE_LENGTH: i64 = 2;
 const BASE_TICKS_PER_SLOW_STEP: i64 = 8;

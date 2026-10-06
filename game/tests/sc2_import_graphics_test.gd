@@ -82,40 +82,6 @@ func _test_bitmap() -> void:
 	assert(not Sc2ImportBitmap.decode(dib.slice(0, 110)).ok)
 	dib.encode_u32(4, 0xffffffff)
 	assert(not Sc2ImportBitmap.decode(dib).ok)
-	var mac := PackedByteArray()
-	mac.resize(4112)
-	mac[0] = 1
-	mac[16] = 255
-	mac[20] = 77
-	var palette := Sc2ImportGraphics.mac_palette(mac)
-	assert(palette != null and palette.color(0) == Color8(255, 0, 77))
-	assert(Sc2ImportGraphics.mac_palette(mac.slice(0, 4111)) == null)
-	_test_windows_layout()
-
-
-func _test_windows_layout() -> void:
-	assert(Sc2ImportGraphics.windows_layout_index(-1) == -1)
-	assert(Sc2ImportGraphics.windows_layout_index(0) == 16)
-	assert(Sc2ImportGraphics.windows_layout_index(203) == 219)
-	assert(Sc2ImportGraphics.windows_layout_index(204) == 0)
-	assert(Sc2ImportGraphics.windows_layout_index(224) == 224 and Sc2ImportGraphics.windows_layout_index(239) == 239)
-	assert(Sc2ImportGraphics.windows_layout_index(240) == 0 and Sc2ImportGraphics.windows_layout_index(255) == 0)
-	var source := Sc2Palette.new()
-
-	for index in 256:
-		source.colors.append(Color8(index, 0, 0))
-
-	# Without cycle colors, the filler entries stay at their moved indices.
-	var moved := Sc2ImportGraphics.windows_layout_palette(source, [], [])
-	assert(moved.color(0) == Color.BLACK and moved.color(15) == Color.BLACK)
-	assert(moved.color(16) == Color8(0, 0, 0) and moved.color(170) == Color8(154, 0, 0))
-	assert(moved.color(219) == Color8(203, 0, 0) and moved.color(224) == Color8(224, 0, 0) and moved.color(255) == Color.BLACK)
-	var table := PackedByteArray([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0, 1, 1, 0, 2, 0, 3, 0])
-	var colors := Sc2ImportGraphics.mac_color_table(table)
-	var expected: Array[Color] = [Color8(0x12, 0x56, 0x9a), Color8(1, 2, 3)]
-	assert(colors == expected)
-	assert(Sc2ImportGraphics.mac_color_table(table.slice(0, 23)).is_empty())
-	assert(Sc2ImportGraphics.text_mode_bytes(PackedByteArray([1, 13, 10, 13, 2, 13])) == PackedByteArray([1, 10, 13, 2, 13]))
 
 
 func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
@@ -135,11 +101,11 @@ func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
 	slow.fill(80)
 	# TOOL.RAW: height and width, then pixels. Mark the first group button and the sign button.
 	var toolbar := PackedByteArray()
-	toolbar.resize(Sc2ImportDosUi.HEADER_SIZE + 72 * 312)
+	toolbar.resize(4 + 72 * 312)
 	toolbar.encode_u16(0, 312)
 	toolbar.encode_u16(2, 72)
-	toolbar[Sc2ImportDosUi.HEADER_SIZE + 3 * 72 + 3] = 7
-	toolbar[Sc2ImportDosUi.HEADER_SIZE + 127 * 72 + 8] = 9
+	toolbar[4 + 3 * 72 + 3] = 7
+	toolbar[4 + 127 * 72 + 8] = 9
 	var files := { "LARGE.HED": header, "LARGE.DAT": pixels, "SMALL.HED": header, "SMALL.DAT": pixels, "MINE.PAL": palette,
 		"CULT1.RAW": fast, "CULT2.RAW": slow, "TOOL.RAW": toolbar }
 	var archive := PackedByteArray()
@@ -179,7 +145,7 @@ func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
 	assert(pack.source_platform == "DOS" and pack.import_revision == 3)
 	# The DOS toolbar fills the Windows toolbar strip, with the colors of MINE.PAL.
 	var strip: Image = pack.ui_images.toolbar_art
-	assert(strip.get_size() == Sc2ImportDosUi.STRIP_SIZE)
+	assert(strip.get_size() == Vector2i(531, 23))
 	assert(strip.get_pixel(2, 2) == Color8(7, 248, 3))
 	assert(strip.get_pixel(350, 2) == Color8(9, 246, 4))
 	assert(strip.get_pixel(0, 0) == Color8(145, 110, 72))
