@@ -7,5 +7,6 @@ pub mod import;
 pub mod packs;
 pub mod palette;
 pub mod scurk;
+pub mod sprite_fixes;
 pub mod text;
 pub mod text_usa;

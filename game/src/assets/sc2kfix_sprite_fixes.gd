@@ -17,7 +17,6 @@ extends RefCounted
 ## those entries; with the DOS colours present they keep them black.
 
 const DATA_PATH := "res://assets/data/sc2kfix_sprite_fixes.json"
-const TRANSPARENT := -1
 const RESERVED_BLACK := "reserved_black"
 # the DOS colours of sc2kfix game_graphics.cpp, by Windows palette entry
 const DOS_COLORS := {
@@ -85,7 +84,8 @@ static func corrections() -> Array:
 	return fixes().filter(func(fix: Dictionary) -> bool: return fix.fix != RESERVED_BLACK)
 
 
-# The corrected sprite, or null when `entry` is not the original sprite.
+# The corrected sprite, or null when `entry` is not the original sprite. The
+# native formats library holds the rule; see native/core/assets/src/sprite_fixes.rs
 static func corrected_entry(entry: Sc2SpriteArchive.SpriteEntry, fix: Dictionary) -> Sc2SpriteArchive.SpriteEntry:
 	var width := int(fix.width)
 	var height := int(fix.height)
@@ -95,23 +95,15 @@ static func corrected_entry(entry: Sc2SpriteArchive.SpriteEntry, fix: Dictionary
 
 	var decoded := entry.decode_indices()
 
-	if not decoded.ok or NativeCrc32.calculate(decoded.pixels.to_byte_array()) != int(fix.crc32):
+	if not decoded.ok:
 		return null
 
-	var source := decoded.pixels
-	var pixels := PackedInt32Array()
-	pixels.resize(source.size())
-	var shift := int(fix.shift_x)
+	var pixels := NativeSpriteFixes.corrected(
+		decoded.pixels, width, height, int(fix.crc32), int(fix.shift_x), PackedInt64Array(fix.pixels)
+	)
 
-	for y in height:
-		for x in width:
-			var source_x := x - shift
-			pixels[y * width + x] = source[y * width + source_x] if source_x >= 0 and source_x < width else TRANSPARENT
-
-	var edits: Array = fix.pixels
-
-	for index in range(0, edits.size() - 2, 3):
-		pixels[int(edits[index + 1]) * width + int(edits[index])] = int(edits[index + 2])
+	if pixels.is_empty():
+		return null
 
 	return Sc2SpriteArchive.entry_from_indices(entry.sprite_id, width, height, pixels)
 
