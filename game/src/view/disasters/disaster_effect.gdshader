@@ -85,13 +85,7 @@ void fragment() {
 		}
 	} else if (effect_kind == 3) {
 		vec2 uv = vec2((UV.x + mod(floor(t * 6.0), 8.0)) / 8.0, (UV.y + (sparse_crowd ? 1.0 : 0.0)) * 0.5);
-		vec2 pixel = vec2(1.0 / 768.0, 1.0 / 288.0);
-		vec4 person = texture(people, uv);
-		float outline = max(max(texture(people, uv + vec2(pixel.x, 0.0)).a, texture(people, uv - vec2(pixel.x, 0.0)).a),
-			max(texture(people, uv + vec2(0.0, pixel.y)).a, texture(people, uv - vec2(0.0, pixel.y)).a));
-		ink = over(ink, vec3(0.035, 0.045, 0.055), outline * 0.85);
-		ink = over(ink, clamp(person.rgb * 1.3 + vec3(0.12), vec3(0.0), vec3(1.0)), person.a);
-		emission = sparse_crowd ? 0.2 : 0.65;
+		ink = texture(people, uv);
 	} else if (effect_kind == 4) {
 		for (int i = 0; i < 9; i++) {
 			float a = t * (2.0 + float(i) * 0.13) + float(i) * 2.4;
