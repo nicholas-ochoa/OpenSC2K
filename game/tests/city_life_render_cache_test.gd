@@ -12,8 +12,43 @@ func _initialize() -> void:
 	_check_geometry_changes()
 	_check_path_segments()
 	_check_local_tiles()
+	_check_atlas_pixels()
 	print("PASS: exact city-life artwork/emission pixels, road coordinates, local occlusion invalidation and bounded light reuse")
 	quit()
+
+
+func _check_atlas_pixels() -> void:
+	var atlas := CityLifeAtlas.new()
+	var sprites := CityLifeSprites.new()
+	var lights := CityLifeLights.new()
+	var bounds := Rect2i(-13, 27, 517, 193)
+	var entries: Array[Dictionary] = []
+	var occluder := Image.create(20, 130, false, Image.FORMAT_RGBA8)
+	occluder.fill_rect(Rect2i(8, 2, 4, 120), Color.WHITE)
+	for i in 120:
+		var sprite := sprites.sprite(i % 4 == 3, i % 12, i % 4, i % 2, i % 3)
+		entries.append({"sprite": sprite, "origin": bounds.position + Vector2i((i * 17) % 520 - 5, (i * 3) % 195 - 4),
+			"opacity": [0.0, 0.31, 1.0][i % 3], "lamps": lights.lamp_mask(sprite, i % 3, i % 4),
+			"occluders": [{"origin": Vector2i(50, 30), "image": occluder}]})
+	for phase in 3:
+		if phase == 1:
+			entries.reverse()
+		elif phase == 2:
+			entries.clear()
+		var expected := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
+		expected.fill(Color.TRANSPARENT)
+		var lamps := expected.duplicate() as Image
+		for entry in entries:
+			_reference_stamp(expected, bounds.position, entry.sprite, entry.origin, entry.occluders, entry.opacity, lamps, entry.lamps)
+		atlas.compose(bounds, entries, true)
+		var actual := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
+		actual.fill(Color.TRANSPARENT)
+		var actual_lamps := actual.duplicate() as Image
+		for i in atlas.destinations.size():
+			actual.blit_rect(atlas.image, atlas.sources[i], atlas.destinations[i].position)
+			actual_lamps.blit_rect(atlas.emission, atlas.sources[i], atlas.destinations[i].position)
+		assert(actual.get_data() == expected.get_data(), "Sparse artwork changed clipping, overlap order or fade pixels")
+		assert(actual_lamps.get_data() == lamps.get_data(), "Sparse lamp pixels changed or retained old figures")
 
 
 func _check_local_tiles() -> void:

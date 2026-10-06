@@ -1,17 +1,22 @@
 class_name CityLifeCanvas
 extends Node2D
-## One reusable viewport texture. Tiny sprites are masked by cached silhouettes.
+## Sparse artwork atlas. Tiny sprites are masked by cached silhouettes.
 
 @warning_ignore_start("integer_division")
 
 const SHADER := preload("res://src/view/city_life/city_life.gdshader")
 const MAX_TEXTURE_EDGE := 4096
-var image: Image
-var texture: ImageTexture
+var atlas := CityLifeAtlas.new()
+var image: Image:
+	get: return atlas.image
+var texture: ImageTexture:
+	get: return atlas.texture
 var source_bounds := Rect2i()
 var lights := CityLifeLights.new()
-var emission: Image
-var emission_texture: ImageTexture
+var emission: Image:
+	get: return atlas.emission
+var emission_texture: ImageTexture:
+	get: return atlas.emission_texture
 var road_layer: Node2D
 var _light_night := -1.0
 var _light_occluders: Dictionary[Vector3i, Array] = {}
@@ -33,7 +38,8 @@ func _init() -> void:
 
 func _draw() -> void:
 	if texture != null:
-		draw_texture(texture, Vector2.ZERO)
+		for index in atlas.destinations.size():
+			draw_texture_rect_region(texture, atlas.destinations[index], atlas.sources[index])
 
 
 func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> void:
@@ -43,24 +49,14 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 		hide()
 		return
 	var light_active := app.visual_environment.night > 0.0
-	if image == null or source_bounds.size != bounds.size:
-		image = Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
-		texture = ImageTexture.create_from_image(image)
-		if road_layer == null:
-			road_layer = CityLifeHeadlights.new()
-			road_layer.show_behind_parent = true
-			add_child(road_layer)
-	if light_active and (emission == null or emission.get_size() != bounds.size):
-		emission = Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
-		emission_texture = ImageTexture.create_from_image(emission)
-		(material as ShaderMaterial).set_shader_parameter("vehicle_emission", emission_texture)
+	if road_layer == null:
+		road_layer = CityLifeHeadlights.new()
+		road_layer.show_behind_parent = true
+		add_child(road_layer)
 	if light_active != _emission_active:
 		_emission_active = light_active
 		(material as ShaderMaterial).set_shader_parameter("vehicle_has_emission", light_active)
 	source_bounds = bounds
-	image.fill(Color.TRANSPARENT)
-	if light_active:
-		emission.fill(Color.TRANSPARENT)
 	var city := app.document_state.city
 	lights.sync_geometry(city)
 	if lights.roads.size() > 4096:
@@ -88,6 +84,7 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	if light_active:
 		(road_layer as CityLifeHeadlights).render(city, figures, lights, source_bounds.position,
 			func(tile: Vector2i, enter: int) -> Array: return _light_candidates(app, tile, enter))
+	var entries: Array[Dictionary] = []
 	for figure: CityLifeController.Figure in figures:
 		var sprite := sprites.sprite(figure.walking, figure.variant, figure.direction, int(figure.distance * 8.0) % 2, figure.vehicle_kind)
 		var origin := Vector2i(figure.position.round()) - Vector2i(sprite.get_width() / 2, sprite.get_height() - 1)
@@ -96,10 +93,10 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 		var candidates := _candidates(app, figure.tile, figure.enter)
 		var opacity := figure.opacity()
 		var mask: Image = lights.lamp_mask(sprite, figure.vehicle_kind, figure.direction) if light_active and not figure.walking else null
-		stamp(image, source_bounds.position, sprite, origin, candidates, opacity, emission if light_active else null, mask)
-	texture.update(image)
+		entries.append({"sprite": sprite, "origin": origin, "occluders": candidates, "opacity": opacity, "lamps": mask})
+	atlas.compose(bounds, entries, light_active)
 	if light_active:
-		emission_texture.update(emission)
+		(material as ShaderMaterial).set_shader_parameter("vehicle_emission", emission_texture)
 	sync_view(app)
 	show()
 	queue_redraw()
@@ -247,19 +244,24 @@ static func deck_foreground(source: Image, origin: Vector2i, surface: Vector2, s
 
 
 static func stamp(destination: Image, offset: Vector2i, sprite: Image, origin: Vector2i, occluders: Array,
-		opacity: float = 1.0, lamp_destination: Image = null, lamps: Image = null) -> void:
+		opacity: float = 1.0, lamp_destination: Image = null, lamps: Image = null, clip := Rect2i()) -> void:
+	if not clip.has_area():
+		clip = Rect2i(Vector2i.ZERO, destination.get_size())
+	var area := Rect2i(origin - offset, sprite.get_size()).intersection(clip)
+	if not area.has_area():
+		return
 	if opacity == 1.0:
 		# Native image blits preserve replacement order and alpha without a
 		# GDScript callback for every opaque sprite pixel. Fades keep their exact
 		# per-pixel alpha rounding below.
 		var visible := visible_sprite(sprite, origin, occluders)
-		var rect := Rect2i(Vector2i.ZERO, sprite.get_size())
-		destination.blit_rect_mask(sprite, visible, rect, origin - offset)
+		var rect := Rect2i(area.position - origin + offset, area.size)
+		destination.blit_rect_mask(sprite, visible, rect, area.position)
 		if lamp_destination != null:
 			if lamps == null:
 				lamps = Image.create(sprite.get_width(), sprite.get_height(), false, Image.FORMAT_RGBA8)
 				lamps.fill(Color.TRANSPARENT)
-			lamp_destination.blit_rect_mask(lamps, visible, rect, origin - offset)
+			lamp_destination.blit_rect_mask(lamps, visible, rect, area.position)
 		return
 	for y in sprite.get_height():
 		for x in sprite.get_width():
@@ -268,7 +270,7 @@ static func stamp(destination: Image, offset: Vector2i, sprite: Image, origin: V
 				continue
 			var point := origin + Vector2i(x, y)
 			var local := point - offset
-			if local.x < 0 or local.y < 0 or local.x >= destination.get_width() or local.y >= destination.get_height():
+			if not clip.has_point(local):
 				continue
 			if not hidden_at(point, occluders):
 				color.a *= opacity

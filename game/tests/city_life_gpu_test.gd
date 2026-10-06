@@ -55,8 +55,65 @@ func _run() -> void:
 	await process_frame
 	await _check_headlight_batches(false)
 	await _check_headlight_batches(true)
+	await _check_sparse_artwork(false)
+	await _check_sparse_artwork(true)
 	print("PASS: GPU city-life colors, transparent background, cloud shadows and environment lighting")
 	quit()
+
+
+func _check_sparse_artwork(hdr: bool) -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(768, 512)
+	viewport.transparent_bg = true
+	viewport.use_hdr_2d = hdr
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas := CityLifeCanvas.new()
+	viewport.add_child(canvas)
+	var bounds := Rect2i(-19, 17, 327, 199)
+	var entries: Array[Dictionary] = []
+	var sprites := CityLifeSprites.new()
+	var lights := CityLifeLights.new()
+	var pixels := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
+	var emission := pixels.duplicate() as Image
+	for i in 100:
+		var sprite := sprites.sprite(i % 4 == 3, i % 12, i % 4, i % 2, i % 3)
+		var origin := bounds.position + Vector2i((i * 17) % 330 - 5, (i * 3) % 200 - 4)
+		var lamps := lights.lamp_mask(sprite, i % 3, i % 4)
+		var opacity: float = [0.0, 0.31, 1.0][i % 3]
+		entries.append({"sprite": sprite, "origin": origin, "lamps": lamps, "opacity": opacity, "occluders": []})
+		CityLifeCanvas.stamp(pixels, bounds.position, sprite, origin, [], opacity, emission, lamps)
+	canvas.atlas.compose(bounds, entries, true)
+	var reference := Sprite2D.new()
+	reference.centered = false
+	reference.texture = ImageTexture.create_from_image(pixels)
+	reference.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	reference.material = canvas.material.duplicate()
+	viewport.add_child(reference)
+	for item: CanvasItem in [canvas, reference]:
+		var shader := item.material as ShaderMaterial
+		shader.set_shader_parameter("environment_enabled", true)
+		shader.set_shader_parameter("environment_tint", Vector3(0.3, 0.4, 0.6))
+		shader.set_shader_parameter("environment_night", 0.7)
+		shader.set_shader_parameter("vehicle_has_emission", true)
+		shader.set_shader_parameter("vehicle_emission", canvas.emission_texture if item == canvas else ImageTexture.create_from_image(emission))
+	for zoom in [0.5, 1.0, 2.0]:
+		canvas.scale = Vector2.ONE * zoom
+		reference.scale = canvas.scale
+		canvas.position = Vector2(0.375, 0.125)
+		reference.position = canvas.position
+		canvas.hide()
+		reference.show()
+		await RenderingServer.frame_post_draw
+		var expected := viewport.get_texture().get_image()
+		reference.hide()
+		canvas.show()
+		canvas.queue_redraw()
+		await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_data() == expected.get_data(),
+			"Sparse GPU artwork differs at zoom %s, HDR %s" % [zoom, hdr])
+	viewport.queue_free()
+	await process_frame
 
 
 func _check_headlight_batches(hdr: bool) -> void:
