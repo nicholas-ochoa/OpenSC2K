@@ -3,7 +3,7 @@
 use super::Frame;
 use super::camera::Camera;
 use super::pixel;
-use super::regions::{CLEAR, REGION, Regions};
+use super::regions::{ARTWORK_FACTOR, CLEAR, CLEAR_COLOR, REGION, Regions};
 
 /// The 256 frame colors of `palette` (RGB bytes) after the cycle `map`, which
 /// gives the source entry of each index.
@@ -22,6 +22,10 @@ pub fn cycled_colors(palette: &[u8], map: &[i32]) -> [u32; 256] {
 /// Draw the map of `camera` into the viewport of `frame`. Pixels without paint
 /// take `background`.
 pub fn draw_map(frame: &mut Frame, camera: &Camera, regions: &mut Regions, colors: &[u32; 256], background: u32) {
+    if regions.hd {
+        return draw_map_hd(frame, camera, regions, background);
+    }
+
     let viewport = camera.viewport;
     let (x0, y0) = (viewport.x.max(0.0) as usize, viewport.y.max(0.0) as usize);
     let x1 = ((viewport.x + viewport.width) as usize).min(frame.width);
@@ -135,4 +139,71 @@ pub fn whole_city(regions: &mut Regions, colors: &[u32; 256], background: u32) -
     }
 
     (width, height, rgba)
+}
+
+/// Draw HD regions: each view pixel holds `ARTWORK_FACTOR` by `ARTWORK_FACTOR`
+/// colors, so a close zoom shows the finer art.
+fn draw_map_hd(frame: &mut Frame, camera: &Camera, regions: &mut Regions, background: u32) {
+    let viewport = camera.viewport;
+    let (x0, y0) = (viewport.x.max(0.0) as usize, viewport.y.max(0.0) as usize);
+    let x1 = ((viewport.x + viewport.width) as usize).min(frame.width);
+    let y1 = ((viewport.y + viewport.height) as usize).min(frame.height);
+
+    if x0 >= x1 || y0 >= y1 {
+        return;
+    }
+
+    let (offset_x, offset_y) = camera.draw_offset();
+    let art_scale = camera.scale() * f64::from(regions.divisor()) / f64::from(ARTWORK_FACTOR);
+    let (map_width, map_height) = regions.size();
+    let (art_width, art_height) = (map_width * ARTWORK_FACTOR, map_height * ARTWORK_FACTOR);
+    let art_region = REGION * ARTWORK_FACTOR;
+    let columns: Vec<i32> = (x0..x1)
+        .map(|x| {
+            let art = ((x as f64 + 0.5 - offset_x) / art_scale).floor() as i32;
+
+            if (0..art_width).contains(&art) { art } else { -1 }
+        })
+        .collect();
+
+    for y in y0..y1 {
+        let art_y = ((y as f64 + 0.5 - offset_y) / art_scale).floor() as i32;
+        let row = &mut frame.pixels[y * frame.width + x0..y * frame.width + x1];
+
+        if !(0..art_height).contains(&art_y) {
+            row.fill(background);
+            continue;
+        }
+
+        let region_y = art_y / art_region;
+        let mut column = 0;
+
+        while column < columns.len() {
+            let art_x = columns[column];
+
+            if art_x < 0 {
+                row[column] = background;
+                column += 1;
+                continue;
+            }
+
+            let region_x = art_x / art_region;
+
+            let Some(region) = regions.region(region_x, region_y) else {
+                row[column] = background;
+                column += 1;
+                continue;
+            };
+
+            let width = (region.width * ARTWORK_FACTOR) as usize;
+            let local_y = (art_y - region.y * ARTWORK_FACTOR) as usize;
+            let line = &region.colors[local_y * width..(local_y + 1) * width];
+
+            while column < columns.len() && columns[column] >= 0 && columns[column] / art_region == region_x {
+                let color = line[(columns[column] - region.x * ARTWORK_FACTOR) as usize];
+                row[column] = if color == CLEAR_COLOR { background } else { color };
+                column += 1;
+            }
+        }
+    }
 }

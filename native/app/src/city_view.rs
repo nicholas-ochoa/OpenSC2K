@@ -33,6 +33,8 @@ pub struct CityView {
     /// The display clock of moving sprites, in tenths of a second.
     pub animation_phase: i64,
     pub show_vehicles: bool,
+    /// Show the art of the HD sprite pack, when one is loaded.
+    pub hd: bool,
     /// The data view that replaces the city, and its tile values.
     pub data_mode: Option<Mode>,
     pub data_values: Vec<i32>,
@@ -68,6 +70,7 @@ impl CityView {
             cycle_msec: 0.0,
             animation_phase: 0,
             show_vehicles: true,
+            hd: true,
             data_mode: None,
             data_values: Vec::new(),
             data_mesh: None,
@@ -164,7 +167,13 @@ impl CityView {
         if self.regions.is_none() {
             let city = self.city.take().expect("the view holds its maps");
 
-            match Regions::new(city.clone(), art, view, self.options) {
+            let regions = if art.hd.is_some() && self.hd {
+                Regions::new_hd(city.clone(), art, view, self.options)
+            } else {
+                Regions::new(city.clone(), art, view, self.options)
+            };
+
+            match regions {
                 Ok(regions) => {
                     self.regions = Some(regions);
                     self.moving_key = (u64::MAX, -1, usize::MAX, true);

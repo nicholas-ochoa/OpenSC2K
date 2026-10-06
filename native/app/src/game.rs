@@ -56,7 +56,14 @@ impl Game {
             .graphics_folder()
             .ok_or("No graphics pack is set. Import the game assets first.")?;
         let pack = GraphicsPack::load(&folder.to_string_lossy())?;
-        let art = CityArt::new(&pack);
+        let mut art = CityArt::new(&pack);
+
+        if let Some(folder) = settings.path("graphics", "hd_pack") {
+            match sc2k_assets::packs::hd::HdPack::load(&folder.to_string_lossy()) {
+                Ok(hd) => art.hd = Some(std::sync::Arc::new(hd)),
+                Err(error) => eprintln!("HD sprite pack: {error}"),
+            }
+        }
         let seed = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(1, |time| time.as_millis() as i64);

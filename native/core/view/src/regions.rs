@@ -50,12 +50,22 @@ pub struct Region {
     pub height: i32,
     /// A palette index for each pixel, or `CLEAR`.
     pub indices: Vec<u16>,
+    /// HD regions: `factor` by `factor` 0x00RRGGBB colors for each view pixel,
+    /// or `CLEAR_COLOR`.
+    pub colors: Vec<u32>,
     used: u64,
 }
+
+/// A color pixel without paint.
+pub const CLEAR_COLOR: u32 = 0xff00_0000;
+/// The pixels of HD art for each view pixel.
+pub const ARTWORK_FACTOR: i32 = 2;
 
 pub struct Regions {
     pub view: usize,
     pub options: Options,
+    /// True when the regions paint HD art in full color.
+    pub hd: bool,
     builder: Builder,
     regions: HashMap<(i32, i32), Region>,
     sprite_limit: (i32, i32),
@@ -73,6 +83,52 @@ fn shadow_pairs() -> Vec<([u8; 4], [u8; 4])> {
 }
 
 impl Regions {
+    /// Regions of HD art in full color, when the art has an HD pack.
+    pub fn new_hd(city: City, art: &CityArt, view: usize, options: Options) -> Result<Self, String> {
+        let config = Config {
+            view: view as i32,
+            underground: options.underground,
+            pipes: options.pipes,
+            subways: options.subways,
+            tunnels: options.tunnels,
+            mains: options.water_mains,
+            redraw_ground: art.hd.as_ref().is_some_and(|hd| hd.redraw_small_highway_ground),
+            specials: false,
+            phase: 0,
+            effects: 0,
+        };
+        let color = |index: usize| {
+            let rgb = art.palette.get(index * 3..index * 3 + 3).unwrap_or(&[0, 0, 0]);
+
+            [rgb[0], rgb[1], rgb[2], 255]
+        };
+        let mut builder = Builder::new(city, config, art.colored(view), color(usize::from(TARGET_INDEX)), ATLAS_EDGE, false)?;
+
+        for (from, to) in shadow_pairs() {
+            builder.shadows.insert(color(usize::from(from[0])), color(usize::from(to[0])));
+        }
+
+        let artwork = art.artwork(view);
+
+        for (key, art) in artwork {
+            builder.sprite_limit.1 = builder.sprite_limit.1.max(art.height);
+            builder.sprites.artwork.insert(key, art);
+        }
+
+        let sprite_limit = builder.sprite_limit;
+
+        Ok(Self {
+            view,
+            options,
+            hd: true,
+            builder,
+            regions: HashMap::new(),
+            sprite_limit,
+            clock: 0,
+            altitude_bytes: Vec::new(),
+        })
+    }
+
     pub fn new(city: City, art: &CityArt, view: usize, options: Options) -> Result<Self, String> {
         let config = Config {
             view: view as i32,
@@ -98,6 +154,7 @@ impl Regions {
         Ok(Self {
             view,
             options,
+            hd: false,
             builder,
             regions: HashMap::new(),
             sprite_limit,
@@ -236,11 +293,32 @@ impl Regions {
                 return None;
             }
 
-            let (rgba, _) = self.builder.raster(bounds, [0, 0, 0, 0]).ok()?;
-            let indices = rgba
-                .chunks_exact(4)
-                .map(|pixel| if pixel[3] == 0 { CLEAR } else { u16::from(pixel[0]) })
-                .collect();
+            let (indices, colors) = if self.hd {
+                // the CPU painter shows the first frame of HD animations
+                let frame = 0;
+                let (rgba, _) = self.builder.raster_artwork(bounds, [0, 0, 0, 0], ARTWORK_FACTOR, frame).ok()?;
+                let colors = rgba
+                    .chunks_exact(4)
+                    .map(|p| {
+                        if p[3] == 0 {
+                            CLEAR_COLOR
+                        } else {
+                            (u32::from(p[0]) << 16) | (u32::from(p[1]) << 8) | u32::from(p[2])
+                        }
+                    })
+                    .collect();
+
+                (Vec::new(), colors)
+            } else {
+                let (rgba, _) = self.builder.raster(bounds, [0, 0, 0, 0]).ok()?;
+
+                (
+                    rgba.chunks_exact(4)
+                        .map(|pixel| if pixel[3] == 0 { CLEAR } else { u16::from(pixel[0]) })
+                        .collect(),
+                    Vec::new(),
+                )
+            };
 
             if self.regions.len() >= REGION_LIMIT {
                 self.evict();
@@ -254,6 +332,7 @@ impl Regions {
                     width: bounds.w,
                     height: bounds.h,
                     indices,
+                    colors,
                     used: clock,
                 },
             );

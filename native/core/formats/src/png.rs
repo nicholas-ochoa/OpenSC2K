@@ -412,8 +412,9 @@ fn paeth(left: u8, up: u8, corner: u8) -> u8 {
     }
 }
 
-/// Undo the filter of each scanline of one image. Indexed pixels filter by whole bytes.
-fn unfilter(data: &[u8], line_bytes: usize, rows: usize) -> Result<Vec<u8>, String> {
+/// Undo the filter of each scanline of one image. `pixel_bytes` is the byte
+/// distance of the left and corner neighbors: 1 for indexed pixels.
+fn unfilter(data: &[u8], line_bytes: usize, rows: usize, pixel_bytes: usize) -> Result<Vec<u8>, String> {
     let mut output = vec![0_u8; line_bytes * rows];
 
     for row in 0..rows {
@@ -422,10 +423,14 @@ fn unfilter(data: &[u8], line_bytes: usize, rows: usize) -> Result<Vec<u8>, Stri
         let (filter, line) = (line[0], &line[1..]);
 
         for column in 0..line_bytes {
-            let left = if column > 0 { output[row * line_bytes + column - 1] } else { 0 };
+            let left = if column >= pixel_bytes {
+                output[row * line_bytes + column - pixel_bytes]
+            } else {
+                0
+            };
             let up = if row > 0 { output[(row - 1) * line_bytes + column] } else { 0 };
-            let corner = if row > 0 && column > 0 {
-                output[(row - 1) * line_bytes + column - 1]
+            let corner = if row > 0 && column >= pixel_bytes {
+                output[(row - 1) * line_bytes + column - pixel_bytes]
             } else {
                 0
             };
@@ -451,7 +456,7 @@ fn read_indices(data: &[u8], width: usize, rows: usize, bit_depth: usize) -> Res
     }
 
     let line_bytes = (width * bit_depth).div_ceil(8);
-    let raw = unfilter(data, line_bytes, rows)?;
+    let raw = unfilter(data, line_bytes, rows, 1)?;
     let mask = (1_usize << bit_depth) - 1;
     let mut indices = Vec::with_capacity(width * rows);
 
@@ -509,6 +514,150 @@ pub fn decode_indexed(bytes: &[u8], strict_palette: bool) -> Result<Decoded, Str
         pixels,
         palette: checked.palette,
     })
+}
+
+/// A decoded image of 8-bit RGBA pixels with straight alpha.
+pub struct Rgba {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u8>,
+}
+
+const GRAY: u8 = 0;
+const RGB: u8 = 2;
+const PALETTE: u8 = 3;
+const GRAY_ALPHA: u8 = 4;
+const MAX_RGBA_EDGE: u32 = 16384;
+
+/// Decode any standard PNG file to RGBA. Samples of 16 bits keep their high
+/// byte; low bit depths scale to the full byte. The file gamma is ignored.
+pub fn decode_rgba(bytes: &[u8]) -> Result<Rgba, String> {
+    if bytes.len() < 33 || bytes[..8] != SIGNATURE || &bytes[12..16] != b"IHDR" {
+        return Err("Not a PNG file".into());
+    }
+
+    let width = u32_be(bytes, 16);
+    let height = u32_be(bytes, 20);
+    let (depth, color, interlace) = (usize::from(bytes[24]), bytes[25], bytes[28]);
+    let channels = match color {
+        GRAY | PALETTE => 1,
+        GRAY_ALPHA => 2,
+        RGB => 3,
+        RGBA_COLOR => 4,
+        _ => return Err("Unsupported PNG color type".into()),
+    };
+
+    if width == 0 || height == 0 || width > MAX_RGBA_EDGE || height > MAX_RGBA_EDGE || ![1, 2, 4, 8, 16].contains(&depth) || interlace > 1 {
+        return Err("Unsupported PNG layout".into());
+    }
+
+    let mut palette: Vec<[u8; 4]> = Vec::new();
+    let mut transparent: Option<[u16; 3]> = None;
+    let mut data = Vec::new();
+    let mut position = 8;
+
+    while position + 12 <= bytes.len() {
+        let length = u32_be(bytes, position) as usize;
+        let Some(payload) = bytes.get(position + 8..position + 8 + length) else {
+            break;
+        };
+
+        match &bytes[position + 4..position + 8] {
+            b"PLTE" => palette = payload.chunks_exact(3).map(|rgb| [rgb[0], rgb[1], rgb[2], 255]).collect(),
+            b"tRNS" if color == PALETTE => {
+                for (entry, alpha) in palette.iter_mut().zip(payload) {
+                    entry[3] = *alpha;
+                }
+            }
+            b"tRNS" if color == GRAY && length >= 2 => transparent = Some([u16::from_be_bytes([payload[0], payload[1]]); 3]),
+            b"tRNS" if color == RGB && length >= 6 => {
+                let sample = |at: usize| u16::from_be_bytes([payload[at], payload[at + 1]]);
+                transparent = Some([sample(0), sample(2), sample(4)]);
+            }
+            b"IDAT" => data.extend_from_slice(payload),
+            b"IEND" => break,
+            _ => {}
+        }
+
+        position += length + 12;
+    }
+
+    let data = miniz_oxide::inflate::decompress_to_vec_zlib(&data).map_err(|_| DECODE_ERROR.to_string())?;
+    let (w, h) = (width as usize, height as usize);
+    let bits_per_pixel = depth * channels;
+    let pixel_bytes = bits_per_pixel.div_ceil(8);
+    let max = (1_u32 << depth) - 1;
+    let mut pixels = vec![0_u8; w * h * 4];
+
+    // the samples of one pixel of a pass, at the depth of the file
+    let sample = |line: &[u8], column: usize, channel: usize| -> u16 {
+        let bit = (column * channels + channel) * depth;
+
+        match depth {
+            16 => u16::from_be_bytes([line[bit / 8], line[bit / 8 + 1]]),
+            8 => u16::from(line[bit / 8]),
+            _ => u16::from((line[bit / 8] >> (8 - depth - bit % 8)) & max as u8),
+        }
+    };
+    let byte = |value: u16| -> u8 {
+        match depth {
+            16 => (value >> 8) as u8,
+            8 => value as u8,
+            _ => (u32::from(value) * 255 / max) as u8,
+        }
+    };
+
+    let passes: Vec<(usize, usize, usize, usize)> = if interlace == 1 { ADAM7.to_vec() } else { vec![(0, 0, 1, 1)] };
+    let mut offset = 0;
+
+    for (x0, y0, dx, dy) in passes {
+        let pass_width = w.saturating_sub(x0).div_ceil(dx);
+        let pass_height = h.saturating_sub(y0).div_ceil(dy);
+
+        if pass_width == 0 || pass_height == 0 {
+            continue;
+        }
+
+        let line_bytes = (pass_width * bits_per_pixel).div_ceil(8);
+        let raw = unfilter(data.get(offset..).unwrap_or_default(), line_bytes, pass_height, pixel_bytes)?;
+        offset += pass_height * (line_bytes + 1);
+
+        for (row, line) in raw.chunks_exact(line_bytes).enumerate() {
+            for column in 0..pass_width {
+                let rgba = match color {
+                    PALETTE => palette.get(usize::from(sample(line, column, 0))).copied().unwrap_or([0, 0, 0, 255]),
+                    GRAY | GRAY_ALPHA => {
+                        let gray = sample(line, column, 0);
+                        let alpha = if color == GRAY_ALPHA {
+                            byte(sample(line, column, 1))
+                        } else if transparent.is_some_and(|key| key[0] == gray) {
+                            0
+                        } else {
+                            255
+                        };
+
+                        [byte(gray), byte(gray), byte(gray), alpha]
+                    }
+                    _ => {
+                        let rgb = [sample(line, column, 0), sample(line, column, 1), sample(line, column, 2)];
+                        let alpha = if color == RGBA_COLOR {
+                            byte(sample(line, column, 3))
+                        } else if transparent == Some(rgb) {
+                            0
+                        } else {
+                            255
+                        };
+
+                        [byte(rgb[0]), byte(rgb[1]), byte(rgb[2]), alpha]
+                    }
+                };
+                let (x, y) = (x0 + column * dx, y0 + row * dy);
+                pixels[(y * w + x) * 4..(y * w + x) * 4 + 4].copy_from_slice(&rgba);
+            }
+        }
+    }
+
+    Ok(Rgba { width, height, pixels })
 }
 
 #[cfg(test)]
@@ -569,5 +718,19 @@ mod tests {
         assert_eq!((decoded.width, decoded.height), (3, 2));
         assert_eq!(decoded.pixels, pixels);
         assert_eq!(decoded.palette[3], 9);
+    }
+
+    #[test]
+    fn rgba_files_decode() {
+        let pixels: Vec<u8> = (0..2 * 3 * 4).map(|value| (value * 10) as u8).collect();
+        let file = encode_rgba(2, 3, &pixels).unwrap();
+        let decoded = decode_rgba(&file).unwrap();
+        assert_eq!((decoded.width, decoded.height), (2, 3));
+        assert_eq!(decoded.pixels, pixels);
+
+        let mut palette = vec![0; 768];
+        palette[3..6].copy_from_slice(&[10, 20, 30]);
+        let indexed = encode_indexed(2, 1, &[1, -1], &palette).unwrap();
+        assert_eq!(decode_rgba(&indexed).unwrap().pixels, [10, 20, 30, 255, 0, 0, 0, 0]);
     }
 }

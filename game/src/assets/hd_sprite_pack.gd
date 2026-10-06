@@ -216,19 +216,20 @@ func _read_image(value: Variant) -> Image:
 
 		return null
 
-	var image := Image.load_from_file(_root.path_join(path))
+	# the native formats library decodes the file; see native/core/formats/src/png.rs
+	var decoded := NativeIndexedPng.decode_rgba(FileAccess.get_file_as_bytes(_root.path_join(path)))
 
-	if image == null or image.is_empty():
+	if not decoded.ok:
 		_fail("Cannot read %s" % path)
 
 		return null
 
-	if image.get_width() > MAX_EDGE or image.get_height() > MAX_STRIP_HEIGHT:
+	if decoded.width > MAX_EDGE or decoded.height > MAX_STRIP_HEIGHT:
 		_fail("%s is too large" % path)
 
 		return null
 
-	image.convert(Image.FORMAT_RGBA8)
+	var image := Image.create_from_data(decoded.width, decoded.height, false, Image.FORMAT_RGBA8, decoded.pixels)
 	_decoded_bytes += image.get_width() * image.get_height() * 4
 
 	if _decoded_bytes > MAX_DECODED_BYTES:

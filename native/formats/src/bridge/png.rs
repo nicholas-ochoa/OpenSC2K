@@ -38,4 +38,19 @@ impl NativeIndexedPng {
             Err(error) => failure(&error),
         }
     }
+
+    /// `{ok, error, width, height, pixels}`: RGBA8 pixels with straight alpha.
+    #[func]
+    fn decode_rgba(data: PackedByteArray) -> VarDictionary {
+        match png::decode_rgba(data.as_slice()) {
+            Ok(decoded) => {
+                let mut result = success();
+                result.set("width", decoded.width);
+                result.set("height", decoded.height);
+                result.set("pixels", &bytes(&decoded.pixels));
+                result
+            }
+            Err(error) => failure(&error),
+        }
+    }
 }
