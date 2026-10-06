@@ -444,7 +444,8 @@ func texture() -> CityMapSource:
 # The vertex color of the indexed overlay of a CPU HD region, or white for none.
 # Refer to the tags of palette_cycle.gdshader.
 func _overlay_tag() -> Color:
-	var effects := CityGpuBuildContext.hd_effects
+	# an HD pack shows every effect on its art
+	var effects := CityGpuBuildContext.ALL_HD_EFFECTS
 
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		return Color8(OVERLAY_PIPE_FLOW_TAG, 0, 0) if effects & CityGpuBuildContext.HD_PIPE_FLOW else Color.WHITE
