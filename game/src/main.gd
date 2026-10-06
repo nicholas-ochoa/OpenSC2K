@@ -34,6 +34,7 @@ var static_render_state := StaticRenderState.new()
 var palette_clock := PaletteAnimationClock.new()
 var visual_environment := CityVisualEnvironment.new(self)
 var city_life := CityLifeController.new(self)
+var disaster_effects := CityDisasterEffects.new(self)
 # scene controls and pending ui workflows
 var audio_controller: CityAudioController
 var map_view: CityMapControl
@@ -98,6 +99,7 @@ var updates := ApplicationUpdates.new(preferences)
 
 
 func _ready() -> void:
+	effects_audio.disaster_effects = disaster_effects
 	# the window samples embedded dialogs with nearest filtering. keep the
 	# earlier linear default for the application contents
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR

@@ -19,7 +19,7 @@ func _ready() -> void:
 	content.add_theme_constant_override("separation", 12)
 	add_child(content)
 	var sections: Dictionary[String, VBoxContainer] = {}
-	for title in ["Seasons", "Day and Night Shift", "Weather Effects", "Environment", "Traffic & Movement", "Other Effects"]:
+	for title in ["Seasons", "Day and Night Shift", "Weather Effects", "Environment", "Traffic & Movement", "Disaster Effects", "Other Effects"]:
 		if not VisualEnhancementOptions.FIELDS.any(func(field: Array) -> bool: return _category_for(field[0]) == title):
 			continue
 		var section := VBoxContainer.new()
@@ -111,6 +111,8 @@ func _ready() -> void:
 
 
 func _category_for(key: String) -> String:
+	if key.begins_with("disaster_"):
+		return "Disaster Effects"
 	if key.begins_with("season_"):
 		return "Seasons"
 	if key.begins_with("day_") or key.begins_with("night_") or key in ["brightmaps", "brightmap_folder", "lut_path", "speed_link", "pause_freezes"]:
@@ -134,7 +136,9 @@ func _update_availability() -> void:
 	var values := selected_values()
 	for key: String in controls:
 		var available := true
-		if key.begins_with("season_") and key != "season_enabled":
+		if key.begins_with("disaster_") and key != "disaster_enabled":
+			available = values.disaster_enabled
+		elif key.begins_with("season_") and key != "season_enabled":
 			available = values.season_enabled
 		elif (key.begins_with("day_") and key != "day_enabled") or key in ["night_strength", "brightmaps", "night_light_strength", "brightmap_folder"]:
 			available = values.day_enabled

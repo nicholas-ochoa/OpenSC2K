@@ -3,6 +3,13 @@ extends RefCounted
 ## Local presentation preferences. No value is written to a city document.
 
 const FIELDS := [
+	["disaster_enabled", "Disaster effects", "bool", true],
+	["disaster_strength", "Effect strength", "number", 0.7, 0.0, 1.0, 0.05],
+	["disaster_crowds", "Use city pedestrians for riots", "bool", true],
+	["disaster_dust", "Demolition and damage dust", "bool", true],
+	["disaster_motion", "Smooth monster and tornado movement", "bool", true],
+	["disaster_lights", "Fire and impact light strength", "number", 0.4, 0.0, 1.0, 0.05],
+	["disaster_shake", "Earthquake shake strength", "number", 0.6, 0.0, 1.0, 0.05],
 	["water_reflections", "Water reflections", "choice", 1, ["Off", "Subtle"]],
 	["water_topography", "Underwater terrain", "bool", true],
 	["cloud_enabled", "Clouds and cloud shadows", "bool", true],

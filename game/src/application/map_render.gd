@@ -307,6 +307,7 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Ar
 	var invalidated := false
 	if app.city_life.canvas != null:
 		app.city_life.canvas.invalidate_occlusion(occluder_changes)
+	app.disaster_effects.invalidate_occlusion(occluder_changes)
 
 	if not occluder_changes.is_empty():
 		for key in caches.dynamic_occluder_cache.keys():

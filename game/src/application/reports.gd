@@ -106,6 +106,7 @@ func start_disaster_at_view_center(id: int) -> DisasterReportResult:
 	app.effects_audio.show_effect_events(
 		result.effect_events, result.sound_events
 	)
+	app.disaster_effects.disaster_started(result)
 	show_news_items(result.news_items)
 	var first_update := result.first_update
 

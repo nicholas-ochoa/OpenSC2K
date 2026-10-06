@@ -16,6 +16,7 @@ func _init(application: CityApplication) -> void:
 func process(delta: float) -> void:
 	app.visual_environment.process(delta)
 	app.city_life.process(delta)
+	app.disaster_effects.process(delta)
 	app.moving_sprites.process(delta)
 	app.new_city.poll_new_city_preview()
 	app.current_tool.update_network_preview()
@@ -159,6 +160,12 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 
 	for point in result.view_center_requests:
 		app.map_view.center_on_tile(point)
+
+	# Resolve visible effects after applying the disaster's camera requests.
+	for day in result.day_results:
+		var started: DisasterStartResult = day.phase_results.get("disaster_start")
+		if started != null:
+			app.disaster_effects.disaster_started(started)
 
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
 		app.effects_audio.show_effect_events(result.effect_events, app.moving_sprites.audible_sound_events(result.sound_events), true)

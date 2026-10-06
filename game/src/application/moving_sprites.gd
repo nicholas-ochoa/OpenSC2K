@@ -36,6 +36,7 @@ func _traffic_active() -> bool:
 
 
 func refresh_moving_things(view_size := -1) -> void:
+	app.disaster_effects.begin_commands()
 	caches.dynamic_active_keys.clear()
 	if _traffic_active():
 		traffic_motion.observe(app.document_state.city, app.preferences.visual_enhancements)
@@ -49,12 +50,14 @@ func refresh_moving_things(view_size := -1) -> void:
 		if app.map_view != null:
 			app.map_view.set_dynamic_sprites([])
 
+		app.disaster_effects.end_commands()
 		return
 
 	if caches.region_cache != null and caches.region_cache.gpu_enabled and not caches.region_cache.covered():
 		caches.foreground_complete = false
 		app.map_view.set_dynamic_sprites([])
 
+		app.disaster_effects.end_commands()
 		return
 
 	if caches.dynamic_visual_cache.size() > 4096:
@@ -75,6 +78,8 @@ func refresh_moving_things(view_size := -1) -> void:
 	var visuals: Array[CityDynamicVisual] = []
 
 	for source_command in commands:
+		if app.disaster_effects.observe_command(source_command):
+			continue
 		var command := traffic_motion.draw_command(source_command, divisor, app.document_state.city.map_size)
 		var display_position := Vector2(source_command.position * divisor) + traffic_motion.display_offset(source_command, divisor)
 		var position := Vector2i(display_position.round())
@@ -180,6 +185,7 @@ func refresh_moving_things(view_size := -1) -> void:
 		if not visual_cache_key.is_empty():
 			caches.dynamic_visual_cache[visual_cache_key] = visual
 
+	app.disaster_effects.end_commands()
 	if caches.dynamic_special_batch_cache.size() > 128:
 		caches.dynamic_special_batch_cache.clear()
 
