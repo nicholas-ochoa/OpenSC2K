@@ -316,6 +316,17 @@ func _check_ground_lighting(main: CityApplication) -> void:
 					assert(expected.distance_to(Vector2(sample.x + 0.5, sample.y + 0.5)) < 0.01, "Light receiver left the sloping road")
 					samples += 1
 			assert(samples > 20)
+	# Lamp feet also follow the bent grade between a road and a raised onramp.
+	junctions.set_terrain_id(64, 64, 0)
+	for ramp in range(BuildingTileIds.HIGHWAY_ONRAMP_1, BuildingTileIds.HIGHWAY_ONRAMP_4 + 1):
+		junctions.set_building_id(64, 64, ramp)
+		var high := CityLifePaths.ramp_highway_direction(junctions, tile)
+		var low := CityLifePaths.ramp_road_direction(junctions, tile)
+		for direction in [high, low]:
+			var offset := Vector2(CityLifePaths.DIRECTIONS[direction]) * 0.32
+			var height := 0.82 if direction == high else 0.18
+			var expected := Vector2i(CityLifeLights._project(junctions, tile, offset, height).round())
+			assert(CityNightFixtures._foot(junctions, tile, offset, high) == expected, "Lamp foot floats above its onramp")
 	await _check_ground_buffer(main, ground)
 	ground.queue_free()
 	await process_frame

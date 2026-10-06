@@ -94,9 +94,24 @@ static func build(app: CityApplication, tile: Vector2i, origin: Vector2i, layout
 
 
 static func _foot(city: CityState, tile: Vector2i, offset: Vector2, enter: int) -> Vector2i:
-	var opposite := (enter + 2) % 4
-	var progress := clampf(0.5 - offset.dot(Vector2(CityLifePaths.DIRECTIONS[enter])), 0.0, 1.0)
-	var height := lerpf(CityLifePaths.edge_height(city, tile, enter), CityLifePaths.edge_height(city, tile, opposite), progress)
+	var ports := CityLifePaths.ports(city, tile)
+	var exit := (enter + 2) % 4
+	if not ports & (1 << exit):
+		for direction in 4:
+			if direction != enter and ports & (1 << direction) and CityLifePaths.can_turn(city, tile, enter, direction):
+				exit = direction
+				break
+	var middle := (CityLifePaths.edge_height(city, tile, enter) + CityLifePaths.edge_height(city, tile, exit)) * 0.5
+	var height := middle
+	var progress := 0.0
+	# Follow the same two half-road planes as the receiver, including bent onramps.
+	for direction in 4:
+		if not ports & (1 << direction) or (direction != enter and not CityLifePaths.can_turn(city, tile, enter, direction)):
+			continue
+		var along := clampf(offset.dot(Vector2(CityLifePaths.DIRECTIONS[direction])) * 2.0, 0.0, 1.0)
+		if along > progress:
+			progress = along
+			height = lerpf(middle, CityLifePaths.edge_height(city, tile, direction), progress)
 	return Vector2i(CityLifeLights._project(city, tile, offset, height).round())
 
 
