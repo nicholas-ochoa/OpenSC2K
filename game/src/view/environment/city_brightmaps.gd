@@ -11,6 +11,9 @@ static func fingerprint(entry: Sc2SpriteArchive.SpriteEntry) -> String:
 
 static func load_archive(archive: Sc2SpriteArchive, folder: String, group: String) -> void:
 	archive.visual_emission.clear()
+	folder = resolve_folder(folder)
+	if folder.is_empty():
+		return
 	var path := folder.path_join("catalog.json")
 	if not FileAccess.file_exists(path):
 		return
@@ -49,9 +52,16 @@ static func transform_mask(source: Image, silhouette: Image, flip: bool) -> Imag
 	return mask
 
 
+static func resolve_folder(folder: String) -> String:
+	if folder.is_empty() or folder.is_absolute_path():
+		return folder
+	return AppPaths.path(folder).simplify_path()
+
+
 static func export_originals(assets: OriginalGameAssets, folder: String) -> String:
-	if folder.is_empty() or not folder.is_absolute_path():
-		return "Choose an absolute Brightmap folder first."
+	folder = resolve_folder(folder)
+	if folder.is_empty():
+		return "Choose a Brightmap folder first."
 	var sprites := {}
 	for pair in [[assets.large_sprites, "large"], [assets.small_medium_sprites, "small-medium"]]:
 		var archive: Sc2SpriteArchive = pair[0]

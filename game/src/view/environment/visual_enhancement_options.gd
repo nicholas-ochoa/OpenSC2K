@@ -69,6 +69,8 @@ static func normalize(source: Variant) -> Dictionary:
 				result[field[0]] = clampf(float(value), field[4], field[5]) if (value is float or value is int) and is_finite(float(value)) else field[3]
 			"path":
 				result[field[0]] = str(value).strip_edges() if value is String else field[3]
+				if field[0] == "brightmap_folder" and not result[field[0]].is_empty():
+					result[field[0]] = AppPaths.stored_path(result[field[0]])
 	return result
 
 

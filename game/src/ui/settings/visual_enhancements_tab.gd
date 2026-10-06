@@ -61,6 +61,8 @@ func _ready() -> void:
 			"path":
 				control = LineEdit.new()
 				control.custom_minimum_size.x = 240
+				if field[0] == "brightmap_folder":
+					control.tooltip_text = "Relative to the data folder, for example brightmaps-standard. Absolute paths are also supported."
 				(control as LineEdit).text_submitted.connect(func(_v: String) -> void: _changed())
 				control.focus_exited.connect(_changed)
 		row.add_child(control)
