@@ -11,6 +11,7 @@ mod game;
 mod json_value;
 mod newspaper;
 mod ops;
+mod packs;
 mod platform;
 mod reports;
 mod sc2x;

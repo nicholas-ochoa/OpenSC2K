@@ -212,6 +212,9 @@ dependencies = [
 [[package]]
 name = "sc2k_assets"
 version = "0.1.0"
+dependencies = [
+ "sc2k_formats",
+]
 
 [[package]]
 name = "sc2k_audio"

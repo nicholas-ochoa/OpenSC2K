@@ -59,7 +59,7 @@ static func check(source: String, pack: String, assets: OriginalGameAssets) -> v
 static func check_data(source: String, folder: String) -> void:
 	var data := DataPack.load_folder(folder)
 	assert(data.is_loaded(), data.error)
-	assert(data.import_revision == ImportedPackRevision.CURRENT.data and not data.is_outdated())
+	assert(data.import_revision == ImportedPackRevision.current("data") and not data.is_outdated())
 	var expected := OriginalGameAssets.new()
 	expected.load_text_data(source)
 	assert(data.text.newspaper_data.grammar == expected.newspaper_data.grammar)
