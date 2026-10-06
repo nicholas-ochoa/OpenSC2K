@@ -12,6 +12,7 @@ const FIELDS := [
 	["disaster_shake", "Earthquake shake strength", "number", 0.6, 0.0, 1.0, 0.05],
 	["water_reflections", "Water reflections", "choice", 1, ["Off", "Subtle"]],
 	["water_topography", "Underwater terrain", "bool", true],
+	["water_waves_enabled", "Waves and coastal surf", "bool", true],
 	["cloud_enabled", "Clouds and cloud shadows", "bool", true],
 	["cloud_density", "Cloud density", "number", 0.4, 0.0, 1.0, 0.05],
 	["cloud_shadow_strength", "Cloud shadow strength", "number", 0.22, 0.0, 0.5, 0.02],
@@ -79,4 +80,4 @@ static func speed_factor(speed: int) -> float:
 
 
 static func water_pass_enabled(options: Dictionary) -> bool:
-	return options.water_reflections == 1 or options.water_topography or (options.season_enabled and options.season_water_strength > 0.0)
+	return options.water_reflections == 1 or options.water_topography or options.get("water_waves_enabled", false) or (options.season_enabled and options.season_water_strength > 0.0)

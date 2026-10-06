@@ -162,6 +162,7 @@ func _run() -> void:
 	# Surface color stays available with reflection and seabed display off.
 	main.preferences.visual_enhancements.water_reflections = 0
 	main.preferences.visual_enhancements.water_topography = false
+	main.preferences.visual_enhancements.water_waves_enabled = false
 	main.visual_environment.configure()
 	assert(main.map_view.layers.environment_parameters.water_enabled)
 	assert(main.map_view.layers.environment_parameters.water_season_strength == 0.35)

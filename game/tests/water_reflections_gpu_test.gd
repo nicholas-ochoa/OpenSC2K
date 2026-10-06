@@ -109,6 +109,7 @@ func _run() -> void:
 	assert(viewport.get_texture().get_image().get_data() == original.get_data(), "Off did not restore exact original pixels")
 	material.set_shader_parameter("cloud_enabled", false)
 	await _check_surface_details(viewport, sprite, material, mirror, bottom)
+	await _check_waves(viewport, sprite, material, mirror, bottom)
 	await _check_seasonal_water(viewport, material)
 	viewport.queue_free()
 	await process_frame
@@ -199,6 +200,46 @@ func _check_surface_details(viewport: SubViewport, sprite: Sprite2D, material: S
 		var result := viewport.get_texture().get_image()
 		assert(result.get_pixel(8, 8).r > result.get_pixel(9, 8).r,
 			"Ripple displaced a reflection's water contact")
+
+
+func _check_waves(viewport: SubViewport, sprite: Sprite2D, material: ShaderMaterial, mirror: Image, bottom: Image) -> void:
+	mirror.fill(Color.TRANSPARENT)
+	(sprite.texture as ImageTexture).update(mirror)
+	bottom.fill(Color(0, 0.8, 1, 1))
+	(material.get_shader_parameter("water_seabed") as ImageTexture).update(bottom)
+	for pair in [["water_waves_enabled", true], ["water_reflections_enabled", false],
+		["water_topography", false], ["water_enabled", true], ["water_clock", 0.0],
+		["water_rain", 0.0], ["environment_enabled", false], ["cloud_enabled", false]]:
+		material.set_shader_parameter(pair[0], pair[1])
+	await RenderingServer.frame_post_draw
+	var first := viewport.get_texture().get_image()
+	material.set_shader_parameter("water_clock", 2.0)
+	await RenderingServer.frame_post_draw
+	var next := viewport.get_texture().get_image()
+	assert(first.get_data() != next.get_data(), "Open water waves are not animated")
+	assert(first.get_pixel(24, 8) == next.get_pixel(24, 8), "Waves reached dry land")
+	material.set_shader_parameter("water_waves_enabled", false)
+	await RenderingServer.frame_post_draw
+	var still := viewport.get_texture().get_image()
+	material.set_shader_parameter("water_clock", 8.0)
+	await RenderingServer.frame_post_draw
+	assert(still.get_data() == viewport.get_texture().get_image().get_data(), "Disabled waves still animate")
+	# A cached coastal contour adds moving foam without changing the terrain.
+	material.set_shader_parameter("water_waves_enabled", true)
+	bottom.fill(Color(0, 0.8, 6.0 * 8.0 / 255.0, 1))
+	(material.get_shader_parameter("water_seabed") as ImageTexture).update(bottom)
+	await RenderingServer.frame_post_draw
+	var shore := viewport.get_texture().get_image()
+	material.set_shader_parameter("water_clock", 9.2)
+	await RenderingServer.frame_post_draw
+	assert(shore.get_data() != viewport.get_texture().get_image().get_data(), "Coastal surf is static")
+	material.set_shader_parameter("water_origin", Vector2(4, 0))
+	await RenderingServer.frame_post_draw
+	var shifted := viewport.get_texture().get_image().get_pixel(8, 8)
+	material.set_shader_parameter("water_origin", Vector2.ZERO)
+	await RenderingServer.frame_post_draw
+	assert(shifted == viewport.get_texture().get_image().get_pixel(12, 8), "Wave phase changes at region boundaries")
+	material.set_shader_parameter("water_waves_enabled", false)
 
 
 func _check_seasonal_water(viewport: SubViewport, material: ShaderMaterial) -> void:

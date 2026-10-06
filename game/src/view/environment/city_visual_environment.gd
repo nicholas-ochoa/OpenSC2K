@@ -159,6 +159,7 @@ func process(delta: float) -> void:
 		"water_enabled": active and VisualEnhancementOptions.water_pass_enabled(options),
 		"water_reflections_enabled": active and options.water_reflections == 1,
 		"water_topography": options.water_topography,
+		"water_waves_enabled": options.water_waves_enabled,
 		"water_season_strength": options.season_water_strength if active and options.season_enabled else 0.0,
 		"water_rain": weather.rain,
 		"water_frozen": options.pause_freezes and (speed == 1 or app.frame._simulation_suspended()),

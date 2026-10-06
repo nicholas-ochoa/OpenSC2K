@@ -120,6 +120,21 @@ fn contact_twice_at_foot(draw: &Draw, column: i32, building: u8, sprite: &Sprite
     axis
 }
 
+fn pier_start(sprite: &Sprite, column: i32) -> i32 {
+    let opaque = |row: i32| sprite.rgba[((row * sprite.w + column) * 4 + 3) as usize] != 0;
+    let Some(bottom) = (0..sprite.h).rev().find(|&row| opaque(row)) else {
+        return sprite.h;
+    };
+    if bottom < sprite.h - 2 {
+        return sprite.h;
+    }
+    let mut top = bottom;
+    while top > 0 && opaque(top - 1) {
+        top -= 1;
+    }
+    top
+}
+
 fn auxiliary(artwork: &HashMap<u64, Sprite>, draw: &Draw, sprite: &Sprite, x: i32, y: i32) -> [u8; 4] {
     let Some(mask) = artwork.get(&((draw.sprite as u64) * 2)) else {
         return [0; 4];
@@ -207,6 +222,7 @@ impl Builder {
         let reach = self.sprite_limit.1 + 62 * self.config.step() + self.sprite_limit.0;
         let sources = self.collect(Rect::new(bounds.x, bounds.y - reach, bounds.w, bounds.h + 2 * reach))?;
         seabed_pixels(&mut out.seabed, bounds, &sources, &self.city, self.config);
+        self.shore_distances(&mut out.seabed, bounds, water_indices)?;
         let mut owners = vec![i64::MIN; bytes / 4];
         for draw in &sources {
             let Some(i) = cell(&self.city, draw.depth) else { continue };
@@ -221,9 +237,18 @@ impl Builder {
             let sprite = &self.sprites.images[&draw.image];
             let altitude = self.city.object(i);
             let building = self.city.buildings[i];
-            let contacts: Vec<_> = (0..sprite.w).map(|x| contact_twice_at_foot(draw, x, building, sprite)).collect();
-            let lowest = *contacts.iter().min().unwrap();
-            let highest = *contacts.iter().max().unwrap();
+            let contacts: Vec<_> = (0..sprite.w)
+                .map(|x| {
+                    let axis = contact_twice(draw, x, building);
+                    let foot = contact_twice_at_foot(draw, x, building, sprite);
+                    // Only the connected pier uses its drawn water contact. A
+                    // disconnected cable or truss above it keeps the deck axis.
+                    // Shifting the entire column used to tear that upper artwork.
+                    (axis, foot, if bridge(building) { pier_start(sprite, x) } else { sprite.h })
+                })
+                .collect();
+            let lowest = contacts.iter().map(|v| v.0.min(v.1)).min().unwrap();
+            let highest = contacts.iter().map(|v| v.0.max(v.1)).max().unwrap();
             for (level, present) in levels.iter().enumerate() {
                 if !present || altitude < level as i32 {
                     continue;
@@ -238,13 +263,13 @@ impl Builder {
                 let first = (bounds.x - draw.rect.x).max(0);
                 let last = (bounds.x + bounds.w - draw.rect.x).min(sprite.w);
                 for sx in first..last {
-                    let contact = contacts[sx as usize];
-                    let plane_twice = contact + lift;
-                    let plane = plane_twice.div_euclid(2);
+                    let (axis, foot, pier) = contacts[sx as usize];
                     // Land obstructions are checked once per column and receiver
                     // tile span, rather than once for every reflected pixel.
                     let mut visibility = HashMap::new();
                     for sy in 0..sprite.h {
+                        let contact = if sy >= pier { foot } else { axis };
+                        let plane = (contact + lift).div_euclid(2);
                         let src = ((sy * sprite.w + sx) * 4) as usize;
                         if sprite.rgba[src + 3] == 0 || 2 * (draw.rect.y + sy) + 1 >= contact {
                             continue;
@@ -262,7 +287,7 @@ impl Builder {
                         }
                         let receiver = plane_cell(&self.city, self.config, x, y, level);
                         let visible = *visibility
-                            .entry(receiver)
+                            .entry((receiver, plane))
                             .or_insert_with(|| unobstructed(&self.city, self.config, x, plane, y, level));
                         if !visible {
                             continue;
@@ -278,6 +303,67 @@ impl Builder {
             }
         }
         Ok(out)
+    }
+
+    // The coast belongs to the terrain pass, not the visible water mask. A
+    // building, bridge or ship hiding water must never generate a foam ring.
+    // A halo larger than the finite field makes neighbouring regions agree.
+    fn shore_distances(&mut self, out: &mut [u8], bounds: Rect, water_indices: &[u8]) -> Result<(), String> {
+        let divisor = self.config.divisor();
+        let radius = 32 / divisor + 2;
+        let area = Rect::new(bounds.x - radius, bounds.y - radius, bounds.w + 2 * radius, bounds.h + 2 * radius);
+        let mut distance = vec![255_u16; (area.w * area.h) as usize];
+        for draw in self.coastal_terrain(area)? {
+            let offset = draw.sprite - self.config.base();
+            if !(256..=290).contains(&offset) || draw.moving || draw.shadow || offset == 284 {
+                continue;
+            }
+            let water = horizontal_water(&draw, &self.city, self.config).is_some();
+            let sprite = &self.sprites.images[&draw.image];
+            let clipped = draw.rect.clip(area);
+            for y in clipped.y..clipped.y + clipped.h {
+                for x in clipped.x..clipped.x + clipped.w {
+                    let src = (((y - draw.rect.y) * sprite.w + x - draw.rect.x) * 4) as usize;
+                    if sprite.rgba[src + 3] == 0 {
+                        continue;
+                    }
+                    let at = ((y - area.y) * area.w + x - area.x) as usize;
+                    distance[at] = if water && (water_indices[sprite.rgba[src] as usize] != 0 || offset == 270) {
+                        255
+                    } else {
+                        0
+                    };
+                }
+            }
+        }
+        coast_distance_field(&mut distance, area.w, area.h, divisor);
+        for y in 0..bounds.h {
+            for x in 0..bounds.w {
+                out[((y * bounds.w + x) * 4 + 2) as usize] = distance[((y + radius) * area.w + x + radius) as usize] as u8;
+            }
+        }
+        Ok(())
+    }
+}
+
+// Eight-neighbour chamfer in projected map pixels, with compressed isometric Y.
+// 255 means at least 32 map pixels offshore. Computed only with static geometry.
+fn coast_distance_field(distance: &mut [u16], width: i32, height: i32, divisor: i32) {
+    for reverse in [false, true] {
+        for row in 0..height {
+            let y = if reverse { height - 1 - row } else { row };
+            for column in 0..width {
+                let x = if reverse { width - 1 - column } else { column };
+                let at = (y * width + x) as usize;
+                let sign = if reverse { -1 } else { 1 };
+                for (dx, dy, cost) in [(-1, 0, 8), (0, -1, 16), (-1, -1, 18), (1, -1, 18)] {
+                    let (nx, ny) = (x + dx * sign, y + dy * sign);
+                    if nx >= 0 && ny >= 0 && nx < width && ny < height {
+                        distance[at] = distance[at].min(distance[(ny * width + nx) as usize].saturating_add((cost * divisor) as u16));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -348,6 +434,46 @@ fn seabed_triangle(out: &mut [u8], bounds: Rect, p: [[f32; 2]; 3], h: [f32; 3]) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn coastal_distance_is_scaled_and_saturates_offshore() {
+        for divisor in [1, 2, 4] {
+            let mut distances = vec![255; 80 * 8];
+            for row in 0..8 {
+                distances[row * 80] = 0;
+            }
+            coast_distance_field(&mut distances, 80, 8, divisor);
+            assert_eq!(distances[4 * 80 + 2], 16 * divisor as u16);
+            assert_eq!(distances[4 * 80 + 40], 255);
+        }
+    }
+
+    #[test]
+    fn objects_do_not_create_coasts_and_padding_does_not_create_seams() {
+        let mut builder = fixture(2);
+        let c = builder.config;
+        let whole = Rect::new(c.side(), c.top() - 32, 160, 160);
+        let mut indices = [0; 256];
+        indices[96] = 1;
+        let mut first = vec![0; (whole.w * whole.h * 4) as usize];
+        builder.shore_distances(&mut first, whole, &indices).unwrap();
+        let mut builder = fixture(2);
+        builder.city.buildings.fill(0);
+        let mut without_objects = vec![0; first.len()];
+        builder.shore_distances(&mut without_objects, whole, &indices).unwrap();
+        assert_eq!(first, without_objects);
+        let part = Rect::new(whole.x + 50, whole.y + 20, 80, 100);
+        let mut section = vec![0; (part.w * part.h * 4) as usize];
+        builder.shore_distances(&mut section, part, &indices).unwrap();
+        for y in 0..part.h {
+            for x in 0..part.w {
+                assert_eq!(
+                    first[(((y + 20) * whole.w + x + 50) * 4 + 2) as usize],
+                    section[((y * part.w + x) * 4 + 2) as usize]
+                );
+            }
+        }
+    }
 
     fn fixture(view: i32) -> Builder {
         let edge = 4;
@@ -609,6 +735,11 @@ mod tests {
         assert_ne!(foot_axis, deck_axis, "off-centre pier should override the deck axis");
         assert_eq!(foot_axis, 2 * (draw.rect.y + sprite.h));
         assert_eq!(
+            pier_start(&sprite, support),
+            65,
+            "A separate truss pixel must not move with the pier foot"
+        );
+        assert_eq!(
             contact_twice_at_foot(&draw, 5, ROAD_BRIDGE, &sprite),
             contact_twice(&draw, 5, ROAD_BRIDGE),
             "truss columns must retain the continuous bridge axis"
@@ -637,6 +768,13 @@ mod tests {
                     let index = 40 + x as u8;
                     image.rgba[at * 4..at * 4 + 4].copy_from_slice(&[index, index, index, 255]);
                     image.la[at * 2..at * 2 + 2].copy_from_slice(&[index, 255]);
+                }
+                // A separated pier below one truss column must not shift that
+                // upper column away from the continuous diagonal reflection.
+                for y in height - 2..height {
+                    let at = (y * width + width * 3 / 4) as usize;
+                    image.rgba[at * 4..at * 4 + 4].copy_from_slice(&[200, 200, 200, 255]);
+                    image.la[at * 2..at * 2 + 2].copy_from_slice(&[200, 255]);
                 }
                 builder.city.buildings[0] = ROAD_BRIDGE;
                 builder.city.terrain[0] = 0x10;
