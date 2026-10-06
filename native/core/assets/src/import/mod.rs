@@ -2,6 +2,7 @@
 
 pub mod container;
 pub mod newspaper;
+pub mod source;
 pub mod sprites;
 pub mod voc;
 pub mod wave;
