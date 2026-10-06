@@ -31,11 +31,10 @@ vec3 palette_color(float encoded) {
 
 // Interpolate resolved colors, never palette indices. The light and vegetation
 // masks use the same source coordinate as their reflected artwork.
-vec4 mirror_sample(sampler2D artwork, vec2 uv, float level, float shade) {
+vec4 mirror_sample(vec4 source, vec2 uv, float level, float shade) {
 	vec4 receiver = texture(water_surface, uv);
 	if (any(lessThan(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))
 			|| abs(receiver.r - level) > 0.001 || receiver.a < 0.5) { return vec4(0.0); }
-	vec4 source = texture(artwork, uv);
 	if (source.a <= 0.0) { return vec4(0.0); }
 	return vec4(environment_color(palette_color(source.r) * shade, uv) * source.a, source.a);
 }
@@ -97,8 +96,9 @@ void fragment() {
 		float detached = smoothstep(0.025, 0.20, 1.0 - contact);
 		float offset = water_geometry_preview || !water_waves_enabled ? 0.0 : clamp(swell.y * detached, -1.5, 1.5) / water_divisor;
 		vec2 first_uv = UV + vec2(floor(offset), 0.0) / dimensions;
-		vec4 reflected = mix(mirror_sample(TEXTURE, first_uv, surface.r, cloud_shade),
-			mirror_sample(TEXTURE, first_uv + vec2(1.0, 0.0) / dimensions, surface.r, cloud_shade), fract(offset));
+		vec2 second_uv = first_uv + vec2(1.0, 0.0) / dimensions;
+		vec4 reflected = mix(mirror_sample(texture(TEXTURE, first_uv), first_uv, surface.r, cloud_shade),
+			mirror_sample(texture(TEXTURE, second_uv), second_uv, surface.r, cloud_shade), fract(offset));
 		if (reflected.a > 0.0) {
 			vec3 mirror_color = reflected.rgb / reflected.a;
 			float strength = water_geometry_preview ? 1.0 : mix(0.15, 0.23, 1.0 - exp(-depth * 0.4) * bottom.a);
