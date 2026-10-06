@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import plistlib
 import re
 import shutil
 import subprocess
@@ -120,6 +121,26 @@ def write_fluidsynth_source(package, work):
     return package
 
 
+# The compiled Icon Composer icon (tools/make_icon.py) and its name in it
+APP_ICON = ROOT / 'game/assets/icons/Assets.car'
+APP_ICON_NAME = 'OpenSC2K'
+
+
+def add_app_icon(app, icon=APP_ICON):
+    """Give an exported app the compiled Icon Composer icon, so macOS 26 and
+    later show the icon in its own shape and not in a grey frame. Earlier
+    versions keep the .icns of the export. The app is signed again ad hoc,
+    with the entitlements and options of the export."""
+    contents = app / 'Contents'
+    shutil.copy2(icon, contents / 'Resources' / 'Assets.car')
+    info_path = contents / 'Info.plist'
+    info = plistlib.loads(info_path.read_bytes())
+    info['CFBundleIconName'] = APP_ICON_NAME
+    info_path.write_bytes(plistlib.dumps(info))
+    subprocess.run(['codesign', '--force', '--sign', '-',
+                    '--preserve-metadata=entitlements,requirements,flags,runtime', str(app)], check=True)
+
+
 def has_diskutil_image():
     """True on macOS 26 and later, where `diskutil image` replaces `hdiutil create`."""
     probe = subprocess.run(['diskutil', 'image', 'create', 'from', '--help'], capture_output=True)
@@ -196,6 +217,7 @@ def build(output, label, godot, native):
                 with tarfile.open(package) as stream:
                     assert stream.getmember(f'{name}/{binary}').mode & 0o111
             else:
+                add_app_icon(folder / binary)
                 subprocess.run(['codesign', '--verify', '--deep', '--strict', str(folder / binary)], check=True)
                 (folder / 'Applications').symlink_to('/Applications')
                 package = output / (name + '.dmg')
