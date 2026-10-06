@@ -5,6 +5,7 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 func _initialize() -> void:
 	_check_packed_masks()
+	_check_neighbor_masks()
 	var host := CityApplication.new()
 	host.moving_sprites = TestSprites.new(host)
 
@@ -150,6 +151,47 @@ func _initialize() -> void:
 	host.free()
 	print("PASS: all overlapping foreground silhouettes hide trains and other moving sprites")
 	quit()
+
+
+func _check_neighbor_masks() -> void:
+	var host := CityApplication.new()
+	host.moving_sprites = TestSprites.new(host)
+	var size := Vector2i(13, 9)
+	var world := Rect2i(-64, -64, 160, 160)
+	var reference := Image.create(world.size.x, world.size.y, false, Image.FORMAT_RGBA8)
+	reference.fill(Color.TRANSPARENT)
+	for i in 3:
+		var pixels := Image.create(40, 60, false, Image.FORMAT_RGBA8)
+		for y in 60:
+			for x in 40:
+				pixels.set_pixel(x, y, Color8(x * 5, y * 4, i * 70, [0, 80, 255][(x + y) % 3]))
+		var command := CityStaticCommand.new()
+		command.position = Vector2i(i * 23 - 45, i * 19 - 39)
+		command.size = pixels.get_size()
+		command.depth_order = 12
+		command.sprite_id = i
+		host.render_caches.static_occlusion_commands.append(command)
+		host.moving_sprites.images[i] = pixels
+		reference.blend_rect(pixels, Rect2i(Vector2i.ZERO, pixels.get_size()), Vector2i(command.position) - world.position)
+	for y in [-33, -32, -1, 0, 31, 32]:
+		for x in range(-33, 34):
+			var position := Vector2i(x, y)
+			var actual := host.moving_sprites._dynamic_occluder_image(null, 1, position, size, 10)
+			var expected := reference.get_region(Rect2i(position - world.position, size))
+			if actual == null:
+				assert(expected.is_invisible())
+			else:
+				# Invisible RGB is irrelevant; masks consume alpha only.
+				for py in size.y:
+					for px in size.x:
+						assert(actual.get_pixel(px, py).a == expected.get_pixel(px, py).a,
+							"Neighbor mask changed alpha at a negative coordinate or cache boundary")
+	assert(host.render_caches.dynamic_occluder_cache.size() == 16, "Neighboring positions rebuilt individual masks")
+	var changed: Array[Rect2i] = [Rect2i(-4, -4, 8, 8)]
+	host.map_render._invalidate_region_foregrounds(changed, changed)
+	for entry: RenderCaches.OccluderMask in host.render_caches.dynamic_occluder_cache.values():
+		assert(not entry.bounds.intersects(changed[0]), "A changed silhouette retained a shared neighbor mask")
+	host.free()
 
 
 func _check_packed_masks() -> void:

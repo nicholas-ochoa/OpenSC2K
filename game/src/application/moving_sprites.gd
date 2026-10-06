@@ -285,13 +285,20 @@ func _dynamic_occluder_image(
 	if draw_order < 0 or (caches.static_occlusion_commands.is_empty() and caches.region_cache == null):
 		return null
 
-	var cache_key := "%d:%d:%d:%d:%d:%d:%d:%d:%d:%d" % [
+	var requested := Rect2i(position, size)
+	if floating == null:
+		# Neighboring interpolated positions share the same world silhouettes.
+		# Ships retain position-dependent waterline clipping below.
+		position = Vector2i(floori(position.x / 32.0), floori(position.y / 32.0)) * 32
+		size += Vector2i(31, 31)
+	var cache_key := "%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d" % [
 		position.x, position.y, size.x, size.y, draw_order, int(is_train),
 		app.static_render_state.epoch, texture_factor,
 		floating.get_instance_id() if floating != null else 0, floating_altitude,
+		divisor, sprite_archive.get_instance_id() if sprite_archive != null else 0,
 	]
 	if caches.dynamic_occluder_cache.has(cache_key):
-		return caches.dynamic_occluder_cache[cache_key].image
+		return _occluder_region(caches.dynamic_occluder_cache[cache_key], requested, texture_factor)
 
 	var bounds := Rect2i(position, size)
 
@@ -360,9 +367,16 @@ func _dynamic_occluder_image(
 			(overlap.position - position) * texture_factor,
 		)
 
-	caches.dynamic_occluder_cache[cache_key] = RenderCaches.OccluderMask.new(bounds, mask)
+	var cached := RenderCaches.OccluderMask.new(bounds, mask)
+	caches.dynamic_occluder_cache[cache_key] = cached
 
-	return mask
+	return _occluder_region(cached, requested, texture_factor)
+
+
+static func _occluder_region(mask: RenderCaches.OccluderMask, bounds: Rect2i, factor: int) -> Image:
+	if mask.image == null or mask.bounds == bounds:
+		return mask.image
+	return mask.image.get_region(Rect2i((bounds.position - mask.bounds.position) * factor, bounds.size * factor))
 
 
 # The static silhouettes over a ship or sailboat, by IsometricFloatingOcclusion.
