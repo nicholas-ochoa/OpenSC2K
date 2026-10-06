@@ -1,0 +1,12 @@
+{
+  "street": {"color": "ffe0a0", "radius": 0.55, "intensity": 0.32, "spacing": 4},
+  "entrances": {
+    "124": {"color": "ffe7bd", "radius": 0.48, "intensity": 0.32},
+    "125": {"color": "ffd19a", "radius": 0.36, "intensity": 0.24},
+    "126": {"color": "fff0c2", "radius": 0.42, "intensity": 0.30},
+    "127": {"color": "ffe7bd", "radius": 0.48, "intensity": 0.32},
+    "128": {"color": "ffe0a0", "radius": 0.36, "intensity": 0.24},
+    "129": {"color": "ffe0a0", "radius": 0.36, "intensity": 0.24},
+    "131": {"color": "ffd8a0", "radius": 0.40, "intensity": 0.28}
+  }
+}

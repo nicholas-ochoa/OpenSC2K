@@ -14,6 +14,7 @@ var _options := {}
 var _city_id := 0
 var weather: CityVisualWeather
 var clouds: CityVisualClouds
+var night_lighting: CityNightLighting
 var _whole_mask_signature: Array = []
 var _whole_water_signature: Array = []
 
@@ -22,6 +23,7 @@ func _init(application: CityApplication) -> void:
 	app = application
 	weather = CityVisualWeather.new(application)
 	clouds = CityVisualClouds.new(application)
+	night_lighting = CityNightLighting.new(application)
 
 
 func configure() -> void:
@@ -126,6 +128,7 @@ func process(delta: float) -> void:
 		weather.reset()
 		profiles.reset()
 		clouds.reset()
+		night_lighting.reset()
 	var options := app.preferences.visual_enhancements
 	var speed := app.simulation_state.speed_controller.speed if app.simulation_state.speed_controller != null else 1
 	var elapsed := maxf(delta, 0.0)
@@ -170,12 +173,14 @@ func process(delta: float) -> void:
 		"environment_tint": Vector3(tint.r, tint.g, tint.b),
 		"environment_saturation": lerpf(1.0, 0.78, ambient_night),
 		"environment_night": night,
+		"environment_ambient_lift": float(options.night_ambient) / 100.0 * ambient_night,
 		"environment_lut": lut,
 		"environment_lut_size": lut_size,
 	}
 	parameters.merge(clouds.parameters)
 	parameters.merge(profiles.parameters(options, hour, parameters.environment_seasons, app.map_view.get_viewport().use_hdr_2d))
 	app.map_view.layers.set_environment(parameters)
+	night_lighting.process(active, night, options)
 	if clouds.layer != null and clouds.layer.visible:
 		app.map_view.layers._apply_environment(clouds.material)
 
@@ -248,5 +253,5 @@ static func light_at_hour(hour: float, strength := 1.0) -> Dictionary:
 		if h <= keys[i + 1]:
 			var weight := smoothstep(keys[i], keys[i + 1], h)
 			return {"tint": Color.WHITE.lerp(colors[i].lerp(colors[i + 1], weight), clampf(strength, 0.0, 1.0)),
-				"night": lerpf(levels[i], levels[i + 1], weight) * clampf(strength, 0.0, 1.0)}
+				"night": lerpf(levels[i], levels[i + 1], weight)}
 	return {"tint": Color.WHITE, "night": 0.0}

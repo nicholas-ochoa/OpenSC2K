@@ -205,6 +205,10 @@ func _run() -> void:
 	assert(is_equal_approx(main.map_view.layers.environment_parameters.environment_saturation, 0.78))
 	assert(main.map_view.layers.environment_parameters.environment_night == 1.0)
 	var night_tint := main.visual_environment.tint
+	main.preferences.visual_enhancements.night_strength = 0.0
+	main.visual_environment.process(0.0)
+	assert(main.visual_environment.night == 1.0, "Ambient darkness still controls artificial light activation")
+	main.preferences.visual_enhancements.night_strength = 1.0
 	for strength in [0.0, 35.0, 100.0]:
 		main.preferences.visual_enhancements.night_light_strength = strength
 		main.visual_environment.process(0.0)
@@ -215,6 +219,7 @@ func _run() -> void:
 	assert(DocumentState.capture(main.document_state.city.document) == before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	# A newly loaded sunny document must not inherit the previous snowstorm.
+	await _check_ground_lighting(main)
 	main.preferences.visual_enhancements.season_enabled = true
 	main.preferences.visual_enhancements.weather_mode = 2
 	main.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.HEAVY_SNOW
@@ -233,6 +238,36 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	print("PASS: cosmetic clocks, speed, pause, grading, seasons, weather mapping, settings preservation and unchanged city/RNG")
 	quit()
+
+
+func _check_ground_lighting(main: CityApplication) -> void:
+	var city := load("res://tests/city_life_test.gd").fixture() as CityState
+	assert(main.city_session.activate_document(city.document))
+	var ground := CityNightGround.new()
+	root.add_child(ground)
+	var tile := Vector2i(64, 64)
+	var before := DocumentState.capture(city.document)
+	var lights := ground.sources(city, tile)
+	assert(not lights.is_empty())
+	var surface := ground._build(main, tile)
+	var image: Image = surface.texture.get_image()
+	var lit := 0
+	for y in image.get_height():
+		for x in image.get_width():
+			if image.get_pixel(x, y).r > 0.0:
+				lit += 1
+	assert(lit > 5 and lit < 800, "Local light failed to stay inside the narrow road receiver")
+	var cover := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	cover.fill(Color.WHITE)
+	for axis in 2:
+		ground.masker._occluders[Vector3i(64, 64, axis)] = [{"origin": surface.origin, "image": cover}]
+	var hidden: Image = ground._build(main, tile).texture.get_image()
+	for y in hidden.get_height():
+		for x in hidden.get_width():
+			assert(hidden.get_pixel(x, y).r == 0.0, "Ground light painted over an opaque foreground surface")
+	assert(DocumentState.capture(city.document) == before)
+	ground.queue_free()
+	await process_frame
 
 
 func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
@@ -308,6 +343,8 @@ func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	(tab.controls.brightmaps as CheckBox).button_pressed = false
 	assert(not (tab.controls.brightmap_folder as LineEdit).editable)
 	assert(not (tab.controls.night_light_strength as SpinBox).editable)
+	assert(not (tab.controls.night_glow as SpinBox).editable)
+	assert(not (tab.controls.night_ground as SpinBox).editable)
 	(tab.controls.brightmaps as CheckBox).button_pressed = true
 	assert((tab.controls.night_light_strength as SpinBox).editable)
 	(tab.controls.night_light_strength as SpinBox).value = 35.0

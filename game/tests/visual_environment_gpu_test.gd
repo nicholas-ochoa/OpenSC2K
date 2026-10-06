@@ -61,9 +61,23 @@ func _run() -> void:
 	material.set_shader_parameter("environment_seasons", Vector4(0, 1, 0, 0))
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_pixel(4, 4).is_equal_approx(original))
+	material.set_shader_parameter("environment_has_seasons", false)
+	material.set_shader_parameter("environment_tint", Vector3(0.28, 0.34, 0.52))
+	await RenderingServer.frame_post_draw
+	var dark := viewport.get_texture().get_image().get_pixel(4, 4)
+	material.set_shader_parameter("environment_ambient_lift", 0.5)
+	await RenderingServer.frame_post_draw
+	var filled := viewport.get_texture().get_image().get_pixel(4, 4)
+	assert(filled.r > dark.r and filled.b > dark.b, "Night fill failed to recover surface detail")
+	pixels.fill(Color.BLACK)
+	sprite.texture = ImageTexture.create_from_image(pixels)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(4, 4).r == 0.0, "Night fill lifted black to grey")
 	viewport.queue_free()
 	await process_frame
 	await _check_weather_layer()
+	await _check_night_glow(false)
+	await _check_night_glow(true)
 	print("PASS: GPU uniform morning/evening tint, colored graded brightmaps and original pixels when disabled")
 	quit()
 
@@ -132,6 +146,76 @@ func _check_dispatch_lights() -> void:
 	viewport.queue_free()
 	await process_frame
 	print("PASS: nine dispatch heads preserve daytime colors at night; posts stay dark and custom artwork is respected")
+
+
+func _check_night_glow(hdr: bool) -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(128, 96)
+	viewport.transparent_bg = true
+	viewport.use_hdr_2d = hdr
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var app := CityApplication.new()
+	var map := CityMapControl.new()
+	map.size = Vector2(viewport.size)
+	app.map_view = map
+	viewport.add_child(map)
+	var pixels := Image.create(128, 96, false, Image.FORMAT_RGBA8)
+	pixels.fill(Color(0.2, 0.3, 0.4))
+	var light := Image.create(128, 96, false, Image.FORMAT_RGBA8)
+	light.fill_rect(Rect2i(60, 44, 8, 8), Color(1.0, 0.35, 0.1, 0.5))
+	map.city_source = CityMapSource.whole(ImageTexture.create_from_image(pixels))
+	map.city_source.emission = ImageTexture.create_from_image(light)
+	map.source_center = Vector2(64, 48)
+	map.layers._sync_base_layer()
+	var options := VisualEnhancementOptions.normalize({"night_ground": 0.0, "night_glow": 100.0})
+	var lighting := app.visual_environment.night_lighting
+	lighting.process(true, 1.0, options)
+	for i in 4:
+		await RenderingServer.frame_post_draw
+	var on := viewport.get_texture().get_image()
+	lighting.process(true, 0.0, options)
+	await RenderingServer.frame_post_draw
+	var off := viewport.get_texture().get_image()
+	var delta := on.get_pixel(58, 48) - off.get_pixel(58, 48)
+	assert(delta.r > 0.01 and delta.r > delta.g * 1.5, "Graded, colored emission produced no local glow outside its sharp core")
+	assert(on.get_pixel(10, 10).is_equal_approx(off.get_pixel(10, 10)), "Glow added a full-screen veil: hdr=%s on=%s off=%s" % [hdr, on.get_pixel(10, 10), off.get_pixel(10, 10)])
+	# Repeated updates must keep both weather and tool markers above the glow.
+	var marker := ColorRect.new()
+	marker.color = Color.GREEN
+	marker.position = Vector2(56, 40)
+	marker.size = Vector2(16, 16)
+	for target in [map.layers.overlay_layer, app.visual_environment.weather]:
+		if target is CityVisualWeather:
+			target._sync_layer(true)
+			target.layer.show()
+			target.layer.add_child(marker)
+		else:
+			target.add_child(marker)
+		await RenderingServer.frame_post_draw
+		var marker_pixel := viewport.get_texture().get_image().get_pixel(58, 48)
+		for frame in 4:
+			lighting.process(true, 1.0, options)
+			await RenderingServer.frame_post_draw
+			assert(viewport.get_texture().get_image().get_pixel(58, 48).is_equal_approx(marker_pixel), "Night glow covered weather or tool overlays")
+		marker.get_parent().remove_child(marker)
+	marker.free()
+	app.visual_environment.weather.layer.hide()
+	lighting.process(true, 1.0, options)
+	var cover := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	cover.fill(Color.WHITE)
+	lighting._add_texture(ImageTexture.create_from_image(cover), null, Vector2(56, 40), Vector2(16, 16))
+	for i in 4:
+		await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == off.get_data(), "Hidden windows leaked through foreground geometry")
+	assert(lighting.ground.visible == false)
+	lighting.process(false, 1.0, options)
+	assert(not lighting.output.visible)
+	for buffer in lighting.buffers:
+		assert(buffer.render_target_update_mode == SubViewport.UPDATE_DISABLED)
+	viewport.queue_free()
+	app.free()
+	await process_frame
 
 
 func _check_weather_layer() -> void:

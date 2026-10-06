@@ -2,6 +2,7 @@ uniform bool environment_enabled = false;
 uniform vec3 environment_tint = vec3(1.0);
 uniform float environment_saturation = 1.0;
 uniform float environment_night = 0.0;
+uniform float environment_ambient_lift = 0.0;
 uniform sampler2D environment_emission : source_color, filter_nearest, repeat_disable;
 uniform bool environment_has_emission = false;
 // LUT pixels are numeric sRGB data. Never let the sampler gamma-decode them.
@@ -104,7 +105,12 @@ vec3 environment_ambient(vec3 base) {
 	float luminance = dot(base, vec3(0.2126, 0.7152, 0.0722));
 	vec3 color = mix(vec3(luminance), base, environment_saturation) * environment_tint;
 	color = lut_four(environment_day_luts, color, environment_day_lut_weights, environment_day_lut_strength);
-	return environment_custom_color(lut_weather(color * environment_weather));
+	color = environment_custom_color(lut_weather(color * environment_weather));
+	// Recover the surface's own color, not a constant grey veil. Black stays
+	// black and existing bright pixels are never darkened by the fill light.
+	float shade = dot(color, vec3(0.2126, 0.7152, 0.0722));
+	vec3 fill = base * vec3(0.48, 0.56, 0.72);
+	return mix(color, max(color, fill), environment_ambient_lift * (1.0 - smoothstep(0.12, 0.65, shade)));
 }
 
 vec3 environment_color(vec3 base, vec2 uv) {

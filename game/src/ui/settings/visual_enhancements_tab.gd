@@ -10,7 +10,7 @@ const SECTIONS := [
 	["Day & Night", "Set the time of day and the appearance of the night.",
 		["day_enabled", "day_mode", "day_hour", "day_seconds", "day_lut_strength", "night_strength"]],
 	["Lighting", "Building and vehicle lights at night. Enable Day & Night to use these settings.",
-		["brightmaps", "night_light_strength"]],
+		["brightmaps", "night_light_strength", "night_ambient", "night_glow", "night_ground"]],
 	["Seasons", "Follow the city calendar, run a visual cycle or choose one season.",
 		["season_enabled", "season_mode", "season_fixed", "season_seconds", "season_transition", "season_lut_strength"]],
 	["Weather & Clouds", "Weather and clouds have separate switches. Fixed weather can show snow in any season.",
@@ -44,6 +44,9 @@ const LABELS := {
 	"lut_path": "Custom color filter (LUT PNG)", "brightmap_folder": "Custom light masks (brightmaps)",
 }
 const HINTS := {
+	"night_ambient": "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate.",
+	"night_glow": "Soft colored light around visible brightmaps. Zero keeps only the sharp original lights.",
+	"night_ground": "Small warm light pools on visible streets and selected shop approaches. Zero disables these lights.",
 	"traffic_vehicles_enabled": "Smooth movement of helicopters, airplanes, ships, sailboats and trains.",
 	"water_waves_enabled": "Moving waves and breaking surf along the terrain shoreline. Turn off for a still water surface.",
 	"disaster_enabled": "Enable additional presentation effects. Turning this off restores the original disaster visuals; disasters still occur.",
@@ -202,7 +205,7 @@ func _add_field(page: VBoxContainer, field: Array) -> void:
 			spin.min_value = float(field[4]) * scale
 			spin.max_value = float(field[5]) * scale
 			spin.step = float(field[6]) * scale
-			if key in PERCENT_FIELDS or key in ["night_light_strength"]:
+			if key in PERCENT_FIELDS or key in ["night_light_strength", "night_ambient", "night_glow", "night_ground"]:
 				spin.suffix = "%"
 			elif key.ends_with("_seconds") or key == "weather_transition":
 				spin.suffix = "s"
@@ -260,7 +263,7 @@ func _update_availability() -> void:
 			available = values.disaster_enabled
 		elif key.begins_with("season_") and key != "season_enabled":
 			available = values.season_enabled
-		elif (key.begins_with("day_") and key != "day_enabled") or key in ["night_strength", "brightmaps", "night_light_strength", "brightmap_folder"]:
+		elif (key.begins_with("day_") and key != "day_enabled") or key.begins_with("night_") or key in ["brightmaps", "brightmap_folder"]:
 			available = values.day_enabled
 		elif key.begins_with("weather_") and key != "weather_enabled":
 			available = values.weather_enabled
@@ -285,6 +288,8 @@ func _update_availability() -> void:
 				available = available and values.weather_mode == 1
 			"brightmap_folder", "night_light_strength":
 				available = available and values.brightmaps
+			"night_glow", "night_ground":
+				available = available and values.brightmaps and values.night_light_strength > 0.0
 			"life_car_amount":
 				available = values.life_cars_enabled
 			"life_people_amount":
