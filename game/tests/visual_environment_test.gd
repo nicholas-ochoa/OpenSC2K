@@ -138,8 +138,7 @@ func _run() -> void:
 		assert(kind == pair[1] or (pair[0] == 7 and kind == 2))
 		assert(DocumentState.capture(main.document_state.city.document) == before)
 		assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
-	# The same requested snow must react to seasons without a game-weather
-	# change, and leaving winter must clear particles even while paused.
+	# Fixed weather overrides the winter restriction; game weather retains it.
 	for mode in [0, 2]:
 		main.preferences.visual_enhancements.weather_mode = mode
 		for pair in [[6, 5, 1], [9, 6, 2]]:
@@ -152,13 +151,38 @@ func _run() -> void:
 			for season in range(3):
 				main.preferences.visual_enhancements.season_fixed = season
 				main.visual_environment.process(0.0)
-				assert(main.visual_environment.weather.kind == pair[2])
-				assert(main.visual_environment.weather.snow == 0.0 and main.visual_environment.weather.frost == 0.0)
+				if mode == 2:
+					assert(main.visual_environment.weather.kind == pair[1])
+					assert(main.visual_environment.weather.snow > 0.0 and main.visual_environment.weather.frost > 0.0)
+					assert(main.visual_environment.weather.rain == 0.0)
+				else:
+					assert(main.visual_environment.weather.kind == pair[2])
+					assert(main.visual_environment.weather.snow == 0.0 and main.visual_environment.weather.frost == 0.0)
 			main.preferences.visual_enhancements.season_fixed = 3
 			main.visual_environment.process(5.0)
 			assert(main.visual_environment.weather.kind == pair[1] and main.visual_environment.weather.snow > 0.0)
 			assert(DocumentState.capture(main.document_state.city.document) == before)
 			assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	# Fixed snow also works with seasons disabled. Returning to either automatic
+	# source removes the override immediately, without waiting for a new interval.
+	main.preferences.visual_enhancements.season_enabled = false
+	main.preferences.visual_enhancements.season_fixed = 1
+	main.visual_environment.process(5.0)
+	assert(main.visual_environment.weather.kind == CityVisualWeather.Kind.HEAVY_SNOW)
+	assert(main.visual_environment.weather.snow > 0.0)
+	for mode in [0, 1]:
+		main.preferences.visual_enhancements.weather_mode = 2
+		main.visual_environment.process(5.0)
+		assert(main.visual_environment.weather.snow > 0.0)
+		main.preferences.visual_enhancements.weather_mode = mode
+		if mode == 1:
+			main.visual_environment.weather.last_mode = mode
+			main.visual_environment.weather.interval = 0.0
+		main.visual_environment.process(0.0)
+		assert(main.visual_environment.weather.kind == CityVisualWeather.Kind.HEAVY_RAIN)
+		assert(main.visual_environment.weather.snow == 0.0 and main.visual_environment.weather.frost == 0.0)
+	main.preferences.visual_enhancements.season_enabled = true
+	main.preferences.visual_enhancements.season_fixed = 3
 	# Surface color stays available with reflection and seabed display off.
 	main.preferences.visual_enhancements.water_reflections = 0
 	main.preferences.visual_enhancements.water_topography = false

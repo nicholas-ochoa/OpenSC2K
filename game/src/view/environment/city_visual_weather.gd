@@ -61,6 +61,7 @@ func reset() -> void:
 func process(delta: float, phase_elapsed: float, active: bool, season: float) -> void:
 	var options := app.preferences.visual_enhancements
 	var enabled: bool = active and options.weather_enabled
+	var snow_allowed: bool = options.weather_mode == 2 or int(fposmod(season, 4.0)) == 3
 	if enabled:
 		if options.weather_mode != last_mode:
 			last_mode = options.weather_mode
@@ -82,7 +83,7 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 		else:
 			selected_kind = int(options.weather_fixed) as Kind
 		kind = selected_kind
-		if int(fposmod(season, 4.0)) != 3:
+		if not snow_allowed:
 			if kind == Kind.LIGHT_SNOW:
 				kind = Kind.LIGHT_RAIN
 			elif kind == Kind.HEAVY_SNOW:
@@ -97,8 +98,8 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 	frost = move_toward(frost, (0.18 if kind == Kind.LIGHT_SNOW else (0.85 if kind == Kind.HEAVY_SNOW else 0.0)) * strength, weight)
 	rain = move_toward(rain, (0.28 if kind == Kind.LIGHT_RAIN else (1.0 if kind in [Kind.HEAVY_RAIN, Kind.RAIN_STORM] else 0.0)) * strength, weight)
 	snow = move_toward(snow, (0.24 if kind == Kind.LIGHT_SNOW else (1.0 if kind == Kind.HEAVY_SNOW else 0.0)) * strength, weight)
-	if int(fposmod(season, 4.0)) != 3:
-		# A season change removes flakes immediately, including paused frames.
+	if not snow_allowed:
+		# Automatic weather clears out-of-season flakes even while paused.
 		snow = 0.0
 		frost = 0.0
 	clock = fposmod(clock + maxf(delta, 0.0), 3600.0)
@@ -138,6 +139,8 @@ func _sync_layer(enabled: bool) -> void:
 	layer.size = bounds.size
 	layer.show()
 	material.set_shader_parameter("extent", bounds.size)
+	# Partial zoom scaling keeps precipitation legible in the city overview.
+	material.set_shader_parameter("particle_scale", maxf(0.45, sqrt(app.map_view.zoom_factor)))
 	material.set_shader_parameter("clock", clock)
 	material.set_shader_parameter("rain", rain)
 	material.set_shader_parameter("snow", snow)

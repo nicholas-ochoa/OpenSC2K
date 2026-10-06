@@ -5,8 +5,6 @@ extends VBoxContainer
 signal changed
 signal reload_requested
 signal export_requested
-signal luts_reload_requested
-signal luts_export_requested
 
 const SECTIONS := [
 	["Day & Night", "Set the time of day and the appearance of the night.",
@@ -15,7 +13,7 @@ const SECTIONS := [
 		["brightmaps", "night_light_strength"]],
 	["Seasons", "Follow the city calendar, run a visual cycle or choose one season.",
 		["season_enabled", "season_mode", "season_fixed", "season_seconds", "season_transition", "season_lut_strength"]],
-	["Weather & Clouds", "Weather and clouds have separate switches. Snow requires winter; in other seasons, snow selections show rain.",
+	["Weather & Clouds", "Weather and clouds have separate switches. Fixed weather can show snow in any season.",
 		["weather_enabled", "weather_mode", "weather_fixed", "weather_seconds", "weather_transition", "weather_strength", "weather_lut_strength", "weather_fog_enabled", "cloud_enabled", "cloud_density", "cloud_shadow_strength", "cloud_speed"]],
 	["Environment", "Water reflections, waves, coastal surf and underwater terrain. Seasonal water colors require Seasons.",
 		["water_reflections", "water_waves_enabled", "water_topography", "season_water_strength"]],
@@ -56,7 +54,7 @@ const HINTS := {
 	"disaster_lights": "Local fire and impact lighting. Requires enhanced disaster visuals and effect intensity above 0%.",
 	"disaster_shake": "Strength of earthquake camera movement. Set to 0% to remove camera shake while enhanced disaster visuals are enabled.",
 	"pause_freezes": "Pause environment cycles and enhanced disaster animations. Rain, snow and dust from player demolition can continue.",
-	"weather_fixed": "Snow requires winter. In other seasons, snow selections use rain of the same strength.",
+	"weather_fixed": "Fixed weather can show snow in any season. Game weather and automatic weather show snow only in winter.",
 	"day_hour": "24-hour time in quarter-hour steps: 7.5 means 07:30.",
 	"day_seconds": "Seconds for one complete day/night cycle. The Animation section controls speed and pause behavior.",
 	"season_seconds": "Seconds for one complete visual year. The city calendar is unchanged.",

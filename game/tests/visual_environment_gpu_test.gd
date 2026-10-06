@@ -178,6 +178,21 @@ func _check_weather_layer() -> void:
 				if not rendered.get_pixel(x, y).is_equal_approx(sunny.get_pixel(x, y)):
 					changed += 1
 		assert(changed > 100 and changed < 20000, "Weather particles are absent or cover the entire city: %d" % changed)
+	# Fixed summer snow reaches the GPU; both precipitation types have smaller
+	# screen footprints in the overview and remain visible at every zoom level.
+	for kind in [CityVisualWeather.Kind.HEAVY_RAIN, CityVisualWeather.Kind.HEAVY_SNOW]:
+		app.preferences.visual_enhancements.weather_fixed = kind
+		var footprints: Array[float] = []
+		for zoom in CityMapConstants.ZOOM_LEVELS:
+			map.zoom_factor = zoom
+			weather.process(5.0, 0.0, true, 1.0)
+			weather.clock = 9.25
+			weather._sync_layer(true)
+			await RenderingServer.frame_post_draw
+			var rendered := viewport.get_texture().get_image()
+			footprints.append(_particle_width(rendered, sunny))
+		assert(footprints.back() > footprints.front() + 0.1, "Precipitation did not scale with map zoom")
+	map.zoom_factor = 1.0
 	weather.flash = 1.0
 	weather.rain = 0.0
 	weather.snow = 0.0
@@ -197,3 +212,16 @@ func _check_weather_layer() -> void:
 	viewport.queue_free()
 	app.free()
 	await process_frame
+
+
+func _particle_width(rendered: Image, background: Image) -> float:
+	var covered := 0
+	var adjacent := 0
+	for y in range(16, 176):
+		for x in range(16, 239):
+			if rendered.get_pixel(x, y).r - background.get_pixel(x, y).r > 0.03:
+				covered += 1
+				if rendered.get_pixel(x + 1, y).r - background.get_pixel(x + 1, y).r > 0.03:
+					adjacent += 1
+	assert(covered > 60, "Precipitation disappeared at a map zoom level")
+	return float(adjacent) / maxf(covered, 1.0)

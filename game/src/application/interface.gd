@@ -178,8 +178,6 @@ func _build_main_menu() -> void:
 	app.main_overlays.settings_dialog.settings_changed.connect(app.settings.apply_settings)
 	app.main_overlays.settings_dialog.brightmaps_reload_requested.connect(app.visual_environment.reload_brightmaps)
 	app.main_overlays.settings_dialog.brightmaps_export_requested.connect(app.visual_environment.export_brightmaps)
-	app.main_overlays.settings_dialog.luts_reload_requested.connect(app.visual_environment.reload_luts)
-	app.main_overlays.settings_dialog.luts_export_requested.connect(app.visual_environment.export_luts)
 	app.main_overlays.settings_dialog.confirmed.connect(play_toolbar_click)
 	app.main_overlays.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
 	app.main_overlays.settings_dialog.update_check_requested.connect(app.updates.check_now)
