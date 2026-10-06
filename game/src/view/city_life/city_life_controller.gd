@@ -11,6 +11,8 @@ const FADE_OUT_SECONDS := 0.9
 const BUS_RADIUS := 8
 const TRUCK_SHARE := 0.06
 const BUS_SHARE := 0.03
+const PROJECTED_DIRECTIONS := [Vector2(16, -8), Vector2(16, 8), Vector2(-16, 8), Vector2(-16, -8)]
+const EMPTY_BUCKET: Array = []
 var app: CityApplication
 var random := RandomNumberGenerator.new()
 var figures: Array[Figure] = []
@@ -28,6 +30,8 @@ var _render_elapsed := 1.0
 var _buckets: Dictionary[Vector2i, Array] = {}
 var _bus_signature: Array = []
 var _bus_tiles: Dictionary[Vector2i, bool] = {}
+var _path_signature: Array = []
+var _paths: Dictionary[Vector3i, CityLifePaths.Segment] = {}
 
 
 func _init(application: CityApplication) -> void:
@@ -273,6 +277,10 @@ func _vehicle_kind(tile: Vector2i) -> int:
 
 
 func _advance(city: CityState, elapsed: float) -> void:
+	var path_signature := [city.mirror_signature(["ALTM", "XBLD", "XTER", "XZON", "XBIT"]), city.compass_rotation()]
+	if path_signature != _path_signature or _paths.size() > 4096:
+		_paths.clear()
+		_path_signature = path_signature
 	_rebuild_buckets()
 	for figure in figures:
 		figure.age += elapsed
@@ -284,7 +292,12 @@ func _advance(city: CityState, elapsed: float) -> void:
 			figure.wait = maxf(0.0, figure.wait - elapsed)
 			continue
 		var progress := minf(figure.progress + elapsed * figure.speed, 1.0)
-		var position := CityLifePaths.point(city, figure.tile, figure.enter, figure.exit, progress, figure.walking)
+		var key := Vector3i(figure.tile.x, figure.tile.y, figure.enter * 8 + figure.exit * 2 + int(figure.walking))
+		var path: CityLifePaths.Segment = _paths.get(key)
+		if path == null:
+			path = CityLifePaths.Segment.new(city, figure.tile, figure.enter, figure.exit, figure.walking)
+			_paths[key] = path
+		var position := path.point(progress)
 		if not figure.walking and _crowded(figure, position, false):
 			continue
 		figure.distance += progress - figure.progress
@@ -314,19 +327,19 @@ func _advance(city: CityState, elapsed: float) -> void:
 
 func _crowded(figure: Figure, position: Vector2, spawning: bool = true) -> bool:
 	var center := _bucket(position)
+	var direction := (figure.enter + 2) % 4 if figure.progress < 0.5 else figure.exit
+	var forward: Vector2 = PROJECTED_DIRECTIONS[direction]
 	for x in range(-1, 2):
 		for y in range(-1, 2):
-			for other: Figure in _buckets.get(center + Vector2i(x, y), []):
+			for other: Figure in _buckets.get(center + Vector2i(x, y), EMPTY_BUCKET):
 				if other == figure or other.walking != figure.walking or other.age >= other.lifetime:
 					continue
 				var separation := other.position - position
 				if not spawning:
 					# Opposite lanes pass independently; following cars yield ahead.
-					var direction := (figure.enter + 2) % 4 if figure.progress < 0.5 else figure.exit
 					var other_direction := (other.enter + 2) % 4 if other.progress < 0.5 else other.exit
 					if (direction + 2) % 4 == other_direction:
 						continue
-					var forward: Vector2 = [Vector2(16, -8), Vector2(16, 8), Vector2(-16, 8), Vector2(-16, -8)][direction]
 					if direction == other_direction and separation.dot(forward) <= 0.0:
 						continue
 					if direction != other_direction and figure.id < other.id:

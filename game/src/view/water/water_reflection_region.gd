@@ -66,31 +66,18 @@ func compose_moving(sprites: Array[WaterReflectionSprite]) -> Dictionary:
 	if overlapping.is_empty():
 		moving_textures.clear()
 		return moving_textures
-	var pixels := reflected.duplicate()
-	var lights := emission.duplicate()
-	var natural := seasons.duplicate()
+	var images: Array[Image] = []
+	var placements := PackedInt32Array()
 	for sprite in overlapping:
-		var overlap := area.intersection(Rect2i(sprite.position, sprite.image.get_size()))
-		var first := Vector2i((Vector2(overlap.position - area.position) / divisor).floor())
-		var last := Vector2i((Vector2(overlap.end - area.position) / divisor).ceil())
-		for y in range(first.y, last.y):
-			for x in range(first.x, last.x):
-				var mask := surface.get_pixel(x, y)
-				if mask.a == 0 or roundi(mask.r * 255.0) != sprite.level + 1:
-					continue
-				var point := area.position + Vector2i(x, y) * divisor - sprite.position
-				if not Rect2i(Vector2i.ZERO, sprite.image.get_size()).has_point(point):
-					continue
-				var pixel := sprite.image.get_pixelv(point)
-				if pixel.a == 0:
-					continue
-				pixels.set_pixel(x, y, pixel)
-				lights.set_pixel(x, y, sprite.emission.get_pixelv(point))
-				natural.set_pixel(x, y, Color.TRANSPARENT)
+		images.append(sprite.image)
+		images.append(sprite.emission)
+		placements.append_array(PackedInt32Array([sprite.position.x, sprite.position.y, sprite.level]))
+	var composed := NativeSpriteCompositor.water_moving(surface, reflected, emission, seasons,
+		images, placements, Vector3i(area.position.x, area.position.y, divisor))
 	# Region dimensions stay fixed. Keep GPU allocations while ships move.
-	for pair in [["reflected", pixels], ["emission", lights], ["seasons", natural]]:
-		if moving_textures.has(pair[0]):
-			(moving_textures[pair[0]] as ImageTexture).update(pair[1])
+	for key in ["reflected", "emission", "seasons"]:
+		if moving_textures.has(key):
+			(moving_textures[key] as ImageTexture).update(composed[key])
 		else:
-			moving_textures[pair[0]] = ImageTexture.create_from_image(pair[1])
+			moving_textures[key] = ImageTexture.create_from_image(composed[key])
 	return moving_textures

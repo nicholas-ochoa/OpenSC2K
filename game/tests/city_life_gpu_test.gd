@@ -53,5 +53,89 @@ func _run() -> void:
 	assert(night.get_pixel(0, 0).a == 0.0, "Night grading must preserve sprite transparency")
 	viewport.queue_free()
 	await process_frame
+	await _check_headlight_batches(false)
+	await _check_headlight_batches(true)
 	print("PASS: GPU city-life colors, transparent background, cloud shadows and environment lighting")
 	quit()
+
+
+func _check_headlight_batches(hdr: bool) -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	for x in range(57, 73):
+		for y in range(57, 73):
+			city.set_building_id(x, y, BuildingTileIds.ROAD_CROSSROADS)
+			city.set_land_altitude(x, y, 0)
+			city.set_terrain_id(x, y, 0)
+	var figures: Array = []
+	for i in 130:
+		var figure := CityLifeController.Figure.new()
+		figure.id = i
+		@warning_ignore("integer_division")
+		figure.tile = Vector2i(58 + i % 13, 58 + i / 13)
+		figure.direction = i % 4
+		figure.enter = (figure.direction + 2) % 4
+		figure.exit = figure.direction
+		figure.vehicle_kind = i % 3
+		figure.progress = 0.2 + (i % 3) * 0.3
+		figure.visibility = 0.2 + (i % 3) * 0.3
+		figure.position = CityLifePaths.point(city, figure.tile, figure.enter, figure.exit, figure.progress, false)
+		figures.append(figure)
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(512, 320)
+	viewport.transparent_bg = true
+	viewport.use_hdr_2d = hdr
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var batch := CityLifeHeadlights.new()
+	viewport.add_child(batch)
+	var lights := CityLifeLights.new()
+	var offset := Vector2i(CityLifePaths.point(city, Vector2i(64, 64), 0, 2, 0.5, false)) - Vector2i(256, 150)
+	for phase in 3:
+		if phase == 1:
+			for figure: CityLifeController.Figure in figures:
+				figure.progress = 0.75
+				figure.position = CityLifePaths.point(city, figure.tile, figure.enter, figure.exit, figure.progress, false)
+		elif phase == 2:
+			for i in 5:
+				figures.pop_front()
+			figures[0].id = 900
+			figures[0].tile += Vector2i.RIGHT
+			figures[0].position = CityLifePaths.point(city, figures[0].tile, figures[0].enter, figures[0].exit, figures[0].progress, false)
+		var reference := Node2D.new()
+		viewport.add_child(reference)
+		var scale_value: float = [0.5, 1.0, 2.0][phase]
+		reference.scale = Vector2.ONE * scale_value
+		batch.scale = reference.scale
+		reference.position = Vector2(0.375, 0.125)
+		batch.position = reference.position
+		for figure: CityLifeController.Figure in figures:
+			var surface := lights.surface(city, figure.tile, figure.enter, figure.direction)
+			var sprite := Sprite2D.new()
+			sprite.centered = false
+			sprite.texture = surface.texture
+			sprite.position = Vector2(surface.origin - offset)
+			var shader := ShaderMaterial.new()
+			shader.shader = preload("res://src/view/city_life/city_life_road_light.gdshader")
+			shader.set_shader_parameter("night", 0.65)
+			shader.set_shader_parameter("vehicle_world", CityLifeLights.vehicle_world(city, figure))
+			shader.set_shader_parameter("forward", CityLifeLights.FORWARD[figure.direction])
+			shader.set_shader_parameter("front", float([3, 4, 5][figure.vehicle_kind]))
+			shader.set_shader_parameter("opacity", figure.opacity())
+			sprite.material = shader
+			sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			reference.add_child(sprite)
+		batch.hide()
+		await RenderingServer.frame_post_draw
+		var expected := viewport.get_texture().get_image()
+		reference.hide()
+		batch.set_night(0.65)
+		batch.render(city, figures, lights, offset, Callable())
+		batch.show()
+		await RenderingServer.frame_post_draw
+		var actual := viewport.get_texture().get_image()
+		assert(actual.get_data() == expected.get_data(), "Batched headlights differ from individual lights: hdr=%s phase=%d" % [hdr, phase])
+		assert(batch.groups.size() == 3 and batch.slots.size() == figures.size())
+		reference.free()
+	viewport.queue_free()
+	await process_frame
+	print("PASS: batched headlights match individual GPU pixels at three zooms, including HDR, fades, movement and slot reuse")

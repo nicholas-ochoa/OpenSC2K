@@ -129,7 +129,26 @@ func _create() -> void:
 
 
 func _rebuild(value: CityMapSource) -> void:
+	var previous := source
 	source = value
+	# Region snapshots retain unchanged immutable mesh descriptors. Only update
+	# changed light geometry instead of recreating every canvas item and material.
+	if previous != null and previous.texture == null and value.texture == null \
+			and previous.tiles.is_empty() and value.tiles.is_empty() \
+			and previous.meshes.size() == value.meshes.size() and copies.size() == value.meshes.size():
+		for index in value.meshes.size():
+			var entry := value.meshes[index]
+			if entry == previous.meshes[index] and entry.immutable:
+				continue
+			var mesh := copies[index] as MeshInstance2D
+			mesh.mesh = entry.mesh
+			mesh.texture = entry.texture
+			mesh.position = entry.position
+			mesh.scale = Vector2.ONE * entry.divisor
+			var shader := mesh.material as ShaderMaterial
+			shader.set_shader_parameter("emission", entry.emission)
+			shader.set_shader_parameter("has_emission", entry.emission != null)
+		return
 	for copy in copies:
 		copy.free()
 	copies.clear()

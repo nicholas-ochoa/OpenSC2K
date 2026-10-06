@@ -1,6 +1,7 @@
 class_name CityLifeLights
 extends RefCounted
 ## Cosmetic emission and road-only light. All city geometry is read-only.
+@warning_ignore_start("integer_division")
 
 const HEADLIGHT := Color("ffe3a0")
 const TAILLIGHT := Color("ff3426")
@@ -11,6 +12,61 @@ var masks: Dictionary[String, Image] = {}
 var roads: Dictionary[Vector3i, Array] = {}
 var surfaces: Dictionary[Vector4i, Dictionary] = {}
 var visible_roads: Dictionary[Vector3i, Array] = {}
+var geometry_reset := false
+var _geometry_signature: Array = []
+var _geometry_layout: Array = []
+var _geometry_planes: Array[PackedByteArray] = []
+
+
+# Global revisions decide when to compare. Only changed road geometry and its
+# immediate connections invalidate receivers; distant development keeps them.
+func sync_geometry(city: CityState) -> Dictionary[Vector2i, bool]:
+	var changed: Dictionary[Vector2i, bool] = {}
+	geometry_reset = false
+	var layout := [city.get_instance_id(), city.map_size, city.compass_rotation(), city.visible_altitude_levels]
+	var revision := [layout, city.mirror_signature(["ALTM", "XBLD", "XTER", "XZON", "XBIT"])]
+	if revision == _geometry_signature:
+		return changed
+	_geometry_signature = revision
+	# Native city setters can update a borrowed mirror in place. Own these
+	# snapshots so a later edit cannot silently change both sides of the comparison.
+	var planes: Array[PackedByteArray] = [city.altitude_words.to_byte_array(), city.buildings.duplicate(), city.terrain.duplicate(),
+		city.zones.duplicate(), city.tile_flags.duplicate(), city.object_altitude_overrides.to_byte_array()]
+	geometry_reset = layout != _geometry_layout or _geometry_planes.size() != planes.size()
+	if not geometry_reset:
+		for plane in planes.size():
+			if planes[plane].size() != _geometry_planes[plane].size():
+				geometry_reset = true
+				break
+			var mask := Sc2ZoneLayout.CORNERS_MASK if plane == 3 else (Sc2TileFlags.FLIPPED | Sc2TileFlags.WATER if plane == 4 else 255)
+			var indices := NativeCityChanges.changed_cells(_geometry_planes[plane], planes[plane], 4 if plane in [0, 5] else 1, mask)
+			if indices.size() > 1024:
+				geometry_reset = true
+				break
+			for index in indices:
+				var tile := Vector2i(index / city.map_size, index % city.map_size)
+				for x in range(-1, 2):
+					for y in range(-1, 2):
+						changed[tile + Vector2i(x, y)] = true
+	_geometry_planes = planes
+	_geometry_layout = layout
+	if geometry_reset:
+		roads.clear()
+		clear_surfaces()
+		return changed
+	if changed.is_empty():
+		return changed
+	for tile in changed:
+		for axis in 2:
+			var key := Vector3i(tile.x, tile.y, axis)
+			roads.erase(key)
+			visible_roads.erase(key)
+	for key in surfaces.keys():
+		for dependency in surfaces[key].occlusion_keys:
+			if changed.has(Vector2i(dependency.x, dependency.y)):
+				surfaces.erase(key)
+				break
+	return changed
 
 
 func clear_surfaces() -> void:

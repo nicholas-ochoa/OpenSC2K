@@ -90,8 +90,58 @@ func _initialize() -> void:
 	assert(boat.emission.get_pixel(0, 5) == lights.get_pixel(0, 0))
 	assert(boat.image.get_pixel(0, 0).a == 0)
 	_check_ship_wakes()
+	_check_moving_composition()
 	print("PASS: indexed native water geometry at all artwork sizes, water-only clipping, deterministic cache output and Off/Subtle preferences")
 	quit()
+
+
+func _check_moving_composition() -> void:
+	var surface := Image.create(24, 18, false, Image.FORMAT_RGBA8)
+	var base := Image.create(24, 18, false, Image.FORMAT_RGBA8)
+	base.fill(Color(0.1, 0.3, 0.7, 0.5))
+	for y in 18:
+		for x in 24:
+			surface.set_pixel(x, y, Color8(1 + x % 3, 0, 0, 0 if y % 4 == 0 else 255))
+	var sprite := Image.create(11, 13, false, Image.FORMAT_RGBA8)
+	var light := Image.create(11, 13, false, Image.FORMAT_RGBA8)
+	for y in 13:
+		for x in 11:
+			sprite.set_pixel(x, y, Color8(x * 19, y * 17, 73, (x * y * 29) % 256))
+			light.set_pixel(x, y, Color8(211, 137, 43, (x * y * 17) % 256))
+	for divisor in [1, 2, 4]:
+		var origin := Vector2i(-19, 31)
+		var area := Rect2i(origin, surface.get_size() * divisor)
+		var images: Array[Image] = []
+		var placements := PackedInt32Array()
+		var expected := {"reflected": base.duplicate(), "emission": base.duplicate(), "seasons": base.duplicate()}
+		for offset in [Vector2i(-4, -7), Vector2i(7, 5), Vector2i(9, 6), area.size - Vector2i(3, 2), Vector2i(200, 200)]:
+			for level in [0, 1, 2]:
+				var position: Vector2i = origin + offset
+				images.append_array([sprite, light])
+				placements.append_array(PackedInt32Array([position.x, position.y, level]))
+				var overlap := area.intersection(Rect2i(position, sprite.get_size()))
+				if not overlap.has_area():
+					continue
+				var first := Vector2i((Vector2(overlap.position - area.position) / divisor).floor())
+				var last := Vector2i((Vector2(overlap.end - area.position) / divisor).ceil())
+				for y in range(first.y, last.y):
+					for x in range(first.x, last.x):
+						var mask := surface.get_pixel(x, y)
+						if mask.a == 0 or roundi(mask.r * 255.0) != level + 1:
+							continue
+						var point: Vector2i = area.position + Vector2i(x, y) * divisor - position
+						if not Rect2i(Vector2i.ZERO, sprite.get_size()).has_point(point):
+							continue
+						var pixel := sprite.get_pixelv(point)
+						if pixel.a == 0:
+							continue
+						expected.reflected.set_pixel(x, y, pixel)
+						expected.emission.set_pixel(x, y, light.get_pixelv(point))
+						expected.seasons.set_pixel(x, y, Color.TRANSPARENT)
+		var actual := NativeSpriteCompositor.water_moving(surface, base, base, base, images, placements, Vector3i(origin.x, origin.y, divisor))
+		for key in expected:
+			assert(actual[key].get_data() == expected[key].get_data(), "Moving water composition changed clipping, height, painter order or pixels")
+		assert(base.get_pixel(0, 0) == Color8(25, 76, 178, 127), "Composition modified immutable region pixels")
 
 
 func _check_ship_wakes() -> void:

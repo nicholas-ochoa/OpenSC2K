@@ -15,6 +15,8 @@ func _run() -> void:
 	_check_subpixels()
 	_check_lifecycle()
 	_check_shadow()
+	_check_pixel_parity()
+	_check_artwork_cache()
 	await _check_application()
 	print("PASS: traffic interpolation, directions, tile crossings, shadows, ship reflections, toggles and unchanged city/RNG")
 	quit()
@@ -217,6 +219,65 @@ static func _check_shadow() -> void:
 	assert(shadow.get_pixel(2, 0).a > 0 and shadow.get_pixel(3, 0).a == 0)
 	assert(CityAircraftShadow.create(source, null, Vector2i(4, 0), Vector2i(3, 1)) == null)
 	assert(source.get_pixel(0, 0) == Color.WHITE, "Shadow generation cannot edit the source artwork")
+
+
+static func _check_pixel_parity() -> void:
+	var shape := Image.create(256, 256, false, Image.FORMAT_RGBA8)
+	for y in 256:
+		for x in 256:
+			shape.set_pixel(x, y, Color8(71, 109, 203, y))
+	for format in [Image.FORMAT_RGBA8, Image.FORMAT_LA8]:
+		var mask := Image.create(256, 256, false, format)
+		for y in 256:
+			for x in 256:
+				mask.set_pixel(x, y, Color8(x, x, x, x))
+		var expected: Image = mask.duplicate()
+		for y in 256:
+			for x in 256:
+				var color := expected.get_pixel(x, y)
+				color.a *= shape.get_pixel(x, y).a
+				expected.set_pixel(x, y, color)
+		assert(CityBrightmaps.transform_mask(mask, shape, false).get_data() == expected.get_data(),
+			"All 65536 light/silhouette alpha pairs must retain the original pixels")
+	var foreground := Image.create(256, 256, false, Image.FORMAT_RGBA8)
+	foreground.fill_rect(Rect2i(20, 30, 70, 80), Color.WHITE)
+	for origin in [Vector2i.ZERO, Vector2i(-13, -17), Vector2i(231, 237), Vector2i(500, 500)]:
+		var expected := Image.create(256, 256, false, Image.FORMAT_RGBA8)
+		var any_visible := false
+		for y in 256:
+			for x in 256:
+				var point: Vector2i = origin + Vector2i(x, y)
+				var alpha := int(round(y * CityAircraftShadow.OPACITY))
+				if not Rect2i(0, 0, 256, 256).has_point(point) or foreground.get_pixel(x, y).a > 0:
+					alpha = 0
+				expected.set_pixel(x, y, Color8(0, 0, 0, alpha))
+				any_visible = any_visible or alpha > 0
+		var actual := CityAircraftShadow.create(shape, foreground, origin, Vector2i(256, 256))
+		assert(actual != null if any_visible else actual == null)
+		if actual != null:
+			assert(actual.get_data() == expected.get_data(), "Native shadows must retain every alpha and clipping edge")
+
+
+static func _check_artwork_cache() -> void:
+	var resource := CitySpriteResource.new()
+	resource.image = Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	resource.image.fill_rect(Rect2i(1, 1, 6, 5), Color.WHITE)
+	var lights := resource.image.duplicate()
+	var mask := resource.light_mask(lights, true)
+	var texture := resource.light_texture()
+	var first := resource.reflection(Vector2i(10, 20), 3, null)
+	var next := resource.reflection(Vector2i(11, 22), 4, null)
+	var fresh := WaterReflectionSprite.create(resource.image, mask, next.position, next.level)
+	assert(first.position == Vector2i(10, 20) and first.level == 3)
+	assert(first.image == next.image and first.emission == next.emission, "Motion must share immutable reflected artwork")
+	assert(next.image.get_data() == fresh.image.get_data() and next.emission.get_data() == fresh.emission.get_data())
+	assert(resource.light_mask(lights, true) == mask and resource.light_texture() == texture)
+	var replacement := lights.duplicate()
+	replacement.fill(Color.TRANSPARENT)
+	assert(resource.light_mask(replacement, true) != mask)
+	assert(resource.reflection(Vector2i.ZERO, 0, null).emission.is_invisible(), "Changed authored lights must invalidate reflection pixels")
+	resource.light_mask(null, true)
+	assert(resource.light_texture() == null)
 
 
 static func _check_subpixels() -> void:

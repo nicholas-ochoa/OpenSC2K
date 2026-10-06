@@ -13,14 +13,11 @@ var lights := CityLifeLights.new()
 var emission: Image
 var emission_texture: ImageTexture
 var road_layer: Node2D
-var road_material: ShaderMaterial
 var _light_night := -1.0
-var _light_quads: Dictionary[int, Sprite2D] = {}
 var _light_occluders: Dictionary[Vector3i, Array] = {}
 var _occluders: Dictionary[Vector3i, Array] = {}
 var _occluder_bounds: Dictionary[Vector3i, Rect2i] = {}
 var _occlusion_signature: Array = []
-var _road_signature: Array = []
 var _visible_regions: Array[Vector2i] = []
 var _emission_active := false
 var include_cached_regions := false
@@ -50,10 +47,8 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 		image = Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
 		texture = ImageTexture.create_from_image(image)
 		if road_layer == null:
-			road_layer = Node2D.new()
+			road_layer = CityLifeHeadlights.new()
 			road_layer.show_behind_parent = true
-			road_material = ShaderMaterial.new()
-			road_material.shader = preload("res://src/view/city_life/city_life_road_light.gdshader")
 			add_child(road_layer)
 	if light_active and (emission == null or emission.get_size() != bounds.size):
 		emission = Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
@@ -67,12 +62,10 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	if light_active:
 		emission.fill(Color.TRANSPARENT)
 	var city := app.document_state.city
-	var road_signature := [city.document.get_instance_id(), city.chunk_revision("ALTM"), city.chunk_revision("XBLD"),
-		city.chunk_revision("XTER"), city.chunk_revision("XZON"), city.chunk_revision("XBIT"), city.compass_rotation()]
-	if road_signature != _road_signature or lights.roads.size() > 4096:
+	lights.sync_geometry(city)
+	if lights.roads.size() > 4096:
 		lights.roads.clear()
 		lights.clear_surfaces()
-		_road_signature = road_signature
 	# Region publications also change while panning an unchanged city. Their
 	# affected silhouettes are invalidated separately by the map renderer.
 	var regions := app.render_caches.region_cache
@@ -92,34 +85,9 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	figures.sort_custom(func(a: CityLifeController.Figure, b: CityLifeController.Figure) -> bool:
 		return a.position.y < b.position.y)
 	road_layer.visible = light_active
-	var seen: Dictionary[int, bool] = {}
 	if light_active:
-		for figure: CityLifeController.Figure in figures:
-			if figure.walking:
-				continue
-			seen[figure.id] = true
-			var quad: Sprite2D = _light_quads.get(figure.id)
-			if quad == null:
-				quad = Sprite2D.new()
-				quad.centered = false
-				# Ordinary materials also support the full figure budget on Compatibility GPUs.
-				quad.material = road_material.duplicate()
-				(quad.material as ShaderMaterial).set_shader_parameter("night", app.visual_environment.night)
-				road_layer.add_child(quad)
-				_light_quads[figure.id] = quad
-			var surface := lights.surface(app.document_state.city, figure.tile, figure.enter, figure.direction,
-				func(tile: Vector2i, enter: int) -> Array: return _light_candidates(app, tile, enter))
-			quad.texture = surface.texture
-			quad.position = Vector2(surface.origin - source_bounds.position)
-			var light_material := quad.material as ShaderMaterial
-			light_material.set_shader_parameter("vehicle_world", CityLifeLights.vehicle_world(app.document_state.city, figure))
-			light_material.set_shader_parameter("forward", CityLifeLights.FORWARD[figure.direction])
-			light_material.set_shader_parameter("front", float([3, 4, 5][figure.vehicle_kind]))
-			light_material.set_shader_parameter("opacity", figure.opacity())
-	for id in _light_quads.keys():
-		if not seen.has(id):
-			_light_quads[id].queue_free()
-			_light_quads.erase(id)
+		(road_layer as CityLifeHeadlights).render(city, figures, lights, source_bounds.position,
+			func(tile: Vector2i, enter: int) -> Array: return _light_candidates(app, tile, enter))
 	for figure: CityLifeController.Figure in figures:
 		var sprite := sprites.sprite(figure.walking, figure.variant, figure.direction, int(figure.distance * 8.0) % 2, figure.vehicle_kind)
 		var origin := Vector2i(figure.position.round()) - Vector2i(sprite.get_width() / 2, sprite.get_height() - 1)
@@ -149,8 +117,7 @@ func sync_view(app: CityApplication) -> void:
 	app.map_view.layers._apply_environment(material as ShaderMaterial)
 	if road_layer != null and app.visual_environment.night != _light_night:
 		_light_night = app.visual_environment.night
-		for quad: Sprite2D in _light_quads.values():
-			(quad.material as ShaderMaterial).set_shader_parameter("night", _light_night)
+		(road_layer as CityLifeHeadlights).set_night(_light_night)
 
 
 func _candidates(app: CityApplication, tile: Vector2i, enter: int = 0) -> Array:

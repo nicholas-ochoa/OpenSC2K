@@ -166,6 +166,55 @@ static func point(city: CityState, tile: Vector2i, enter: int, exit: int, progre
 		+ Vector2((offset.x - offset.y) * 16.0, (offset.x + offset.y) * 8.0 - altitude * 12.0)
 
 
+# Immutable display geometry shared by figures on the same lane segment.
+# point() above remains the uncached reference used by one-time queries.
+class Segment extends RefCounted:
+	var a: Vector2
+	var b: Vector2
+	var c: Vector2
+	var d: Vector2
+	var corner: Vector2
+	var first: float
+	var second: float
+	var base: Vector2
+	var low: float
+	var high: float
+	var straight: bool
+	var walking: bool
+
+
+	func _init(city: CityState, tile: Vector2i, enter: int, exit: int, is_walking: bool) -> void:
+		walking = is_walking
+		straight = exit == (enter + 2) % 4
+		var incoming := -Vector2(DIRECTIONS[enter])
+		var outgoing := Vector2(DIRECTIONS[exit])
+		var lane := 0.39 if walking else 0.13
+		a = -incoming * 0.5 + Vector2(-incoming.y, incoming.x) * lane
+		b = outgoing * 0.5 + Vector2(-outgoing.y, outgoing.x) * lane
+		c = a + incoming * 0.32
+		d = b - outgoing * 0.32
+		corner = Vector2(a.x, b.y) if is_zero_approx(incoming.x) else Vector2(b.x, a.y)
+		first = a.distance_to(corner)
+		second = corner.distance_to(b)
+		low = CityLifePaths.edge_height(city, tile, enter)
+		high = CityLifePaths.edge_height(city, tile, exit)
+		base = Vector2(32 + (city.map_size + tile.x - tile.y) * 16 + 16, 512 + (tile.x + tile.y) * 8 + 8)
+
+
+	func point(progress: float) -> Vector2:
+		var t := clampf(progress, 0.0, 1.0)
+		var offset: Vector2
+		if straight:
+			offset = a.lerp(b, t)
+		elif walking:
+			var distance := t * (first + second)
+			offset = a.lerp(corner, distance / first) if distance < first and first > 0.0 else corner.lerp(b, (distance - first) / maxf(second, 0.001))
+		else:
+			offset = a * pow(1.0 - t, 3.0) + c * 3.0 * t * pow(1.0 - t, 2.0) + d * 3.0 * t * t * (1.0 - t) + b * t * t * t
+		var altitude := lerpf(low, high, t)
+		return base + Vector2((offset.x - offset.y) * 16.0, (offset.x + offset.y) * 8.0 - altitude * 12.0)
+
+
 static func density(city: CityState, tile: Vector2i, walking: bool) -> int:
 	var chunk := city.document.find_chunk("XPOP" if walking else "XTRF")
 	if chunk == null:

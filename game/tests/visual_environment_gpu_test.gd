@@ -176,6 +176,7 @@ func _check_night_glow(hdr: bool) -> void:
 	for i in 4:
 		await RenderingServer.frame_post_draw
 	var on := viewport.get_texture().get_image()
+	await _check_night_mesh_reuse(viewport, map, lighting, pixels, light, options)
 	lighting.process(true, 0.0, options)
 	await RenderingServer.frame_post_draw
 	var off := viewport.get_texture().get_image()
@@ -219,6 +220,47 @@ func _check_night_glow(hdr: bool) -> void:
 	viewport.queue_free()
 	app.free()
 	await process_frame
+
+
+func _check_night_mesh_reuse(viewport: SubViewport, map: CityMapControl, lighting: CityNightLighting,
+		pixels: Image, light: Image, options: Dictionary) -> void:
+	var original := map.city_source
+	var geometry := QuadMesh.new()
+	geometry.size = Vector2(128, 96)
+	var texture := ImageTexture.create_from_image(pixels)
+	var emission := ImageTexture.create_from_image(light)
+	var first := CityMapSource.MeshEntry.new(Vector2(64, 48), geometry, texture, 1)
+	first.immutable = true
+	first.emission = emission
+	var source := CityMapSource.new(Vector2i(128, 96))
+	source.meshes.append(first)
+	map.city_source = source
+	lighting.process(true, 1.0, options)
+	for changed in [false, true]:
+		var item_id := lighting.copies[0].get_instance_id()
+		var next := CityMapSource.new(source.size)
+		var entry := first
+		if changed:
+			entry = CityMapSource.MeshEntry.new(Vector2(60, 46), geometry, texture, 1)
+			entry.immutable = true
+			entry.emission = null
+		next.meshes.append(entry)
+		map.city_source = next
+		lighting.process(true, 1.0, options)
+		assert(lighting.copies[0].get_instance_id() == item_id, "Region updates must retain light canvas items")
+		for frame in 4:
+			await RenderingServer.frame_post_draw
+		var cached := viewport.get_texture().get_image()
+		lighting.source = null
+		lighting.process(true, 1.0, options)
+		for frame in 4:
+			await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_data() == cached.get_data(),
+			"Reused night geometry must exactly match a fresh rebuild after emission and position changes")
+	map.city_source = original
+	lighting.process(true, 1.0, options)
+	for frame in 4:
+		await RenderingServer.frame_post_draw
 
 
 func _check_street_fixtures(hdr: bool) -> void:

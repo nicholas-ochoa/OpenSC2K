@@ -44,12 +44,7 @@ static func transform_mask(source: Image, silhouette: Image, flip: bool) -> Imag
 		mask.flip_x()
 	if mask.get_size() != silhouette.get_size():
 		mask.resize(silhouette.get_width(), silhouette.get_height(), Image.INTERPOLATE_NEAREST)
-	for y in mask.get_height():
-		for x in mask.get_width():
-			var color := mask.get_pixel(x, y)
-			color.a *= silhouette.get_pixel(x, y).a
-			mask.set_pixel(x, y, color)
-	return mask
+	return NativeSpriteCompositor.light_mask(mask, silhouette)
 
 
 static func resolve_folder(folder: String) -> String:

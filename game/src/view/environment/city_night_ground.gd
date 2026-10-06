@@ -2,6 +2,7 @@ class_name CityNightGround
 extends Node2D
 ## Cached, visible road receivers. Short entrance approaches never cross tiles
 ## other than the immediately adjacent street. No simulation state is written.
+@warning_ignore_start("integer_division")
 
 const SHADER := preload("res://src/view/environment/night_ground.gdshader")
 const PROFILES := "res://src/view/environment/night_light_profiles.json"
@@ -73,12 +74,18 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 	if signature != revision:
 		reset()
 		signature = revision
-	var shape := [city.chunk_revision("XBLD"), city.chunk_revision("ALTM"), city.chunk_revision("XTER"),
-		app.view_state.surface_visibility.duplicate()]
-	if geometry != shape:
+	var changed := roads.sync_geometry(city)
+	var shape := [app.view_state.surface_visibility.duplicate()]
+	if roads.geometry_reset or geometry != shape:
 		geometry = shape
 		invalidate_all()
 		bounds = Rect2i()
+	elif not changed.is_empty():
+		for tile in changed:
+			if cache.has(tile):
+				dirty[tile] = true
+			if bounds.grow(64).has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
+				bounds = Rect2i()
 	var next := Rect2i(map.visible_source_rect().grow(BUFFER_MARGIN))
 	var next_density := maxi(1, ceili(sqrt(float(next.get_area()) / (256.0 * MAX_CACHED))))
 	if density != next_density or not bounds.encloses(next.grow(-BUFFER_MARGIN * 0.5)):
@@ -130,17 +137,18 @@ func _collect(city: CityState) -> void:
 			last = last.max(point + Vector2i(2, 2))
 	first = first.max(Vector2i.ZERO)
 	last = last.min(Vector2i.ONE * (city.map_size - 1))
-	for x in range(first.x, last.x + 1):
-		for y in range(first.y, last.y + 1):
-			var tile := Vector2i(x, y)
-			# World-anchored overview density, independent of viewport list ordering.
-			if posmod(x * 73856093 ^ y * 19349663, density * density) != 0:
-				continue
-			if CityLifePaths.ports(city, tile) == 0 or city.land_altitude(x, y) >= city.visible_altitude_levels:
-				continue
-			var point := CityLifePaths.point(city, tile, 0, 2, 0.5, false)
-			if bounds.has_point(Vector2i(point)) and not sources(city, tile).is_empty():
-				visible_tiles.append(tile)
+	var points: Dictionary[Vector2i, Vector2] = {}
+	for index in CityLifePaths.candidate_indices(city, first, last):
+		var tile := Vector2i(index / city.map_size, index % city.map_size)
+		# World-anchored overview density, independent of viewport list ordering.
+		if posmod(tile.x * 73856093 ^ tile.y * 19349663, density * density) != 0:
+			continue
+		if CityLifePaths.ports(city, tile) == 0 or city.land_altitude(tile.x, tile.y) >= city.visible_altitude_levels:
+			continue
+		var point := CityLifePaths.point(city, tile, 0, 2, 0.5, false)
+		if bounds.has_point(Vector2i(point)) and not sources(city, tile).is_empty():
+			visible_tiles.append(tile)
+			points[tile] = point
 	collection += 1
 	for tile in visible_tiles:
 		last_used[tile] = collection
@@ -161,7 +169,7 @@ func _collect(city: CityState) -> void:
 	# New visible receivers take priority over the prefetch border.
 	var center := Vector2(bounds.get_center())
 	visible_tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return CityLifePaths.point(city, a, 0, 2, 0.5, false).distance_squared_to(center) < CityLifePaths.point(city, b, 0, 2, 0.5, false).distance_squared_to(center))
+		return points[a].distance_squared_to(center) < points[b].distance_squared_to(center))
 	queue_redraw()
 	fixtures.queue_redraw()
 

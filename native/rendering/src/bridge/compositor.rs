@@ -59,6 +59,142 @@ fn rgba_image(width: i32, height: i32, data: &[u8]) -> Gd<Image> {
 
 #[godot_api]
 impl NativeSpriteCompositor {
+    /// Black aircraft shadow with the original 35% alpha and foreground clipping.
+    #[func]
+    fn aircraft_shadow(source: Gd<Image>, occluder: Option<Gd<Image>>, origin: Vector2i, limit: Vector2i) -> Option<Gd<Image>> {
+        let source = ImageBytes::of(&source);
+        let foreground = occluder.as_ref().map(ImageBytes::of);
+        if source.channels != 4
+            || foreground
+                .as_ref()
+                .is_some_and(|mask| mask.channels != 4 || mask.width != source.width || mask.height != source.height)
+        {
+            return None;
+        }
+        let mut data = vec![0; (source.width * source.height * 4) as usize];
+        let mut visible = false;
+        for y in 0..source.height {
+            for x in 0..source.width {
+                let at = ((y * source.width + x) * 4) as usize;
+                let point = origin + Vector2i::new(x, y);
+                if point.x < 0
+                    || point.y < 0
+                    || point.x >= limit.x
+                    || point.y >= limit.y
+                    || foreground.as_ref().is_some_and(|mask| mask.data.as_slice()[at + 3] > 0)
+                {
+                    continue;
+                }
+                let alpha = (source.data.as_slice()[at + 3] as f64 * 0.35).round() as u8;
+                data[at + 3] = alpha;
+                visible |= alpha > 0;
+            }
+        }
+        visible.then(|| rgba_image(source.width, source.height, &data))
+    }
+
+    /// Multiply a prepared light mask's alpha by the same-sized silhouette.
+    #[func]
+    fn light_mask(mask: Gd<Image>, silhouette: Gd<Image>) -> Gd<Image> {
+        let source = ImageBytes::of(&mask);
+        let shape = ImageBytes::of(&silhouette);
+        if !matches!(source.channels, 2 | 4)
+            || !matches!(shape.channels, 2 | 4)
+            || source.width != shape.width
+            || source.height != shape.height
+        {
+            return mask;
+        }
+        let mut data = source.data.to_vec();
+        let alpha = source.channels - 1;
+        for (index, pixel) in data.chunks_exact_mut(source.channels).enumerate() {
+            let shape_alpha = shape.data.as_slice()[index * shape.channels + shape.channels - 1];
+            // Image.get_pixel/set_pixel use float Color channels and truncate RGBA8.
+            pixel[alpha] = ((pixel[alpha] as f32 / 255.0) * (shape_alpha as f32 / 255.0) * 255.0) as u8;
+        }
+        Image::create_from_data(
+            source.width,
+            source.height,
+            false,
+            mask.get_format(),
+            &PackedByteArray::from(data.as_slice()),
+        )
+        .expect("mask pixels retain their dimensions and format")
+    }
+
+    /// Compose immutable ship reflections on a region, in painter order.
+    #[func]
+    fn water_moving(
+        surface: Gd<Image>,
+        reflected: Gd<Image>,
+        emission: Gd<Image>,
+        seasons: Gd<Image>,
+        images: Array<Gd<Image>>,
+        placements: PackedInt32Array,
+        region: Vector3i,
+    ) -> VarDictionary {
+        let surface = ImageBytes::of(&surface);
+        let reflected = ImageBytes::of(&reflected);
+        let emission = ImageBytes::of(&emission);
+        let seasons = ImageBytes::of(&seasons);
+        let mut result = VarDictionary::new();
+        if region.z <= 0
+            || surface.channels != 4
+            || !images.len().is_multiple_of(2)
+            || placements.len() != images.len() / 2 * 3
+            || [&reflected, &emission, &seasons]
+                .iter()
+                .any(|p| p.channels != 4 || p.width != surface.width || p.height != surface.height)
+        {
+            return result;
+        }
+        let origin = Vector2i::new(region.x, region.y);
+        let divisor = region.z;
+        let mut pixels = reflected.data.to_vec();
+        let mut lights = emission.data.to_vec();
+        let mut natural = seasons.data.to_vec();
+        for (index, place) in placements.as_slice().chunks_exact(3).enumerate() {
+            let image = ImageBytes::of(&images.at(index * 2));
+            let light = ImageBytes::of(&images.at(index * 2 + 1));
+            if image.channels != 4 || light.channels != 4 || image.width != light.width || image.height != light.height {
+                continue;
+            }
+            let left = (place[0] - origin.x).div_euclid(divisor).max(0);
+            let top = (place[1] - origin.y).div_euclid(divisor).max(0);
+            let right = (place[0] + image.width - origin.x + divisor - 1)
+                .div_euclid(divisor)
+                .min(surface.width);
+            let bottom = (place[1] + image.height - origin.y + divisor - 1)
+                .div_euclid(divisor)
+                .min(surface.height);
+            for y in top..bottom {
+                for x in left..right {
+                    let at = ((y * surface.width + x) * 4) as usize;
+                    let mask = &surface.data.as_slice()[at..at + 4];
+                    if mask[3] == 0 || i32::from(mask[0]) != place[2] + 1 {
+                        continue;
+                    }
+                    let sx = origin.x + x * divisor - place[0];
+                    let sy = origin.y + y * divisor - place[1];
+                    if sx < 0 || sy < 0 || sx >= image.width || sy >= image.height {
+                        continue;
+                    }
+                    let sample = ((sy * image.width + sx) * 4) as usize;
+                    if image.data.as_slice()[sample + 3] == 0 {
+                        continue;
+                    }
+                    pixels[at..at + 4].copy_from_slice(&image.data.as_slice()[sample..sample + 4]);
+                    lights[at..at + 4].copy_from_slice(&light.data.as_slice()[sample..sample + 4]);
+                    natural[at..at + 4].copy_from_slice(&[255, 255, 255, 0]);
+                }
+            }
+        }
+        result.set("reflected", &rgba_image(surface.width, surface.height, &pixels));
+        result.set("emission", &rgba_image(surface.width, surface.height, &lights));
+        result.set("seasons", &rgba_image(surface.width, surface.height, &natural));
+        result
+    }
+
     /// The opaque sprite pixels that differ from `background`, whose bottom rows
     /// line up with the sprite's.
     #[func]

@@ -22,6 +22,22 @@ var foreground_complete := false
 var dynamic_special_batch_cache: Dictionary[String, CityDynamicVisual] = {}
 
 
+func trim_moving() -> void:
+	# Release old positions in small batches. Clearing every cached texture at
+	# once makes a moving city periodically rebuild the complete visible set.
+	if dynamic_visual_cache.size() > 4096:
+		for key in dynamic_visual_cache.keys():
+			if not dynamic_active_keys.has(key):
+				dynamic_visual_cache.erase(key)
+			if dynamic_visual_cache.size() <= 3840:
+				break
+	if dynamic_occluder_cache.size() > 4096:
+		for key in dynamic_occluder_cache.keys():
+			dynamic_occluder_cache.erase(key)
+			if dynamic_occluder_cache.size() <= 3840:
+				break
+
+
 class StaticView extends RefCounted:
 	var image: Image
 	var occlusion_commands: Array[CityStaticCommand]

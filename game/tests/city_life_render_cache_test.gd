@@ -9,8 +9,74 @@ func _initialize() -> void:
 	_check_local_invalidation()
 	_check_surface_budget()
 	_check_network_search()
+	_check_geometry_changes()
+	_check_path_segments()
 	print("PASS: exact city-life artwork/emission pixels, road coordinates, local occlusion invalidation and bounded light reuse")
 	quit()
+
+
+func _check_path_segments() -> void:
+	var city := load("res://tests/city_life_test.gd").fixture() as CityState
+	var tile := Vector2i(64, 64)
+	for id in [BuildingTileIds.ROAD_CROSSROADS, BuildingTileIds.HIGHWAY_CURVE_1,
+			BuildingTileIds.HIGHWAY_ONRAMP_1, BuildingTileIds.HIGHWAY_ROAD_CROSSING_1, BuildingTileIds.HIGHWAY_BRIDGE]:
+		city.set_building_id(tile.x, tile.y, id)
+		for shape in [0, 1, 6]:
+			city.set_terrain_id(tile.x, tile.y, shape)
+			for flipped in [false, true]:
+				city.set_tile_flag(tile.x, tile.y, Sc2TileFlags.FLIPPED, flipped)
+				for enter in 4:
+					for exit in 4:
+						for walking in [false, true]:
+							var segment := CityLifePaths.Segment.new(city, tile, enter, exit, walking)
+							for progress in [-0.1, 0.0, 0.1, 0.499, 0.5, 0.7, 1.0, 1.1]:
+								assert(segment.point(progress) == CityLifePaths.point(city, tile, enter, exit, progress, walking),
+									"Cached lane geometry must preserve exact positions, bends, grades and endpoint clamping")
+
+
+func _check_geometry_changes() -> void:
+	var city := load("res://tests/city_life_test.gd").fixture() as CityState
+	var lights := CityLifeLights.new()
+	lights.sync_geometry(city)
+	assert(lights.geometry_reset)
+	var tile := Vector2i(64, 64)
+	var before := lights.surface(city, tile, 0, 2)
+	city.set_building_id(10, 10, 112)
+	lights.sync_geometry(city)
+	assert(not lights.geometry_reset and lights.surface(city, tile, 0, 2).texture == before.texture,
+		"Distant development must not rebuild unchanged road receivers")
+	city.set_tile_flag(64, 64, Sc2TileFlags.POWERED, true)
+	city.set_zone_id(64, 64, 2)
+	assert(lights.sync_geometry(city).is_empty(), "Power and zoning colors do not alter road geometry")
+	for change in ["slope", "height", "building", "flip", "corner"]:
+		match change:
+			"slope":
+				city.set_terrain_id(64, 64, 6)
+			"height":
+				city.set_land_altitude(64, 64, 3)
+			"building":
+				city.set_building_id(64, 64, BuildingTileIds.HIGHWAY_CURVE_1)
+			"flip":
+				city.set_tile_flag(64, 64, Sc2TileFlags.FLIPPED, true)
+			"corner":
+				city.set_building_corners(64, 64, 0x80)
+		assert(lights.sync_geometry(city).has(tile), "Changed geometry not detected: " + change)
+		var cached := lights.surface(city, tile, 0, 2)
+		var fresh := CityLifeLights.new().surface(city, tile, 0, 2)
+		assert(cached.image.get_data() == fresh.image.get_data(), "Local geometry update left stale road pixels: " + change)
+	# An initially closed next tile becomes part of an existing headlight receiver.
+	city.set_land_altitude(64, 64, 0)
+	city.set_terrain_id(64, 64, 0)
+	city.set_building_id(64, 64, BuildingTileIds.ROAD_STRAIGHT_1)
+	city.set_building_id(64, 65, 0)
+	lights.sync_geometry(city)
+	before = lights.surface(city, tile, 0, 2)
+	city.set_building_id(64, 65, BuildingTileIds.ROAD_STRAIGHT_1)
+	lights.sync_geometry(city)
+	var reopened := lights.surface(city, tile, 0, 2)
+	assert(reopened.texture != before.texture)
+	assert(reopened.image.get_data() == CityLifeLights.new().surface(city, tile, 0, 2).image.get_data())
+	assert(NativeCityChanges.changed_cells(PackedByteArray([1, 2, 3, 4]), PackedByteArray([1, 8, 3, 9]), 2, 255) == PackedInt32Array([0, 1]))
 
 
 func _check_stamp_pixels() -> void:

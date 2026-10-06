@@ -45,6 +45,7 @@ func _traffic_active() -> bool:
 func refresh_moving_things(view_size := -1) -> void:
 	tornado_renderer.begin()
 	app.disaster_effects.begin_commands()
+	caches.trim_moving()
 	caches.dynamic_active_keys.clear()
 	if _traffic_active():
 		traffic_motion.observe(app.document_state.city, app.preferences.visual_enhancements, app.view_state.show_vehicles)
@@ -70,11 +71,6 @@ func refresh_moving_things(view_size := -1) -> void:
 		tornado_renderer.finish()
 		return
 
-	if caches.dynamic_visual_cache.size() > 4096:
-		caches.dynamic_visual_cache.clear()
-	if caches.dynamic_occluder_cache.size() > 4096:
-		caches.dynamic_occluder_cache.clear()
-
 	if view_size < 0:
 		view_size = app.static_render.city_view_size()
 
@@ -86,18 +82,22 @@ func refresh_moving_things(view_size := -1) -> void:
 		app.document_state.city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
 	)
 	var visuals: Array[CityDynamicVisual] = []
+	var visible_bounds := app.map_view.visible_source_rect().grow(256 * divisor)
+	var command_extent := Vector2(256, 256) * divisor
 
 	for source_command in commands:
 		if app.disaster_effects.observe_command(source_command):
+			continue
+		# Cull the exact interpolated bounds before allocating a draw command or
+		# querying its lighting. The camera rectangle is shared by the whole pass.
+		if caches.region_cache != null and not Rect2(
+				Vector2(traffic_motion.command_position(source_command, divisor)) * divisor,
+				command_extent).intersects(visible_bounds):
 			continue
 		var command := traffic_motion.draw_command(source_command, divisor, app.document_state.city.map_size)
 		var display_position := Vector2(source_command.position * divisor) + traffic_motion.display_offset(source_command, divisor)
 		var position := Vector2i(display_position.round())
 		if not app.view_state.show_vehicles and command.record >= 0 and _is_vehicle(int(command.record)):
-			continue
-
-		if (caches.region_cache != null and not Rect2(Vector2(command.position) * divisor,
-				Vector2(Vector2i(256, 256)) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor))):
 			continue
 
 		var transparent_shadow: bool = command.shadow and app.preferences.visual_enhancements.traffic_shadows_enabled \
@@ -186,12 +186,16 @@ func refresh_moving_things(view_size := -1) -> void:
 		visual.size = Vector2(resource.native_size)
 		visual.image = visual_image
 		if not command.shadow:
-			var emission := CityBrightmaps.transform_mask(moving_lights.mask(sprite_archive, command.sprite_id), visual_image, command.flip)
-			if emission != null:
-				visual.emission_texture = ImageTexture.create_from_image(emission)
+			var emission := resource.light_mask(moving_lights.mask(sprite_archive, command.sprite_id), command.flip)
+			if visual_image == resource.image:
+				visual.emission_texture = resource.light_texture()
+			elif emission != null:
+				# The cached mask already includes the original artwork alpha.
+				# Apply the final silhouette to the authored source exactly once.
+				visual.emission_texture = ImageTexture.create_from_image(CityBrightmaps.transform_mask(
+					moving_lights.mask(sprite_archive, command.sprite_id), visual_image, command.flip))
 		if sprite_archive.water_reflections and command.floating_altitude >= 0 and not command.shadow:
-			var lights := CityBrightmaps.transform_mask(moving_lights.mask(sprite_archive, command.sprite_id), resource.image, command.flip)
-			visual.water_reflection = WaterReflectionSprite.create(resource.image, lights, position, int(command.floating_altitude), app.asset_state.palette)
+			visual.water_reflection = resource.reflection(position, int(command.floating_altitude), app.asset_state.palette)
 		visual.special_overlay = command.overlay >= 0
 		visual.fullbright = command.overlay == 0xff
 		visual.toxic_cloud = toxic_cloud

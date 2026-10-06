@@ -8,16 +8,23 @@ const OPTION_BY_TYPE := {1: "traffic_vehicles_enabled", 2: "traffic_vehicles_ena
 
 var tracks: Dictionary[int, Track] = {}
 var _signature: Array = []
+var _observation: Array = []
 
 
 func reset() -> void:
 	tracks.clear()
 	_signature.clear()
+	_observation.clear()
 
 
 func observe(city: CityState, options: Dictionary, vehicles_visible := true) -> void:
 	var signature := [city.document.get_instance_id(), city.compass_rotation(), city.visible_altitude_levels,
 		city.chunk_revision("ALTM"), city.chunk_revision("XTER")]
+	var observation := [signature, city.mirror_signature(["XTHG", "XTXT", "XBLD"]), vehicles_visible,
+		options.traffic_vehicles_enabled, options.disaster_enabled, options.disaster_motion]
+	if observation == _observation:
+		return
+	_observation = observation
 	if signature != _signature:
 		tracks.clear()
 		_signature = signature
@@ -87,14 +94,21 @@ func advance(delta: float) -> bool:
 	return changed
 
 
+func command_position(source: CityDynamicCommand, divisor: int) -> Vector2i:
+	var track: Track = tracks.get(source.record)
+	if track == null or track.current == track.target:
+		return source.position
+	var difference := track.current - track.target
+	var offset := Vector2(difference.x, difference.y - (0.0 if source.shadow else difference.z))
+	# Raster masks and water reflections use the same native pixel position.
+	return source.position + Vector2i((offset / divisor).round())
+
+
 func draw_command(source: CityDynamicCommand, divisor: int, map_size: int) -> CityDynamicCommand:
 	var track: Track = tracks.get(source.record)
 	if track == null or track.current == track.target:
 		return source
-	var difference := track.current - track.target
-	var offset := Vector2(difference.x, difference.y - (0.0 if source.shadow else difference.z))
-	# Raster masks and water reflections use the same native pixel position.
-	var position := source.position + Vector2i((offset / divisor).round())
+	var position := command_position(source, divisor)
 	var tile := Vector2i(floori(track.tile.x), floori(track.tile.y)).clamp(Vector2i.ZERO, Vector2i.ONE * (map_size - 1))
 	var order := (tile.x + tile.y) * map_size + tile.y
 	if position == source.position and order == source.depth_order:
