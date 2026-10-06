@@ -43,6 +43,8 @@ pub struct Camera {
     pub zoom_graphics: [usize; 6],
     /// The graphics size at 10% zoom.
     pub overview_graphics: usize,
+    /// The earthquake offset of the view, in screen pixels.
+    pub shake: (f64, f64),
 }
 
 impl Camera {
@@ -57,6 +59,7 @@ impl Camera {
             viewport: Viewport::default(),
             zoom_graphics: DEFAULT_ZOOM_GRAPHICS,
             overview_graphics: 0,
+            shake: (0.0, 0.0),
         }
     }
 
@@ -82,7 +85,10 @@ impl Camera {
         let (cx, cy) = self.viewport.center();
         let scale = self.scale();
 
-        ((cx - self.center.0 * scale).round(), (cy - self.center.1 * scale).round())
+        (
+            (cx - self.center.0 * scale).round() + self.shake.0.round(),
+            (cy - self.center.1 * scale).round() + self.shake.1.round(),
+        )
     }
 
     pub fn screen_to_source(&self, point: (f64, f64)) -> (f64, f64) {

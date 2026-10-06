@@ -40,6 +40,9 @@ pub struct CityView {
     /// The tiles that the selection outlines.
     pub highlight: Vec<(i32, i32)>,
     moving_key: (u64, i64, usize, bool),
+    pub effects: sc2k_view::effects::Effects,
+    /// The milliseconds of the view clock, for the effects.
+    pub clock_msec: f64,
 }
 
 impl CityView {
@@ -70,7 +73,25 @@ impl CityView {
             data_mesh: None,
             highlight: Vec::new(),
             moving_key: (u64::MAX, -1, usize::MAX, true),
+            effects: sc2k_view::effects::Effects::default(),
+            clock_msec: 0.0,
         }
+    }
+
+    /// Start the effects of a tick or an edit.
+    pub fn show_effects(&mut self, values: &[sc2k_sim::sim::value::Value], art: &CityArt) {
+        let events = sc2k_view::effects::events_of(values);
+
+        if events.is_empty() {
+            return;
+        }
+
+        let view = self.camera.graphics_view();
+        let painter = match &self.regions {
+            Some(regions) => regions.city(),
+            None => self.city.as_ref().expect("the view holds its maps"),
+        };
+        self.effects.show(&events, self.clock_msec, painter, &art.views[view], view);
     }
 
     fn painter(&self) -> &PainterCity {

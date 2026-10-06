@@ -74,6 +74,7 @@ impl App {
         game.audio.advance(delta);
         game.view.advance_palette(delta);
         game.view.animation_phase = elapsed / 100;
+        game.view.clock_msec = elapsed as f64;
         let fast = if self
             .bindings
             .for_action("camera_fast")
@@ -287,6 +288,8 @@ impl App {
         for sound in &outcome.sounds {
             self.game.audio.play_sound(*sound, false, false);
         }
+
+        self.game.view.show_effects(&outcome.effects, &self.game.art);
 
         if outcome.music_track >= 0 {
             self.game.audio.play_music_track(outcome.music_track, false);

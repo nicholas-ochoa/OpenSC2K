@@ -38,3 +38,23 @@ fn an_edit_undoes() {
         assert_eq!(session.city.chunk("XBLD").unwrap().data, before);
     }
 }
+
+#[test]
+fn demolition_raises_dust() {
+    use sc2k_sim::sim::ids::building_tile_ids as tiles;
+
+    let Some(mut session) = session() else {
+        return;
+    };
+
+    let edge = session.city.map_size;
+    let target = (0..edge * edge)
+        .map(|cell| (cell / edge, cell % edge))
+        .find(|(x, y)| (tiles::LOWER_CLASS_HOMES_1X1_1..=tiles::LUXURY_HOMES_1X1_4).contains(&session.city.building_id(*x, *y)))
+        .unwrap();
+    let point = Vec2i::new(target.0, target.1);
+    let outcome = apply(&mut session, &Selection::new(group::BULLDOZER, 0, point, point));
+    assert!(outcome.ok, "{}", outcome.message);
+    assert!(!outcome.effects.is_empty());
+    assert!(outcome.sounds.is_empty() || outcome.sounds.iter().all(|sound| *sound >= 500));
+}
