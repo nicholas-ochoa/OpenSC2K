@@ -2,9 +2,11 @@
 //! manifests and load order of mods, and the folder for user files. It has no Godot types.
 
 pub mod config;
+pub mod console;
 pub mod dirs;
 pub mod mods;
 pub mod paths;
 pub mod release;
+pub mod shell;
 pub mod text;
 pub mod versions;

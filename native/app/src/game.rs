@@ -61,7 +61,7 @@ impl Game {
         if let Some(folder) = settings.path("graphics", "hd_pack") {
             match sc2k_assets::packs::hd::HdPack::load(&folder.to_string_lossy()) {
                 Ok(hd) => art.hd = Some(std::sync::Arc::new(hd)),
-                Err(error) => eprintln!("HD sprite pack: {error}"),
+                Err(error) => sc2k_platform::console::warning(&format!("HD sprite pack: {error}")),
             }
         }
         let seed = std::time::SystemTime::now()
@@ -73,7 +73,8 @@ impl Game {
             session.city.misc_u32(misc::CITY_CENTER_Y) as i32,
         );
         let (mut publisher, first) = Publisher::new(&session.city, session.revision, session.map_revision);
-        let view = CityView::new(&first, center);
+        let mut view = CityView::new(&first, center);
+        view.dark_underground = settings.config.bool("display", "dark_underground", false);
         let status = status_of(&session);
         let music = status.music_enabled;
         let runner = Runner::spawn(session, move |session, _| Published {
@@ -132,7 +133,7 @@ impl Game {
 
     fn present_tick(&mut self, tick: &TickResult) {
         if !tick.error.is_empty() {
-            eprintln!("simulation: {}", tick.error);
+            sc2k_platform::console::error(&format!("simulation: {}", tick.error));
         }
 
         self.audio

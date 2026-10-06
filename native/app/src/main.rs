@@ -470,7 +470,15 @@ fn main() {
                 resume_speed: 3,
             };
 
+            sc2k_platform::console::message(&format!("OpenSC2K {} (native)", env!("CARGO_PKG_VERSION")));
             event_loop.run_app(&mut app).expect("the event loop");
+
+            // the log of the session stays in the user folder, as the Godot build keeps its log
+            let path = settings::Settings::load().root.join("logs/opensc2k.log");
+
+            if let Err(error) = sc2k_platform::console::save(&path) {
+                eprintln!("Cannot save the log: {error}");
+            }
         }
     }
 }

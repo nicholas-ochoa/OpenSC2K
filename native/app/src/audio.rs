@@ -86,7 +86,7 @@ fn open_stream(mixer: Arc<Mutex<Mixer>>) -> Option<cpal::Stream> {
                 Ok(mut mixer) => mixer.render(output, channels, rate),
                 Err(_) => output.fill(0.0),
             },
-            |error| eprintln!("audio: {error}"),
+            |error| sc2k_platform::console::error(&format!("audio: {error}")),
             None,
         )
         .ok()?;

@@ -9,7 +9,7 @@ use sc2k_view::art::CityArt;
 use sc2k_view::camera::{Camera, Viewport};
 use sc2k_view::data_view::{self, Mode};
 use sc2k_view::moving::{Thing, moving_draws};
-use sc2k_view::present::{cycled_colors, draw_map, outline_tile};
+use sc2k_view::present::{cycled_colors, dark_underground, draw_map, outline_tile};
 use sc2k_view::regions::{Options, Regions};
 use sc2k_view::scene;
 
@@ -33,6 +33,8 @@ pub struct CityView {
     /// The display clock of moving sprites, in tenths of a second.
     pub animation_phase: i64,
     pub show_vehicles: bool,
+    /// The dark colors of the underground view, a display setting.
+    pub dark_underground: bool,
     /// Show the art of the HD sprite pack, when one is loaded.
     pub hd: bool,
     /// The data view that replaces the city, and its tile values.
@@ -71,6 +73,7 @@ impl CityView {
             animation_phase: 0,
             show_vehicles: true,
             hd: true,
+            dark_underground: false,
             data_mode: None,
             data_values: Vec::new(),
             data_mesh: None,
@@ -179,7 +182,7 @@ impl CityView {
                     self.moving_key = (u64::MAX, -1, usize::MAX, true);
                 }
                 Err(error) => {
-                    eprintln!("Cannot paint the city: {error}");
+                    sc2k_platform::console::error(&format!("Cannot paint the city: {error}"));
                     self.city = Some(city);
 
                     return;
@@ -213,12 +216,17 @@ impl CityView {
             return;
         }
 
-        let colors = cycled_colors(&art.palette, &palette::index_map(self.cycle_ticks));
-        let background = if self.options.underground {
+        let mut colors = cycled_colors(&art.palette, &palette::index_map(self.cycle_ticks));
+        let mut background = if self.options.underground {
             UNDERGROUND_BACKGROUND
         } else {
             BACKGROUND
         };
+
+        if self.options.underground && self.dark_underground {
+            colors = dark_underground(&colors);
+            background = dark_underground(&[UNDERGROUND_BACKGROUND; 256])[0];
+        }
         let regions = self.regions.as_mut().expect("regions exist");
         draw_map(frame, &self.camera, regions, &colors, background);
 

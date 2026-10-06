@@ -207,3 +207,37 @@ fn draw_map_hd(frame: &mut Frame, camera: &Camera, regions: &mut Regions, backgr
         }
     }
 }
+
+/// The dark underground colors of cycled frame colors, as
+/// Sc2Palette.underground_animation_image: the dry pipe ramp turns brown, the
+/// wet pipes stay blue, white turns dark, and the rest darkens by its hue.
+pub fn dark_underground(colors: &[u32; 256]) -> [u32; 256] {
+    let mut result = [0; 256];
+
+    for (index, color) in colors.iter().enumerate() {
+        let channel = |shift: u32| f32::from(((color >> shift) & 0xff) as u8) / 255.0;
+        let (r, g, b) = (channel(16), channel(8), channel(0));
+        let (high, low) = (r.max(g).max(b), r.min(g).min(b));
+        let lerp = |a: [f32; 3], z: [f32; 3], t: f32| [a[0] + (z[0] - a[0]) * t, a[1] + (z[1] - a[1]) * t, a[2] + (z[2] - a[2]) * t];
+        let remapped = if (200..=207).contains(&index) {
+            lerp([0.22, 0.66, 0.82], [0.66, 0.94, 1.0], g)
+        } else if (140..=147).contains(&index) {
+            // the fixed blue pipe ramp means no water
+            lerp([0.36, 0.20, 0.12], [0.72, 0.46, 0.28], high)
+        } else if low > 0.97 {
+            [0.125, 0.157, 0.188]
+        } else if high - low < 0.08 {
+            lerp([0.28, 0.33, 0.38], [0.60, 0.66, 0.70], high)
+        } else if b > r * 1.3 && b > g * 1.15 {
+            lerp([0.18, 0.43, 0.65], [0.40, 0.78, 0.96], high)
+        } else if g > r * 1.2 && g > b * 1.2 {
+            lerp([0.18, 0.43, 0.28], [0.45, 0.82, 0.56], high)
+        } else {
+            [r * 0.6, g * 0.6, b * 0.6]
+        };
+        let byte = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u32;
+        result[index] = (byte(remapped[0]) << 16) | (byte(remapped[1]) << 8) | byte(remapped[2]);
+    }
+
+    result
+}
