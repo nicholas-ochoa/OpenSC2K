@@ -10,6 +10,7 @@ art of SimCity 2000. Its layers are plain SVG files, to edit by hand:
 
 Each object is its own named group, with its gradients inside it. icon.json
 holds the sky gradient of each appearance and the order of the layers.
+tools/paint_icon.py writes these files; carry hand edits into it.
 
 macOS 26 and later show an app icon in its own shape only when it comes from
 an Icon Composer document. Other icons get a grey frame. So this script writes:

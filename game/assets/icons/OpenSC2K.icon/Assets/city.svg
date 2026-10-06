@@ -62,6 +62,22 @@
 <path d="M839.2,274.5 L839.2,244.5" fill="none" stroke="#d5dbe5" stroke-width="3"/>
 <ellipse cx="839.2" cy="244.5" rx="4.0" ry="4.0" fill="#ff3a30"/>
 </g>
+<g id="stadium">
+<ellipse cx="968.5" cy="566.1" rx="66.0" ry="25.0" fill="#b01101"/>
+<ellipse cx="968.5" cy="558.1" rx="66.0" ry="25.0" fill="#ff2909"/>
+<ellipse cx="968.5" cy="558.1" rx="54.0" ry="19.0" fill="#f7e9cc"/>
+<ellipse cx="968.5" cy="559.1" rx="44.0" ry="15.0" fill="#beb19e"/>
+<ellipse cx="968.5" cy="560.1" rx="34.0" ry="11.0" fill="#67cb2f"/>
+<polygon points="950.5,560.1 968.5,554.1 986.5,560.1 968.5,566.1" fill="#84eb47"/>
+<path d="M912.5,562.1 L912.5,538.1" fill="none" stroke="#d5dbe5" stroke-width="2.5"/>
+<ellipse cx="912.5" cy="537.1" rx="5.0" ry="3.0" fill="#ffffff"/>
+<path d="M949.5,552.1 L949.5,528.1" fill="none" stroke="#d5dbe5" stroke-width="2.5"/>
+<ellipse cx="949.5" cy="527.1" rx="5.0" ry="3.0" fill="#ffffff"/>
+<path d="M986.5,552.1 L986.5,528.1" fill="none" stroke="#d5dbe5" stroke-width="2.5"/>
+<ellipse cx="986.5" cy="527.1" rx="5.0" ry="3.0" fill="#ffffff"/>
+<path d="M1023.5,562.1 L1023.5,538.1" fill="none" stroke="#d5dbe5" stroke-width="2.5"/>
+<ellipse cx="1023.5" cy="537.1" rx="5.0" ry="3.0" fill="#ffffff"/>
+</g>
 <g id="tower-far-stone">
 <defs><linearGradient id="tower-far-stone-paint3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dbc8b0" stop-opacity="1"/><stop offset="1" stop-color="#baa596" stop-opacity="1"/></linearGradient></defs>
 <defs><linearGradient id="tower-far-stone-paint4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a48e73" stop-opacity="1"/><stop offset="1" stop-color="#806e66" stop-opacity="1"/></linearGradient></defs>
@@ -223,6 +239,22 @@
 <polygon points="764.7,605.9 793.7,597.2 781.3,582.6 752.3,591.3" fill="#f62401"/>
 <polygon points="774.8,614.8 782.1,612.6 782.1,605.8 774.8,608.0" fill="#4f688b"/>
 </g>
+<g id="shop-near-stadium">
+<g id="shop-near-stadium-moved" transform="translate(930.45269,-136.95891)">
+<polygon points="-109.7,744.6 -58.0,760.1 -58.0,714.7 -109.7,699.2" fill="#c0e389"/>
+<polygon points="-58.0,760.1 -6.3,744.6 -6.3,699.2 -58.0,714.7" fill="#88b155"/>
+<polygon points="-58.0,714.7 -6.3,699.2 -58.0,683.7 -109.7,699.2" fill="#e9f6d6"/>
+<polygon points="-106.6,741.0 -61.1,754.6 -61.1,748.6 -106.6,734.9" fill="#536e94"/>
+<polygon points="-106.6,725.9 -61.1,739.5 -61.1,733.5 -106.6,719.8" fill="#536e94"/>
+<polygon points="-106.6,710.8 -61.1,724.4 -61.1,718.4 -106.6,704.7" fill="#536e94"/>
+<polygon points="-54.9,754.6 -9.4,741.0 -9.4,734.9 -54.9,748.6" fill="#3f557b"/>
+<polygon points="-54.9,739.5 -9.4,725.9 -9.4,719.8 -54.9,733.5" fill="#3f557b"/>
+<polygon points="-54.9,724.4 -9.4,710.8 -9.4,704.7 -54.9,718.4" fill="#3f557b"/>
+<polygon points="-64.5,698.2 -58.5,700.0 -58.5,695.0 -64.5,693.2" fill="#c6ccd7"/>
+<polygon points="-58.5,700.0 -52.5,698.2 -52.5,693.2 -58.5,695.0" fill="#8b9096"/>
+<polygon points="-58.5,695.0 -52.5,693.2 -58.5,691.4 -64.5,693.2" fill="#d7dbe3"/>
+</g>
+</g>
 <g id="tree-2">
 <ellipse cx="629.8" cy="622.7" rx="7.9" ry="3.1" fill="#24681c" opacity="0.35"/>
 <ellipse cx="625.4" cy="615.7" rx="8.7" ry="7.9" fill="#2ca418"/>
@@ -232,22 +264,6 @@
 <ellipse cx="648.1" cy="623.0" rx="10.4" ry="4.0" fill="#24681c" opacity="0.35"/>
 <ellipse cx="642.3" cy="613.8" rx="11.5" ry="10.4" fill="#2ca418"/>
 <ellipse cx="638.9" cy="610.9" rx="6.4" ry="5.2" fill="#61da24"/>
-</g>
-<g id="stadium">
-<ellipse cx="900.0" cy="606.0" rx="66.0" ry="25.0" fill="#b01101"/>
-<ellipse cx="900.0" cy="598.0" rx="66.0" ry="25.0" fill="#ff2909"/>
-<ellipse cx="900.0" cy="598.0" rx="54.0" ry="19.0" fill="#f7e9cc"/>
-<ellipse cx="900.0" cy="599.0" rx="44.0" ry="15.0" fill="#beb19e"/>
-<ellipse cx="900.0" cy="600.0" rx="34.0" ry="11.0" fill="#67cb2f"/>
-<polygon points="882.0,600.0 900.0,594.0 918.0,600.0 900.0,606.0" fill="#84eb47"/>
-<path d="M844.0,602.0 L844.0,578.0" fill="none" stroke="#d5dbe5" stroke-width="2.5"/>
-<ellipse cx="844.0" cy="577.0" rx="5.0" ry="3.0" fill="#ffffff"/>
-<path d="M881.0,592.0 L881.0,568.0" fill="none" stroke="#d5dbe5" stroke-width="2.5"/>
-<ellipse cx="881.0" cy="567.0" rx="5.0" ry="3.0" fill="#ffffff"/>
-<path d="M918.0,592.0 L918.0,568.0" fill="none" stroke="#d5dbe5" stroke-width="2.5"/>
-<ellipse cx="918.0" cy="567.0" rx="5.0" ry="3.0" fill="#ffffff"/>
-<path d="M955.0,602.0 L955.0,578.0" fill="none" stroke="#d5dbe5" stroke-width="2.5"/>
-<ellipse cx="955.0" cy="577.0" rx="5.0" ry="3.0" fill="#ffffff"/>
 </g>
 <g id="tree-4">
 <ellipse cx="-20.1" cy="626.6" rx="9.4" ry="3.7" fill="#24681c" opacity="0.35"/>
@@ -1512,13 +1528,10 @@
 <polygon points="474.0,350.2 545.0,371.5 447.5,287.4" fill="#ffaf5b"/>
 <polygon points="350.0,387.4 421.0,408.7 447.5,287.4" fill="#ffce8b"/>
 <polygon points="421.0,408.7 545.0,371.5 447.5,287.4" fill="#df8939"/>
-<polygon points="401.0,370.4 407.4,372.3 418.1,349.7 413.4,348.3" fill="#5fb7ff"/>
 <polygon points="545.0,371.5 421.0,408.7 518.5,308.8" fill="#ffe0ad"/>
 <polygon points="545.0,371.5 616.0,392.8 518.5,308.8" fill="#ffaf5b"/>
 <polygon points="421.0,408.7 492.0,430.0 518.5,308.8" fill="#ffce8b"/>
 <polygon points="492.0,430.0 616.0,392.8 518.5,308.8" fill="#df8939"/>
-<polygon points="472.0,391.7 478.4,393.6 489.1,371.0 484.4,369.6" fill="#5fb7ff"/>
-<polygon points="415.3,407.0 426.7,410.4 550.7,373.2 539.3,369.8" fill="#5fb7ff"/>
 </g>
 <g id="house-35">
 <polygon points="305.3,910.7 330.0,918.1 330.0,904.4 305.3,897.0" fill="#e5eff5"/>
@@ -2255,5 +2268,33 @@
 <path d="M1171.0,814.2 L1171.0,823.9" fill="none" stroke="#ff1d07" stroke-width="1.3" opacity="0.9"/>
 <path d="M1187.2,813.3 L1187.2,819.0" fill="none" stroke="#ff1d07" stroke-width="1.3" opacity="0.9"/>
 </g>
+</g>
+<g id="helicopter" transform="translate(440,214) rotate(-8) scale(1.25)">
+<polygon points="10.0,-9.0 72.0,-27.0 74.0,-21.0 12.0,1.0" fill="#ff2a1a" stroke="#141414" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="64.0,-25.0 80.0,-46.0 86.0,-45.0 76.0,-22.0" fill="#d20000" stroke="#141414" stroke-width="2.5" stroke-linejoin="round"/>
+<defs><radialGradient id="helicopter-paint31"><stop offset="0" stop-color="#e8e8e8" stop-opacity="0.5"/><stop offset="0.8" stop-color="#bbbbbb" stop-opacity="0.45"/><stop offset="1" stop-color="#888888" stop-opacity="0.2"/></radialGradient></defs>
+<ellipse cx="78.0" cy="-26.0" rx="13.0" ry="13.0" fill="url(#helicopter-paint31)" stroke="#9a9a9a" stroke-width="1.5"/>
+<path d="M-30.0,22.0 L20.0,16.0" fill="none" stroke="#3b3b3b" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M-18.0,20.0 L-16.0,8.0" fill="none" stroke="#3b3b3b" stroke-width="2.5"/>
+<path d="M6.0,17.0 L6.0,6.0" fill="none" stroke="#3b3b3b" stroke-width="2.5"/>
+<path d="M-22.0,27.0 L28.0,21.0" fill="none" stroke="#3b3b3b" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M-10.0,25.0 L-8.0,13.0" fill="none" stroke="#3b3b3b" stroke-width="2.5"/>
+<path d="M14.0,22.0 L14.0,11.0" fill="none" stroke="#3b3b3b" stroke-width="2.5"/>
+<defs><linearGradient id="helicopter-paint32" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5a40" stop-opacity="1"/><stop offset="0.55" stop-color="#ff1e10" stop-opacity="1"/><stop offset="1" stop-color="#930000" stop-opacity="1"/></linearGradient></defs>
+<path d="M-38,6 C-38,-12 -22,-20 0,-20 C16,-20 22,-10 22,0 C22,10 12,16 -6,16 C-26,16 -38,14 -38,6 Z" fill="url(#helicopter-paint32)" stroke="#141414" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="M-30,6 C-14,8 4,6 21,1" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.85"/>
+<defs><linearGradient id="helicopter-paint33" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9ecff" stop-opacity="1"/><stop offset="1" stop-color="#3d88ff" stop-opacity="1"/></linearGradient></defs>
+<path d="M-37,4 C-37,-10 -26,-17 -12,-18 L-10,2 Z" fill="url(#helicopter-paint33)" stroke="#141414" stroke-width="2"/>
+<path d="M-31,-6 C-29,-11 -24,-14 -18,-15" fill="none" stroke="#ffffff" stroke-width="2.5" opacity="0.9" stroke-linecap="round"/>
+<path d="M-6.0,-20.0 L-6.0,-30.0" fill="none" stroke="#3b3b3b" stroke-width="4"/>
+<defs><radialGradient id="helicopter-paint34"><stop offset="0" stop-color="#c4d2ff" stop-opacity="0.9"/><stop offset="0.6" stop-color="#7d95ff" stop-opacity="0.7"/><stop offset="1" stop-color="#4945ff" stop-opacity="0.45"/></radialGradient></defs>
+<ellipse cx="-6.0" cy="-32.0" rx="70.0" ry="15.0" fill="url(#helicopter-paint34)" stroke="#2720ff" stroke-width="1.2" stroke-opacity="0.6"/>
+<path d="M-70.6,-29.1 L58.6,-34.9" fill="none" stroke="#3a44ff" stroke-width="1.5" opacity="0.45"/>
+<path d="M-71.0,-34.4 L59.0,-29.6" fill="none" stroke="#3a44ff" stroke-width="1.5" opacity="0.45"/>
+<path d="M-56.6,-41.0 L44.6,-23.0" fill="none" stroke="#3a44ff" stroke-width="1.5" opacity="0.45"/>
+<path d="M-23.1,-45.5 L11.1,-18.5" fill="none" stroke="#3a44ff" stroke-width="1.5" opacity="0.45"/>
+<ellipse cx="-6.0" cy="-32.0" rx="6.0" ry="3.0" fill="#141414"/>
+<ellipse cx="-4.0" cy="17.0" rx="3.0" ry="2.0" fill="#ff0000"/>
+<ellipse cx="84.0" cy="-46.0" rx="2.5" ry="2.5" fill="#ffffff"/>
 </g>
 </svg>
