@@ -45,6 +45,7 @@ func reset() -> void:
 	geometry.clear()
 	roads.roads.clear()
 	masker._occluders.clear()
+	masker._occluder_bounds.clear()
 	visible_tiles.clear()
 	signature.clear()
 	bounds = Rect2i()
@@ -186,6 +187,7 @@ func _forget_helpers(tile: Vector2i) -> void:
 		var key := Vector3i(tile.x, tile.y, axis)
 		roads.roads.erase(key)
 		masker._occluders.erase(key)
+		masker._occluder_bounds.erase(key)
 
 
 func _regions_ready(app: CityApplication, tile: Vector2i) -> bool:
@@ -234,21 +236,26 @@ func _build(app: CityApplication, tile: Vector2i) -> Dictionary:
 			continue
 		var occluders := masker._candidates(app, tile, enter)
 		for patch: Dictionary in roads._road_patches(city, tile, enter):
-			for sample: Vector4 in patch.samples:
-				var point := Vector2i(int(sample.x), int(sample.y))
-				var local := point - origin
-				if seen.has(point) or not Rect2i(0, 0, 64, 64).has_point(local) or CityLifeCanvas.hidden_at(point, occluders):
-					continue
-				seen[point] = true
-				var color := Color(0, 0, 0, 1)
-				for light in lights:
-					if light.has("enter") and int(light.enter) != enter and not CityLifePaths.can_turn(city, tile, enter, int(light.enter)):
+			var pixels: Image = patch.image
+			for y in pixels.get_height():
+				for x in pixels.get_width():
+					var sample := pixels.get_pixel(x, y)
+					if sample.a <= 0.0:
 						continue
-					var distance := Vector2(sample.z, sample.w).distance_to(light.position)
-					var falloff := pow(maxf(0.0, 1.0 - distance / float(light.radius)), 1.6)
-					color += Color(str(light.color)) * falloff * float(light.intensity)
-				color.a = 1.0
-				image.set_pixelv(local, color.clamp())
+					var point: Vector2i = patch.origin + Vector2i(x, y)
+					var local := point - origin
+					if seen.has(point) or not Rect2i(0, 0, 64, 64).has_point(local) or CityLifeCanvas.hidden_at(point, occluders):
+						continue
+					seen[point] = true
+					var color := Color(0, 0, 0, 1)
+					for light in lights:
+						if light.has("enter") and int(light.enter) != enter and not CityLifePaths.can_turn(city, tile, enter, int(light.enter)):
+							continue
+						var distance := Vector2(sample.r, sample.g).distance_to(light.position)
+						var falloff := pow(maxf(0.0, 1.0 - distance / float(light.radius)), 1.6)
+						color += Color(str(light.color)) * falloff * float(light.intensity)
+					color.a = 1.0
+					image.set_pixelv(local, color.clamp())
 	var result := CityNightFixtures.build(app, tile, origin,
 		CityNightFixtures.street_layout(city, tile, int(profiles.street.spacing)), masker)
 	result.merge({"texture": ImageTexture.create_from_image(image), "origin": origin})

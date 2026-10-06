@@ -189,6 +189,7 @@ func _check_night_glow(hdr: bool) -> void:
 	marker.size = Vector2(16, 16)
 	for target in [map.layers.overlay_layer, app.visual_environment.weather]:
 		if target is CityVisualWeather:
+			target.rain = 0.5
 			target._sync_layer(true)
 			target.layer.show()
 			target.layer.add_child(marker)

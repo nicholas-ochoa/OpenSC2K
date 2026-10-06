@@ -344,13 +344,18 @@ func _check_ground_lighting(main: CityApplication) -> void:
 			var receiver := CityLifeLights.new()
 			var samples := 0
 			for patch: Dictionary in receiver._road_patches(junctions, tile, enter):
-				for sample: Vector4 in patch.samples:
-					var offset := Vector2(sample.z, sample.w) - Vector2(tile)
-					var t := 0.5 - offset.dot(Vector2(CityLifePaths.DIRECTIONS[enter]))
-					var height := lerpf(CityLifePaths.edge_height(junctions, tile, enter), CityLifePaths.edge_height(junctions, tile, (enter + 2) % 4), t)
-					var expected := CityLifeLights._project(junctions, tile, offset, height)
-					assert(expected.distance_to(Vector2(sample.x + 0.5, sample.y + 0.5)) < 0.01, "Light receiver left the sloping road")
-					samples += 1
+				var pixels: Image = patch.image
+				for y in pixels.get_height():
+					for x in pixels.get_width():
+						var sample := pixels.get_pixel(x, y)
+						if sample.a <= 0.0:
+							continue
+						var offset := Vector2(sample.r, sample.g) - Vector2(tile)
+						var t := 0.5 - offset.dot(Vector2(CityLifePaths.DIRECTIONS[enter]))
+						var height := lerpf(CityLifePaths.edge_height(junctions, tile, enter), CityLifePaths.edge_height(junctions, tile, (enter + 2) % 4), t)
+						var expected := CityLifeLights._project(junctions, tile, offset, height)
+						assert(expected.distance_to(Vector2(patch.origin) + Vector2(x + 0.5, y + 0.5)) < 0.01, "Light receiver left the sloping road")
+						samples += 1
 			assert(samples > 20)
 	# Lamp feet also follow the bent grade between a road and a raised onramp.
 	junctions.set_terrain_id(64, 64, 0)
