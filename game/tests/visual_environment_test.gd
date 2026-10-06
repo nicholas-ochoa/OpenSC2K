@@ -81,9 +81,9 @@ func _run() -> void:
 	var weather_source := tab.controls.weather_mode as OptionButton
 	weather_source.select(2)
 	weather_source.item_selected.emit(2)
-	(tab.controls.day_lut_strength as SpinBox).value = 0.2
-	(tab.controls.season_lut_strength as SpinBox).value = 0.8
-	(tab.controls.weather_lut_strength as SpinBox).value = 0.6
+	(tab.controls.day_lut_strength as SpinBox).value = 20.0
+	(tab.controls.season_lut_strength as SpinBox).value = 80.0
+	(tab.controls.weather_lut_strength as SpinBox).value = 60.0
 	assert(main.preferences.visual_enhancements.day_lut_strength == 0.2)
 	assert(main.preferences.visual_enhancements.season_lut_strength == 0.8)
 	assert(main.preferences.visual_enhancements.weather_lut_strength == 0.6)
@@ -213,6 +213,37 @@ func _run() -> void:
 
 func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	var original := tab.selected_values()
+	# Navigation is presentation-only, and percentage displays round-trip every option.
+	var notifications := [0]
+	var count_change := func() -> void: notifications[0] += 1
+	tab.changed.connect(count_change)
+	for category in tab.pages.size():
+		tab.category_buttons[category].pressed.emit()
+		assert(tab.pages[category].visible)
+		assert(tab.pages.filter(func(page: VBoxContainer) -> bool: return page.visible).size() == 1)
+		assert(tab.selected_values() == original)
+	assert(notifications[0] == 0, "Category navigation changed settings")
+	tab.changed.disconnect(count_change)
+	for field in VisualEnhancementOptions.FIELDS:
+		assert(tab.controls.has(field[0]), "An option is missing from the settings pages")
+		if field[0] in VisualEnhancementsTab.PERCENT_FIELDS:
+			assert(is_equal_approx((tab.controls[field[0]] as SpinBox).value, float(original[field[0]]) * 100.0))
+	assert(tab.controls.size() == VisualEnhancementOptions.FIELDS.size())
+	var saved := VisualEnhancementOptions.normalize({"lut_folder": "user://authored_luts", "disaster_strength": 0.35, "disaster_lights": 0.25, "disaster_shake": 0.0})
+	tab.show_values(saved)
+	assert(tab.selected_values() == saved, "Settings pages lost stored values")
+	(tab.controls.disaster_strength as SpinBox).value = 0.0
+	assert(not (tab.controls.disaster_lights as SpinBox).editable)
+	assert((tab.controls.disaster_crowds as CheckBox).disabled and (tab.controls.disaster_dust as CheckBox).disabled)
+	assert(not (tab.controls.disaster_motion as CheckBox).disabled)
+	assert((tab.controls.disaster_shake as SpinBox).editable)
+	(tab.controls.disaster_strength as SpinBox).value = 70.0
+	assert((tab.controls.disaster_lights as SpinBox).editable)
+	(tab.controls.disaster_enabled as CheckBox).button_pressed = false
+	assert(not (tab.controls.disaster_strength as SpinBox).editable)
+	assert(not (tab.controls.disaster_shake as SpinBox).editable)
+	assert((tab.controls.disaster_motion as CheckBox).disabled)
+	assert(tab.selected_values().disaster_lights == 0.25)
 	tab.show_values({})
 	var fixed := tab.controls.season_fixed as OptionButton
 	var source := tab.controls.season_mode as OptionButton

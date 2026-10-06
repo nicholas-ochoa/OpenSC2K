@@ -138,7 +138,10 @@ func _ready() -> void:
 	canceled.connect(button_clicked.emit)
 	%ImportButton.pressed.connect(_request_original_import.bind(PackedStringArray(Sc2MediaImporter.CATEGORIES)))
 	check_updates_now_button.pressed.connect(update_check_requested.emit)
-	about_to_popup.connect(_fit_to_viewport)
+	about_to_popup.connect(func() -> void:
+		_fit_to_viewport()
+		# Refit after popup_centered applies the content minimum size.
+		call_deferred("_fit_to_viewport"))
 	if get_parent() != null:
 		get_parent().get_viewport().size_changed.connect(_fit_to_viewport)
 	theme_changed.connect(func() -> void: call_deferred("_fit_to_viewport"))
@@ -304,6 +307,7 @@ func show_values(
 	for tab in tabs.get_children():
 		if tab is ScrollContainer:
 			(tab as ScrollContainer).scroll_vertical = 0
+	visual_tab.select_category(0)
 
 	_update_use_defaults(tabs.current_tab)
 	loading_values = was_loading

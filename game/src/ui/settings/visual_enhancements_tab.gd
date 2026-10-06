@@ -1,5 +1,6 @@
 class_name VisualEnhancementsTab
-extends ScrollContainer
+extends VBoxContainer
+## Presentation-only navigation and display units; saved options retain their original units.
 
 signal changed
 signal reload_requested
@@ -7,125 +8,250 @@ signal export_requested
 signal luts_reload_requested
 signal luts_export_requested
 
+const SECTIONS := [
+	["Day & Night", "Set the time of day and the appearance of the night.",
+		["day_enabled", "day_mode", "day_hour", "day_seconds", "day_lut_strength", "night_strength"]],
+	["Lighting", "Building and vehicle lights at night. Enable Day & Night to use these settings.",
+		["brightmaps", "night_light_strength"]],
+	["Seasons", "Follow the city calendar, run a visual cycle or choose one season.",
+		["season_enabled", "season_mode", "season_fixed", "season_seconds", "season_transition", "season_lut_strength"]],
+	["Weather & Clouds", "Weather and clouds have separate switches. Snow requires winter; in other seasons, snow selections show rain.",
+		["weather_enabled", "weather_mode", "weather_fixed", "weather_seconds", "weather_transition", "weather_strength", "weather_lut_strength", "cloud_enabled", "cloud_density", "cloud_shadow_strength", "cloud_speed"]],
+	["Water", "Reflections, underwater terrain and seasonal water colors. Seasonal colors require Seasons.",
+		["water_reflections", "water_waves_enabled", "water_topography", "season_water_strength"]],
+	["Traffic & Movement", "Decorative cars and pedestrians, plus smoother movement for existing vehicles.",
+		["life_cars_enabled", "life_car_amount", "life_people_enabled", "life_people_amount", "traffic_helicopters_enabled", "traffic_planes_enabled", "traffic_ships_enabled", "traffic_trains_enabled", "traffic_shadows_enabled"]],
+	["Disaster Effects", "Extra effects for disasters and demolition. These settings do not change disaster frequency, damage or emergency response.",
+		["disaster_enabled", "disaster_strength", "disaster_crowds", "disaster_dust", "disaster_lights", "disaster_motion", "disaster_shake"]],
+	["Animation", "Shared timing for visual cycles and animated effects. Cycle durations use Turtle speed when linked; otherwise they use real time.",
+		["speed_link", "pause_freezes"]],
+	["Custom Graphics", "Optional files for custom colors and lights. Standard effects work without these fields.",
+		["lut_path", "lut_folder", "brightmap_folder"]],
+]
+const PERCENT_FIELDS := ["day_lut_strength", "night_strength", "season_transition", "season_lut_strength",
+	"season_water_strength", "weather_strength", "weather_lut_strength", "cloud_density", "cloud_shadow_strength",
+	"disaster_strength", "disaster_lights", "disaster_shake"]
+const LABELS := {
+	"disaster_enabled": "Enhanced disaster visuals", "disaster_strength": "Additional effect intensity",
+	"disaster_crowds": "Animated riot crowds", "disaster_lights": "Fire and impact lighting",
+	"disaster_shake": "Earthquake camera shake", "lut_folder": "Custom color profile folder",
+	"pause_freezes": "Pause environment cycles with the game",
+	"day_mode": "Time source", "day_hour": "Fixed hour (0–24)", "day_seconds": "Day cycle duration",
+	"day_lut_strength": "Time-of-day color strength", "night_strength": "Night darkness",
+	"brightmaps": "Building and vehicle lights", "night_light_strength": "Light brightness",
+	"season_seconds": "Year cycle duration", "season_transition": "Season blend duration", "season_lut_strength": "Season color strength",
+	"weather_seconds": "Weather change interval", "weather_transition": "Weather blend duration",
+	"weather_strength": "Weather intensity", "weather_lut_strength": "Weather color strength",
+	"life_car_amount": "Car density", "life_people_amount": "Pedestrian density",
+	"lut_path": "Custom color filter (LUT PNG)", "brightmap_folder": "Custom light masks (brightmaps)",
+}
+const HINTS := {
+	"disaster_enabled": "Enable additional presentation effects. Turning this off restores the original disaster visuals; disasters still occur.",
+	"disaster_strength": "Intensity of added visual effects. At 0%, added crowds, dust and lighting are off. Tornado smoothing and camera shake remain separate.",
+	"disaster_crowds": "Animated riot crowds use the city pedestrian artwork. Does not change population, riot spread or treatment targets.",
+	"disaster_dust": "Dust from demolition and damage. Dust from player demolition continues to settle while the game is paused.",
+	"disaster_motion": "Smooth the displayed tornado movement between completed simulation positions. Does not change its route or damage.",
+	"disaster_lights": "Local fire and impact lighting. Requires enhanced disaster visuals and effect intensity above 0%.",
+	"disaster_shake": "Strength of earthquake camera movement. Set to 0% to remove camera shake while enhanced disaster visuals are enabled.",
+	"pause_freezes": "Pause environment cycles and enhanced disaster animations. Rain, snow and dust from player demolition can continue.",
+	"lut_folder": "Optional folder of color profiles. Leave empty to use the built-in profiles.",
+	"weather_fixed": "Snow requires winter. In other seasons, snow selections use rain of the same strength.",
+	"day_hour": "24-hour time in quarter-hour steps: 7.5 means 07:30.",
+	"day_seconds": "Seconds for one complete day/night cycle. The Animation section controls speed and pause behavior.",
+	"season_seconds": "Seconds for one complete visual year. The city calendar is unchanged.",
+	"season_transition": "Part of each season used to blend into the next season. Higher values make the transition longer.",
+	"weather_seconds": "Time between automatic weather selections. The Animation section controls speed and pause behavior.",
+	"day_lut_strength": "Strength of the time-of-day color filter. 0% disables this filter.",
+	"season_lut_strength": "Strength of seasonal color filters. 0% disables these filters.",
+	"weather_lut_strength": "Strength of weather color filters. 0% disables these filters.",
+	"season_water_strength": "Strength of the seasonal water tint. Enable Seasons to use this setting.",
+	"cloud_density": "Amount of decorative cloud coverage.",
+	"cloud_speed": "Multiplier for cloud movement. 1× is the standard speed; 0× stops movement.",
+	"life_car_amount": "Decorative car density. 1× is the standard amount; does not change simulated traffic.",
+	"life_people_amount": "Decorative pedestrian density. 1× is the standard amount; does not change population.",
+	"night_light_strength": "Brightness of building and vehicle lights. 100% uses the original brightness; 0% turns the lights off without changing night colors.",
+	"brightmap_folder": "Relative to the data folder, for example brightmaps-standard. Absolute paths are also supported. Requires active lighting.",
+	"lut_path": "Optional PNG lookup table (LUT) for custom color grading. Leave empty for standard colors.",
+}
+
 var controls: Dictionary = {}
 var filling := false
+var pages: Array[VBoxContainer] = []
+var category_buttons: Array[Button] = []
+var page_scroll: ScrollContainer
 
 
 func _ready() -> void:
 	name = "Visual Enhancements"
-	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var content := VBoxContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 12)
-	add_child(content)
-	var sections: Dictionary[String, VBoxContainer] = {}
-	for title in ["Seasons", "Day and Night Shift", "Weather Effects", "Environment", "Traffic & Movement", "Disaster Effects", "Other Effects"]:
-		if not VisualEnhancementOptions.FIELDS.any(func(field: Array) -> bool: return _category_for(field[0]) == title):
-			continue
-		var section := VBoxContainer.new()
-		section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		section.add_theme_constant_override("separation", 8)
+	add_theme_constant_override("separation", 10)
+	var introduction := _help("Visual effects only. Changes apply immediately.")
+	introduction.autowrap_mode = TextServer.AUTOWRAP_OFF
+	add_child(introduction)
+	var body := HBoxContainer.new()
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 12)
+	add_child(body)
+	var navigation_scroll := ScrollContainer.new()
+	navigation_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	navigation_scroll.follow_focus = true
+	navigation_scroll.custom_minimum_size.x = 164
+	body.add_child(navigation_scroll)
+	var navigation := VBoxContainer.new()
+	navigation.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation_scroll.add_child(navigation)
+	body.add_child(VSeparator.new())
+	page_scroll = ScrollContainer.new()
+	page_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page_scroll.follow_focus = true
+	page_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(page_scroll)
+	var page_stack := VBoxContainer.new()
+	page_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page_scroll.add_child(page_stack)
+	var group := ButtonGroup.new()
+	for section in SECTIONS:
+		var page := VBoxContainer.new()
+		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		page.add_theme_constant_override("separation", 8)
+		page_stack.add_child(page)
+		pages.append(page)
 		var heading := Label.new()
-		heading.text = title
+		heading.text = section[0]
 		heading.add_theme_font_size_override("font_size", get_theme_font_size("font_size") + 3)
-		section.add_child(heading)
-		section.add_child(HSeparator.new())
-		content.add_child(section)
-		sections[title] = section
-	for field in VisualEnhancementOptions.FIELDS:
-		var row := HBoxContainer.new()
-		var label := Label.new()
-		label.text = field[1]
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		var control: Control
-		match field[2]:
-			"bool":
-				control = CheckBox.new()
-				(control as CheckBox).toggled.connect(func(_v: bool) -> void: _changed())
-			"choice":
-				control = OptionButton.new()
-				for choice in field[4]:
-					(control as OptionButton).add_item(choice)
-				(control as OptionButton).item_selected.connect(func(_v: int) -> void: _changed())
-			"number":
-				var spin := SpinBox.new()
-				spin.min_value = field[4]
-				spin.max_value = field[5]
-				spin.step = field[6]
-				if field[0] == "night_light_strength":
-					spin.suffix = "%"
-					spin.tooltip_text = "Brightness of building and vehicle lights. 100% uses the original brightness; 0% turns the lights off without changing the night colors."
-				spin.value_changed.connect(func(_v: float) -> void: _changed())
-				control = spin
-			"path":
-				control = LineEdit.new()
-				control.custom_minimum_size.x = 240
-				if field[0] == "brightmap_folder":
-					control.tooltip_text = "Relative to the data folder, for example brightmaps-standard. Absolute paths are also supported."
-				(control as LineEdit).text_submitted.connect(func(_v: String) -> void: _changed())
-				control.focus_exited.connect(_changed)
-		row.add_child(control)
-		if field[0] == "weather_fixed":
-			control.tooltip_text = "Snow is shown only in winter. In other seasons, snow selections use rain of the same strength."
-		sections[_category_for(field[0])].add_child(row)
-		controls[field[0]] = control
-	var buttons := HFlowContainer.new()
-	var brightmap_buttons := HFlowContainer.new()
-	for title in ["Disable all", "Use defaults", "Reload brightmaps", "Export PNG templates"]:
+		page.add_child(heading)
+		page.add_child(_help(section[1]))
+		page.add_child(HSeparator.new())
+		for key: String in section[2]:
+			for field in VisualEnhancementOptions.FIELDS:
+				if field[0] == key:
+					_add_field(page, field)
 		var button := Button.new()
-		button.text = title
-		button.pressed.connect(func() -> void:
-			if title == "Use defaults":
-				show_values({})
-			elif title == "Disable all":
-				var values := selected_values()
-				for key in values:
-					if str(key).ends_with("_enabled"):
-						values[key] = false
-				values.water_reflections = 0
-				values.water_topography = false
-				show_values(values)
-			changed.emit()
-			if title == "Reload brightmaps":
-				reload_requested.emit()
-			elif title == "Export PNG templates":
-				export_requested.emit())
-		if title in ["Reload brightmaps", "Export PNG templates"]:
-			brightmap_buttons.add_child(button)
-		else:
-			buttons.add_child(button)
-	sections["Day and Night Shift"].add_child(brightmap_buttons)
-	var lut_buttons := HFlowContainer.new()
-	for title in ["Reload LUT profiles", "Export LUT profiles"]:
-		var button := Button.new()
-		button.text = title
-		button.pressed.connect(func() -> void:
-			if title == "Reload LUT profiles":
-				luts_reload_requested.emit()
-			else:
-				luts_export_requested.emit())
-		lut_buttons.add_child(button)
-	sections["Other Effects"].add_child(lut_buttons)
-	content.add_child(HSeparator.new())
-	content.add_child(buttons)
+		button.text = section[0]
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.toggle_mode = true
+		button.button_group = group
+		button.pressed.connect(select_category.bind(pages.size() - 1))
+		navigation.add_child(button)
+		category_buttons.append(button)
+	var asset_buttons := HFlowContainer.new()
+	pages[-1].add_child(asset_buttons)
+	_add_button(asset_buttons, "Reload brightmaps", func() -> void:
+		_changed()
+		reload_requested.emit())
+	_add_button(asset_buttons, "Export PNG templates", func() -> void:
+		_changed()
+		export_requested.emit())
+	var color_buttons := HFlowContainer.new()
+	pages[-1].add_child(color_buttons)
+	_add_button(color_buttons, "Reload color profiles", func() -> void:
+		_changed()
+		luts_reload_requested.emit())
+	_add_button(color_buttons, "Export color profiles", func() -> void:
+		_changed()
+		luts_export_requested.emit())
+	pages[-1].add_child(_help("Reload after editing light masks. Export creates PNG templates for painting your own lights."))
+	add_child(HSeparator.new())
+	var actions := HFlowContainer.new()
+	add_child(actions)
+	_add_button(actions, "Disable all", _disable_all)
+	_add_button(actions, "Use defaults", func() -> void:
+		show_values({})
+		changed.emit())
+	actions.get_child(0).tooltip_text = "Turn off all visual enhancements. Keep effect strengths and custom file paths."
+	actions.get_child(1).tooltip_text = "Reset all visual enhancements, including custom file paths, to their defaults."
+	select_category(0)
 	show_values({})
 
 
-func _category_for(key: String) -> String:
-	if key.begins_with("disaster_"):
-		return "Disaster Effects"
-	if key.begins_with("season_"):
-		return "Seasons"
-	if key.begins_with("day_") or key.begins_with("night_") or key in ["brightmaps", "brightmap_folder", "lut_path", "speed_link", "pause_freezes"]:
-		return "Day and Night Shift"
-	if key.begins_with("weather_") or key.begins_with("cloud_"):
-		return "Weather Effects"
-	if key.begins_with("water_"):
-		return "Environment"
-	if key.begins_with("life_") or key.begins_with("traffic_"):
-		return "Traffic & Movement"
-	return "Other Effects"
+func _help(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.theme_type_variation = &"HelpLabel"
+	return label
+
+
+func _add_button(parent: Node, text: String, action: Callable) -> void:
+	var button := Button.new()
+	button.text = text
+	button.pressed.connect(action)
+	parent.add_child(button)
+
+
+func _add_field(page: VBoxContainer, field: Array) -> void:
+	var key: String = field[0]
+	var title: String = LABELS.get(key, field[1])
+	var row: BoxContainer = VBoxContainer.new() if field[2] == "path" else HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	page.add_child(row)
+	if field[2] != "bool":
+		var label := _help(title)
+		label.theme_type_variation = &""
+		row.add_child(label)
+	var control: Control
+	match field[2]:
+		"bool":
+			var check := CheckBox.new()
+			check.text = title
+			check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			check.toggled.connect(func(_v: bool) -> void: _changed())
+			control = check
+		"choice":
+			var choice := OptionButton.new()
+			for item in field[4]:
+				choice.add_item("Automatic cycle" if item == "Visual automation" else item)
+			choice.fit_to_longest_item = false
+			choice.item_selected.connect(func(_v: int) -> void: _changed())
+			control = choice
+		"number":
+			var spin := SpinBox.new()
+			var scale := _display_scale(key)
+			spin.min_value = float(field[4]) * scale
+			spin.max_value = float(field[5]) * scale
+			spin.step = float(field[6]) * scale
+			if key in PERCENT_FIELDS or key in ["night_light_strength"]:
+				spin.suffix = "%"
+			elif key.ends_with("_seconds") or key == "weather_transition":
+				spin.suffix = "s"
+			elif key in ["cloud_speed", "life_car_amount", "life_people_amount"]:
+				spin.suffix = "×"
+			spin.value_changed.connect(func(_v: float) -> void: _changed())
+			control = spin
+		"path":
+			var edit := LineEdit.new()
+			edit.placeholder_text = "Optional — leave empty for standard effects"
+			edit.text_submitted.connect(func(_v: String) -> void: _changed())
+			edit.focus_exited.connect(_changed)
+			control = edit
+	if field[2] in ["number", "choice"]:
+		control.custom_minimum_size.x = 155
+	control.tooltip_text = HINTS.get(key, "")
+	row.tooltip_text = control.tooltip_text
+	row.add_child(control)
+	controls[key] = control
+
+
+func select_category(index: int) -> void:
+	for i in pages.size():
+		pages[i].visible = i == index
+		category_buttons[i].set_pressed_no_signal(i == index)
+	page_scroll.scroll_vertical = 0
+
+
+func _display_scale(key: String) -> float:
+	return 100.0 if key in PERCENT_FIELDS else 1.0
+
+
+func _disable_all() -> void:
+	var values := selected_values()
+	for key in values:
+		if str(key).ends_with("_enabled"):
+			values[key] = false
+	values.water_reflections = 0
+	values.water_topography = false
+	show_values(values)
+	changed.emit()
 
 
 func _changed() -> void:
@@ -149,6 +275,8 @@ func _update_availability() -> void:
 		elif key.begins_with("cloud_") and key != "cloud_enabled":
 			available = values.cloud_enabled
 		match key:
+			"disaster_crowds", "disaster_dust", "disaster_lights":
+				available = available and values.disaster_strength > 0.0
 			"season_fixed":
 				available = available and values.season_mode == 2
 			"season_seconds":
@@ -170,6 +298,27 @@ func _update_availability() -> void:
 			"life_people_amount":
 				available = values.life_people_enabled
 		var control: Control = controls[key]
+		var relevant := true
+		match key:
+			"day_hour":
+				relevant = values.day_mode == 1
+			"day_seconds":
+				relevant = values.day_mode == 0
+			"season_fixed":
+				relevant = values.season_mode == 2
+			"season_seconds":
+				relevant = values.season_mode == 1
+			"season_transition":
+				relevant = values.season_mode != 2
+			"weather_fixed":
+				relevant = values.weather_mode == 2
+			"weather_seconds":
+				relevant = values.weather_mode == 1
+		control.get_parent().visible = relevant
+		if control is OptionButton:
+			var selection := (control as OptionButton).get_item_text((control as OptionButton).selected)
+			var hint: String = HINTS.get(key, "")
+			control.tooltip_text = selection if hint.is_empty() else selection + "\n" + hint
 		if control is BaseButton:
 			(control as BaseButton).disabled = not available
 		elif control is SpinBox:
@@ -189,7 +338,7 @@ func show_values(source: Dictionary) -> void:
 		elif control is OptionButton:
 			(control as OptionButton).select(values[key])
 		elif control is SpinBox:
-			(control as SpinBox).value = values[key]
+			(control as SpinBox).value = float(values[key]) * _display_scale(key)
 		elif control is LineEdit:
 			(control as LineEdit).text = values[key]
 	filling = false
@@ -205,7 +354,7 @@ func selected_values() -> Dictionary:
 		elif control is OptionButton:
 			values[key] = (control as OptionButton).selected
 		elif control is SpinBox:
-			values[key] = (control as SpinBox).value
+			values[key] = (control as SpinBox).value / _display_scale(key)
 		elif control is LineEdit:
 			values[key] = (control as LineEdit).text
 	return VisualEnhancementOptions.normalize(values)

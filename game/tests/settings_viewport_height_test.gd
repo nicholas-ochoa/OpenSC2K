@@ -22,7 +22,17 @@ func _run() -> void:
 				await process_frame
 				await process_frame
 				_check_height(dialog, height)
-				assert(dialog.tabs.get_child(tab) is ScrollContainer)
+				if dialog.tabs.get_child(tab) == dialog.visual_tab:
+					for category in dialog.visual_tab.pages.size():
+						dialog.visual_tab.select_category(category)
+						await process_frame
+						await process_frame
+						_check_height(dialog, height)
+						var visual := dialog.visual_tab
+						assert(visual.get_global_rect().encloses(visual.page_scroll.get_global_rect()), "Visual settings content must fit inside its tab")
+						assert(visual.pages[category].size.x <= visual.page_scroll.size.x, "Visual settings require horizontal scrolling")
+				else:
+					assert(dialog.tabs.get_child(tab) is ScrollContainer)
 			dialog.show_pack_error("A long pack error message.\n".repeat(80))
 			await process_frame
 			await process_frame
