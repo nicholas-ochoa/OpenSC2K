@@ -6,13 +6,15 @@ func _initialize() -> void:
 	profiles.reload("")
 	assert(profiles.issues.is_empty())
 	var options := VisualEnhancementOptions.normalize({})
-	var water_only := VisualEnhancementOptions.normalize({"water_reflections": 0, "water_topography": false})
+	var water_only := VisualEnhancementOptions.normalize({"water_reflections": 0, "water_topography": false, "water_waves_enabled": false})
 	assert(VisualEnhancementOptions.water_pass_enabled(water_only), "Seasonal water needs a pass with reflection and seabed off")
 	water_only.season_water_strength = 0.0
 	assert(not VisualEnhancementOptions.water_pass_enabled(water_only))
 	water_only.season_water_strength = 0.35
 	water_only.season_enabled = false
 	assert(not VisualEnhancementOptions.water_pass_enabled(water_only))
+	water_only.water_waves_enabled = true
+	assert(VisualEnhancementOptions.water_pass_enabled(water_only), "Waves need an independent water pass")
 	var neutral := profiles.parameters(options, 12.0, Vector4(0, 1, 0, 0))
 	assert(neutral.environment_day_lut_weights == Vector4.ZERO)
 	assert(neutral.environment_season_lut_weights == Vector4(0, 1, 0, 0), "Summer's authored tonal LUT was bypassed")
