@@ -194,6 +194,7 @@ func _check_surface_details(viewport: SubViewport, sprite: Sprite2D, material: S
 	(sprite.texture as ImageTexture).update(mirror)
 	material.set_shader_parameter("water_reflections_enabled", true)
 	material.set_shader_parameter("water_rain", 1.0)
+	material.set_shader_parameter("water_waves_enabled", true)
 	for time in [0.0, 2.0, 7.0]:
 		material.set_shader_parameter("water_clock", time)
 		await RenderingServer.frame_post_draw
