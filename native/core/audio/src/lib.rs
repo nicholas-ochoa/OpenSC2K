@@ -4,8 +4,10 @@
 
 pub mod fluidsynth;
 pub mod midi;
+pub mod mixer;
 pub mod sequencer;
 pub mod shuffle;
 pub mod smf;
 pub mod soundfont;
+pub mod wav;
 pub mod wave_gate;

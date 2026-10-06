@@ -61,7 +61,7 @@ impl Sequencer {
     }
 
     /// Restarts at the first event with General MIDI defaults.
-    pub fn start(&mut self, output: &mut impl MidiOutput) {
+    pub fn start(&mut self, output: &mut (impl MidiOutput + ?Sized)) {
         output.reset();
         self.cursor = 0;
         self.frame = 0;
@@ -91,7 +91,7 @@ impl Sequencer {
 
     /// Moves to `seconds`. Notes before that time stay silent, but programs,
     /// controllers, bends and pressure take the values that they had there.
-    pub fn seek(&mut self, output: &mut impl MidiOutput, seconds: f64) {
+    pub fn seek(&mut self, output: &mut (impl MidiOutput + ?Sized), seconds: f64) {
         let target = seconds_to_frame(seconds, self.sample_rate).min(self.end_frame);
         self.start(output);
 
@@ -110,7 +110,7 @@ impl Sequencer {
 
     /// Up to `frame_count` stereo frames. Fewer frames return when the track
     /// completes: after its end, once no voice sounds or the tail limit passes.
-    pub fn render(&mut self, output: &mut impl MidiOutput, frame_count: usize) -> Vec<[f32; 2]> {
+    pub fn render(&mut self, output: &mut (impl MidiOutput + ?Sized), frame_count: usize) -> Vec<[f32; 2]> {
         let mut frames = Vec::with_capacity(frame_count);
 
         while frames.len() < frame_count && !self.complete {
@@ -143,7 +143,7 @@ impl Sequencer {
         frames
     }
 
-    fn send_due_events(&mut self, output: &mut impl MidiOutput) {
+    fn send_due_events(&mut self, output: &mut (impl MidiOutput + ?Sized)) {
         while self.cursor < self.events.len() && self.event_frames[self.cursor] <= self.frame {
             output.send(&self.events[self.cursor]);
             self.cursor += 1;
@@ -152,7 +152,7 @@ impl Sequencer {
 
     /// The tail checks its limit and silence only between whole tail blocks, so
     /// it ends on the same frame for every request size.
-    fn tail_is_over(&self, output: &mut impl MidiOutput) -> bool {
+    fn tail_is_over(&self, output: &mut (impl MidiOutput + ?Sized)) -> bool {
         let limit = seconds_to_frame(MAX_TAIL_SECONDS, self.sample_rate);
         let block_done = self.tail_frames > 0 && self.tail_frames.is_multiple_of(TAIL_BLOCK_FRAMES as u64);
 
@@ -178,7 +178,7 @@ impl Sequencer {
         remaining.min(until_boundary.min(usize::MAX as u64) as usize)
     }
 
-    fn render_block(&mut self, output: &mut impl MidiOutput, block: usize, frames: &mut Vec<[f32; 2]>) {
+    fn render_block(&mut self, output: &mut (impl MidiOutput + ?Sized), block: usize, frames: &mut Vec<[f32; 2]>) {
         // the buffers grow to the largest request and are then reused
         if self.left.len() < block {
             self.left.resize(block, 0.0);

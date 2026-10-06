@@ -1,6 +1,7 @@
 //! The native OpenSC2K game. It opens a window, loads the graphics pack of the
 //! shared settings, and shows a city with the simulation running.
 
+mod audio;
 mod city_view;
 mod settings;
 
@@ -25,6 +26,7 @@ const WINDOW_HEIGHT: f64 = 800.0;
 const KEY_PAN_PIXELS: f64 = 64.0;
 
 struct Game {
+    audio: audio::Audio,
     art: CityArt,
     session: Session,
     view: CityView,
@@ -55,6 +57,19 @@ impl App {
         if !tick.error.is_empty() {
             eprintln!("simulation: {}", tick.error);
         }
+
+        let game = &mut self.game;
+        game.audio.advance(delta);
+        game.audio
+            .play_sound_events(&tick.sound_events, game.view.camera.graphics_view() as i64);
+
+        for track in &tick.music_track_requests {
+            if game.session.city.music_enabled() {
+                game.audio.play_music_track(i64::from(*track), true);
+            }
+        }
+
+        game.session.engine.day.midi_playback_active = game.audio.music_active();
 
         self.game.view.advance_palette(delta);
         self.game.view.animation_phase = elapsed / 100;
@@ -146,6 +161,7 @@ impl ApplicationHandler for App {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::Focused(focused) => self.game.audio.set_focus(focused),
             WindowEvent::RedrawRequested => self.redraw(),
             WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
                 self.key(event.logical_key)
@@ -200,8 +216,32 @@ fn load_game(city_path: PathBuf) -> Result<Game, String> {
         .map_or(1, |time| time.as_millis() as i64);
     let session = Session::open(&city_path, seed)?;
     let view = CityView::new(&session);
+    let config = &settings.config;
+    let mut audio = audio::Audio::new(&audio::AudioSettings {
+        music_volume: config.float("audio", "music_volume", 0.8) as f32,
+        effects_volume: config.float("audio", "effects_volume", 0.8) as f32,
+        shuffle: config.bool("audio", "shuffle_music", false),
+        sound_pack: settings.path("audio", "sound_pack_folder"),
+        music_pack: settings.path("audio", "music_pack_folder"),
+        soundfont_choice: config.string("audio", "music_soundfont", "system"),
+        soundfont_path: config.string("audio", "music_soundfont_path", ""),
+    });
 
-    Ok(Game { art, session, view })
+    if session.city.music_enabled() {
+        let track = audio.next_general_track();
+        audio.play_music_track(track, true);
+    }
+
+    if !audio.notice.is_empty() {
+        eprintln!("{}", audio.notice);
+    }
+
+    Ok(Game {
+        audio,
+        art,
+        session,
+        view,
+    })
 }
 
 /// Render one frame of `game` to a PNG file, without a window.
