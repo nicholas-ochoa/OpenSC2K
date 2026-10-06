@@ -45,6 +45,23 @@ struct App {
     modifiers: winit::keyboard::ModifiersState,
     /// The speed that resumes after a pause.
     resume_speed: i64,
+    /// The pinch growth since the last zoom step.
+    pinch: f64,
+}
+
+/// The window icon of the game, beside the executable or in the source tree.
+fn window_icon() -> Option<winit::window::Icon> {
+    const ICON: &str = "assets/icons/OpenSC2K.png";
+    let folder = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let candidates = [
+        folder.join(ICON),
+        folder.join("../../../game").join(ICON),
+        std::path::PathBuf::from("game").join(ICON),
+    ];
+    let bytes = candidates.iter().find_map(|path| std::fs::read(path).ok())?;
+    let image = sc2k_formats::png::decode_rgba(&bytes).ok()?;
+
+    winit::window::Icon::from_rgba(image.pixels, image.width, image.height).ok()
 }
 
 /// The screen direction of a camera action.
@@ -218,6 +235,12 @@ impl App {
                 view.options.underground = !view.options.underground;
             }
             "view_show_vehicles" => view.show_vehicles = !view.show_vehicles,
+            "toggle_fullscreen" => {
+                if let Some(window) = &self.window {
+                    let fullscreen = window.fullscreen().is_none().then_some(winit::window::Fullscreen::Borderless(None));
+                    window.set_fullscreen(fullscreen);
+                }
+            }
             "view_show_pipes" => view.options.pipes = !view.options.pipes,
             "view_show_subways" => view.options.subways = !view.options.subways,
             "view_show_water_mains" => view.options.water_mains = !view.options.water_mains,
@@ -310,6 +333,7 @@ impl ApplicationHandler for App {
 
         let attributes = Window::default_attributes()
             .with_title("OpenSC2K")
+            .with_window_icon(window_icon())
             .with_inner_size(winit::dpi::LogicalSize::new(cli::WIDTH, cli::HEIGHT));
         let window = Rc::new(event_loop.create_window(attributes).expect("a window"));
         let context = softbuffer::Context::new(window.clone()).expect("a drawing context");
@@ -324,6 +348,15 @@ impl ApplicationHandler for App {
             WindowEvent::Focused(focused) => self.game.audio.set_focus(focused),
             WindowEvent::RedrawRequested => self.redraw(),
             WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
+            WindowEvent::PinchGesture { delta, .. } => {
+                // a trackpad pinch zooms one level for each quarter of growth
+                self.pinch += delta;
+
+                if self.pinch.abs() >= 0.25 {
+                    self.game.view.camera.change_zoom(self.pinch.signum() as i32, Some(self.cursor));
+                    self.pinch = 0.0;
+                }
+            }
             WindowEvent::KeyboardInput { event, .. } => {
                 if let Some(input) = controls::key_input(&event, self.modifiers) {
                     self.input(&input, controls::key_id(&event));
@@ -468,6 +501,7 @@ fn main() {
                 motion: Motion::default(),
                 modifiers: winit::keyboard::ModifiersState::default(),
                 resume_speed: 3,
+                pinch: 0.0,
             };
 
             sc2k_platform::console::message(&format!("OpenSC2K {} (native)", env!("CARGO_PKG_VERSION")));
