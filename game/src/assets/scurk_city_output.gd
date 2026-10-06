@@ -8,9 +8,6 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
-const PDF_PAGE_WIDTH := 612.0
-const PDF_PAGE_HEIGHT := 792.0
-const PDF_MARGIN := 36.0
 const SIGN_PANEL_INDEX := 160
 const SIGN_POST_INDEX := 158
 const SIGN_LIGHT_INDEX := 155
@@ -268,113 +265,39 @@ static func _selected_page_indices(options: Options, page_count: int) -> PackedI
 	return result
 
 
+# The native formats library slices the pages and assembles the PDF; see
+# native/core/assets/src/scurk/print.rs. The engine encodes each page as JPEG
 static func _encode_pdf(
 	image: Image, grid: PageGrid, selected: PackedInt32Array
 ) -> AssetBytesResult:
-	var columns := int(grid.columns)
-	var rows := int(grid.rows)
-	var object_count := 2 + selected.size() * 3
-	var bodies: Array[PackedByteArray] = []
-	bodies.resize(object_count + 1)
-	bodies[1] = "<< /Type /Catalog /Pages 2 0 R >>\n".to_ascii_buffer()
-	var page_ids := PackedInt32Array()
+	var regions := NativeScurkPrint.page_regions(
+		image.get_width(), image.get_height(), int(grid.columns), int(grid.rows), selected
+	)
 
-	for output_index in selected.size():
-		page_ids.append(3 + output_index * 3)
+	if regions.size() != selected.size() * 4:
+		return AssetBytesResult.failure("selected print page is outside the page grid")
 
-	var kids := ""
+	var jpegs := []
+	var widths := PackedInt64Array()
+	var heights := PackedInt64Array()
 
-	for page_id in page_ids:
-		kids += "%d 0 R " % page_id
-
-	bodies[2] = (
-		"<< /Type /Pages /Count %d /Kids [%s] >>\n" % [page_ids.size(), kids]
-	).to_ascii_buffer()
-
-	for output_index in selected.size():
-		var page_index := int(selected[output_index])
-		var column := page_index / rows
-		var row := page_index % rows
-
-		if column < 0 or column >= columns:
-			return AssetBytesResult.failure("selected print page is outside the page grid")
-
-		var left := floori(float(image.get_width()) * float(column) / float(columns))
-		var right := floori(float(image.get_width()) * float(column + 1) / float(columns))
-		var top := floori(float(image.get_height()) * float(row) / float(rows))
-		var bottom := floori(float(image.get_height()) * float(row + 1) / float(rows))
-		var page_image := image.get_region(
-			Rect2i(left, top, maxi(1, right - left), maxi(1, bottom - top))
-		)
+	for index in selected.size():
+		var at := index * 4
+		var page_image := image.get_region(Rect2i(regions[at], regions[at + 1], regions[at + 2], regions[at + 3]))
 		page_image.convert(Image.FORMAT_RGB8)
 		var jpeg := page_image.save_jpg_to_buffer(0.96)
 
 		if jpeg.is_empty():
 			return AssetBytesResult.failure("cannot encode a printable city page")
 
-		var page_id := int(page_ids[output_index])
-		var image_id := page_id + 1
-		var content_id := page_id + 2
-		var maximum_width := PDF_PAGE_WIDTH - PDF_MARGIN * 2.0
-		var maximum_height := PDF_PAGE_HEIGHT - PDF_MARGIN * 2.0
-		var scale := minf(
-			maximum_width / float(page_image.get_width()),
-			maximum_height / float(page_image.get_height())
-		)
-		var drawing_width := float(page_image.get_width()) * scale
-		var drawing_height := float(page_image.get_height()) * scale
-		var drawing_x := (PDF_PAGE_WIDTH - drawing_width) * 0.5
-		var drawing_y := (PDF_PAGE_HEIGHT - drawing_height) * 0.5
-		var image_name := "Im%d" % output_index
-		var content := (
-			"q\n%.3f 0 0 %.3f %.3f %.3f cm\n/%s Do\nQ\n"
-			% [drawing_width, drawing_height, drawing_x, drawing_y, image_name]
-		).to_ascii_buffer()
-		bodies[page_id] = (
-			"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-			+ "/Resources << /XObject << /%s %d 0 R >> >> " % [image_name, image_id]
-			+ "/Contents %d 0 R >>\n" % content_id
-		).to_ascii_buffer()
-		var image_body := (
-			"<< /Type /XObject /Subtype /Image /Width %d /Height %d "
-			+ "/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode "
-			+ "/Length %d >>\nstream\n"
-		) % [page_image.get_width(), page_image.get_height(), jpeg.size()]
-		bodies[image_id] = image_body.to_ascii_buffer()
-		bodies[image_id].append_array(jpeg)
-		bodies[image_id].append_array("\nendstream\n".to_ascii_buffer())
-		bodies[content_id] = (
-			"<< /Length %d >>\nstream\n" % content.size()
-		).to_ascii_buffer()
-		bodies[content_id].append_array(content)
-		bodies[content_id].append_array("endstream\n".to_ascii_buffer())
-
-	var output := "%PDF-1.4\n% OpenSC2K printable city\n".to_ascii_buffer()
-	var offsets := PackedInt32Array()
-	offsets.resize(object_count + 1)
-
-	for object_id in range(1, object_count + 1):
-		offsets[object_id] = output.size()
-		output.append_array(("%d 0 obj\n" % object_id).to_ascii_buffer())
-		output.append_array(bodies[object_id])
-		output.append_array("endobj\n".to_ascii_buffer())
-
-	var xref_offset := output.size()
-	output.append_array(("xref\n0 %d\n" % (object_count + 1)).to_ascii_buffer())
-	output.append_array("0000000000 65535 f \n".to_ascii_buffer())
-
-	for object_id in range(1, object_count + 1):
-		output.append_array(("%010d 00000 n \n" % offsets[object_id]).to_ascii_buffer())
-
-	output.append_array((
-		"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n"
-		% [object_count + 1, xref_offset]
-	).to_ascii_buffer())
+		jpegs.append(jpeg)
+		widths.append(page_image.get_width())
+		heights.append(page_image.get_height())
 
 	var outcome := AssetBytesResult.new()
 	outcome.ok = true
 	outcome.error = ""
-	outcome.bytes = output
+	outcome.bytes = NativeScurkPrint.pdf(jpegs, widths, heights)
 
 	return outcome
 
@@ -385,20 +308,8 @@ static func _monochrome_copy(source: Image) -> Image:
 	if result.get_format() != Image.FORMAT_RGBA8:
 		result.convert(Image.FORMAT_RGBA8)
 
-	var data := result.get_data()
-
-	for offset in range(0, data.size(), 4):
-		var luminance := clampi(roundi(
-			float(data[offset]) * 0.299
-			+ float(data[offset + 1]) * 0.587
-			+ float(data[offset + 2]) * 0.114
-		), 0, 255)
-		data[offset] = luminance
-		data[offset + 1] = luminance
-		data[offset + 2] = luminance
-
 	return Image.create_from_data(
-		result.get_width(), result.get_height(), false, Image.FORMAT_RGBA8, data
+		result.get_width(), result.get_height(), false, Image.FORMAT_RGBA8, NativeScurkPrint.monochrome(result.get_data())
 	)
 
 

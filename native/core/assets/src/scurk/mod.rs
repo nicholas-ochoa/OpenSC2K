@@ -2,4 +2,5 @@
 
 pub mod mif;
 pub mod pixels;
+pub mod print;
 pub mod selection;
