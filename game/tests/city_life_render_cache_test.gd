@@ -11,8 +11,38 @@ func _initialize() -> void:
 	_check_network_search()
 	_check_geometry_changes()
 	_check_path_segments()
+	_check_local_tiles()
 	print("PASS: exact city-life artwork/emission pixels, road coordinates, local occlusion invalidation and bounded light reuse")
 	quit()
+
+
+func _check_local_tiles() -> void:
+	var city := load("res://tests/city_life_test.gd").fixture() as CityState
+	var cache := CityLifeTiles.new()
+	var bounds := Rect2i(0, 0, 5000, 4000)
+	for step in 12:
+		match step:
+			1: city.set_building_id(64, 64, 0)
+			2: city.set_building_id(64, 64, BuildingTileIds.HIGHWAY_BRIDGE)
+			3: city.set_land_altitude(64, 64, 5)
+			4: city.set_terrain_id(64, 64, 6)
+			5: city.set_tile_flag(64, 64, Sc2TileFlags.FLIPPED, true)
+			6: city.set_building_id(10, 10, 112)
+			7: bounds = Rect2i(1800, 1000, 500, 1000)
+			8: city.visible_altitude_levels = 3
+			9: bounds = Rect2i(-1000, -1000, 100, 100)
+			10: city = load("res://tests/city_life_test.gd").fixture() as CityState
+			11: bounds = Rect2i(0, 0, 5000, 4000)
+		var expected: Array[Vector2i] = []
+		# Independent complete scan, including the same strict viewport edges.
+		for x in city.map_size:
+			for y in city.map_size:
+				var tile := Vector2i(x, y)
+				if CityLifePaths.ports(city, tile) != 0 and city.land_altitude(x, y) < city.visible_altitude_levels \
+						and bounds.has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
+					expected.append(tile)
+		assert(cache.collect(city, bounds) == expected, "Local road updates changed eligible tiles or spawn order at step %d" % step)
+		assert(cache.collect(city, bounds) == expected, "Warm road reuse changed eligible tiles")
 
 
 func _check_path_segments() -> void:

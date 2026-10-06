@@ -32,6 +32,7 @@ var _bus_signature: Array = []
 var _bus_tiles: Dictionary[Vector2i, bool] = {}
 var _path_signature: Array = []
 var _paths: Dictionary[Vector3i, CityLifePaths.Segment] = {}
+var _tile_cache := CityLifeTiles.new()
 
 
 func _init(application: CityApplication) -> void:
@@ -128,29 +129,7 @@ func _sync_traffic(enhanced: bool) -> void:
 
 
 func _collect_tiles(city: CityState) -> void:
-	tiles.clear()
-	var first := Vector2i(city.map_size, city.map_size)
-	var last := Vector2i.ZERO
-	for corner in [_viewport.position, _viewport.position + Vector2i(_viewport.size.x, 0),
-		_viewport.end, _viewport.position + Vector2i(0, _viewport.size.y)]:
-		for altitude in [0, 31]:
-			var difference: float = (corner.x - 32 - city.map_size * 16 - 16) / 16.0
-			var total: float = (corner.y - 512 - 8 + altitude * 12) / 8.0
-			var point := Vector2i(floori((total + difference) * 0.5), floori((total - difference) * 0.5))
-			first = first.min(point - Vector2i(2, 2))
-			last = last.max(point + Vector2i(2, 2))
-	first = first.max(Vector2i.ZERO)
-	last = last.min(Vector2i(city.map_size - 1, city.map_size - 1))
-	# Search the packed building plane in native code. The sorted indices retain
-	# the original x/y order, including the decorative RNG's spawn order.
-	for index in CityLifePaths.candidate_indices(city, first, last):
-		var tile := Vector2i(index / city.map_size, index % city.map_size)
-		if tile.x < first.x or tile.x > last.x or tile.y < first.y or tile.y > last.y:
-			continue
-		if CityLifePaths.ports(city, tile) == 0 or city.land_altitude(tile.x, tile.y) >= city.visible_altitude_levels:
-			continue
-		if _viewport.has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
-			tiles.append(tile)
+	tiles.assign(_tile_cache.collect(city, _viewport))
 	figures = figures.filter(func(f: Figure) -> bool: return _viewport.has_point(Vector2i(f.position)))
 
 
