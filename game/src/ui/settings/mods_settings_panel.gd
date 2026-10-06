@@ -16,7 +16,6 @@ const ERROR_COLOR := Color(0.85, 0.15, 0.1)
 
 var tree: Tree
 var details: RichTextLabel
-var folder_label: Label
 var open_folder_button: Button
 var reload_button: Button
 # the id of the selected mod, kept when the list changes
@@ -28,10 +27,6 @@ var _showing := false
 func _init() -> void:
 	name = "Mods"
 	add_theme_constant_override("separation", 6)
-
-	folder_label = Label.new()
-	folder_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(folder_label)
 
 	tree = Tree.new()
 	tree.columns = COLUMN_TITLES.size()
@@ -79,7 +74,7 @@ func _init() -> void:
 func show_mods(rows: Array[Dictionary], folder: String) -> void:
 	_showing = true
 	_rows = rows
-	folder_label.text = "Each folder in %s with an info.json file is a mod. A mod uses files only in its own folder." % folder
+	open_folder_button.tooltip_text = "Open %s. Each folder in it with an info.json file is a mod." % folder
 	tree.clear()
 	var root := tree.create_item()
 	var selected: TreeItem = null
@@ -141,7 +136,7 @@ func _on_item_selected() -> void:
 
 func _show_details(row: Dictionary) -> void:
 	if row.is_empty():
-		details.text = "No mods are in the mods folder. Put a mod folder there, then select Reload Mods."
+		details.text = "No mods installed. To add a mod, copy its folder into the mods folder, then click Reload Mods."
 
 		return
 
