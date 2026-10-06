@@ -22,6 +22,7 @@ var _occluder_bounds: Dictionary[Vector3i, Rect2i] = {}
 var _occlusion_signature: Array = []
 var _road_signature: Array = []
 var _visible_regions: Array[Vector2i] = []
+var _emission_active := false
 
 
 func _init() -> void:
@@ -43,22 +44,27 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	if not supports_view(map.visible_source_rect()):
 		hide()
 		return
+	var light_active := app.visual_environment.night > 0.0
 	if image == null or source_bounds.size != bounds.size:
 		image = Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
 		texture = ImageTexture.create_from_image(image)
-		emission = Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
-		emission_texture = ImageTexture.create_from_image(emission)
-		(material as ShaderMaterial).set_shader_parameter("vehicle_emission", emission_texture)
-		(material as ShaderMaterial).set_shader_parameter("vehicle_has_emission", true)
 		if road_layer == null:
 			road_layer = Node2D.new()
 			road_layer.show_behind_parent = true
 			road_material = ShaderMaterial.new()
 			road_material.shader = preload("res://src/view/city_life/city_life_road_light.gdshader")
 			add_child(road_layer)
+	if light_active and (emission == null or emission.get_size() != bounds.size):
+		emission = Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
+		emission_texture = ImageTexture.create_from_image(emission)
+		(material as ShaderMaterial).set_shader_parameter("vehicle_emission", emission_texture)
+	if light_active != _emission_active:
+		_emission_active = light_active
+		(material as ShaderMaterial).set_shader_parameter("vehicle_has_emission", light_active)
 	source_bounds = bounds
 	image.fill(Color.TRANSPARENT)
-	emission.fill(Color.TRANSPARENT)
+	if light_active:
+		emission.fill(Color.TRANSPARENT)
 	var city := app.document_state.city
 	var road_signature := [city.document.get_instance_id(), city.chunk_revision("ALTM"), city.chunk_revision("XBLD"),
 		city.chunk_revision("XTER"), city.chunk_revision("XZON"), city.chunk_revision("XBIT"), city.compass_rotation()]
@@ -68,9 +74,13 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 		_road_signature = road_signature
 	# Region publications also change while panning an unchanged city. Their
 	# affected silhouettes are invalidated separately by the map renderer.
-	var source: RefCounted = app.render_caches.region_cache if app.render_caches.region_cache != null else map.city_source
+	var regions := app.render_caches.region_cache
+	var source: RefCounted = regions if regions != null else map.city_source
+	# Traffic revisions do not change silhouettes. Region publications report
+	# the changed bounds; only a replacement layout needs a complete reset.
+	var layout: Variant = regions._layout_generation if regions != null else app.render_caches.static_visual_signature
 	var signature := [app.document_state.city.document.get_instance_id(), app.static_render_state.epoch,
-		source, app.static_render.city_view_size(), app.render_caches.static_visual_signature]
+		source, app.static_render.city_view_size(), layout]
 	if signature != _occlusion_signature or _occluders.size() > 4096:
 		_occluders.clear()
 		_occluder_bounds.clear()
@@ -80,7 +90,6 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	_sync_visible_regions(app.render_caches.region_cache)
 	figures.sort_custom(func(a: CityLifeController.Figure, b: CityLifeController.Figure) -> bool:
 		return a.position.y < b.position.y)
-	var light_active := app.visual_environment.night > 0.0
 	road_layer.visible = light_active
 	var seen: Dictionary[int, bool] = {}
 	if light_active:
@@ -117,10 +126,11 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 			continue
 		var candidates := _candidates(app, figure.tile, figure.enter)
 		var opacity := figure.opacity()
-		var mask: Image = lights.lamp_mask(sprite, figure.vehicle_kind, figure.direction) if not figure.walking else null
-		stamp(image, source_bounds.position, sprite, origin, candidates, opacity, emission, mask)
+		var mask: Image = lights.lamp_mask(sprite, figure.vehicle_kind, figure.direction) if light_active and not figure.walking else null
+		stamp(image, source_bounds.position, sprite, origin, candidates, opacity, emission if light_active else null, mask)
 	texture.update(image)
-	emission_texture.update(emission)
+	if light_active:
+		emission_texture.update(emission)
 	sync_view(app)
 	show()
 	queue_redraw()

@@ -1,11 +1,14 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	_check_stamp_pixels()
 	_check_road_pixels()
 	_check_local_invalidation()
 	_check_surface_budget()
+	_check_network_search()
 	print("PASS: exact city-life artwork/emission pixels, road coordinates, local occlusion invalidation and bounded light reuse")
 	quit()
 
@@ -135,3 +138,42 @@ func _check_surface_budget() -> void:
 	assert(lights.surfaces.size() == CityLifeLights.SURFACE_LIMIT)
 	assert(lights.surfaces[Vector4i.ZERO] == oldest and not lights.surfaces.has(Vector4i(1, 0, 0, 0)),
 		"The cache must retain recently used light surfaces when it reaches its budget")
+
+
+func _check_network_search() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	for id in 256:
+		city.set_building_id(id / 16, id % 16, id)
+	for area in [Rect2i(0, 0, 128, 128), Rect2i(3, 2, 7, 11), Rect2i(0, 15, 16, 1)]:
+		var expected: Array[Vector2i] = []
+		for x in range(area.position.x, area.end.x):
+			for y in range(area.position.y, area.end.y):
+				if CityLifePaths.ports(city, Vector2i(x, y)) != 0:
+					expected.append(Vector2i(x, y))
+		var actual: Array[Vector2i] = []
+		for index in CityLifePaths.candidate_indices(city, area.position, area.end - Vector2i.ONE):
+			var tile := Vector2i(index / city.map_size, index % city.map_size)
+			if CityLifePaths.ports(city, tile) != 0:
+				actual.append(tile)
+		assert(actual == expected, "Packed search must preserve every network id and original spawn order")
+	assert(CityLifePaths.candidate_indices(city, Vector2i(129, 0), Vector2i(127, 127)).is_empty())
+	var app := CityApplication.new()
+	city.set_building_id(0, 0, BuildingTileIds.BUS_DEPOT)
+	city.set_building_id(127, 127, BuildingTileIds.BUS_DEPOT)
+	city.set_building_id(127, 126, BuildingTileIds.ROAD_STRAIGHT_1)
+	var expected_bus := {}
+	for x in city.map_size:
+		for y in city.map_size:
+			if city.building_id(x, y) != BuildingTileIds.BUS_DEPOT:
+				continue
+			for dx in range(-CityLifeController.BUS_RADIUS, CityLifeController.BUS_RADIUS + 1):
+				for dy in range(-CityLifeController.BUS_RADIUS, CityLifeController.BUS_RADIUS + 1):
+					var tile := Vector2i(x + dx, y + dy)
+					if dx * dx + dy * dy <= CityLifeController.BUS_RADIUS * CityLifeController.BUS_RADIUS and CityLifePaths.ports(city, tile) != 0:
+						expected_bus[tile] = true
+	app.city_life._refresh_bus_area(city)
+	assert(app.city_life._bus_tiles == expected_bus, "Packed depot search changed decorative bus coverage at map edges")
+	city.set_building_id(127, 127, 0)
+	app.city_life._refresh_bus_area(city)
+	assert(not app.city_life._bus_tiles.has(Vector2i(127, 126)), "A removed depot retained its coverage")
+	app.free()

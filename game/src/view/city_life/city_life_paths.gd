@@ -8,6 +8,30 @@ const ROAD_PORTS := [5, 10, 5, 10, 5, 10, 3, 6, 12, 9, 11, 7, 14, 13, 15]
 const EDGE_CORNERS := [[0, 1], [1, 2], [2, 3], [3, 0]]
 
 
+static func candidate_indices(city: CityState, first: Vector2i, last: Vector2i) -> PackedInt32Array:
+	if first.x > last.x or first.y > last.y:
+		return PackedInt32Array()
+	# Search only rows that can reach the viewport. Exclude rail/power-only ids
+	# before GDScript examines individual tiles; ports() still decides topology.
+	var ids := PackedInt32Array(range(Tiles.ROAD_STRAIGHT_1, Tiles.ROAD_CROSSROADS + 1))
+	ids.append_array(PackedInt32Array([Tiles.TUNNEL_ENTRANCE_1, Tiles.TUNNEL_ENTRANCE_2]))
+	ids.append_array(PackedInt32Array(range(Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_RAIL_CROSSING_2 + 1)))
+	ids.append_array(PackedInt32Array(range(Tiles.HIGHWAY_STRAIGHT_1, Tiles.RAISING_BRIDGE_CLOSED + 1)))
+	ids.append_array(PackedInt32Array(range(Tiles.HIGHWAY_ONRAMP_1, Tiles.REINFORCED_HIGHWAY_BRIDGE + 1)))
+	var start := first.x * city.map_size + first.y
+	var plane := city.buildings.slice(start, last.x * city.map_size + last.y + 1)
+	var result := PackedInt32Array()
+	for id in ids:
+		var index := plane.find(id)
+		while index >= 0:
+			var y := (start + index) % city.map_size
+			if y >= first.y and y <= last.y:
+				result.append(start + index)
+			index = plane.find(id, index + 1)
+	result.sort()
+	return result
+
+
 static func ports(city: CityState, tile: Vector2i) -> int:
 	if city.index_of(tile.x, tile.y) < 0:
 		return 0

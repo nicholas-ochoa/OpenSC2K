@@ -2,6 +2,8 @@ class_name CityLifeController
 extends RefCounted
 ## Cosmetic figures read completed city data. Their time and RNG stay local.
 
+@warning_ignore_start("integer_division")
+
 const MAX_FIGURES := 600
 const UPDATE_SECONDS := 0.08
 const FADE_IN_SECONDS := 0.65
@@ -135,13 +137,16 @@ func _collect_tiles(city: CityState) -> void:
 			last = last.max(point + Vector2i(2, 2))
 	first = first.max(Vector2i.ZERO)
 	last = last.min(Vector2i(city.map_size - 1, city.map_size - 1))
-	for x in range(first.x, last.x + 1):
-		for y in range(first.y, last.y + 1):
-			var tile := Vector2i(x, y)
-			if CityLifePaths.ports(city, tile) == 0 or city.land_altitude(x, y) >= city.visible_altitude_levels:
-				continue
-			if _viewport.has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
-				tiles.append(tile)
+	# Search the packed building plane in native code. The sorted indices retain
+	# the original x/y order, including the decorative RNG's spawn order.
+	for index in CityLifePaths.candidate_indices(city, first, last):
+		var tile := Vector2i(index / city.map_size, index % city.map_size)
+		if tile.x < first.x or tile.x > last.x or tile.y < first.y or tile.y > last.y:
+			continue
+		if CityLifePaths.ports(city, tile) == 0 or city.land_altitude(tile.x, tile.y) >= city.visible_altitude_levels:
+			continue
+		if _viewport.has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
+			tiles.append(tile)
 	figures = figures.filter(func(f: Figure) -> bool: return _viewport.has_point(Vector2i(f.position)))
 
 
@@ -249,15 +254,13 @@ func _refresh_bus_area(city: CityState) -> void:
 	_bus_signature = signature
 	_bus_tiles.clear()
 	# Station proximity is a display rule, independent of simulated bus service.
-	for x in city.map_size:
-		for y in city.map_size:
-			if city.building_id(x, y) != BuildingTileIds.BUS_DEPOT:
-				continue
-			for dx in range(-BUS_RADIUS, BUS_RADIUS + 1):
-				for dy in range(-BUS_RADIUS, BUS_RADIUS + 1):
-					var tile := Vector2i(x + dx, y + dy)
-					if dx * dx + dy * dy <= BUS_RADIUS * BUS_RADIUS and CityLifePaths.ports(city, tile) != 0:
-						_bus_tiles[tile] = true
+	for index in city.building_indices(PackedInt32Array([BuildingTileIds.BUS_DEPOT])):
+		var depot := Vector2i(index / city.map_size, index % city.map_size)
+		for dx in range(-BUS_RADIUS, BUS_RADIUS + 1):
+			for dy in range(-BUS_RADIUS, BUS_RADIUS + 1):
+				var tile := depot + Vector2i(dx, dy)
+				if dx * dx + dy * dy <= BUS_RADIUS * BUS_RADIUS and CityLifePaths.ports(city, tile) != 0:
+					_bus_tiles[tile] = true
 
 
 func _vehicle_kind(tile: Vector2i) -> int:

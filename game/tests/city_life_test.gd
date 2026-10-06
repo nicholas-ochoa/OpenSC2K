@@ -88,6 +88,8 @@ func _check_application() -> void:
 	for step in 20:
 		app.city_life.process(0.08)
 	assert(app.city_life.canvas != null and not app.city_life.figures.is_empty())
+	_check_running_cache(app)
+	_check_day_emission(app)
 	assert(app.asset_state.large_sprites.visual_city_life_traffic)
 	app.preferences.visual_enhancements.pause_freezes = true
 	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
@@ -113,6 +115,46 @@ func _check_application() -> void:
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	app.queue_free()
 	await process_frame
+
+
+func _check_running_cache(app: CityApplication) -> void:
+	if app.render_caches.region_cache == null:
+		return
+	var canvas := app.city_life.canvas
+	var key := Vector3i(-1, -1, 0)
+	# Track an existing-cache entry across a traffic-only publication. Geometry
+	# invalidation and pixels are exercised by the separate occlusion tests.
+	canvas._occluders[key] = []
+	app.document_state.city.document.find_chunk("XTRF").mark_mutated()
+	app.map_render.refresh_map(false)
+	canvas.render(app, app.city_life.figures, app.city_life.sprites)
+	assert(canvas._occluders.has(key), "Traffic-density updates discarded unchanged city-life silhouettes")
+	app.render_caches.region_cache._layout_generation += 1
+	canvas.render(app, app.city_life.figures, app.city_life.sprites)
+	assert(not canvas._occluders.has(key), "A replacement region layout must discard old masks")
+	app.render_caches.region_cache._layout_generation -= 1
+
+
+func _check_day_emission(app: CityApplication) -> void:
+	var canvas := app.city_life.canvas
+	var saved_night := app.visual_environment.night
+	app.visual_environment.night = 1.0
+	canvas.render(app, app.city_life.figures, app.city_life.sprites)
+	assert(canvas.emission != null and canvas._emission_active and canvas.road_layer.visible)
+	var texture := canvas.emission_texture
+	var pixels := canvas.emission.get_data()
+	app.visual_environment.night = 0.0
+	canvas.render(app, [], app.city_life.sprites)
+	assert(not canvas._emission_active and not canvas.road_layer.visible)
+	assert(canvas.emission.get_data() == pixels and canvas.emission_texture == texture,
+		"Day rendering must leave the unused emission image and texture alone")
+	app.visual_environment.night = 1.0
+	canvas.render(app, [], app.city_life.sprites)
+	assert(canvas.emission_texture == texture and canvas._emission_active)
+	var clear := Image.create(canvas.emission.get_width(), canvas.emission.get_height(), false, Image.FORMAT_RGBA8)
+	clear.fill(Color.TRANSPARENT)
+	assert(canvas.emission.get_data() == clear.get_data(), "Night reactivation retained stale lamp pixels")
+	app.visual_environment.night = saved_night
 
 
 func _check_fades(app: CityApplication) -> void:
