@@ -10,6 +10,7 @@ func _run() -> void:
 	var defaults := VisualEnhancementOptions.normalize({})
 	assert(defaults.day_seconds == 600.0)
 	assert(defaults.night_light_strength == 100.0)
+	assert(not defaults.night_daytime_enabled)
 	assert(VisualEnhancementOptions.normalize({"night_light_strength": NAN}).night_light_strength == 100.0)
 	assert(VisualEnhancementOptions.normalize({"night_light_strength": -10}).night_light_strength == 0.0)
 	assert(VisualEnhancementOptions.normalize({"night_light_strength": 150}).night_light_strength == 100.0)
@@ -21,6 +22,7 @@ func _run() -> void:
 	save.visual_enhancements.season_lut_strength = 0.75
 	save.visual_enhancements.weather_lut_strength = 0.0
 	save.visual_enhancements.night_light_strength = 35.0
+	save.visual_enhancements.night_daytime_enabled = true
 	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, save) == OK)
 	assert(AppSettingsStore.load_values(path).visual_enhancements == save.visual_enhancements)
 	assert(AppSettingsStore.save_values(0.4, 0.4, false, path) == OK)
@@ -216,6 +218,40 @@ func _run() -> void:
 		assert(is_equal_approx(main.map_view.layers.environment_parameters.environment_night, strength / 100.0))
 		assert(main.visual_environment.tint == night_tint)
 		assert(is_equal_approx(main.map_view.layers.environment_parameters.environment_saturation, 0.78))
+	var prior_options := main.preferences.visual_enhancements.duplicate()
+	main.preferences.visual_enhancements.day_hour = 12.0
+	main.preferences.visual_enhancements.pause_freezes = true
+	main.preferences.visual_enhancements.night_daytime_enabled = false
+	main.visual_environment.process(0.0)
+	var daylight := main.map_view.layers.environment_parameters.duplicate()
+	assert(main.visual_environment.night == 0.0)
+	main.preferences.visual_enhancements.night_daytime_enabled = true
+	main.visual_environment.process(0.0)
+	assert(main.visual_environment.night == 1.0)
+	for key in ["environment_tint", "environment_saturation", "environment_ambient_lift", "environment_day_lut_weights", "environment_day_lut_strength"]:
+		assert(main.map_view.layers.environment_parameters[key] == daylight[key], "Daytime lights changed ambient grading")
+	main.preferences.visual_enhancements.day_enabled = false
+	main.preferences.visual_enhancements.season_enabled = false
+	main.preferences.visual_enhancements.weather_enabled = false
+	main.preferences.visual_enhancements.night_light_strength = 35.0
+	main.visual_environment.process(0.0)
+	assert(main.map_view.layers.environment_parameters.environment_enabled)
+	assert(is_equal_approx(main.visual_environment.night, 0.35))
+	assert(main.map_view.layers.environment_parameters.environment_ambient_lift == 0.0)
+	main.preferences.visual_enhancements.night_light_strength = 0.0
+	main.visual_environment.process(0.0)
+	assert(main.visual_environment.night == 0.0)
+	main.preferences.visual_enhancements.night_light_strength = 100.0
+	main.preferences.visual_enhancements.brightmaps = false
+	main.visual_environment.process(0.0)
+	assert(main.visual_environment.night == 0.0)
+	main.preferences.visual_enhancements.brightmaps = true
+	main.preferences.visual_enhancements.night_daytime_enabled = false
+	main.visual_environment.process(0.0)
+	assert(not main.map_view.layers.environment_parameters.environment_enabled)
+	assert(main.visual_environment.night == 0.0)
+	main.preferences.visual_enhancements = prior_options
+	main.visual_environment.process(0.0)
 	assert(DocumentState.capture(main.document_state.city.document) == before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	# A newly loaded sunny document must not inherit the previous snowstorm.
@@ -449,8 +485,19 @@ func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	(tab.controls.night_light_strength as SpinBox).value = 35.0
 	assert(tab.selected_values().night_light_strength == 35.0)
 	(tab.controls.day_enabled as CheckBox).button_pressed = false
-	assert(day_source.disabled and (tab.controls.brightmaps as CheckBox).disabled)
+	assert(day_source.disabled and not (tab.controls.brightmaps as CheckBox).disabled)
 	assert(not (tab.controls.night_light_strength as SpinBox).editable)
+	var daytime := tab.controls.night_daytime_enabled as CheckBox
+	assert(not daytime.disabled)
+	daytime.button_pressed = true
+	assert((tab.controls.night_light_strength as SpinBox).editable)
+	assert((tab.controls.night_ground as SpinBox).editable)
+	assert(not (tab.controls.night_ambient as SpinBox).editable)
+	(tab.controls.brightmaps as CheckBox).button_pressed = false
+	assert(daytime.disabled and not (tab.controls.night_ground as SpinBox).editable)
+	(tab.controls.brightmaps as CheckBox).button_pressed = true
+	daytime.button_pressed = false
+	assert(not (tab.controls.night_ground as SpinBox).editable)
 	(tab.controls.cloud_enabled as CheckBox).button_pressed = false
 	assert(not (tab.controls.cloud_density as SpinBox).editable)
 	(tab.controls.life_cars_enabled as CheckBox).button_pressed = false

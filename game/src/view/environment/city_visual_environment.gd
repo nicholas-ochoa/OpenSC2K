@@ -150,13 +150,16 @@ func process(delta: float) -> void:
 	if profiles.atlases.is_empty():
 		profiles.reload(options.lut_folder)
 	profiles.advance_weather(weather.kind, delta, options.weather_transition, active and options.weather_enabled)
-	if active and (options.day_enabled or options.season_enabled or options.weather_enabled):
+	var daytime_lights: bool = options.brightmaps and options.night_daytime_enabled
+	if active and (options.day_enabled or options.season_enabled or options.weather_enabled or daytime_lights):
 		_sync_whole_masks()
 	if active and VisualEnhancementOptions.water_pass_enabled(options):
 		_sync_whole_water()
 	tint = lighting.tint if options.day_enabled else Color.WHITE
 	var ambient_night: float = lighting.night if options.day_enabled else 0.0
-	night = ambient_night * float(options.night_light_strength) / 100.0 if options.brightmaps else 0.0
+	# Artificial lights can stay on without changing daylight, grading or cloud shadows.
+	var light_level := 1.0 if daytime_lights else ambient_night
+	night = light_level * float(options.night_light_strength) / 100.0 if options.brightmaps else 0.0
 	clouds.process(delta, elapsed * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
 	var parameters := {
 		"water_enabled": active and VisualEnhancementOptions.water_pass_enabled(options),
@@ -166,7 +169,7 @@ func process(delta: float) -> void:
 		"water_season_strength": options.season_water_strength if active and options.season_enabled else 0.0,
 		"water_rain": weather.rain,
 		"water_frozen": options.pause_freezes and (speed == 1 or app.frame._simulation_suspended()),
-		"environment_enabled": active and (options.day_enabled or options.season_enabled or options.weather_enabled),
+		"environment_enabled": active and (options.day_enabled or options.season_enabled or options.weather_enabled or daytime_lights),
 		"environment_weather": Vector3(weather.tint.r, weather.tint.g, weather.tint.b),
 		"environment_frost": weather.frost,
 		"environment_seasons": CitySeasonColors.weights(season, options.season_transition) if options.season_enabled else Vector4(0, 1, 0, 0),

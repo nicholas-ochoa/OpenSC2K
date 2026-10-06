@@ -9,8 +9,8 @@ signal export_requested
 const SECTIONS := [
 	["Day & Night", "Set the time of day and the appearance of the night.",
 		["day_enabled", "day_mode", "day_hour", "day_seconds", "day_lut_strength", "night_strength"]],
-	["Lighting", "Building and vehicle lights at night. Enable Day & Night to use these settings.",
-		["brightmaps", "night_light_strength", "night_ambient", "night_glow", "night_ground"]],
+	["Lighting", "Building, vehicle and street lights. Keep lights on during the day with the daytime override.",
+		["brightmaps", "night_daytime_enabled", "night_light_strength", "night_ambient", "night_glow", "night_ground"]],
 	["Seasons", "Follow the city calendar, run a visual cycle or choose one season.",
 		["season_enabled", "season_mode", "season_fixed", "season_seconds", "season_transition", "season_lut_strength"]],
 	["Weather & Clouds", "Weather and clouds have separate switches. Fixed weather can show snow in any season.",
@@ -44,6 +44,7 @@ const LABELS := {
 	"lut_path": "Custom color filter (LUT PNG)", "brightmap_folder": "Custom light masks (brightmaps)",
 }
 const HINTS := {
+	"night_daytime_enabled": "Keep building brightmaps, glow, street lamps, junction signals and vehicle lights on at any hour, even with the day-night cycle off. Daylight colors and individual light strengths stay unchanged.",
 	"night_ambient": "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate.",
 	"night_glow": "Soft colored light around visible brightmaps. Zero keeps only the sharp original lights.",
 	"night_ground": "Street lamps, warm road lighting, cosmetic junction signals and selected shop approaches. Signals do not control traffic. Zero disables these lights.",
@@ -286,10 +287,14 @@ func _update_availability() -> void:
 				available = available and values.weather_mode == 2
 			"weather_seconds":
 				available = available and values.weather_mode == 1
+			"brightmaps":
+				available = true
+			"night_daytime_enabled":
+				available = values.brightmaps
 			"brightmap_folder", "night_light_strength":
-				available = available and values.brightmaps
+				available = (values.day_enabled or values.night_daytime_enabled) and values.brightmaps
 			"night_glow", "night_ground":
-				available = available and values.brightmaps and values.night_light_strength > 0.0
+				available = (values.day_enabled or values.night_daytime_enabled) and values.brightmaps and values.night_light_strength > 0.0
 			"life_car_amount":
 				available = values.life_cars_enabled
 			"life_people_amount":
