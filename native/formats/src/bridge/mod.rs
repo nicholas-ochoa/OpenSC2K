@@ -12,6 +12,7 @@ mod palette;
 mod pe;
 mod png;
 mod scurk_mif;
+mod scurk_pixels;
 mod sprite;
 mod sprite_import;
 mod zip;
