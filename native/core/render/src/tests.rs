@@ -876,10 +876,10 @@ fn artwork_raster_selects_animation_frames_and_traffic_masks() {
 }
 
 #[test]
-fn hd_effects_add_grid_lines_and_palette_overlays_only_when_enabled() {
+fn hd_effects_add_grid_lines_and_no_palette_overlay() {
     let red = |region: &region::Region| -> Vec<u8> { region.colors.iter().map(|c| (c[0] * 255.0).round() as u8).collect() };
 
-    for effects in [0, effects::GRID | effects::PALETTE] {
+    for effects in [0, effects::GRID] {
         let mut b = fixture(4, 2);
         b.config.effects = effects;
         let key = b.region(Rect::new(0, 0, 600, 700)).unwrap().draws[0].image & !1;
@@ -889,7 +889,8 @@ fn hd_effects_add_grid_lines_and_palette_overlays_only_when_enabled() {
         b.tiles.clear();
         let reds = red(&b.region(Rect::new(0, 0, 600, 700)).unwrap());
 
-        assert_eq!(reds.contains(&51), effects & effects::PALETTE != 0);
+        // nothing draws over the animated colors of HD city art
+        assert!(!reds.contains(&51));
     }
 }
 

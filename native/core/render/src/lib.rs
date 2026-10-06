@@ -244,8 +244,6 @@ pub mod effects {
     pub const WATERFALL: i32 = 2;
     /// Flowing water in watered underground pipes.
     pub const PIPE_FLOW: i32 = 4;
-    /// Palette animation (lights, water shimmer) over HD art.
-    pub const PALETTE: i32 = 8;
 }
 
 impl Config {

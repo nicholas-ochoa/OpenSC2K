@@ -12,9 +12,6 @@ pub const ARTWORK_SLOT: u64 = 1 << 63;
 const MASK_SLOT: u64 = 1 << 62;
 const RECORD_SLOT: u64 = 1 << 61;
 
-/// The palette indices that the palette animation changes.
-const ANIMATED_COLORS: [std::ops::RangeInclusive<u8>; 3] = [171..=198, 200..=219, 224..=239];
-
 /// The largest GPU atlas edge, and the largest padded image in it.
 pub const ATLAS_LIMIT: i32 = 8192;
 
@@ -50,8 +47,6 @@ pub struct Sprites {
     pub artwork: HashMap<u64, Artwork>,
     /// The road pixels of each masked traffic key, as alpha in logical pixels.
     pub traffic_masks: HashMap<u64, Sprite>,
-    /// Whether each image has palette indices that animate.
-    animated: HashMap<u64, bool>,
     target: [u8; 4],
     /// While set, a missing sprite paints as a transparent pixel and is recorded
     /// in `missing`, so one pass finds every missing sprite.
@@ -65,7 +60,6 @@ impl Sprites {
             images,
             artwork: HashMap::new(),
             traffic_masks: HashMap::new(),
-            animated: HashMap::new(),
             target,
             placeholders: false,
             missing: BTreeSet::new(),
@@ -102,22 +96,6 @@ impl Sprites {
             }
             None => draw.rect,
         }
-    }
-
-    /// Whether the indexed pixels of `key` use the colors that the palette animates.
-    pub fn has_animated_colors(&mut self, key: u64) -> bool {
-        if let Some(&animated) = self.animated.get(&key) {
-            return animated;
-        }
-
-        let animated = self.images.get(&key).is_some_and(|image| {
-            image
-                .la
-                .chunks_exact(2)
-                .any(|pixel| pixel[1] != 0 && ANIMATED_COLORS.iter().any(|range| range.contains(&pixel[0])))
-        });
-        self.animated.insert(key, animated);
-        animated
     }
 
     pub fn get(&mut self, id: i32, flip: bool) -> Result<u64, String> {

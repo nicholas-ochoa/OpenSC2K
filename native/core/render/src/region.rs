@@ -1,4 +1,4 @@
-use super::sprites::{ARTWORK_PADDING, Sprite, TRAFFIC_KEY};
+use super::sprites::{ARTWORK_PADDING, Sprite};
 use super::{Builder, Draw, Rect, effects, surface_grid};
 
 /// Each quad has a vertex color that tells the shader how to draw it. These
@@ -18,13 +18,9 @@ const POWER_WARNING_SPRITE: i32 = 386;
 /// HD effects. A waterfall: green is the view, and blue and alpha are the
 /// position in the sprite, from 0 to 1.
 const WATERFALL_TAG: u8 = 49;
-/// The indexed sprite under HD art: the shader draws its palette animation.
-const PALETTE_TAG: u8 = 51;
 /// The indexed sprite under underground HD art: the shader draws pipe water.
 const PIPE_FLOW_TAG: u8 = 52;
 const WATERFALL_SPRITE: i32 = 284;
-/// The pump has its own animation strip.
-const PUMP_SPRITE: i32 = 220;
 
 // The least recently used tiles leave the cache above this count. Regions keep
 // their own draw lists, so eviction never changes a published region.
@@ -343,8 +339,9 @@ impl Builder {
         self.config.effects & effects::WATERFALL != 0 && !draw.moving && draw.sprite.rem_euclid(500) == WATERFALL_SPRITE
     }
 
-    /// The optional effects after the art of a draw: grid lines, and the
-    /// indexed sprite whose palette animation the shader draws over the art.
+    /// The optional effects after the art of a draw: grid lines, and in the
+    /// underground view the indexed sprite whose pipe water the shader draws
+    /// over the art. Nothing plays over the animated colors of city art.
     fn artwork_effects(&mut self, out: &mut Region, draw: &Draw, bounds: Rect) -> Result<(), String> {
         let effects = self.config.effects;
 
@@ -352,27 +349,11 @@ impl Builder {
             surface_grid::append(out, draw, bounds, &self.sprites.images[&draw.image]);
         }
 
-        let tag = if self.config.underground {
-            if effects & effects::PIPE_FLOW == 0 {
-                return Ok(());
-            }
+        if !self.config.underground || effects & effects::PIPE_FLOW == 0 {
+            return Ok(());
+        }
 
-            PIPE_FLOW_TAG
-        } else {
-            let sprite = draw.sprite.rem_euclid(500);
-
-            if effects & effects::PALETTE == 0
-                || draw.moving
-                || draw.image & TRAFFIC_KEY != 0
-                || [POWER_WARNING_SPRITE, PUMP_SPRITE].contains(&sprite)
-                || self.waterfall_flow(draw)
-                || !self.sprites.has_animated_colors(draw.image)
-            {
-                return Ok(());
-            }
-
-            PALETTE_TAG
-        };
+        let tag = PIPE_FLOW_TAG;
 
         let clipped = draw.rect.clip(bounds);
 

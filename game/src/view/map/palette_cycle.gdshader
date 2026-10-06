@@ -22,16 +22,11 @@ const float LAST_TRAFFIC_TAG = 111.0;
 const float GRID_TAG = 48.0;
 // Waterfall art: green is the view, blue and alpha the sprite position.
 const float WATERFALL_TAG = 49.0;
-// The indexed sprite under HD art, for its palette animation.
-const float PALETTE_TAG = 51.0;
 // The indexed sprite under underground HD art, for the water in its pipes.
 const float PIPE_FLOW_TAG = 52.0;
 const vec3 GRID_COLOR = vec3(0.22, 0.19, 0.10);
 const float GRID_OPACITY = 0.36;
 const float GRID_WIDTH = 0.45;
-// Palette animation over HD art: animated colors tint the art this much.
-const float PALETTE_OPACITY = 0.3;
-const float WATER_SHIMMER_OPACITY = 0.22;
 const float PIPE_FLOW_OPACITY = 0.32;
 // The palette entry that makes the power warning blink.
 const float POWER_WARNING_INDEX = 195.0;
@@ -89,8 +84,6 @@ void vertex() {
 		float divisor = exp2(2.0 - bytes.g);
 		world_position *= divisor;
 		waterfall_local = COLOR.ba * vec2(32.0, 28.0 + divisor);
-	} else if (tag == PALETTE_TAG) {
-		artwork_kind = 4.0;
 	} else if (tag == PIPE_FLOW_TAG) {
 		artwork_kind = 5.0;
 	}
@@ -162,34 +155,6 @@ vec4 pipe_water(vec4 encoded) {
 	return vec4((dark_underground ? flow * DARK_ARTWORK : flow) * alpha, alpha);
 }
 
-bool water_color(vec4 encoded) {
-	int index = palette_index(encoded);
-	return encoded.a > 0.0 && index >= 200 && index <= 211;
-}
-
-// Transparent texels are not land, so the shimmer has no seam at tile edges.
-float water_support(vec4 encoded) {
-	return encoded.a <= 0.0 || water_color(encoded) ? 1.0 : 0.0;
-}
-
-// The shimmer of a water texel, premultiplied: the mean color of its palette
-// ramp, with a slow wave across the city. Land beside it fades it out.
-vec4 water_shimmer(vec4 encoded, float support, vec3 surface, vec3 falling) {
-	if (!water_color(encoded)) {
-		return vec4(0.0);
-	}
-
-	bool waterfall = palette_index(encoded) < 208;
-	float seconds = artwork_animation_seconds;
-	float wave = waterfall ? sin(world_position.y * 0.27 - seconds * 5.0) :
-		sin(dot(world_position, vec2(0.10, 0.19)) - seconds * 1.7) * 0.65 +
-		sin(dot(world_position, vec2(-0.16, 0.07)) + seconds * 1.1) * 0.35;
-	vec3 water = (waterfall ? falling : surface) * (0.98 + wave * 0.12);
-	float alpha = encoded.a * support * WATER_SHIMMER_OPACITY;
-
-	return vec4(water * alpha, alpha);
-}
-
 float flow_hash(vec2 cell) {
 	return fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -239,45 +204,6 @@ void fragment() {
 		vec2 corner = floor(cell);
 		COLOR = filtered(pipe_water(ATLAS(corner)), pipe_water(ATLAS(corner + vec2(1.0, 0.0))),
 			pipe_water(ATLAS(corner + vec2(0.0, 1.0))), pipe_water(ATLAS(corner + vec2(1.0))), cell - corner);
-	} else if (artwork_kind > 3.5) {
-		// The animated colors of the indexed sprite tint the art. Water gets a
-		// smooth shimmer instead of the checkered pixels of its palette ramp.
-		vec4 encoded = texture(TEXTURE, UV);
-		int index = palette_index(encoded);
-		bool animated = animated_color(index);
-		COLOR = palette_cycle_enabled && animated ? vec4(palette_color(index).rgb, encoded.a * PALETTE_OPACITY) : vec4(0.0);
-		vec2 cell = texel - 0.5;
-		vec2 corner = floor(cell);
-		vec4 a = ATLAS(corner);
-		vec4 b = ATLAS(corner + vec2(1.0, 0.0));
-		vec4 c = ATLAS(corner + vec2(0.0, 1.0));
-		vec4 d = ATLAS(corner + vec2(1.0));
-
-		if (palette_cycle_enabled && (water_color(a) || water_color(b) || water_color(c) || water_color(d))) {
-			vec3 surface = vec3(0.0);
-			vec3 falling = vec3(0.0);
-
-			for (int offset = 0; offset < 8; offset++) {
-				falling += palette_color(200 + offset).rgb * 0.125;
-			}
-
-			for (int offset = 0; offset < 4; offset++) {
-				surface += palette_color(208 + offset).rgb * 0.25;
-			}
-
-			vec2 dx = vec2(1.0, 0.0);
-			vec2 dy = vec2(0.0, 1.0);
-			float support_a = water_support(ATLAS(corner - dx)) * water_support(b) * water_support(ATLAS(corner - dy)) * water_support(c);
-			float support_b = water_support(a) * water_support(ATLAS(corner + dx * 2.0)) * water_support(ATLAS(corner + dx - dy)) * water_support(d);
-			float support_c = water_support(ATLAS(corner - dx + dy)) * water_support(d) * water_support(a) * water_support(ATLAS(corner + dy * 2.0));
-			float support_d = water_support(c) * water_support(ATLAS(corner + dx * 2.0 + dy)) * water_support(b) * water_support(ATLAS(corner + dx + dy * 2.0));
-			vec4 water = filtered(water_shimmer(a, support_a, surface, falling), water_shimmer(b, support_b, surface, falling),
-				water_shimmer(c, support_c, surface, falling), water_shimmer(d, support_d, surface, falling), cell - corner);
-
-			if (water_color(encoded) || !animated) {
-				COLOR = water;
-			}
-		}
 	} else {
 		vec3 frames = artwork_frames;
 		vec4 origin = vec4(0.0);

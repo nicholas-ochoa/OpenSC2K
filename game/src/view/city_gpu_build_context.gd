@@ -11,8 +11,7 @@ const ATLAS_EDGE := 2048
 const HD_GRID := 1
 const HD_WATERFALL := 2
 const HD_PIPE_FLOW := 4
-const HD_PALETTE := 8
-const ALL_HD_EFFECTS := 15
+const ALL_HD_EFFECTS := 7
 const RECORD_SIZE := 14
 
 var builder := NativeCityRegionBuilder.new()

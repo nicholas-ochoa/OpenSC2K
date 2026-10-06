@@ -16,7 +16,6 @@ const GPU_SMALL_REGION_EDGE := 128
 const GPU_FIT_REGION_EDGE := 512
 const GPU_WORKERS := 2
 # vertex color tags of palette_cycle.gdshader for the overlays of HD regions
-const OVERLAY_PALETTE_TAG := 51
 const OVERLAY_PIPE_FLOW_TAG := 52
 # chunks whose tile data the region renderers read
 const SOURCE_CHUNKS: Array[String] = ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "XUND", "XTRF"]
@@ -429,7 +428,7 @@ func texture() -> CityMapSource:
 		output.tiles.append(CityMapSource.TileEntry.new(position, size, entry.artwork_texture if artwork else entry.texture,
 			CityDynamicSpriteCanvas.ARTWORK_TAG if artwork else Color.WHITE))
 
-		# the palette animation of the indexed region over its HD art
+		# the water of the pipes of the indexed region over its HD art
 		var overlay := _overlay_tag()
 
 		if artwork and overlay != Color.WHITE:
@@ -441,16 +440,11 @@ func texture() -> CityMapSource:
 	return output
 
 
-# The vertex color of the indexed overlay of a CPU HD region, or white for none.
-# Refer to the tags of palette_cycle.gdshader.
+# The vertex color of the indexed overlay of a CPU HD region, or white for none:
+# only the underground view draws the water of its pipes over the art. Refer to
+# the tags of palette_cycle.gdshader.
 func _overlay_tag() -> Color:
-	# an HD pack shows every effect on its art
-	var effects := CityGpuBuildContext.ALL_HD_EFFECTS
-
-	if mode == CityViewMode.Mode.UNDERGROUND:
-		return Color8(OVERLAY_PIPE_FLOW_TAG, 0, 0) if effects & CityGpuBuildContext.HD_PIPE_FLOW else Color.WHITE
-
-	return Color8(OVERLAY_PALETTE_TAG, 0, 0) if effects & CityGpuBuildContext.HD_PALETTE else Color.WHITE
+	return Color8(OVERLAY_PIPE_FLOW_TAG, 0, 0) if mode == CityViewMode.Mode.UNDERGROUND else Color.WHITE
 
 
 func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:
