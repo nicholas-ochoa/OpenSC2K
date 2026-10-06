@@ -23,9 +23,17 @@ var base_large_sprites: Sc2SpriteArchive
 var base_small_medium_sprites: Sc2SpriteArchive
 # the full-color art that replaces the look of the city sprites, or null
 var hd_pack: HdSpritePack
+# the HD graphics setting: the art of a loaded HD pack shows
+var hd_enabled := true
 # active scurk tile set
 var active_scurk_tile_set: ScurkMif
 # every loaded tile set, in load order. The last one is active_scurk_tile_set
 var active_scurk_tile_sets: Array[ScurkMif] = []
 var active_scurk_name := ""
 var active_scurk_path := ""
+
+
+# True when the art of the HD graphics pack shows: a pack is loaded and the
+# HD graphics setting is on.
+func hd_active() -> bool:
+	return hd_pack != null and hd_enabled

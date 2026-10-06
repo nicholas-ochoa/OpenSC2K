@@ -325,7 +325,8 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 func use_default_sprites() -> void:
 	var large := app.asset_state.base_large_sprites
 	var small_medium := app.asset_state.base_small_medium_sprites
-	var corrections := app.preferences.sprite_corrections
+	# HD graphics show no sc2kfix corrections
+	var corrections := app.preferences.sprite_corrections and not app.asset_state.hd_active()
 
 	if corrections:
 		large = Sc2kfixSpriteFixes.apply(large, "large")
@@ -336,9 +337,9 @@ func use_default_sprites() -> void:
 	use_dos_colors(corrections)
 
 
-# `archive` with the art of the HD sprite pack, when one is loaded.
+# `archive` with the art of the HD sprite pack, when HD graphics show.
 func with_hd_sprites(archive: Sc2SpriteArchive) -> Sc2SpriteArchive:
-	return app.asset_state.hd_pack.apply_to(archive) if app.asset_state.hd_pack != null else archive
+	return app.asset_state.hd_pack.apply_to(archive) if app.asset_state.hd_active() else archive
 
 
 # The pack.json of the HD sprite pack. OPENSC2K_HD_PACK overrides the preference.
@@ -374,9 +375,27 @@ func set_hd_pack(path: String) -> String:
 			return pack.error
 
 	app.asset_state.hd_pack = pack
+	_reload_sprites()
 
+	return ""
+
+
+# Show or hide the art of a loaded HD graphics pack.
+func set_hd_graphics(enabled: bool) -> void:
+	if app.preferences.hd_graphics == enabled:
+		return
+
+	app.preferences.hd_graphics = enabled
+	app.asset_state.hd_enabled = enabled
+
+	if app.asset_state.hd_pack != null:
+		_reload_sprites()
+
+
+# Paint the city again with the sprites of the current graphics, HD art, and tile sets.
+func _reload_sprites() -> void:
 	if app.asset_state.base_large_sprites == null:
-		return ""
+		return
 
 	app.map_render.close_region_cache()
 	app.static_render.stop_render_job()
@@ -391,8 +410,6 @@ func set_hd_pack(path: String) -> String:
 
 	if app.document_state.city != null:
 		app.map_render.refresh_map()
-
-	return ""
 
 
 # Use the palette of the graphics source, with the sc2kfix DOS colours when

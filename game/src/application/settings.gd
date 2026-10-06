@@ -67,6 +67,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.loading_values = true
 	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
 	app.main_overlays.settings_dialog.sprite_corrections_check.button_pressed = preferences.sprite_corrections
+	app.main_overlays.settings_dialog.show_hd_graphics(preferences.hd_graphics)
 	app.main_overlays.settings_dialog.recent_autosaves_check.button_pressed = preferences.recent_autosaves
 	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
 	app.main_overlays.settings_dialog.language_selector.select(AppLocalization.codes().find(preferences.ui_language))
@@ -110,6 +111,7 @@ func _refresh_settings_pack_names() -> void:
 	app.main_overlays.settings_dialog.set_loaded_pack("data", app.asset_state.data_pack.pack_name, preferences.data_pack_folder)
 	app.main_overlays.settings_dialog.set_loaded_pack("hd",
 		app.asset_state.hd_pack.pack_name if app.asset_state.hd_pack != null else "", preferences.hd_pack_folder)
+	app.main_overlays.settings_dialog.set_hd_pack_loaded(app.asset_state.hd_pack != null)
 
 
 # apply the values in the Settings dialog. the dialog calls this for each
@@ -182,7 +184,8 @@ func apply_settings() -> void:
 		preferences.dark_underground = bool(values.dark_underground)
 		app.menus.sync_map_style()
 
-	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
+	app.assets.set_hd_graphics(bool(values.hd_graphics))
+	app.assets.set_sprite_corrections(bool(values.sprite_corrections) and not app.asset_state.hd_active())
 	preferences.recent_autosaves = bool(values.recent_autosaves)
 
 	if preferences.ui_language != str(values.ui_language):
@@ -306,6 +309,8 @@ func load_app_settings() -> void:
 	preferences.hd_pack_folder = str(values.hd_pack_folder)
 	preferences.dark_underground = bool(values.dark_underground)
 	app.menus.sync_map_style()
+	preferences.hd_graphics = bool(values.hd_graphics)
+	app.asset_state.hd_enabled = preferences.hd_graphics
 	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
 	preferences.recent_autosaves = bool(values.recent_autosaves)
 	preferences.ui_language = AppLocalization.normalize(values.ui_language)

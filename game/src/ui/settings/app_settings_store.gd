@@ -29,6 +29,7 @@ static func load_values(
 
 	result.dark_underground = bool(config.get_value("display", "dark_underground", false))
 	result.sprite_corrections = bool(config.get_value("graphics", "sc2kfix_sprite_corrections", false))
+	result.hd_graphics = bool(config.get_value("graphics", "hd_graphics", true))
 	result.recent_autosaves = bool(config.get_value("general", "recent_autosaves", true))
 	result.ui_theme = normalize_theme(config.get_value("general", "ui_theme", "light"))
 	result.ui_language = AppLocalization.normalize(config.get_value("general", "ui_language", AppLocalization.DEFAULT))
@@ -216,6 +217,9 @@ static func save_values(
 	if options.sprite_corrections != null:
 		config.set_value("graphics", "sc2kfix_sprite_corrections", bool(options.sprite_corrections))
 
+	if options.hd_graphics != null:
+		config.set_value("graphics", "hd_graphics", bool(options.hd_graphics))
+
 	# an HD pack shows every effect on its art: the old setting goes
 	if config.has_section_key("graphics", "hd_effects"):
 		config.erase_section_key("graphics", "hd_effects")
@@ -350,6 +354,7 @@ class Values extends RefCounted:
 	var translucent_menus := true
 	var dark_underground := false
 	var sprite_corrections := false
+	var hd_graphics := true
 	var recent_autosaves := true
 	var overview_graphics := 0
 	var music_volume := 0.8
@@ -406,6 +411,7 @@ class SaveOptions extends RefCounted:
 	var ui_language: Variant = null
 	var dark_underground: Variant = null
 	var sprite_corrections: Variant = null
+	var hd_graphics: Variant = null
 	var recent_autosaves: Variant = null
 	var translucent_menus: Variant = null
 	var check_for_updates: Variant = null

@@ -62,7 +62,7 @@ func open_export_dialog() -> void:
 		CityViewMode.key(view_state.overlay_mode),
 		bool(view_state.surface_visibility.get("signs", true)),
 		asset_state.reference_root,
-		asset_state.hd_pack != null,
+		asset_state.hd_active(),
 	)
 	dialog.show_options()
 

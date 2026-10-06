@@ -13,9 +13,9 @@ signal settings_changed
 # the player accepted the Use Defaults warning. the controls reset and save at once
 signal controls_reset_requested
 
-const CONTROLS_TAB := 3
-const DATA_TAB := 4
-const MODS_TAB := 5
+const CONTROLS_TAB := 4
+const DATA_TAB := 5
+const MODS_TAB := 6
 
 var pack_error_label: Label
 var shuffle_music_check: CheckBox
@@ -41,6 +41,11 @@ var music_slider: HSlider
 var effects_slider: HSlider
 var dark_underground_check: CheckBox
 var sprite_corrections_check: CheckBox
+# HD graphics need a loaded HD graphics pack, and they rule out the sc2kfix corrections
+var hd_graphics_check: CheckBox
+var hd_pack_loaded := false
+# the HD graphics choice, which a disabled check box keeps while it shows off
+var hd_graphics_choice := true
 var recent_autosaves_check: CheckBox
 var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
@@ -88,6 +93,13 @@ func _ready() -> void:
 	folder_edit = %FolderEdit
 	dark_underground_check = %DarkUndergroundCheck
 	sprite_corrections_check = %SpriteCorrectionsCheck
+	hd_graphics_check = %HdGraphicsCheck
+	# this runs before the change notice, so the values have the corrections off
+	hd_graphics_check.toggled.connect(func(pressed: bool) -> void:
+		if not hd_graphics_check.disabled:
+			hd_graphics_choice = pressed
+
+		_sync_hd_controls())
 	recent_autosaves_check = %RecentAutosavesCheck
 	fullscreen_check = %FullscreenCheck
 	music_pack_edit = %MusicPackEdit
@@ -340,6 +352,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.effects_volume = float(effects_slider.value) / 100.0
 	result.dark_underground = dark_underground_check.button_pressed
 	result.sprite_corrections = sprite_corrections_check.button_pressed
+	result.hd_graphics = hd_graphics_choice
 	result.recent_autosaves = recent_autosaves_check.button_pressed
 	result.fullscreen = fullscreen_check.button_pressed
 	result.check_for_updates = check_for_updates_check.button_pressed
@@ -444,6 +457,31 @@ func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: But
 	browse.get_parent().add_child(import_button)
 	pack_import_buttons[kind] = import_button
 	edit.placeholder_text = tr("Automatic (%s)") % MediaPack.default_folder(kind).path_join("pack.json")
+
+
+# Whether an HD graphics pack is loaded: only then can HD graphics show.
+func set_hd_pack_loaded(loaded: bool) -> void:
+	hd_pack_loaded = loaded
+	_sync_hd_controls()
+
+
+# Show the HD graphics choice of the settings. Without a loaded pack the check
+# box is off and disabled, and the choice stays for a later pack.
+func show_hd_graphics(enabled: bool) -> void:
+	hd_graphics_choice = enabled
+	_sync_hd_controls()
+
+
+# HD graphics show with a loaded pack and the check box on. They use no sc2kfix
+# sprite corrections, which then turn off.
+func _sync_hd_controls() -> void:
+	hd_graphics_check.disabled = not hd_pack_loaded
+	hd_graphics_check.set_pressed_no_signal(hd_pack_loaded and hd_graphics_choice)
+	var hd := hd_pack_loaded and hd_graphics_choice
+	sprite_corrections_check.disabled = hd
+
+	if hd:
+		sprite_corrections_check.set_pressed_no_signal(false)
 
 
 func set_loaded_pack(kind: String, pack_name: String, path: String) -> void:
