@@ -11,12 +11,12 @@ right faces and the left faces of the buildings, so the streets line up with
 the buildings. Everything that stands is drawn from the back to the front by
 its footprint on the ground.
 
-This script writes the SVG layers and icon.json of assets/icons/OpenSC2K.icon,
+This script writes the SVG layers and icon.json of game/assets/icons/OpenSC2K.icon,
 for day and for dusk. Each object is its own named group. It replaces hand
 edits of the SVG files, so carry those edits into this script first. Then run
 tools/make_icon.py to build the icon files.
 
-  python3 tools/paint_icon.py              # write assets/icons/OpenSC2K.icon
+  python3 tools/paint_icon.py              # write game/assets/icons/OpenSC2K.icon
   python3 tools/paint_icon.py out.icon     # write another document
 """
 from contextlib import contextmanager
@@ -1000,4 +1000,4 @@ def main(folder):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / 'assets/icons/OpenSC2K.icon')
+    main(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / 'game/assets/icons/OpenSC2K.icon')

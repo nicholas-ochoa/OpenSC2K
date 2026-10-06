@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the OpenSC2K app icon files from the Icon Composer document in assets/icons.
+"""Build the OpenSC2K app icon files from the Icon Composer document in game/assets/icons.
 
 The art is in OpenSC2K.icon: an aerial view of a city on a bay, after the box
 art of SimCity 2000. Its layers are plain SVG files, to edit by hand:
@@ -35,7 +35,7 @@ import tempfile
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-ICONS = ROOT / 'assets/icons'
+ICONS = ROOT / 'game/assets/icons'
 NAME = 'OpenSC2K'
 ICTOOL = Path('/Applications/Xcode.app/Contents/Applications/Icon Composer.app/Contents/Executables/ictool')
 # the canvas of an Icon Composer document, and the rounded square of a
