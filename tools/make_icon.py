@@ -4,8 +4,8 @@
 The icon follows the box art of SimCity 2000, which every edition from 1993
 to 2003 shares: an aerial view of a city on a bay under a bright sky, with
 mountains on the horizon, a sandstone tower with two peaked caps and a glass
-cross, round glass towers, a red suspension bridge, a stadium, a monorail and
-a flying saucer with a pink neon ring that hovers over it all.
+cross, round glass towers, a red suspension bridge, a stadium and a monorail.
+The colors are more saturated than the painting, so the icon is bright at small sizes.
 
 The art is vector: each layer is an SVG. Each layer also has a dusk version for
 the dark appearance, with a sunset sky and lit windows.
@@ -13,7 +13,7 @@ the dark appearance, with a sunset sky and lit windows.
 macOS 26 and later show an app icon in its own shape only when it comes from
 an Icon Composer document. Other icons get a grey frame. So this script writes:
 
-  OpenSC2K.icon  the Icon Composer document: the sky fill and the land, city and saucer layers
+  OpenSC2K.icon  the Icon Composer document: the sky fill and the land and city layers
   Assets.car     the document compiled by actool, for the app bundle
   OpenSC2K.icns  the icon of earlier macOS versions, as ictool renders the document
   OpenSC2K.png   the window icon, the same render
@@ -25,6 +25,7 @@ It needs Xcode 26 or later, for actool and the ictool of Icon Composer.
   python3 tools/make_icon.py --preview out.png   # render the icon only
 """
 import argparse
+import colorsys
 import json
 from pathlib import Path
 import random
@@ -47,10 +48,14 @@ PLATE = 824
 # the aerial view: the fall of a horizontal edge across a building face, and the horizon
 SLOPE = 0.30
 HORIZON = 500
+# the scene is drawn larger than the canvas from this point at the bottom, so the city fills the sky
+ZOOM, ZOOM_ORIGIN = 1.07, (560, 1024)
 
 # the sky fill from the top to the horizon, by day and at dusk
-SKY_DAY = ('#2a64b4', '#b4dcf2')
-SKY_DUSK = ('#0f1636', '#d0705c')
+SKY_DAY = ('#0a4fd8', '#72ccff')
+SKY_DUSK = ('#0c1250', '#ff6a4a')
+# each color of the art has its saturation multiplied by this
+SATURATION = 1.6
 # at dusk each color moves toward this blue and toward black; lights keep their color
 DUSK, DUSK_BLUE, DUSK_DARK = '#1b2350', 0.55, 0.25
 LIT = '#ffd77a'
@@ -59,10 +64,13 @@ STONE_TOP, STONE_LEFT, STONE_RIGHT = '#f6d6a6', '#f2c38a', '#bd8452'
 TEAL_LIGHT, TEAL_DARK = '#4cc4d2', '#155d7c'
 VIOLET_LIGHT, VIOLET_DARK = '#a2a8f0', '#3c3c8e'
 BRIDGE_RED, BRIDGE_RED_DARK = '#dc3a2a', '#981f16'
-NEON_PINK, NEON_CORE = '#ff4fc0', '#ffd6f3'
 
 # the layers from the front to the back: (name, Liquid Glass, shadow)
-LAYERS = (('saucer', False, 'neutral'), ('city', False, 'neutral'), ('land', False, 'none'))
+LAYERS = (('city', False, 'neutral'), ('land', False, 'none'))
+
+
+ZOOM_TRANSFORM = (f'translate({ZOOM_ORIGIN[0]},{ZOOM_ORIGIN[1]}) scale({ZOOM}) '
+                  f'translate({-ZOOM_ORIGIN[0]},{-ZOOM_ORIGIN[1]})')
 
 
 def hex_rgb(value):
@@ -77,6 +85,11 @@ def rgb_hex(rgb):
 def mix(a, b, t):
     a, b = hex_rgb(a), hex_rgb(b)
     return rgb_hex([x + (y - x) * t for x, y in zip(a, b)])
+
+
+def saturate(value, factor=SATURATION):
+    hue, lightness, saturation = colorsys.rgb_to_hls(*(c / 255 for c in hex_rgb(value)))
+    return rgb_hex([c * 255 for c in colorsys.hls_to_rgb(hue, lightness, min(1.0, saturation * factor))])
 
 
 def lerp(a, b, t):
@@ -96,9 +109,9 @@ class Svg:
 
     def color(self, value, light=False):
         if not self.dusk or light:
-            return value
+            return saturate(value)
 
-        return mix(mix(value, DUSK, DUSK_BLUE), '#000000', DUSK_DARK)
+        return saturate(mix(mix(value, DUSK, DUSK_BLUE), '#000000', DUSK_DARK))
 
     def paint(self, value, light=False):
         return value if value.startswith('url(') or value == 'none' else self.color(value, light)
@@ -132,7 +145,7 @@ class Svg:
 
     def text(self):
         return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{SIZE}" height="{SIZE}" viewBox="0 0 {SIZE} {SIZE}">'
-                f'<defs>{"".join(self.defs)}</defs>{"".join(self.body)}</svg>\n')
+                f'<defs>{"".join(self.defs)}</defs><g transform="{ZOOM_TRANSFORM}">{"".join(self.body)}</g></svg>\n')
 
 
 def face_point(face, u, v):
@@ -343,10 +356,10 @@ def city_layer(dusk=False):
     rng = random.Random(2000)
 
     # the round stadium with a red rim on the far shore
-    svg.ellipse(938, 606, 66, 25, '#8f2c22')
-    svg.ellipse(938, 598, 66, 25, '#d24a36')
-    svg.ellipse(938, 598, 50, 17, '#efe6d4')
-    svg.ellipse(938, 600, 34, 11, '#6fae4c')
+    svg.ellipse(900, 606, 66, 25, '#8f2c22')
+    svg.ellipse(900, 598, 66, 25, '#d24a36')
+    svg.ellipse(900, 598, 50, 17, '#efe6d4')
+    svg.ellipse(900, 600, 34, 11, '#6fae4c')
 
     # towers in the middle distance, behind the main group
     for near, left_width, right_width, height, colors in [
@@ -382,55 +395,7 @@ def city_layer(dusk=False):
     return svg.text()
 
 
-def saucer_layer(dusk=False):
-    """The flying saucer of the box art, tilted, with its pink neon ring and claws."""
-    svg = Svg(dusk)
-    cx, cy = 690, 205
-    rotate = f' transform="rotate(-9 {cx} {cy + 8})"'
-    ring_rx, ring_ry, ring_y = 250, 66, cy + 8
-
-    def ring(sweep):
-        # sweep 1 is the back half of the ring, behind the hull; sweep 0 is the front half
-        d = f'M{cx - ring_rx},{ring_y} A{ring_rx},{ring_ry} 0 0 {sweep} {cx + ring_rx},{ring_y}'
-        for width, opacity in [(50, 0.12), (32, 0.22), (18, 0.5)]:
-            svg.path(d, stroke=NEON_PINK, width=width, light=True, extra=f' opacity="{opacity}" stroke-linecap="round"{rotate}')
-        svg.path(d, stroke=NEON_CORE, width=8, light=True, extra=f' stroke-linecap="round"{rotate}')
-
-    ring(1)
-
-    # four jointed legs with open claws
-    metal = svg.gradient([(0, '#f4f6f8'), (1, '#9aa0a8')], x2=1, y2=0)
-    joints = ' stroke-linejoin="round" stroke-linecap="round"'
-    for hip, knee, foot in [((575, 240), (520, 262), (528, 318)), ((800, 210), (862, 226), (858, 286)),
-                            ((650, 248), (628, 290), (634, 336)), ((738, 238), (770, 280), (772, 328))]:
-        leg = f'M{hip[0]},{hip[1]} L{knee[0]},{knee[1]} L{foot[0]},{foot[1]}'
-        svg.path(leg, stroke='#4f555e', width=14, extra=joints)
-        svg.path(leg, stroke=metal, width=7, extra=joints)
-        fx, fy = foot
-        svg.path(f'M{fx - 12},{fy + 16} Q{fx - 12},{fy} {fx},{fy} Q{fx + 12},{fy} {fx + 12},{fy + 16}',
-                 stroke='#4f555e', width=6, extra=' stroke-linecap="round"')
-
-    # the hull: a dark underside, a bright rim and a domed top with panel seams, in brushed metal
-    svg.ellipse(cx, cy + 22, 196, 46, svg.gradient([(0, '#a0a7b0'), (1, '#3c4148')]), extra=rotate)
-    svg.ellipse(cx, cy + 6, 206, 40, svg.gradient([(0, '#eef1f4'), (0.45, '#b9bfc8'), (1, '#666c75')], x2=1, y2=0.3),
-                extra=rotate)
-    svg.path(f'M{cx - 150},{cy} C{cx - 118},{cy - 112} {cx + 118},{cy - 112} {cx + 150},{cy} Z',
-             svg.gradient([(0, '#ffffff'), (0.45, '#cdd2da'), (1, '#6d737c')], x2=1, y2=0.6), extra=rotate)
-
-    for k in range(-2, 3):
-        svg.path(f'M{cx + k * 30},{cy - 84} Q{cx + k * 62},{cy - 40} {cx + k * 74},{cy + 2}',
-                 stroke='#7d838c', width=2, extra=f' opacity="0.6"{rotate}')
-
-    svg.ellipse(cx - 6, cy - 76, 38, 12, '#4b5059', extra=rotate)
-
-    for k in range(-3, 4):
-        svg.ellipse(cx + k * 50, cy + 28 - abs(k) * 3, 9, 6, '#fff3c4', light=True, extra=rotate)
-
-    ring(0)
-    return svg.text()
-
-
-PAINTERS = {'saucer': saucer_layer, 'city': city_layer, 'land': land_layer}
+PAINTERS = {'city': city_layer, 'land': land_layer}
 
 
 def icon_color(value):
