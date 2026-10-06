@@ -6,6 +6,7 @@ use godot::prelude::*;
 
 use sc2k_platform::mods::catalog::{self, Found};
 use sc2k_platform::mods::manifest::{FILE_NAME, Manifest};
+use sc2k_platform::paths;
 use sc2k_platform::release::{self, Status, Transport};
 use sc2k_platform::versions;
 
@@ -188,5 +189,26 @@ impl NativePlatform {
         result.set("url", outcome.url.as_str());
         result.set("message", outcome.message.as_str());
         result
+    }
+
+    /// `{root, portable, error}`: the folder for user files.
+    #[func]
+    fn app_root(executable_folder: GString, allow_portable: bool, user_root: GString) -> VarDictionary {
+        let selected = paths::select(&executable_folder.to_string(), allow_portable, &user_root.to_string());
+        let mut result = VarDictionary::new();
+        result.set("root", selected.root.as_str());
+        result.set("portable", selected.portable);
+        result.set("error", selected.error.as_str());
+        result
+    }
+
+    #[func]
+    fn stored_path(value: GString, root: GString, portable: bool, ignore_case: bool) -> GString {
+        GString::from(&paths::stored_path(&value.to_string(), &root.to_string(), portable, ignore_case))
+    }
+
+    #[func]
+    fn loaded_path(value: GString, root: GString, portable: bool) -> GString {
+        GString::from(&paths::loaded_path(&value.to_string(), &root.to_string(), portable))
     }
 }
