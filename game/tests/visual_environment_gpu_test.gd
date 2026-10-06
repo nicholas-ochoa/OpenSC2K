@@ -193,6 +193,31 @@ func _check_weather_layer() -> void:
 			footprints.append(_particle_width(rendered, sunny))
 		assert(footprints.back() > footprints.front() + 0.1, "Precipitation did not scale with map zoom")
 	map.zoom_factor = 1.0
+	weather._sync_layer(true)
+	var original_center := map.source_center
+	for kind in [CityVisualWeather.Kind.HEAVY_RAIN, CityVisualWeather.Kind.HEAVY_SNOW]:
+		app.preferences.visual_enhancements.weather_fixed = kind
+		weather.process(5.0, 0.0, true, 1.0)
+		await RenderingServer.frame_post_draw
+		var stationary := viewport.get_texture().get_image().get_data()
+		map.source_center += Vector2(120, 80)
+		weather._sync_layer(true)
+		await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_data() != stationary, "Frozen precipitation did not respond to camera panning")
+		map.source_center = original_center
+		weather._sync_layer(true)
+		await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_data() == stationary, "Returning the camera changed the precipitation field")
+	var pan_before_zoom := weather.camera_pan
+	map.zoom_factor = 2.0
+	map.source_center += Vector2(20, 10)
+	weather._sync_layer(true)
+	assert(weather.camera_pan.is_equal_approx(pan_before_zoom), "Anchored zoom introduced a false parallax pan")
+	map.zoom_factor = 1.0
+	map.source_center = original_center
+	weather.reset()
+	weather._sync_layer(true)
+	assert(weather.camera_pan == Vector2.ZERO, "New city inherited the previous camera drift")
 	weather.flash = 1.0
 	weather.rain = 0.0
 	weather.snow = 0.0

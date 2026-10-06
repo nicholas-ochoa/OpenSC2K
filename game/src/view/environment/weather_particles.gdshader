@@ -7,6 +7,7 @@ uniform float rain = 0.0;
 uniform float snow = 0.0;
 uniform float flash = 0.0;
 uniform float particle_scale = 1.0;
+uniform vec2 camera_pan = vec2(0.0);
 uniform vec2 flash_origin = vec2(0.5, -0.15);
 uniform float flash_spread = 0.8;
 uniform vec3 flash_color = vec3(0.87, 0.93, 1.0);
@@ -47,11 +48,12 @@ float snow_layer(vec2 pixel, float depth) {
 }
 
 void fragment() {
-	vec2 pixel = UV * extent / particle_scale;
 	float rain_alpha = 0.0;
 	float snow_alpha = 0.0;
 	for (int layer = 0; layer < 3; layer++) {
 		float depth = float(layer);
+		// Nearby precipitation follows camera movement slightly more strongly.
+		vec2 pixel = (UV * extent + camera_pan * (0.035 + depth * 0.035)) / particle_scale;
 		vec2 r = vec2(pixel.x + pixel.y * 0.21 - clock * (34.0 + depth * 7.0), pixel.y - clock * (270.0 + depth * 75.0));
 		vec2 cell = floor(r / vec2(23.0, 43.0));
 		vec2 local = mod(r, vec2(23.0, 43.0));

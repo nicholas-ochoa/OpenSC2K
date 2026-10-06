@@ -24,6 +24,9 @@ var last_game_weather := -1
 var last_mode := -1
 var layer: ColorRect
 var material: ShaderMaterial
+var camera_pan := Vector2.ZERO
+var last_camera_center := Vector2.ZERO
+var last_camera_zoom := 0.0
 
 
 func _init(application: CityApplication) -> void:
@@ -56,6 +59,8 @@ func reset() -> void:
 	lightning.reset()
 	audio.reset()
 	flash = 0.0
+	camera_pan = Vector2.ZERO
+	last_camera_zoom = 0.0
 
 
 func process(delta: float, phase_elapsed: float, active: bool, season: float) -> void:
@@ -135,10 +140,19 @@ func _sync_layer(enabled: bool) -> void:
 	if overlay != null and layer.get_index() > overlay.get_index():
 		app.map_view.move_child(layer, overlay.get_index())
 	var bounds := app.map_view.camera._camera_rect()
+	var zoom := app.map_view.zoom_factor
+	var center := app.map_view.source_center * app.map_view.map_pixel_ratio
+	# Accumulate screen-space panning. Rebase on zoom changes so anchored
+	# zooming and atlas resolution changes do not kick the atmosphere sideways.
+	if is_equal_approx(zoom, last_camera_zoom):
+		camera_pan += (center - last_camera_center) * zoom
+	last_camera_center = center
+	last_camera_zoom = zoom
 	layer.position = bounds.position
 	layer.size = bounds.size
 	layer.show()
 	material.set_shader_parameter("extent", bounds.size)
+	material.set_shader_parameter("camera_pan", camera_pan)
 	# Partial zoom scaling keeps precipitation legible in the city overview.
 	material.set_shader_parameter("particle_scale", maxf(0.45, sqrt(app.map_view.zoom_factor)))
 	material.set_shader_parameter("clock", clock)
