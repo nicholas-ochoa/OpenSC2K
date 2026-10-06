@@ -1,6 +1,7 @@
 //! SCURK MIF tile sets for GDScript. The script keeps the tile set objects.
 
 use godot::prelude::*;
+use sc2k_assets::scurk::foreign::{self, Converted};
 use sc2k_assets::scurk::mif::{self, Mif};
 
 fn bytes(data: &[u8]) -> PackedByteArray {
@@ -116,5 +117,65 @@ impl NativeScurkMif {
             }
             Err(error) => super::failure(&error),
         }
+    }
+
+    /// True for a DOS .TIL tile set.
+    #[func]
+    fn is_foreign_dos(data: PackedByteArray) -> bool {
+        foreign::is_dos(data.as_slice())
+    }
+
+    /// True for a Macintosh MIFF tile set.
+    #[func]
+    fn is_foreign_mac(data: PackedByteArray) -> bool {
+        foreign::is_mac(data.as_slice())
+    }
+
+    #[func]
+    fn foreign_dos_index(index: i64) -> i64 {
+        i64::from(foreign::dos_index(index as i32))
+    }
+
+    #[func]
+    fn foreign_mac_index(index: i64) -> i64 {
+        i64::from(foreign::mac_index(index as i32))
+    }
+
+    /// `{error, sprites}`: the converted sprites of a DOS (`macintosh` false) or
+    /// Macintosh tile set. Each sprite has `sprite_id`, `width`, `height`, and `pixels`.
+    #[func]
+    fn foreign_sprites(data: PackedByteArray, macintosh: bool) -> VarDictionary {
+        let decoded = if macintosh {
+            foreign::mac(data.as_slice())
+        } else {
+            foreign::dos(data.as_slice())
+        };
+        let mut result = VarDictionary::new();
+        let mut sprites = VarArray::new();
+
+        match decoded {
+            Ok(converted) => {
+                for Converted {
+                    sprite_id,
+                    width,
+                    height,
+                    pixels,
+                } in converted
+                {
+                    let mut sprite = VarDictionary::new();
+                    sprite.set("sprite_id", sprite_id);
+                    sprite.set("width", width as i64);
+                    sprite.set("height", height as i64);
+                    sprite.set("pixels", &PackedInt32Array::from(pixels.as_slice()));
+                    sprites.push(&sprite.to_variant());
+                }
+
+                result.set("error", "");
+            }
+            Err(error) => result.set("error", error.as_str()),
+        }
+
+        result.set("sprites", &sprites);
+        result
     }
 }
