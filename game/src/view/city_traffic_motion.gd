@@ -4,7 +4,7 @@ extends RefCounted
 
 const STEP_SECONDS := GameSpeedController.BASE_TICK_MSEC / 1000.0
 const OPTION_BY_TYPE := {1: "traffic_planes_enabled", 2: "traffic_helicopters_enabled", 3: "traffic_ships_enabled", 9: "traffic_ships_enabled",
-	10: "traffic_trains_enabled", 11: "traffic_trains_enabled", 5: "disaster_motion", 15: "disaster_motion"}
+	10: "traffic_trains_enabled", 11: "traffic_trains_enabled", 15: "disaster_motion"}
 
 var tracks: Dictionary[int, Track] = {}
 var _signature: Array = []
@@ -15,7 +15,7 @@ func reset() -> void:
 	_signature.clear()
 
 
-func observe(city: CityState, options: Dictionary) -> void:
+func observe(city: CityState, options: Dictionary, vehicles_visible := true) -> void:
 	var signature := [city.document.get_instance_id(), city.compass_rotation(), city.visible_altitude_levels,
 		city.chunk_revision("ALTM"), city.chunk_revision("XTER")]
 	if signature != _signature:
@@ -26,7 +26,9 @@ func observe(city: CityState, options: Dictionary) -> void:
 		var thing := city.thing(record)
 		if thing == null or not OPTION_BY_TYPE.has(thing.type) or not options[OPTION_BY_TYPE[thing.type]]:
 			continue
-		if thing.type in [5, 15] and not options.disaster_enabled:
+		if not vehicles_visible and thing.type != 15:
+			continue
+		if thing.type == 15 and not options.disaster_enabled:
 			continue
 		# Type 9 with a state is Nessie, not a sailboat.
 		if (thing.type == 9 and thing.state != 0) or city.index_of(thing.x, thing.y) < 0 \
@@ -36,12 +38,11 @@ func observe(city: CityState, options: Dictionary) -> void:
 		var tile := Vector2(thing.x, thing.y) + Vector2(thing.px, thing.py) / 16.0
 		var point := Vector3((tile.x - tile.y) * 16.0,
 			(tile.x + tile.y) * 8.0 - city.object_altitude(thing.x, thing.y) * 12.0, thing.z * 8.0)
-		if thing.type in [5, 15]:
-			# Multipart monster pose bytes are not sub-tile motion. Both special
-			# renderers anchor to completed tile positions, without predicting a path.
+		if thing.type == 15:
+			# Tornado bytes are not sub-tile motion; interpolate completed tiles only.
 			tile = Vector2(thing.x, thing.y)
 			point = Vector3((tile.x - tile.y) * 16.0, (tile.x + tile.y) * 8.0 - city.object_altitude(thing.x, thing.y) * 12.0,
-				thing.z * 12.0 if thing.type == 5 else 0.0)
+				0.0)
 		if thing.type in [10, 11]:
 			# Trains use whole-tile records and artwork-specific rail offsets, not px/py/z.
 			var train := IsometricMovingVisuals.train_sprite(city, thing.x, thing.y, thing)
@@ -67,7 +68,7 @@ func observe(city: CityState, options: Dictionary) -> void:
 			track.target = point
 			track.target_tile = tile
 			track.elapsed = 0.0
-		track.subtile = Vector2.ZERO if thing.type in [5, 10, 11, 15] else Vector2(thing.px - thing.py, (thing.px + thing.py) * 0.5)
+		track.subtile = Vector2.ZERO if thing.type in [10, 11, 15] else Vector2(thing.px - thing.py, (thing.px + thing.py) * 0.5)
 	for record in tracks.keys():
 		if not seen.has(record):
 			tracks.erase(record)

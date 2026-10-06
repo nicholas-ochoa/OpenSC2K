@@ -24,6 +24,7 @@ const RADIATION := 9
 const HURRICANE := 10
 const EXPLOSION := 11
 const TRAIL := 12
+const DEBRIS := 13
 
 var app: CityApplication
 var canvas: Node2D
@@ -39,6 +40,8 @@ var _elapsed := 0.0
 var _storm: Visual
 var _trails: Dictionary[int, Vector2] = {}
 var _shake_remaining := 0.0
+var lighting := CityDisasterLighting.new()
+var _tornado_sites: Dictionary[Vector2i, int] = {}
 
 
 func _init(application: CityApplication) -> void:
@@ -100,6 +103,7 @@ func process(delta: float) -> void:
 		canvas.position = app.map_view.camera._draw_offset(scale_value)
 		canvas.scale = Vector2.ONE * scale_value
 		canvas.show()
+		_sync_lighting(scale_value)
 
 
 func _sync_city() -> void:
@@ -124,6 +128,8 @@ func _clear() -> void:
 		pulse.sprite.queue_free()
 	pulses.clear()
 	_trails.clear()
+	_tornado_sites.clear()
+	lighting.clear()
 	if _storm != null:
 		_storm.sprite.queue_free()
 		_storm = null
@@ -142,6 +148,7 @@ func _ensure_canvas() -> void:
 	var dynamic := app.map_view.layers.dynamic_canvas
 	if dynamic != null:
 		app.map_view.move_child(canvas, dynamic.get_index())
+	lighting.setup(app.map_view, canvas)
 	var image := Image.create(EXTENT.x, EXTENT.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE)
 	_texture = ImageTexture.create_from_image(image)
@@ -149,25 +156,31 @@ func _ensure_canvas() -> void:
 
 
 static func crowd_atlas() -> Image:
-	var image := Image.create(EXTENT.x * 8, EXTENT.y, false, Image.FORMAT_RGBA8)
+	var image := Image.create(EXTENT.x * 8, EXTENT.y * 2, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
 	# Reuse actual city-life people. Independent short loops break the marching grid.
-	var positions: Array[Vector2i] = [Vector2i(-9, -3), Vector2i(-4, -7), Vector2i(3, -6), Vector2i(9, -2),
-		Vector2i(-3, 0), Vector2i(4, 2), Vector2i(-8, 3), Vector2i(1, 5)]
+	var positions: Array[Vector2i] = []
+	for row in 5:
+		var count := 6 - absi(row - 2) * 2
+		for column in count:
+			positions.append(Vector2i(column * 4 - (count - 1) * 2, row * 3 - 6))
 	for phase in 8:
 		for i in positions.size():
 			var step_phase := (phase + i * 3) % 8
 			var direction := (i + step_phase / 4) % 4
 			var person := CityLifeSprites._person(i, direction, step_phase)
-			var movement := Vector2i(roundi(sin(step_phase * TAU / 8.0) * 2.0), roundi(cos(step_phase * TAU / 8.0)))
+			var movement := Vector2i(roundi(sin(step_phase * TAU / 8.0)), 0)
 			var offset := Vector2i(phase * EXTENT.x, -5) + Vector2i(ANCHOR) + positions[i] + movement
 			image.blend_rect(person, Rect2i(Vector2i.ZERO, person.get_size()), offset)
+			if i in [3, 14]:
+				image.blend_rect(person, Rect2i(Vector2i.ZERO, person.get_size()), offset + Vector2i(0, EXTENT.y))
 	return image
 
 
 func begin_commands() -> void:
 	_sync_city()
 	_seen.clear()
+	_tornado_sites.clear()
 
 
 ## Return true only when a visible replacement was actually installed.
@@ -190,7 +203,17 @@ func observe_command(command: CityDynamicCommand) -> bool:
 		var visual := _marker("tile:%d:%d" % [tile.x, tile.y], kind, tile, ground_point(city, tile))
 		if visual != null and kind == FLOOD:
 			visual.material.set_shader_parameter("flood_edges", flood_edges(city, tile))
-		return visual != null
+		if visual != null and kind == FIRE:
+			var neighbours := 0
+			for x in range(tile.x - 1, tile.x + 2):
+				for y in range(tile.y - 1, tile.y + 2):
+					if city.index_of(x, y) >= 0 and city.marker_overlay_id(x, y) == 0xff:
+						neighbours += 1
+			visual.material.set_shader_parameter("smoke_density", 1.0 / (1.0 + neighbours * 0.18))
+		if visual != null and kind == RIOT:
+			visual.material.set_shader_parameter("sparse_crowd", false)
+			_riot_neighbours(city, tile)
+		return visual != null and kind != FIRE
 	if command.record < 0:
 		return false
 	var thing := city.thing(command.record)
@@ -209,19 +232,19 @@ func observe_command(command: CityDynamicCommand) -> bool:
 				location += Vector2(thing.px - thing.py, (thing.px + thing.py) * 0.5 - thing.z * 8.0)
 	if kind >= 0:
 		if kind == MONSTER:
-			# Ground contact only: floating monster poses must not kick up dust.
-			if thing.z == 0:
-				for side in [-1, 1]:
-					var foot_offset := Vector2(side * 42, 8)
-					_marker("thing:%d:foot:%d" % [command.record, side], MONSTER, tile, location + foot_offset, command.record, foot_offset)
+			# The original pose, movement and beam remain untouched.
+			if thing.dx & 0x80:
+				_marker("thing:%d:beam" % command.record, MONSTER, tile, location)
 			return false
+		if kind == TORNADO:
+			_tornado_sites[tile] = city.building_id(tile.x, tile.y)
 		var visual := _marker("thing:%d" % command.record, kind, tile, location, command.record if kind == TORNADO else -1)
 		if visual != null and kind == EXPLOSION:
 			visual.material.set_shader_parameter("impact_phase", clampf(thing.direction / 2.0, 0.0, 1.0))
 		if kind == TRAIL and _trails.get(command.record, Vector2.INF).distance_to(location) > 5.0:
 			_trails[command.record] = location
 			_pulse(TRAIL, tile, location, 1.0)
-		return visual != null and kind in [TORNADO, EXPLOSION]
+		return false
 	return false
 
 
@@ -233,6 +256,67 @@ func end_commands() -> void:
 	for record in _trails.keys():
 		if not _seen.has("thing:%d" % record):
 			_trails.erase(record)
+
+
+func _riot_neighbours(city: CityState, tile: Vector2i) -> void:
+	for direction in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var next: Vector2i = tile + direction
+		if city.index_of(next.x, next.y) < 0 or city.is_water(next.x, next.y) or city.marker_overlay_id(next.x, next.y) != 0:
+			continue
+		var building := city.building_id(next.x, next.y)
+		if building != 0 and not (building >= 0x1d and building <= 0x2b):
+			continue
+		var extra := _marker("riot-edge:%d:%d" % [next.x, next.y], RIOT, next, ground_point(city, next))
+		if extra != null:
+			extra.material.set_shader_parameter("sparse_crowd", true)
+
+
+func observe_simulation_result(result: SimulationTickResult) -> void:
+	if not active():
+		return
+	var demolished := false
+	for moving in result.moving_results:
+		if moving.tornado_demolitions > 0:
+			demolished = true
+	if not demolished:
+		return
+	var city := app.document_state.city
+	for tile in _tornado_sites:
+		# Only structures changed to rubble/empty by a completed tornado tick.
+		if _tornado_sites[tile] >= 0x70 and city.building_id(tile.x, tile.y) <= 4:
+			_pulse(DEBRIS, tile, ground_point(city, tile), 0.95)
+	_tornado_sites.clear()
+
+
+func _sync_lighting(scale_value: float) -> void:
+	var sources: Array[Dictionary] = []
+	var cells: Dictionary[Vector3i, bool] = {}
+	# Pulses first: a brief impact must not be displaced by a large firestorm.
+	var visuals: Array[Visual] = pulses.duplicate()
+	visuals.append_array(markers.values())
+	for visual in visuals:
+		if not visual.kind in [FIRE, TOXIC, EXPLOSION, MICROWAVE, MONSTER] or not visual.sprite.visible:
+			continue
+		var cell := Vector3i(visual.tile.x / 2, visual.tile.y / 2, visual.kind)
+		if cells.has(cell):
+			continue
+		cells[cell] = true
+		var tint := Color(1.0, 0.24, 0.025)
+		if visual.kind == TOXIC:
+			tint = Color(0.28, 1.0, 0.035)
+		elif visual.kind == MICROWAVE:
+			tint = Color(0.025, 0.35, 1.0)
+		elif visual.kind == MONSTER:
+			# Red component of the original 1385/885/385 beam artwork.
+			tint = Color("ff0f11")
+		var fade := 1.0
+		if visual.duration > 0.0:
+			fade = 1.0 - smoothstep(0.45, 1.0, visual.age / visual.duration)
+		if visual.kind == EXPLOSION:
+			fade *= 1.0 - float(visual.material.get_shader_parameter("impact_phase")) * 0.55
+		sources.append({"position": visual.sprite.position + ANCHOR, "color": tint, "fade": fade,
+			"heat": 1.0 if visual.kind == FIRE else (0.3 if visual.kind == TOXIC else 0.0), "seed": float(visual.tile.x * 7 + visual.tile.y * 3)})
+	lighting.update(sources, canvas.position, scale_value, clock, app.preferences.visual_enhancements.disaster_lights)
 
 
 func _marker(key: String, kind: int, tile: Vector2i, location: Vector2, record := -1, anchor_offset := Vector2.ZERO) -> Visual:

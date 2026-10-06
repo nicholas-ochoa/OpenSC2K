@@ -23,9 +23,11 @@ func _run() -> void:
 	sprite.material = material
 	viewport.add_child(sprite)
 	await process_frame
-	for kind in 13:
+	for kind in 14:
+		if kind == CityDisasterEffects.MONSTER:
+			continue
 		material.set_shader_parameter("effect_kind", kind)
-		material.set_shader_parameter("progress", 0.2 if kind == CityDisasterEffects.DUST else -1.0)
+		material.set_shader_parameter("progress", 0.2 if kind in [CityDisasterEffects.DUST, CityDisasterEffects.DEBRIS] else -1.0)
 		await RenderingServer.frame_post_draw
 		var image := viewport.get_texture().get_image()
 		assert(not image.is_invisible(), "Effect %d did not render" % kind)
@@ -57,6 +59,48 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().is_invisible(), "Settled demolition dust must disappear completely")
 	viewport.queue_free()
+	await _check_lighting()
 	await process_frame
 	print("PASS: GPU disaster effects, tile boundaries, transparent surroundings, foreground occlusion and dust lifetime")
 	quit()
+
+
+func _check_lighting() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(192, 144)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var background := ColorRect.new()
+	background.size = Vector2(192, 144)
+	background.color = Color(0.3, 0.35, 0.4)
+	viewport.add_child(background)
+	var copy := BackBufferCopy.new()
+	copy.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
+	viewport.add_child(copy)
+	var light := ColorRect.new()
+	light.size = background.size
+	var material := ShaderMaterial.new()
+	material.shader = CityDisasterLighting.SHADER
+	material.set_shader_parameter("heat_amount", 0.0)
+	light.material = material
+	viewport.add_child(light)
+	await process_frame
+	for color in [Vector3(1.0, 0.24, 0.025), Vector3(0.28, 1.0, 0.035), Vector3(0.025, 0.35, 1.0)]:
+		material.set_shader_parameter("light_color", color)
+		await RenderingServer.frame_post_draw
+		var frame := viewport.get_texture().get_image()
+		var center := frame.get_pixel(96, 76)
+		var outside := frame.get_pixel(0, 0)
+		assert(absf(outside.r - background.color.r) < 0.01 and absf(outside.g - background.color.g) < 0.01 and absf(outside.b - background.color.b) < 0.01, "The light must not tint unrelated city space")
+		if color.x == 1.0:
+			assert(center.r > center.g and center.r > outside.r)
+		elif color.y == 1.0:
+			assert(center.g > center.r and center.g > outside.g)
+		else:
+			assert(center.b > center.r and center.b > outside.b)
+	material.set_shader_parameter("light_amount", 0.0)
+	await RenderingServer.frame_post_draw
+	var off := viewport.get_texture().get_image()
+	assert(off.get_pixel(96, 76).is_equal_approx(off.get_pixel(0, 0)), "Zero light strength must preserve city colors exactly")
+	viewport.queue_free()
+	await process_frame

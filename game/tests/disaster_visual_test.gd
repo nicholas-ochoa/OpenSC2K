@@ -38,9 +38,9 @@ func _run() -> void:
 		command.depth_order = (tile.x + tile.y) * 128 + tile.y
 		command.overlay = marker
 		var replaced := effects.observe_command(command)
-		assert(replaced, "Enhanced fire, water, gas and people must replace the classic markers")
+		assert(replaced == (marker != 0xff), "Preserve classic fire; replace water, gas and people")
 		effects.end_commands()
-		assert(effects.markers.size() == 1)
+		assert(effects.markers.size() == (5 if marker in [0xfd, 0xfe] else 1))
 		var visual: CityDisasterEffects.Visual = effects.markers.values()[0]
 		var node_id := visual.sprite.get_instance_id()
 		effects.begin_commands()
@@ -81,6 +81,7 @@ func _run() -> void:
 	assert(DocumentState.capture(city.document) == before, "Visual effects wrote city data")
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before, "Visual effects advanced simulation RNG")
 	await _check_object_replacements(app)
+	_check_debris(app)
 	app.queue_free()
 	await process_frame
 	print("PASS: disaster marker replacement, dispatch layering, retained nodes, event deduplication, pause, fallback and unchanged city/RNG")
@@ -99,13 +100,23 @@ func _check_object_replacements(app: CityApplication) -> void:
 		command.record = 1
 		command.depth_order = 128 * 128 + 64
 		effects.begin_commands()
-		assert(effects.observe_command(command) == (kind != 5), "Replace the tornado and explosion, preserve the monster artwork")
+		assert(not effects.observe_command(command), "Preserve original tornado, explosion and monster artwork")
 		effects.end_commands()
-		assert(effects.markers.size() == (2 if kind == 5 else 1))
+		assert(effects.markers.size() == (0 if kind == 5 else 1))
 		assert(DocumentState.capture(city.document) == before)
 		app.preferences.visual_enhancements.disaster_enabled = false
 		assert(not effects.observe_command(command), "The classic object must return when enhancements are disabled")
 		app.preferences.visual_enhancements.disaster_enabled = true
+	# Attack light is tied only to the original beam pose.
+	support.write_thing(city, 1, {"dx": 0x80})
+	var beam := CityDynamicCommand.new()
+	beam.record = 1
+	beam.depth_order = 128 * 128 + 64
+	effects.begin_commands()
+	assert(not effects.observe_command(beam))
+	effects.end_commands()
+	assert(effects.markers.size() == 1)
+	support.write_thing(city, 1, {"dx": 0})
 	# A hovering monster has no contact dust.
 	support.write_thing(city, 1, {"z": 15})
 	var hovering := CityDynamicCommand.new()
@@ -125,6 +136,9 @@ func _check_special_motion() -> void:
 		var motion := CityTrafficMotion.new()
 		var options := VisualEnhancementOptions.normalize({})
 		motion.observe(city, options)
+		if type == 5:
+			assert(motion.tracks.is_empty(), "Monster retains original movement")
+			continue
 		var old := motion.tracks[1].current
 		support.write_thing(city, 1, {"px": 255, "py": 255})
 		motion.observe(city, options)
@@ -137,6 +151,28 @@ func _check_special_motion() -> void:
 		motion.advance(0.1)
 		assert(motion.tracks[1].current.is_equal_approx(old.lerp(motion.tracks[1].target, 0.5)))
 		assert(DocumentState.capture(city.document) == before)
+		motion.observe(city, options, false)
+		assert(motion.tracks.has(1), "Hiding vehicles must not disable tornado smoothing")
 		options.disaster_motion = false
 		motion.observe(city, options)
 		assert(motion.tracks.is_empty(), "Motion toggle immediately restores completed positions")
+
+
+func _check_debris(app: CityApplication) -> void:
+	var city := app.document_state.city
+	var effects := app.disaster_effects
+	var tile := Vector2i(64, 64)
+	effects._tornado_sites[tile] = 0x70
+	city.set_building_id(64, 64, 1)
+	var before := DocumentState.capture(city.document)
+	var tick := SimulationTickResult.new()
+	var movement := MovingThingResult.new()
+	tick.moving_results.append(movement)
+	effects.observe_simulation_result(tick)
+	assert(effects.pulses.is_empty(), "Unrelated demolition must not throw tornado fragments")
+	movement.tornado_demolitions = 1
+	effects.observe_simulation_result(tick)
+	assert(effects.pulses.size() == 1 and effects.pulses[0].kind == CityDisasterEffects.DEBRIS)
+	effects.observe_simulation_result(tick)
+	assert(effects.pulses.size() == 1, "Do not replay confirmed debris")
+	assert(DocumentState.capture(city.document) == before)

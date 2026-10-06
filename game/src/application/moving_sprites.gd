@@ -31,7 +31,9 @@ func process(delta: float) -> void:
 
 
 func _traffic_active() -> bool:
-	return app.document_state.city != null and app.map_view != null and app.view_state.show_vehicles \
+	var options := app.preferences.visual_enhancements
+	return app.document_state.city != null and app.map_view != null \
+		and (app.view_state.show_vehicles or (options.disaster_enabled and options.disaster_motion)) \
 		and app.view_state.overlay_mode == CityViewMode.Mode.CITY and not app.tool_state.landscape_editor
 
 
@@ -39,7 +41,7 @@ func refresh_moving_things(view_size := -1) -> void:
 	app.disaster_effects.begin_commands()
 	caches.dynamic_active_keys.clear()
 	if _traffic_active():
-		traffic_motion.observe(app.document_state.city, app.preferences.visual_enhancements)
+		traffic_motion.observe(app.document_state.city, app.preferences.visual_enhancements, app.view_state.show_vehicles)
 	else:
 		traffic_motion.reset()
 

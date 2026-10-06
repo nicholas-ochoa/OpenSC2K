@@ -9,6 +9,8 @@ uniform float effect_strength = 0.7;
 uniform float light_strength = 0.4;
 uniform float progress = -1.0;
 uniform float impact_phase = 0.0;
+uniform float smoke_density = 1.0;
+uniform bool sparse_crowd = false;
 uniform vec2 world_origin = vec2(0.0);
 uniform vec4 flood_edges = vec4(1.0);
 uniform sampler2D foreground : filter_nearest, repeat_disable;
@@ -36,7 +38,7 @@ void fragment() {
 	float emission = 0.0;
 	vec4 ink = vec4(0.0);
 	float strength = mix(0.55, 1.0, effect_strength);
-	if (effect_kind == 0 || effect_kind == 7 || effect_kind == 12) {
+	if (effect_kind == 0 || effect_kind == 7 || effect_kind == 12 || effect_kind == 11) {
 		// Separate expanding billows leave gaps through the plume.
 		float plume_height = effect_kind == 7 ? 108.0 : (effect_kind == 12 ? 36.0 : 64.0);
 		for (int i = 0; i < 8; i++) {
@@ -44,24 +46,7 @@ void fragment() {
 			vec2 at = vec2(f * 15.0 + sin(t * 0.7 + float(i) * 2.4) * 3.0, -8.0 - f * plume_height);
 			vec2 r = vec2(5.0 + f * 9.0, 6.0 + f * 7.0);
 			float shade = floor((noise(q * 0.35 + vec2(0.0, t * 0.9)) * 0.12 + (q.x - at.x) / r.x * 0.06 + 0.40) * 12.0) / 12.0;
-			ink = over(ink, vec3(shade, shade * 0.98, shade * 0.94), puff(q, at, r) * sin(f * 3.14159) * 0.82 * strength);
-		}
-		if (effect_kind == 0) {
-			ink = over(ink, vec3(1.0, 0.39, 0.055), puff(q, vec2(0.0, -1.0), vec2(21.0, 9.0)) * light_strength * 0.65);
-			// Staggered flame tongues replace the original repeated fire bitmap.
-			for (int i = 0; i < 6; i++) {
-				float id = float(i), base = -12.0 + id * 4.8;
-				float height = 15.0 + sin(t * 4.1 + id * 2.7) * 4.0 + hash(vec2(id, effect_seed)) * 10.0;
-				float y = (2.0 - abs(base) * 0.19 - q.y) / height;
-				float axis = base + sin(y * 5.0 - t * 4.5 + id) * y * 3.5;
-				float width = (1.0 - y) * 4.3;
-				float body = step(abs(q.x - axis), width) * step(0.0, y) * step(y, 1.0);
-				float inner = step(abs(q.x - axis + 0.7), width * 0.55) * step(y, 0.67);
-				vec3 flame = y > 0.6 ? vec3(0.96, 0.25, 0.025) : vec3(1.0, 0.49, 0.045);
-				flame = mix(flame, y < 0.28 ? vec3(1.0, 0.92, 0.48) : vec3(1.0, 0.73, 0.14), inner);
-				ink = over(ink, flame, body * 0.97);
-				emission = max(emission, body * 0.85);
-			}
+			ink = over(ink, vec3(shade, shade * 0.98, shade * 0.94), puff(q, at, r) * sin(f * 3.14159) * 0.34 * strength * smoke_density);
 		}
 		if (effect_kind != 12) {
 			for (int i = 0; i < 7; i++) {
@@ -97,17 +82,8 @@ void fragment() {
 			ink = over(ink, gas * (0.95 + f * 0.30), puff(q, at, vec2(8.0, 5.0)) * sin(f * 3.14159) * 0.44 * strength);
 		}
 	} else if (effect_kind == 3) {
-		ink = texture(people, vec2((UV.x + mod(floor(t * 6.0), 8.0)) / 8.0, UV.y));
+		ink = texture(people, vec2((UV.x + mod(floor(t * 6.0), 8.0)) / 8.0, (UV.y + (sparse_crowd ? 1.0 : 0.0)) * 0.5));
 	} else if (effect_kind == 4) {
-		float h = clamp(-q.y / 102.0, 0.0, 1.0);
-		float axis = sin(h * 4.8 + t * 1.5) * h * 7.0;
-		float radius = 2.5 + pow(h, 0.8) * 23.0;
-		float radial = (q.x - axis) / radius;
-		float band = sin(q.y * 0.65 + radial * 2.5 - t * 7.0);
-		float contour = 1.0 - smoothstep(0.80, 1.04, abs(radial) + band * 0.035);
-		float ends = step(-103.0, q.y) * step(q.y, 1.0);
-		float shade = floor((0.57 - radial * 0.15 + band * 0.08 + noise(q * 0.3 + t) * 0.08) * 12.0) / 12.0;
-		ink = vec4(vec3(shade * 0.96, shade, shade * 1.02), contour * ends * 0.96);
 		for (int i = 0; i < 9; i++) {
 			float a = t * (2.0 + float(i) * 0.13) + float(i) * 2.4;
 			float r = 12.0 + mod(float(i) * 7.0, 19.0);
@@ -115,7 +91,7 @@ void fragment() {
 			ink = over(ink, vec3(0.36, 0.30, 0.22), step(length((q - at) / vec2(1.7, 1.0)), 1.0) * 0.85);
 		}
 		ink = over(ink, vec3(0.62, 0.56, 0.43), puff(q, vec2(sin(t * 3.0) * 8.0, -1.0), vec2(17.0, 5.0)) * 0.36);
-	} else if (effect_kind == 5 || effect_kind == 8) {
+	} else if (effect_kind == 5) {
 		float f = effect_kind == 5 ? clamp(progress, 0.0, 1.0) : fract(t * 0.65);
 		float fade = effect_kind == 5 ? (1.0 - smoothstep(0.25, 1.0, f)) : sin(f * 3.14159) * 0.7;
 		for (int i = 0; i < 7; i++) {
@@ -128,26 +104,31 @@ void fragment() {
 			ink = over(ink, vec3(0.41, 0.37, 0.28), step(length(q - chip), 1.0) * fade * 0.65);
 		}
 	} else if (effect_kind == 6) {
-		float beam = 1.0 - smoothstep(0.5, 2.5, abs(q.x));
-		ink = vec4(vec3(0.75, 0.87, 1.0), q.y < 0.0 ? beam * 0.8 : 0.0);
-		ink = over(ink, vec3(0.87, 0.95, 1.0), puff(q, vec2(0.0, -1.0), vec2(9.0, 4.0)) * 0.9);
-		emission = 0.85;
+		// Stepped pixel core and a narrow blue halo fit the original raster artwork.
+		float core = step(abs(q.x), 1.5);
+		float halo = 1.0 - smoothstep(1.5, 5.0, abs(q.x));
+		ink = vec4(mix(vec3(0.025, 0.28, 1.0), vec3(0.22, 0.66, 1.0), core), q.y < 0.0 ? (core * 0.95 + halo * 0.28) : 0.0);
+		ink = over(ink, vec3(0.12, 0.56, 1.0), puff(q, vec2(0.0, -1.0), vec2(9.0, 4.0)) * 0.85);
+		emission = 1.0;
 	} else if (effect_kind == 10) {
 		float lane = fract(UV.x * 149.0 + UV.y * 48.0);
 		float drop = fract(UV.y * 42.0 - effect_time * 3.0 + floor(UV.x * 149.0 + UV.y * 48.0) * 0.37);
 		bool rain = lane > 0.94 && drop > 0.66;
 		ink = rain ? vec4(0.68, 0.77, 0.84, 0.40) : vec4(0.13, 0.20, 0.29, 0.14);
 		ink.a *= strength;
-	} else if (effect_kind == 11) {
-		float n = noise(q * 0.3 + vec2(0.0, -t * 4.0));
-		float r = length((q - vec2(0.0, -8.0 - impact_phase * 6.0)) / (vec2(12.0, 15.0) + impact_phase * 6.0)) + n * 0.3;
-		float body = 1.0 - smoothstep(0.8, 1.15, r);
-		vec3 color = r < 0.47 ? vec3(1.0, 0.94, 0.64) : (r < 0.72 ? vec3(1.0, 0.67, 0.11) : vec3(0.91, 0.29, 0.04));
-		ink = vec4(color, body * 0.96);
-		if (impact_phase > 0.5) {
-			ink = over(ink, vec3(0.40, 0.38, 0.34), puff(q, vec2(4.0, -26.0), vec2(15.0, 11.0)) * 0.7);
+	} else if (effect_kind == 13) {
+		// Roof fragments and masonry only follow confirmed structure destruction.
+		float f = clamp(progress, 0.0, 1.0);
+		for (int i = 0; i < 12; i++) {
+			float id = float(i), a = id * 2.4 + effect_seed;
+			vec2 at = vec2(cos(a) * f * (22.0 + mod(id * 7.0, 18.0)), -sin(f * 3.14159) * (18.0 + mod(id * 11.0, 28.0)) + f * sin(a) * 6.0);
+			vec2 d = q - at;
+			float turn = a + f * 9.0;
+			d = mat2(vec2(cos(turn), -sin(turn)), vec2(sin(turn), cos(turn))) * d;
+			float chip = step(abs(d.x), 2.5) * step(abs(d.y), 1.4);
+			vec3 color = mod(id, 3.0) < 1.0 ? vec3(0.59, 0.27, 0.15) : (mod(id, 3.0) < 2.0 ? vec3(0.62, 0.59, 0.50) : vec3(0.35, 0.25, 0.15));
+			ink = over(ink, color, chip * (1.0 - smoothstep(0.60, 1.0, f)));
 		}
-		emission = 0.85 * body;
 	}
 	ink.rgb = mix(environment_color(ink.rgb, UV), ink.rgb, clamp(emission, 0.0, 1.0));
 	if (progress >= 0.0 && effect_kind != 5) { ink.a *= 1.0 - smoothstep(0.65, 1.0, progress); }
