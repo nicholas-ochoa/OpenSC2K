@@ -17,7 +17,7 @@ const SECTIONS := [
 		["season_enabled", "season_mode", "season_fixed", "season_seconds", "season_transition", "season_lut_strength"]],
 	["Weather & Clouds", "Weather and clouds have separate switches. Snow requires winter; in other seasons, snow selections show rain.",
 		["weather_enabled", "weather_mode", "weather_fixed", "weather_seconds", "weather_transition", "weather_strength", "weather_lut_strength", "cloud_enabled", "cloud_density", "cloud_shadow_strength", "cloud_speed"]],
-	["Water", "Reflections, underwater terrain and seasonal water colors. Seasonal colors require Seasons.",
+	["Environment", "Water reflections, waves, coastal surf and underwater terrain. Seasonal water colors require Seasons.",
 		["water_reflections", "water_waves_enabled", "water_topography", "season_water_strength"]],
 	["Traffic & Movement", "Decorative cars and pedestrians, plus smoother movement for existing vehicles.",
 		["life_cars_enabled", "life_car_amount", "life_people_enabled", "life_people_amount", "traffic_helicopters_enabled", "traffic_planes_enabled", "traffic_ships_enabled", "traffic_trains_enabled", "traffic_shadows_enabled"]],
@@ -46,6 +46,7 @@ const LABELS := {
 	"lut_path": "Custom color filter (LUT PNG)", "brightmap_folder": "Custom light masks (brightmaps)",
 }
 const HINTS := {
+	"water_waves_enabled": "Moving waves and breaking surf along the terrain shoreline. Turn off for a still water surface.",
 	"disaster_enabled": "Enable additional presentation effects. Turning this off restores the original disaster visuals; disasters still occur.",
 	"disaster_strength": "Intensity of added visual effects. At 0%, added crowds, dust and lighting are off. Tornado smoothing and camera shake remain separate.",
 	"disaster_crowds": "Animated riot crowds use the city pedestrian artwork. Does not change population, riot spread or treatment targets.",
