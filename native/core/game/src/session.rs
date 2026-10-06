@@ -25,23 +25,15 @@ pub struct Session {
     pub path: PathBuf,
     /// Bumps on each change of the city, so views know when to copy the maps.
     pub revision: u64,
+    /// Bumps when the days, an edit, or a rotation change the maps; moving
+    /// objects alone do not change it.
+    pub map_revision: u64,
     /// The undo of the last tool edit.
     pub undo: Option<crate::edits::Undo>,
 }
 
 /// The simulation city of the chunks of a document.
-pub fn city_from_document(document: &Document) -> City {
-    let mut city = City::new(document.map_size, document.large_version);
-
-    for id in CHUNK_IDS {
-        if let (Some(chunk), Some(slot)) = (document.find(id), city.chunk_slot_mut(id)) {
-            slot.present = true;
-            slot.data = chunk.decoded.clone();
-        }
-    }
-
-    city
-}
+pub use sc2k_sim::sim::new_city::city_of as city_from_document;
 
 impl Session {
     /// Open a city file. `lfsr_seed` seeds the simulation random; a front end
@@ -64,6 +56,7 @@ impl Session {
             speed: SpeedState::default(),
             path,
             revision: 0,
+            map_revision: 0,
             undo: None,
         };
 
@@ -109,6 +102,10 @@ impl Session {
             self.revision += 1;
         }
 
+        if !result.day_results.is_empty() || !result.disaster_results.is_empty() {
+            self.map_revision += 1;
+        }
+
         result
     }
 
@@ -141,5 +138,58 @@ impl Session {
 
     pub fn city_name(&self) -> String {
         self.document.city_name()
+    }
+}
+
+/// The chunks that a rotation turns, as CityRotationCommand.REQUIRED_CHUNKS.
+const ROTATION_CHUNKS: [&str; 17] = [
+    "MISC", "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XTHG", "XBIT", "XTRF", "XPLT", "XVAL", "XCRM", "XPLC", "XFIR", "XPOP", "XROG",
+];
+const SIGN_CHUNK: &str = "XSGN";
+
+impl Session {
+    /// Turn the city a quarter turn, as the rotate buttons do. The saved
+    /// coordinates, the runtime coordinates of the engine, and the signs turn.
+    pub fn rotate(&mut self, counter_clockwise: bool) -> Result<(), String> {
+        use sc2k_sim::formats::sc2x::xsgn::Xsgn;
+        use sc2k_sim::sim::tools::rotation;
+
+        for id in ROTATION_CHUNKS {
+            let size = self.city.chunk(id).map(|chunk| chunk.data.len() as i64);
+
+            if size != Some(self.city.decoded_size(id)) {
+                return Err("rotation data is missing or invalid".into());
+            }
+        }
+
+        let edge = self.city.map_size as usize;
+        let mut turned_signs = None;
+
+        if self.document.is_sc2x()
+            && let Some(chunk) = self.document.find(SIGN_CHUNK)
+        {
+            let mut table = Xsgn::decode(&chunk.decoded, edge).map_err(|error| format!("sign data is invalid: {error}"))?;
+            let last = edge as u16 - 1;
+
+            for sign in table.signs.iter_mut().filter(|sign| sign.is_active()) {
+                let (x, y) = (sign.x, sign.y);
+                (sign.x, sign.y) = if counter_clockwise { (y, last - x) } else { (last - y, x) };
+            }
+
+            turned_signs = Some(table.encode(edge)?);
+        }
+
+        rotation::rotate(&mut self.city, counter_clockwise);
+
+        if let (Some(data), Some(chunk)) = (turned_signs, self.document.find_mut(SIGN_CHUNK)) {
+            chunk.set_decoded(data);
+        }
+
+        self.with_engine(|engine| engine.rotate_runtime_coordinates(counter_clockwise));
+        self.undo = None;
+        self.revision += 1;
+        self.map_revision += 1;
+
+        Ok(())
     }
 }

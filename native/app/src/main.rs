@@ -136,11 +136,61 @@ impl App {
                     view.camera.change_zoom(-1, None);
                 }
                 "0" => view.camera.reset_zoom(),
+                "[" | "]" => {
+                    let counter_clockwise = text.as_str() == "[";
+                    let edge = self.game.session.city.map_size as i32;
+                    let center = view.tile_at(&self.game.session, view.camera.viewport.center());
+
+                    match self.game.session.rotate(counter_clockwise) {
+                        Ok(()) => {
+                            view.invalidate();
+
+                            if let Some((x, y)) = center {
+                                let (x, y) = if counter_clockwise {
+                                    (y, edge - 1 - x)
+                                } else {
+                                    (edge - 1 - y, x)
+                                };
+                                let altitude = self
+                                    .game
+                                    .session
+                                    .city
+                                    .land_altitude(i64::from(x), i64::from(y))
+                                    as i32;
+                                view.camera.center_on(sc2k_view::geometry::tile_center(
+                                    edge, x, y, altitude,
+                                ));
+                            }
+
+                            self.status = if counter_clockwise {
+                                "Rotated counterclockwise".into()
+                            } else {
+                                "Rotated clockwise".into()
+                            };
+                        }
+                        Err(error) => self.status = format!("Cannot rotate city: {error}"),
+                    }
+                }
                 "u" => {
                     view.options.underground = !view.options.underground;
                     view.invalidate();
                 }
                 "p" => view.options.pipes = !view.options.pipes,
+                "v" => {
+                    use sc2k_view::data_view::{MODES, TITLES};
+
+                    let next = match view.data_mode {
+                        None => Some(0),
+                        Some(mode) => MODES
+                            .iter()
+                            .position(|known| *known == mode)
+                            .map(|index| index + 1)
+                            .filter(|index| *index < MODES.len()),
+                    };
+
+                    view.data_mode = next.map(|index| MODES[index]);
+                    self.status = next.map_or_else(|| "City".into(), |index| TITLES[index].into());
+                }
                 "b" => self.tool = (group::BULLDOZER, 0),
                 "x" => self.tool = (group::ROADS, 0),
                 "w" => self.tool = (group::POWER, 0),

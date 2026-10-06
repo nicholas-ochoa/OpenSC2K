@@ -62,7 +62,7 @@ fn renders_match_the_godot_painter() {
     };
 
     let document = Document::parse(&bytes).unwrap();
-    let city = sc2k_game_city(&document);
+    let city = sc2k_sim::sim::new_city::city_of(&document);
     let art = CityArt::new(&pack);
     let identity: Vec<i32> = (0..256).collect();
     let colors = cycled_colors(&art.palette, &identity);
@@ -103,18 +103,4 @@ fn renders_match_the_godot_painter() {
     }
 
     assert!(failures.is_empty(), "{failures:#?}");
-}
-
-/// The simulation city of a document, as the game session makes it.
-fn sc2k_game_city(document: &Document) -> sc2k_sim::sim::city::City {
-    let mut city = sc2k_sim::sim::city::City::new(document.map_size, document.large_version);
-
-    for id in sc2k_sim::sim::city::CHUNK_IDS {
-        if let (Some(chunk), Some(slot)) = (document.find(id), city.chunk_slot_mut(id)) {
-            slot.present = true;
-            slot.data = chunk.decoded.clone();
-        }
-    }
-
-    city
 }

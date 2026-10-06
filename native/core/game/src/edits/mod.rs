@@ -235,6 +235,7 @@ pub fn apply(session: &mut Session, selection: &Selection) -> Outcome {
     publish_utility_usage(session, &result);
     session.undo = before.finish(session, kind);
     session.revision += 1;
+    session.map_revision += 1;
 
     let mut sounds = sounds_of(&result);
 

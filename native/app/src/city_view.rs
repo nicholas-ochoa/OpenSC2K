@@ -27,6 +27,14 @@ pub struct CityView {
     /// The display clock of moving sprites, in tenths of a second.
     pub animation_phase: i64,
     pub show_vehicles: bool,
+    /// The data view that replaces the city, or none.
+    pub data_mode: Option<sc2k_view::data_view::Mode>,
+    data_cache: Option<(
+        u64,
+        sc2k_view::data_view::Mode,
+        sc2k_render::data_view::DataMesh,
+        Vec<i32>,
+    )>,
     /// The tiles that the selection outlines.
     pub highlight: Vec<(i32, i32)>,
     markers: Vec<(usize, i64)>,
@@ -58,6 +66,8 @@ impl CityView {
             animation_phase: 0,
             show_vehicles: true,
             highlight: Vec::new(),
+            data_mode: None,
+            data_cache: None,
             markers: Vec::new(),
             moving_key: (u64::MAX, -1, usize::MAX),
         }
@@ -141,6 +151,12 @@ impl CityView {
             BACKGROUND
         };
 
+        if let Some(mode) = self.data_mode {
+            self.draw_data(frame, session, mode);
+
+            return;
+        }
+
         if let Some(regions) = &mut self.regions {
             draw_map(frame, &self.camera, regions, &colors, background);
 
@@ -152,6 +168,54 @@ impl CityView {
 }
 
 impl CityView {
+    fn draw_data(
+        &mut self,
+        frame: &mut Frame,
+        session: &Session,
+        mode: sc2k_view::data_view::Mode,
+    ) {
+        use sc2k_view::data_view;
+
+        let stale = self
+            .data_cache
+            .as_ref()
+            .is_none_or(|(revision, cached, _, _)| {
+                *revision != session.map_revision || *cached != mode
+            });
+
+        if stale {
+            let painter = painter_city(&session.city, 32);
+
+            if let Some(mesh) = data_view::mesh(&painter, mode) {
+                self.data_cache = Some((
+                    session.map_revision,
+                    mode,
+                    mesh,
+                    data_view::values(&session.city, mode),
+                ));
+            }
+        }
+
+        frame.pixels.fill(BACKGROUND);
+
+        if let Some((_, _, mesh, values)) = &self.data_cache {
+            data_view::draw(
+                frame,
+                &self.camera,
+                mesh,
+                values,
+                session.city.map_size as usize,
+                mode,
+            );
+        }
+
+        for tile in &self.highlight {
+            if let Some(regions) = &self.regions {
+                outline_tile(frame, &self.camera, regions.city(), *tile, HIGHLIGHT);
+            }
+        }
+    }
+
     /// The tile under a screen point.
     pub fn tile_at(&self, session: &Session, point: (f64, f64)) -> Option<(i32, i32)> {
         let source = self.camera.screen_to_source(point);

@@ -6,6 +6,7 @@
 
 pub mod art;
 pub mod camera;
+pub mod data_view;
 pub mod geometry;
 pub mod moving;
 pub mod picking;

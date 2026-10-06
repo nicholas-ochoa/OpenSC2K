@@ -63,6 +63,7 @@ impl Undo {
         [session.randoms.random.state, session.randoms.lfsr.state, session.randoms.game.state] = self.randoms.0;
         (session.engine.day.power_usage_percent, session.engine.day.water_usage_percent) = self.engine_usage.0;
         session.revision += 1;
+        session.map_revision += 1;
 
         Ok(())
     }
