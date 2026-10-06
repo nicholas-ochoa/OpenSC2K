@@ -446,13 +446,13 @@ func _updated_source() -> CityMapSource:
 	return _published_source
 
 
-func occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
+func occlusion_candidates(bounds: Rect2i, include_cached := false) -> Array[CityStaticCommand]:
 	var found: Dictionary[int, CityStaticCommand] = {}
 	var versions: Dictionary[int, int] = {}
 	var native := Rect2(Vector2(bounds.position) / divisor, Vector2(bounds.size) / divisor)
 
 	for key in _keys_for_bounds(bounds):
-		if not entries.has(key) or key not in visible:
+		if not entries.has(key) or (not include_cached and key not in visible):
 			continue
 
 		var entry: CityRegionResult = entries[key]

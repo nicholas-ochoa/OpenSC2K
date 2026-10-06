@@ -308,6 +308,9 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Ar
 	if app.city_life.canvas != null:
 		app.city_life.canvas.invalidate_occlusion(occluder_changes)
 	app.disaster_effects.invalidate_occlusion(occluder_changes)
+	var night_ground: CityNightGround = app.visual_environment.night_lighting.ground if app.visual_environment != null else null
+	if night_ground != null:
+		night_ground.invalidate_regions(occluder_changes)
 
 	if not occluder_changes.is_empty():
 		for key in caches.dynamic_occluder_cache.keys():

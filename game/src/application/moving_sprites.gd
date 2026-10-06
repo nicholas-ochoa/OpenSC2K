@@ -417,6 +417,8 @@ func _floating_occluder_image(
 
 
 func set_static_occlusion_commands(commands: Array[CityStaticCommand], view_size: int) -> void:
+	if app.visual_environment != null and app.visual_environment.night_lighting.ground != null:
+		app.visual_environment.night_lighting.ground.invalidate_all()
 	caches.static_occlusion_commands.assign(commands)
 	caches.dynamic_occluder_cache.clear()
 	caches.dynamic_visual_cache.clear()

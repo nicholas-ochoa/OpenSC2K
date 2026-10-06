@@ -288,8 +288,74 @@ func _check_ground_lighting(main: CityApplication) -> void:
 		assert(CityNightFixtures.signal_directions(junctions, tile).is_empty())
 	junctions.set_building_id(0, 0, BuildingTileIds.ROAD_CROSSROADS)
 	assert(CityNightFixtures.signal_directions(junctions, Vector2i.ZERO).is_empty())
+	# Every highway family has lamps, while rail and empty terrain do not.
+	for id in [BuildingTileIds.HIGHWAY_STRAIGHT_1, BuildingTileIds.HIGHWAY_STRAIGHT_2,
+		BuildingTileIds.HIGHWAY_ROAD_CROSSING_1, BuildingTileIds.HIGHWAY_POWER_CROSSING_2,
+		BuildingTileIds.HIGHWAY_ONRAMP_1, BuildingTileIds.HIGHWAY_SLOPE_1,
+		BuildingTileIds.HIGHWAY_CURVE_1, BuildingTileIds.HIGHWAY_INTERSECTION,
+		BuildingTileIds.HIGHWAY_BRIDGE, BuildingTileIds.REINFORCED_HIGHWAY_BRIDGE]:
+		junctions.set_building_id(64, 64, id)
+		assert(not CityNightFixtures.street_layout(junctions, tile, 2).is_empty(), "Missing highway lamps: %d" % id)
+	for id in [0, BuildingTileIds.RAIL_STRAIGHT_1]:
+		junctions.set_building_id(64, 64, id)
+		assert(CityNightFixtures.street_layout(junctions, tile, 2).is_empty())
+	# Road and raised highway receivers follow each of the four terrain inclines.
+	for road in [BuildingTileIds.ROAD_STRAIGHT_1, BuildingTileIds.HIGHWAY_STRAIGHT_1]:
+		for shape in range(1, 5):
+			var enter := 0 if shape % 2 == 0 else 1
+			junctions.set_building_id(64, 64, road + enter)
+			junctions.set_terrain_id(64, 64, shape)
+			var receiver := CityLifeLights.new()
+			var samples := 0
+			for patch: Dictionary in receiver._road_patches(junctions, tile, enter):
+				for sample: Vector4 in patch.samples:
+					var offset := Vector2(sample.z, sample.w) - Vector2(tile)
+					var t := 0.5 - offset.dot(Vector2(CityLifePaths.DIRECTIONS[enter]))
+					var height := lerpf(CityLifePaths.edge_height(junctions, tile, enter), CityLifePaths.edge_height(junctions, tile, (enter + 2) % 4), t)
+					var expected := CityLifeLights._project(junctions, tile, offset, height)
+					assert(expected.distance_to(Vector2(sample.x + 0.5, sample.y + 0.5)) < 0.01, "Light receiver left the sloping road")
+					samples += 1
+			assert(samples > 20)
+	await _check_ground_buffer(main, ground)
 	ground.queue_free()
 	await process_frame
+
+
+func _check_ground_buffer(main: CityApplication, ground: CityNightGround) -> void:
+	var regions := main.render_caches.region_cache
+	main.render_caches.region_cache = null
+	var map := main.map_view
+	var old_source := map.city_source
+	map.set_city_view(main.document_state.city, CityMapTexture.create(Image.create(4160, 2944, false, Image.FORMAT_RGBA8)))
+	ground.reset()
+	map.center_on_tile(Vector2i(64, 64))
+	for i in 160:
+		ground.sync(main, 0.45)
+	assert(ground.cache.size() > 10)
+	var saved := ground.cache.duplicate()
+	# A new streamed source and render epoch must never empty complete receivers.
+	for i in 4:
+		main.static_render_state.epoch += 1
+		map.city_source = CityMapTexture.create(Image.create(4160, 2944, false, Image.FORMAT_RGBA8))
+		ground.sync(main, 0.45)
+		for tile in saved:
+			assert(ground.cache.has(tile) and ground.cache[tile].texture == saved[tile].texture, "Source publication discarded stable street lights")
+	map.city_source = old_source
+	map.pan_screen(Vector2(240, 0))
+	ground.sync(main, 0.45)
+	map.pan_screen(Vector2(-240, 0))
+	ground.sync(main, 0.45)
+	for tile in saved:
+		assert(ground.cache.has(tile) and ground.cache[tile].texture == saved[tile].texture, "Short camera pan discarded the light buffer")
+	var tile: Vector2i = saved.keys()[0]
+	ground.invalidate_regions([Rect2i(saved[tile].origin, Vector2i(64, 64))])
+	assert(ground.dirty.has(tile) and ground.cache[tile].texture == saved[tile].texture, "Refresh blanked a complete receiver")
+	for i in 160:
+		ground.sync(main, 0.45)
+	assert(ground.cache[tile].texture != saved[tile].texture and not ground.dirty.has(tile), "Changed foreground never refreshed")
+	map.city_source = old_source
+	main.render_caches.region_cache = regions
+	print("PASS: street light buffer survives source publications and panning; dirty receivers replace atomically")
 
 
 func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:

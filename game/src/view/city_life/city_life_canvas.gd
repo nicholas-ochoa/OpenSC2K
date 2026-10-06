@@ -23,6 +23,7 @@ var _occlusion_signature: Array = []
 var _road_signature: Array = []
 var _visible_regions: Array[Vector2i] = []
 var _emission_active := false
+var include_cached_regions := false
 
 
 func _init() -> void:
@@ -172,7 +173,10 @@ func _candidates(app: CityApplication, tile: Vector2i, enter: int = 0) -> Array:
 	var lower_crossing := id in [BuildingTileIds.HIGHWAY_ROAD_CROSSING_1, BuildingTileIds.HIGHWAY_ROAD_CROSSING_2] \
 		and CityLifePaths.edge_height(city, tile, enter) < city.land_altitude(tile.x, tile.y) + 1.0
 	var candidates: Array = []
-	for command in app.moving_sprites.static_occlusion_candidates(bounds):
+	var commands := app.moving_sprites.static_occlusion_candidates(bounds)
+	if include_cached_regions and app.render_caches.region_cache != null:
+		commands = app.render_caches.region_cache.occlusion_candidates(bounds, true)
+	for command in commands:
 		var command_tile := Vector2i(command.depth_order % city.map_size, 0)
 		command_tile = Vector2i(int(command.depth_order / city.map_size) - command_tile.x, command_tile.x)
 		var own := own_structure and (command_tile == tile or (id >= BuildingTileIds.HIGHWAY_SLOPE_1 \
@@ -188,7 +192,11 @@ func _candidates(app: CityApplication, tile: Vector2i, enter: int = 0) -> Array:
 					mask = app.moving_sprites._dynamic_train_foreground_image(archive, command, divisor, mask)
 				elif not tunnel:
 					# The deck is beneath the car; its towers and rails remain foreground.
-					mask = deck_foreground(mask, origin, center, -0.5 if enter % 2 == 0 else 0.5)
+					var forward := Vector2(CityLifePaths.DIRECTIONS[enter])
+					var opposite := (enter + 2) % 4
+					var a := CityLifeLights._project(city, tile, forward * 0.5, CityLifePaths.edge_height(city, tile, enter))
+					var b := CityLifeLights._project(city, tile, -forward * 0.5, CityLifePaths.edge_height(city, tile, opposite))
+					mask = deck_foreground(mask, origin, (a + b) * 0.5, (b.y - a.y) / (b.x - a.x))
 			candidates.append({"origin": origin, "image": mask})
 	_occluder_bounds[key] = bounds
 	_occluders[key] = merged_occluders(candidates)

@@ -12,13 +12,17 @@ static func street_layout(city: CityState, tile: Vector2i, spacing: int) -> Arra
 	var ordinary := id >= TILES.ROAD_STRAIGHT_1 and id <= TILES.ROAD_CROSSROADS
 	var crossing := id >= TILES.ROAD_POWER_CROSSING_1 and id <= TILES.ROAD_RAIL_CROSSING_2
 	var bridge := id >= TILES.SUSPENSION_BRIDGE_1 and id <= TILES.RAISING_BRIDGE_CLOSED
-	if not (ordinary or crossing or bridge):
+	var highway := (id >= TILES.HIGHWAY_STRAIGHT_1 and id <= TILES.HIGHWAY_POWER_CROSSING_2) \
+		or (id >= TILES.HIGHWAY_ONRAMP_1 and id <= TILES.REINFORCED_HIGHWAY_BRIDGE)
+	if not (ordinary or crossing or bridge or highway):
 		return []
 	var ports := CityLifePaths.ports(city, tile)
 	if id >= TILES.ROAD_JUNCTION_1 and id <= TILES.ROAD_CROSSROADS:
 		return [{"offset": Vector2(0.34, 0.34), "enter": 0}, {"offset": Vector2(-0.34, -0.34), "enter": 0}]
 	if posmod(tile.x + tile.y, maxi(1, spacing)) != 0:
 		return []
+	if id in [TILES.HIGHWAY_ROAD_CROSSING_1, TILES.HIGHWAY_ROAD_CROSSING_2]:
+		return [{"offset": Vector2(0.32, 0), "enter": 0}, {"offset": Vector2(0, 0.32), "enter": 1}]
 	for direction in 4:
 		if ports & (1 << direction):
 			var forward := Vector2(CityLifePaths.DIRECTIONS[direction])

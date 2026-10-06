@@ -5,7 +5,8 @@ extends Node2D
 
 const SHADER := preload("res://src/view/environment/night_ground.gdshader")
 const PROFILES := "res://src/view/environment/night_light_profiles.json"
-const MAX_CACHED := 1024
+const MAX_CACHED := 4096
+const BUFFER_MARGIN := 160.0
 const BUILD_BUDGET := 12
 var profiles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(PROFILES))
 var roads := CityLifeLights.new()
@@ -15,6 +16,11 @@ var visible_tiles: Array[Vector2i] = []
 var signature: Array = []
 var bounds := Rect2i()
 var cursor := 0
+var geometry: Array = []
+var dirty: Dictionary[Vector2i, bool] = {}
+var last_used: Dictionary[Vector2i, int] = {}
+var collection := 0
+var density := 1
 var fixtures := Node2D.new()
 var clock := 0.0
 
@@ -24,6 +30,7 @@ func _init() -> void:
 	shader.shader = SHADER
 	material = shader
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	masker.include_cached_regions = true
 	add_child(masker)
 	masker.hide()
 	fixtures.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -33,6 +40,9 @@ func _init() -> void:
 
 func reset() -> void:
 	cache.clear()
+	dirty.clear()
+	last_used.clear()
+	geometry.clear()
 	roads.roads.clear()
 	masker._occluders.clear()
 	visible_tiles.clear()
@@ -54,24 +64,45 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 	fixtures.modulate.a = smoothstep(0.0, 0.25, strength)
 	var map := app.map_view
 	var city := app.document_state.city
-	var revision := [city.document.get_instance_id(), app.static_render_state.epoch,
-		map.city_source, city.chunk_revision("XBLD"), city.chunk_revision("ALTM"), city.chunk_revision("XTER"),
+	# Source publications and traffic repaints do not change world coordinates.
+	var archive := app.static_render.sprite_archive_for_view(app.static_render.city_view_size())
+	var revision := [city.document.get_instance_id(), city.map_size,
 		app.static_render.city_view_size(), city.compass_rotation(), city.visible_altitude_levels,
-		app.asset_state.large_sprites.visual_revision if app.asset_state.large_sprites != null else 0]
+		archive.get_instance_id() if archive != null else 0, archive.visual_revision if archive != null else 0]
 	if signature != revision:
 		reset()
 		signature = revision
-	var next := Rect2i(map.visible_source_rect().grow(64))
-	if not bounds.encloses(next.grow(-48)):
+	var shape := [city.chunk_revision("XBLD"), city.chunk_revision("ALTM"), city.chunk_revision("XTER"),
+		app.view_state.surface_visibility.duplicate()]
+	if geometry != shape:
+		geometry = shape
+		invalidate_all()
+		bounds = Rect2i()
+	var next := Rect2i(map.visible_source_rect().grow(BUFFER_MARGIN))
+	var next_density := maxi(1, ceili(sqrt(float(next.get_area()) / (256.0 * MAX_CACHED))))
+	if density != next_density or not bounds.encloses(next.grow(-BUFFER_MARGIN * 0.5)):
+		density = next_density
 		bounds = next
 		_collect(city)
 	var built := 0
-	while cursor < visible_tiles.size() and built < BUILD_BUDGET:
+	var visited := 0
+	var started := Time.get_ticks_usec()
+	# Refresh in place: an old complete texture remains until its replacement is ready.
+	while visited < visible_tiles.size() and built < BUILD_BUDGET:
+		cursor %= visible_tiles.size()
 		var tile := visible_tiles[cursor]
 		cursor += 1
-		if not cache.has(tile):
-			cache[tile] = _build(app, tile)
-			built += 1
+		visited += 1
+		if cache.has(tile) and not dirty.has(tile):
+			continue
+		if not _regions_ready(app, tile):
+			continue
+		_forget_helpers(tile)
+		cache[tile] = _build(app, tile)
+		dirty.erase(tile)
+		built += 1
+		if Time.get_ticks_usec() - started > 4000:
+			break
 	if built > 0:
 		queue_redraw()
 		fixtures.queue_redraw()
@@ -82,6 +113,9 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 
 
 func _collect(city: CityState) -> void:
+	for tile in visible_tiles:
+		if not cache.has(tile):
+			last_used.erase(tile)
 	visible_tiles.clear()
 	cursor = 0
 	var first := Vector2i(city.map_size, city.map_size)
@@ -98,24 +132,71 @@ func _collect(city: CityState) -> void:
 	for x in range(first.x, last.x + 1):
 		for y in range(first.y, last.y + 1):
 			var tile := Vector2i(x, y)
+			# World-anchored overview density, independent of viewport list ordering.
+			if posmod(x * 73856093 ^ y * 19349663, density * density) != 0:
+				continue
 			if CityLifePaths.ports(city, tile) == 0 or city.land_altitude(x, y) >= city.visible_altitude_levels:
 				continue
 			var point := CityLifePaths.point(city, tile, 0, 2, 0.5, false)
 			if bounds.has_point(Vector2i(point)) and not sources(city, tile).is_empty():
 				visible_tiles.append(tile)
-	if visible_tiles.size() > MAX_CACHED:
-		var reduced: Array[Vector2i] = []
-		for i in MAX_CACHED:
-			reduced.append(visible_tiles[floori(float(i) * visible_tiles.size() / MAX_CACHED)])
-		visible_tiles = reduced
-	if cache.size() + visible_tiles.size() > MAX_CACHED:
-		for tile: Vector2i in cache.keys():
-			if not visible_tiles.has(tile):
-				cache.erase(tile)
-		roads.roads.clear()
-		masker._occluders.clear()
+	collection += 1
+	for tile in visible_tiles:
+		last_used[tile] = collection
+	# Evict only the oldest offscreen receivers. Returning to a recent view reuses them.
+	var retained := cache.keys()
+	retained.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return int(last_used.get(a, 0)) < int(last_used.get(b, 0)))
+	var excess := maxi(0, cache.size() + visible_tiles.filter(func(tile: Vector2i) -> bool: return not cache.has(tile)).size() - MAX_CACHED)
+	for tile: Vector2i in retained:
+		if excess <= 0:
+			break
+		if int(last_used.get(tile, 0)) == collection:
+			continue
+		cache.erase(tile)
+		dirty.erase(tile)
+		last_used.erase(tile)
+		_forget_helpers(tile)
+		excess -= 1
+	# New visible receivers take priority over the prefetch border.
+	var center := Vector2(bounds.get_center())
+	visible_tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return CityLifePaths.point(city, a, 0, 2, 0.5, false).distance_squared_to(center) < CityLifePaths.point(city, b, 0, 2, 0.5, false).distance_squared_to(center))
 	queue_redraw()
 	fixtures.queue_redraw()
+
+
+func invalidate_all() -> void:
+	for tile in cache:
+		dirty[tile] = true
+
+
+func invalidate_regions(changes: Array[Rect2i]) -> void:
+	if changes.is_empty():
+		return
+	for tile in cache:
+		var receiver := Rect2i(cache[tile].origin, Vector2i(64, 64))
+		for changed in changes:
+			if receiver.intersects(changed):
+				dirty[tile] = true
+				break
+
+
+func _forget_helpers(tile: Vector2i) -> void:
+	for axis in 2:
+		var key := Vector3i(tile.x, tile.y, axis)
+		roads.roads.erase(key)
+		masker._occluders.erase(key)
+
+
+func _regions_ready(app: CityApplication, tile: Vector2i) -> bool:
+	var regions := app.render_caches.region_cache
+	if regions == null:
+		return true
+	var center := CityLifePaths.point(app.document_state.city, tile, 0, 2, 0.5, false)
+	for key in regions._keys_for_bounds(Rect2i(Vector2i(center) - Vector2i(40, 40), Vector2i(80, 80))):
+		if not regions.entries.has(key):
+			return false
+	return true
 
 
 func sources(city: CityState, tile: Vector2i) -> Array[Dictionary]:
@@ -123,6 +204,7 @@ func sources(city: CityState, tile: Vector2i) -> Array[Dictionary]:
 	# Stable placement, independent of both simulation and cosmetic RNGs.
 	for fixture in CityNightFixtures.street_layout(city, tile, int(profiles.street.spacing)):
 		var street: Dictionary = profiles.street.duplicate()
+		street.enter = fixture.enter
 		street.position = Vector2(tile) + Vector2(fixture.offset) * 0.65
 		result.append(street)
 	# Only short, street-facing approaches for the explicitly listed shops.
@@ -160,6 +242,8 @@ func _build(app: CityApplication, tile: Vector2i) -> Dictionary:
 				seen[point] = true
 				var color := Color(0, 0, 0, 1)
 				for light in lights:
+					if light.has("enter") and int(light.enter) != enter and not CityLifePaths.can_turn(city, tile, enter, int(light.enter)):
+						continue
 					var distance := Vector2(sample.z, sample.w).distance_to(light.position)
 					var falloff := pow(maxf(0.0, 1.0 - distance / float(light.radius)), 1.6)
 					color += Color(str(light.color)) * falloff * float(light.intensity)
