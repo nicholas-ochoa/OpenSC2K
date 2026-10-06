@@ -11,6 +11,7 @@ const ANCHOR := Vector2(48, 128)
 const MAX_MARKERS := 512
 const MAX_PULSES := 96
 const FRAME_SECONDS := 1.0 / 15.0
+const SHAKE_SECONDS := 2.0
 const FIRE := 0
 const FLOOD := 1
 const TOXIC := 2
@@ -41,6 +42,7 @@ var _storm: Visual
 var _trails: Dictionary[int, Vector2] = {}
 var _shake_remaining := 0.0
 var lighting := CityDisasterLighting.new()
+var earthquake_blur := CityEarthquakeBlur.new()
 var _tornado_sites: Dictionary[Vector2i, int] = {}
 
 
@@ -59,6 +61,7 @@ func active() -> bool:
 
 func process(delta: float) -> void:
 	_sync_city()
+	app.moving_sprites.tornado_renderer.sync_transform()
 	var options := app.preferences.visual_enhancements
 	var settings := [enabled(), options.disaster_crowds, options.disaster_dust, options.disaster_motion]
 	if settings != _settings_signature:
@@ -76,9 +79,11 @@ func process(delta: float) -> void:
 		clock += elapsed
 		if _shake_remaining > 0.0:
 			_shake_remaining = maxf(0.0, _shake_remaining - elapsed)
-			var fade := _shake_remaining / 0.35
-			app.map_view.presentation.shake_offset = Vector2(sin((0.35 - _shake_remaining) * 95.0), 0.0) \
+			var age := SHAKE_SECONDS - _shake_remaining
+			var fade := shake_envelope(age)
+			app.map_view.presentation.shake_offset = Vector2(sin(age * 95.0), sin(age * 71.0) * 0.3) \
 				* 4.0 * options.disaster_shake * fade * maxf(1.0, app.map_view.zoom_factor) * app.map_view.map_pixel_ratio
+			earthquake_blur.update(app.map_view, fade * options.disaster_shake)
 			app.map_view.layers._sync_base_layer()
 			app.map_view.queue_redraw()
 	# User-triggered demolition still settles when the game is paused.
@@ -121,6 +126,8 @@ func _clear() -> void:
 		app.map_view.layers._sync_base_layer()
 		app.map_view.queue_redraw()
 	_shake_remaining = 0.0
+	if app.map_view != null:
+		earthquake_blur.update(app.map_view, 0.0)
 	for visual in markers.values():
 		visual.sprite.queue_free()
 	markers.clear()
@@ -213,7 +220,8 @@ func observe_command(command: CityDynamicCommand) -> bool:
 		if visual != null and kind == RIOT:
 			visual.material.set_shader_parameter("sparse_crowd", false)
 			_riot_neighbours(city, tile)
-		return visual != null and kind != FIRE
+		# Keep the original hazard cloud as a clear tile-local treatment target.
+		return visual != null and kind not in [FIRE, TOXIC]
 	if command.record < 0:
 		return false
 	var thing := city.thing(command.record)
@@ -377,10 +385,15 @@ func _update_material(visual: Visual) -> void:
 	app.map_view.layers._apply_environment(material)
 	if visual.kind == HURRICANE:
 		return
-	var signature := [visual.sprite.position, visual.tile, app.static_render_state.epoch, app.static_render.city_view_size()]
+	var bounds := Rect2i(Vector2i(visual.sprite.position), EXTENT)
+	if visual.record >= 0:
+		bounds = Rect2i(Vector2i(ground_point(app.document_state.city, visual.tile) - ANCHOR) - Vector2i(48, 48), EXTENT + Vector2i(96, 96))
+	material.set_shader_parameter("foreground_scale", Vector2(EXTENT) / Vector2(bounds.size))
+	material.set_shader_parameter("foreground_offset", (visual.sprite.position - Vector2(bounds.position)) / Vector2(bounds.size))
+	var signature := [bounds, visual.tile, app.static_render_state.epoch, app.static_render.city_view_size()]
 	if signature != visual.mask_signature:
 		visual.mask_signature = signature
-		var mask := app.moving_sprites.effect_occluder_mask(Vector2i(visual.sprite.position), EXTENT, visual.tile, app.static_render.city_view_size())
+		var mask := app.moving_sprites.effect_occluder_mask(bounds.position, bounds.size, visual.tile, app.static_render.city_view_size())
 		material.set_shader_parameter("has_foreground", mask != null)
 		if mask != null:
 			material.set_shader_parameter("foreground", ImageTexture.create_from_image(mask))
@@ -428,7 +441,11 @@ func consume_effects(events: Array[EffectEvent], simulation: bool) -> Array[Effe
 
 func shake_view() -> void:
 	app.map_view.presentation._shake_generation += 1
-	_shake_remaining = 0.35
+	_shake_remaining = SHAKE_SECONDS
+
+
+static func shake_envelope(age: float) -> float:
+	return smoothstep(0.0, 0.15, age) * (1.0 - smoothstep(1.3, SHAKE_SECONDS, age))
 
 
 static func is_dust(event: EffectEvent) -> bool:

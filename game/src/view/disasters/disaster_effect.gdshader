@@ -15,6 +15,8 @@ uniform vec2 world_origin = vec2(0.0);
 uniform vec4 flood_edges = vec4(1.0);
 uniform sampler2D foreground : filter_nearest, repeat_disable;
 uniform bool has_foreground = false;
+uniform vec2 foreground_scale = vec2(1.0);
+uniform vec2 foreground_offset = vec2(0.0);
 uniform sampler2D people : source_color, filter_nearest, repeat_disable;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -82,7 +84,14 @@ void fragment() {
 			ink = over(ink, gas * (0.95 + f * 0.30), puff(q, at, vec2(8.0, 5.0)) * sin(f * 3.14159) * 0.44 * strength);
 		}
 	} else if (effect_kind == 3) {
-		ink = texture(people, vec2((UV.x + mod(floor(t * 6.0), 8.0)) / 8.0, (UV.y + (sparse_crowd ? 1.0 : 0.0)) * 0.5));
+		vec2 uv = vec2((UV.x + mod(floor(t * 6.0), 8.0)) / 8.0, (UV.y + (sparse_crowd ? 1.0 : 0.0)) * 0.5);
+		vec2 pixel = vec2(1.0 / 768.0, 1.0 / 288.0);
+		vec4 person = texture(people, uv);
+		float outline = max(max(texture(people, uv + vec2(pixel.x, 0.0)).a, texture(people, uv - vec2(pixel.x, 0.0)).a),
+			max(texture(people, uv + vec2(0.0, pixel.y)).a, texture(people, uv - vec2(0.0, pixel.y)).a));
+		ink = over(ink, vec3(0.035, 0.045, 0.055), outline * 0.85);
+		ink = over(ink, clamp(person.rgb * 1.3 + vec3(0.12), vec3(0.0), vec3(1.0)), person.a);
+		emission = sparse_crowd ? 0.2 : 0.65;
 	} else if (effect_kind == 4) {
 		for (int i = 0; i < 9; i++) {
 			float a = t * (2.0 + float(i) * 0.13) + float(i) * 2.4;
@@ -132,7 +141,12 @@ void fragment() {
 	}
 	ink.rgb = mix(environment_color(ink.rgb, UV), ink.rgb, clamp(emission, 0.0, 1.0));
 	if (progress >= 0.0 && effect_kind != 5) { ink.a *= 1.0 - smoothstep(0.65, 1.0, progress); }
-	if (has_foreground) { ink.a *= 1.0 - texture(foreground, UV).a; }
+	if (has_foreground) { ink.a *= 1.0 - texture(foreground, UV * foreground_scale + foreground_offset).a; }
+	// A tactical tile edge stays readable even when a tall building hides the crowd.
+	// Cosmetic neighbours never receive this treatment target.
+	if (effect_kind == 3 && !sparse_crowd && diamond > 0.82 && diamond < 1.0) {
+		ink = over(ink, vec3(0.92, 0.64, 0.24), 0.58);
+	}
 	// Replacement artwork remains identifiable; strength controls surrounding atmosphere.
 	COLOR = vec4(ink.rgb, clamp(ink.a, 0.0, 1.0));
 }

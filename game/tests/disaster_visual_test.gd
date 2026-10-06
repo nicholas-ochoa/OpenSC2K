@@ -38,7 +38,7 @@ func _run() -> void:
 		command.depth_order = (tile.x + tile.y) * 128 + tile.y
 		command.overlay = marker
 		var replaced := effects.observe_command(command)
-		assert(replaced == (marker != 0xff), "Preserve classic fire; replace water, gas and people")
+		assert(replaced == (marker not in [0xff, 0xfb]), "Preserve classic fire and toxic cloud; replace water and people")
 		effects.end_commands()
 		assert(effects.markers.size() == (5 if marker in [0xfd, 0xfe] else 1))
 		var visual: CityDisasterEffects.Visual = effects.markers.values()[0]
@@ -64,6 +64,16 @@ func _run() -> void:
 		effects.process(0.2)
 	assert(effects.pulses.is_empty())
 	assert(dust.sprite_id == 1392 and dust.frame == 0, "Presentation must not mutate source events")
+	app.preferences.visual_enhancements.pause_freezes = false
+	effects.shake_view()
+	for i in 4:
+		effects.process(0.25)
+	assert(effects._shake_remaining > 0.9 and effects.earthquake_blur.canvas.visible)
+	for i in 5:
+		effects.process(0.25)
+	assert(effects._shake_remaining == 0.0 and not effects.earthquake_blur.canvas.visible)
+	assert(app.map_view.presentation.shake_offset == Vector2.ZERO)
+	assert(CityDisasterEffects.shake_envelope(0.0) == 0.0 and CityDisasterEffects.shake_envelope(1.0) == 1.0)
 	var source := DisasterStartResult.new()
 	source.ok = true
 	source.started = true
@@ -82,10 +92,34 @@ func _run() -> void:
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before, "Visual effects advanced simulation RNG")
 	await _check_object_replacements(app)
 	_check_debris(app)
+	_check_tornado_retention(app)
 	app.queue_free()
 	await process_frame
 	print("PASS: disaster marker replacement, dispatch layering, retained nodes, event deduplication, pause, fallback and unchanged city/RNG")
 	quit()
+
+
+func _check_tornado_retention(app: CityApplication) -> void:
+	var city := app.document_state.city
+	var support := load("res://tests/traffic_motion_test.gd")
+	support.write_thing(city, 1, {"type": 15, "x": 64, "y": 64, "z": 0})
+	app.moving_sprites.refresh_moving_things()
+	var renderer := app.moving_sprites.tornado_renderer
+	assert(renderer.entries.has(1))
+	city.set_text_overlay_id(64, 64, 0)
+	support.write_thing(city, 1, {"x": 65})
+	app.moving_sprites.refresh_moving_things()
+	var before := DocumentState.capture(city.document)
+	app.moving_sprites.traffic_motion.advance(0.03)
+	app.moving_sprites.refresh_moving_things()
+	var builds := renderer.mask_builds
+	var texture := renderer.entries[1].sprite.texture
+	var position := renderer.entries[1].sprite.position
+	app.moving_sprites.traffic_motion.advance(0.03)
+	app.moving_sprites.refresh_moving_things()
+	assert(renderer.mask_builds == builds, "Subpixel motion must reuse the padded GPU foreground mask")
+	assert(renderer.entries[1].sprite.texture == texture and renderer.entries[1].sprite.position != position)
+	assert(DocumentState.capture(city.document) == before)
 
 
 func _check_object_replacements(app: CityApplication) -> void:

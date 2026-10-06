@@ -11,11 +11,13 @@ var app: CityApplication
 var caches: RenderCaches
 var traffic_motion := CityTrafficMotion.new()
 var moving_lights := CityMovingLights.new()
+var tornado_renderer: CityTornadoRenderer
 
 
 func _init(application: CityApplication) -> void:
 	app = application
 	caches = application.render_caches
+	tornado_renderer = CityTornadoRenderer.new(application)
 
 
 func process(delta: float) -> void:
@@ -38,6 +40,7 @@ func _traffic_active() -> bool:
 
 
 func refresh_moving_things(view_size := -1) -> void:
+	tornado_renderer.begin()
 	app.disaster_effects.begin_commands()
 	caches.dynamic_active_keys.clear()
 	if _traffic_active():
@@ -53,6 +56,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			app.map_view.set_dynamic_sprites([])
 
 		app.disaster_effects.end_commands()
+		tornado_renderer.finish()
 		return
 
 	if caches.region_cache != null and caches.region_cache.gpu_enabled and not caches.region_cache.covered():
@@ -60,6 +64,7 @@ func refresh_moving_things(view_size := -1) -> void:
 		app.map_view.set_dynamic_sprites([])
 
 		app.disaster_effects.end_commands()
+		tornado_renderer.finish()
 		return
 
 	if caches.dynamic_visual_cache.size() > 4096:
@@ -94,6 +99,12 @@ func refresh_moving_things(view_size := -1) -> void:
 
 		var transparent_shadow: bool = command.shadow and app.preferences.visual_enhancements.traffic_shadows_enabled \
 			and command.record >= 0 and app.document_state.city.thing(command.record).type in [1, 2]
+		if command.record >= 0 and app.document_state.city.thing(command.record).type == 15 \
+				and app.disaster_effects.active():
+			var tornado_resource := dynamic_sprite_resource(sprite_archive, command.sprite_id, command.flip, divisor, factor)
+			if tornado_resource != null:
+				tornado_renderer.draw(command, source_command, tornado_resource, display_position, divisor)
+				continue
 		var visual_cache_key := var_to_str([view_size, factor, sprite_archive.visual_revision, transparent_shadow, position, command.value_signature()])
 		# Include fully hidden shadows: a static change can make them visible.
 		caches.dynamic_active_keys[visual_cache_key] = true
@@ -178,6 +189,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			var lights := CityBrightmaps.transform_mask(moving_lights.mask(sprite_archive, command.sprite_id), resource.image, command.flip)
 			visual.water_reflection = WaterReflectionSprite.create(resource.image, lights, position, int(command.floating_altitude), app.asset_state.palette)
 		visual.special_overlay = command.overlay >= 0
+		visual.fullbright = command.overlay == 0xff
 		visual.batch_cache_key = visual_cache_key
 		visual.depth_order = int(command.depth_order)
 		visual.shadow = bool(command.shadow)
@@ -188,6 +200,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			caches.dynamic_visual_cache[visual_cache_key] = visual
 
 	app.disaster_effects.end_commands()
+	tornado_renderer.finish()
 	if caches.dynamic_special_batch_cache.size() > 128:
 		caches.dynamic_special_batch_cache.clear()
 
