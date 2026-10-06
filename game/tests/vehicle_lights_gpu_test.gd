@@ -7,6 +7,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _check_monster_panels()
+	await _check_monster_beam()
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(96, 96)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -152,5 +153,75 @@ func _check_monster_panels() -> void:
 						var expected := unlit.get_pixel(x, y).lerp(lamp, lamp.a * strength)
 						assert(absf(pixel.r - expected.r) < 0.015 and absf(pixel.g - expected.g) < 0.015 and absf(pixel.b - expected.b) < 0.015,
 							"Monster panel emission changed hue, alignment or strength")
+	viewport.queue_free()
+	await process_frame
+
+
+func _check_monster_beam() -> void:
+	var graphics := GraphicsPack.load_root(ProjectSettings.globalize_path("res://../ext/graphics"))
+	assert(graphics.error.is_empty())
+	var lights := CityMovingLights.new()
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(96, 96)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas := CityDynamicSpriteCanvas.new()
+	canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	viewport.add_child(canvas)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://src/view/map/palette_cycle.gdshader")
+	material.set_shader_parameter("palette_cycle_enabled", true)
+	material.set_shader_parameter("palette_lookup_all", true)
+	material.set_shader_parameter("environment_enabled", true)
+	var tint := Color(0.28, 0.34, 0.52)
+	material.set_shader_parameter("environment_tint", Vector3(tint.r, tint.g, tint.b))
+	canvas.material = material
+	for id in [1385, 885, 385]:
+		var archive := graphics.large_sprites if id >= 1000 else graphics.small_medium_sprites
+		var entry := archive.find_sprite(id)
+		var source: Image = entry.create_image(Sc2Palette.index_encoding()).image
+		var mask := lights.mask(archive, id)
+		for phase in 4:
+			var image := source.duplicate() as Image
+			var flip := phase % 2 == 1
+			if flip:
+				image.flip_x()
+			var emission := CityBrightmaps.transform_mask(mask, image, flip)
+			assert(emission.get_format() == Image.FORMAT_LA8)
+			var visual := CityDynamicVisual.new(ImageTexture.create_from_image(image))
+			visual.emission_texture = ImageTexture.create_from_image(emission)
+			canvas.set_visuals([visual], 1.0, Vector2.ZERO)
+			var indices := graphics.palette.animation_index_map_steps(phase, 0)
+			var palette := Image.create(256, 1, false, Image.FORMAT_RGBA8)
+			for index in 256:
+				palette.set_pixel(index, 0, graphics.palette.color(indices[index]))
+			material.set_shader_parameter("animated_palette", ImageTexture.create_from_image(palette))
+			for strength in [0.0, 0.5, 1.0]:
+				material.set_shader_parameter("environment_night", strength)
+				await process_frame
+				await RenderingServer.frame_post_draw
+				var rendered := viewport.get_texture().get_image()
+				for y in image.get_height():
+					for x in image.get_width():
+						var original := image.get_pixel(x, y)
+						var pixel := rendered.get_pixel(x, y)
+						assert(is_equal_approx(pixel.a, original.a), "Plasma light filled a transparent ring gap")
+						if original.a == 0.0:
+							continue
+						var color := palette.get_pixel(original.r8, 0)
+						var expected := (color * tint).lerp(color, strength)
+						assert(absf(pixel.r - expected.r) < 0.015 and absf(pixel.g - expected.g) < 0.015 and absf(pixel.b - expected.b) < 0.015,
+							"Plasma brightmap froze the palette cycle or changed its original ring colors")
+			material.set_shader_parameter("environment_enabled", false)
+			await process_frame
+			await RenderingServer.frame_post_draw
+			var disabled := viewport.get_texture().get_image()
+			visual.emission_texture = null
+			canvas.set_visuals([visual], 1.0, Vector2.ZERO)
+			await process_frame
+			await RenderingServer.frame_post_draw
+			assert(viewport.get_texture().get_image().get_data() == disabled.get_data(), "Disabling the environment left a visible plasma mask")
+			material.set_shader_parameter("environment_enabled", true)
 	viewport.queue_free()
 	await process_frame

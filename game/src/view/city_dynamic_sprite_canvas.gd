@@ -28,7 +28,10 @@ func _draw() -> void:
 		)
 
 		if visual.emission_texture != null:
-			draw_texture_rect(visual.emission_texture, Rect2(source_position, source_size), false, Color(0, 1, 1))
+			# Palette-address masks use LA8; authored color masks remain RGBA8.
+			var indexed := visual.emission_texture is ImageTexture and (visual.emission_texture as ImageTexture).get_format() == Image.FORMAT_LA8
+			draw_texture_rect(visual.emission_texture, Rect2(source_position, source_size), false,
+				Color(0, 1, 0) if indexed else Color(0, 1, 1))
 
 
 func set_visuals(
