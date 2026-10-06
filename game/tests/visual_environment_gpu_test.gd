@@ -5,6 +5,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	await _check_dispatch_lights()
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(16, 16)
 	viewport.transparent_bg = true
@@ -65,6 +66,72 @@ func _run() -> void:
 	await _check_weather_layer()
 	print("PASS: GPU uniform morning/evening tint, colored graded brightmaps and original pixels when disabled")
 	quit()
+
+
+func _check_dispatch_lights() -> void:
+	var pack := GraphicsPack.load_root("res://../ext/graphics")
+	assert(pack.error.is_empty(), pack.error)
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(32, 80)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var sprite := Sprite2D.new()
+	sprite.centered = false
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	viewport.add_child(sprite)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://src/view/map/palette_cycle.gdshader")
+	sprite.material = material
+	for archive: Sc2SpriteArchive in [pack.large_sprites, pack.small_medium_sprites]:
+		CityDispatchLights.prepare(archive, pack.palette)
+		for id: int in CityDispatchLights.HEADS:
+			var entry := archive.find_sprite(id)
+			if entry == null:
+				continue
+			var original: Image = entry.create_image(pack.palette).image
+			var mask: Image = archive.visual_emission[id]
+			var head_height: int = CityDispatchLights.HEADS[id][2]
+			sprite.texture = ImageTexture.create_from_image(original)
+			material.set_shader_parameter("environment_emission", ImageTexture.create_from_image(mask))
+			material.set_shader_parameter("environment_has_emission", true)
+			material.set_shader_parameter("environment_enabled", false)
+			await process_frame
+			await RenderingServer.frame_post_draw
+			var day := viewport.get_texture().get_image()
+			material.set_shader_parameter("environment_enabled", true)
+			material.set_shader_parameter("environment_tint", Vector3(0.28, 0.34, 0.52))
+			material.set_shader_parameter("environment_night", 1.0)
+			await RenderingServer.frame_post_draw
+			var night := viewport.get_texture().get_image()
+			for y in entry.height:
+				for x in entry.width:
+					var a := day.get_pixel(x, y)
+					var b := night.get_pixel(x, y)
+					assert(a.a8 == b.a8, "Marker lighting changed its silhouette")
+					if a.a == 0.0:
+						continue
+					if y < head_height:
+						assert(abs(a.r8 - b.r8) <= 1 and abs(a.g8 - b.g8) <= 1 and abs(a.b8 - b.b8) <= 1,
+							"Dispatch symbol lost original shading or brightness at night")
+					else:
+						assert(mask.get_pixel(x, y).a == 0.0, "Dispatch post was included in the light mask")
+						assert(b.r <= a.r * 0.28 + 0.01 and b.g <= a.g * 0.34 + 0.01 and b.b <= a.b * 0.52 + 0.01)
+	# Do not apply standard coordinates to changed SCURK artwork; authored masks win.
+	var changed := Sc2SpriteArchive.new()
+	var entry := pack.large_sprites.find_sprite(1382)
+	var pixels: PackedInt32Array = entry.decode_indices().pixels.duplicate()
+	pixels[0] = 5
+	changed.entries_by_id[1382] = Sc2SpriteArchive.entry_from_indices(1382, entry.width, entry.height, pixels)
+	CityDispatchLights.prepare(changed, pack.palette)
+	assert(changed.visual_emission.is_empty())
+	changed.visual_emission[1382] = Image.create(32, 70, false, Image.FORMAT_RGBA8)
+	var custom: Image = changed.visual_emission[1382]
+	CityDispatchLights.prepare(changed, pack.palette)
+	assert(changed.visual_emission[1382] == custom)
+	viewport.queue_free()
+	await process_frame
+	print("PASS: nine dispatch heads preserve daytime colors at night; posts stay dark and custom artwork is respected")
 
 
 func _check_weather_layer() -> void:

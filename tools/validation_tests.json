@@ -68,6 +68,7 @@
     "script": "tests/visual_environment_gpu_test.gd",
     "domain": "rendering",
     "lane": "native",
+    "requires": ["ext/graphics/pack.json"],
     "driver": "scene-batch"
   },
   {

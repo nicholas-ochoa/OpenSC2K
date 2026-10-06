@@ -95,6 +95,7 @@ func reload_brightmaps(refresh := true) -> void:
 		if archive != null:
 			CityBrightmaps.load_archive(archive, app.preferences.visual_enhancements.brightmap_folder, pair[1])
 			if app.asset_state.palette != null:
+				CityDispatchLights.prepare(archive, app.asset_state.palette)
 				CitySeasonColors.prepare(archive, app.asset_state.palette)
 			archive.visual_revision += 1
 	_configure_water(app.preferences.visual_enhancements, refresh)
