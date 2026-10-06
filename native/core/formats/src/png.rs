@@ -291,6 +291,36 @@ pub fn rewrite(bytes: &[u8], strict_palette: bool) -> Result<Rewritten, String> 
     })
 }
 
+/// An 8-bit RGBA file of `rgba` pixels, with no filters.
+pub fn encode_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<Vec<u8>, String> {
+    let row = width as usize * 4;
+
+    if width == 0 || height == 0 || rgba.len() != row * height as usize {
+        return Err("Invalid PNG pixels".into());
+    }
+
+    let mut raw = Vec::with_capacity((row + 1) * height as usize);
+
+    for line in rgba.chunks_exact(row) {
+        raw.push(0);
+        raw.extend_from_slice(line);
+    }
+
+    let mut header = Vec::with_capacity(13);
+    header.extend_from_slice(&width.to_be_bytes());
+    header.extend_from_slice(&height.to_be_bytes());
+    header.extend_from_slice(&[8, RGBA_COLOR, 0, 0, 0]);
+    let mut out = SIGNATURE.to_vec();
+    out.extend(chunk(b"IHDR", &header));
+    out.extend(chunk(b"IDAT", &miniz_oxide::deflate::compress_to_vec_zlib(&raw, 6)));
+    out.extend(chunk(b"IEND", &[]));
+
+    Ok(out)
+}
+
+/// The PNG color type of 8-bit RGBA pixels.
+const RGBA_COLOR: u8 = 6;
+
 /// The Adam7 passes: first column, first row, column step, and row step.
 const ADAM7: [(usize, usize, usize, usize); 7] = [
     (0, 0, 8, 8),

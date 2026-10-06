@@ -11,6 +11,7 @@ pub mod clock;
 pub mod engine;
 pub mod newspaper;
 pub mod results;
+pub mod session;
 pub mod speed;
 pub mod state;
 pub mod values;

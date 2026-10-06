@@ -1,6 +1,7 @@
 //! The manifests of the packs that the importers write and that players make:
 //! pack.json with a format, a version, a name, and the files of the pack.
 
+pub mod graphics;
 pub mod media;
 pub mod revision;
 
