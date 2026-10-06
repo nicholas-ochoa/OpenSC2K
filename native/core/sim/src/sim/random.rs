@@ -5,19 +5,21 @@
 //! delegates on its own, so a script can replace only some methods.
 
 /// Draws for a scripted SimRandom.
-pub trait SimRandomScript {
+/// Scripted draws for tests and debug tools. A session can run on its own
+/// thread, so a script must be `Send`.
+pub trait SimRandomScript: Send {
     fn next_u15(&mut self) -> i64;
 }
 
 /// Draws for a scripted SimLfsrRandom.
-pub trait LfsrRandomScript {
+pub trait LfsrRandomScript: Send {
     fn next_word(&mut self) -> i64;
     fn next_mask(&mut self, mask: i64) -> i64;
     fn next_mod(&mut self, divisor: i64) -> i64;
 }
 
 /// Draws for a scripted GameLcgRandom.
-pub trait GameRandomScript {
+pub trait GameRandomScript: Send {
     fn next_mod(&mut self, divisor: i64) -> i64;
 }
 

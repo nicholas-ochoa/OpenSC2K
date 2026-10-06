@@ -5,7 +5,7 @@
 use sc2k_assets::packs::graphics::GraphicsPack;
 use sc2k_sim::formats::document::Document;
 use sc2k_view::art::CityArt;
-use sc2k_view::moving::{marker_cells, moving_draws};
+use sc2k_view::moving::{marker_cells, moving_draws, things_of};
 use sc2k_view::present::{cycled_colors, whole_city};
 use sc2k_view::regions::{Options, Regions};
 use sc2k_view::snapshot::painter_city;
@@ -76,8 +76,10 @@ fn renders_match_the_godot_painter() {
         let mut regions = Regions::new(painter_city(&city, 32), &art, view, options).unwrap();
 
         if !underground {
+            let painter = painter_city(&city, 32);
             regions.set_moving(moving_draws(
-                &city,
+                &painter,
+                &things_of(&city),
                 &art.views[view],
                 &marker_cells(&city),
                 view,

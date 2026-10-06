@@ -149,6 +149,10 @@ pub fn written_chunks(city: &City) -> VarDictionary {
 /// A GDScript random generator subclass. Each draw calls the object's method.
 struct ScriptedRandom(Gd<Object>);
 
+// SAFETY: a scripted random lives only for one bridge call, on the thread of
+// that call. It never moves to another thread.
+unsafe impl Send for ScriptedRandom {}
+
 impl ScriptedRandom {
     fn draw(&mut self, method: &str, args: &[Variant]) -> i64 {
         self.0.call(method, args).try_to::<i64>().unwrap_or(0)

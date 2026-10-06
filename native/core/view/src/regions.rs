@@ -64,6 +64,8 @@ pub struct Regions {
     regions: HashMap<(i32, i32), Region>,
     sprite_limit: (i32, i32),
     clock: u64,
+    /// The ALTM bytes of the last sync.
+    altitude_bytes: Vec<u8>,
 }
 
 /// Shadows darken 0x74 through 0x7e to 0x7e, and 0x5f to 0x64.
@@ -114,6 +116,7 @@ impl Regions {
             regions: HashMap::new(),
             sprite_limit,
             clock: 0,
+            altitude_bytes: Vec::new(),
         })
     }
 
@@ -124,6 +127,79 @@ impl Regions {
     /// The view pixel size of the whole map.
     pub fn size(&self) -> (i32, i32) {
         view_size(self.view, self.builder.city.edge)
+    }
+
+    /// Apply a scene update to the maps. The regions that the changed tiles
+    /// reach paint again.
+    pub fn apply(&mut self, update: &super::scene::Update) {
+        let mut changed = self
+            .builder
+            .edit_city(|city| super::scene::apply(city, update));
+
+        if changed.len() > self.builder.city.altitude.len() / 8 {
+            self.regions.clear();
+
+            return;
+        }
+
+        changed.sort_unstable();
+        changed.dedup();
+        self.drop_cells(&changed);
+    }
+
+    /// The maps, for a new set of regions.
+    pub fn into_city(self) -> City {
+        self.builder.city
+    }
+
+    /// Bring the maps up to date with the simulation city in place. The
+    /// regions that the changed tiles reach paint again.
+    pub fn sync(&mut self, city: &sc2k_sim::sim::city::City) {
+        let altitude_bytes = &mut self.altitude_bytes;
+        let mut changed = self
+            .builder
+            .edit_city(|painter| super::sync::sync(painter, city, altitude_bytes));
+
+        if changed.len() > self.builder.city.altitude.len() / 8 {
+            self.regions.clear();
+
+            return;
+        }
+
+        changed.sort_unstable();
+        changed.dedup();
+        self.drop_cells(&changed);
+    }
+
+    /// Drop the regions that the sprites of the tiles of `cells` can reach.
+    fn drop_cells(&mut self, cells: &[usize]) {
+        if self.regions.is_empty() {
+            return;
+        }
+
+        let edge = self.builder.city.edge;
+        let (width, height) = self.size();
+        let columns = (width + REGION - 1) / REGION + 1;
+        let rows = (height + REGION - 1) / REGION + 1;
+        let mut dirty = vec![false; (columns * rows) as usize];
+
+        for &cell in cells {
+            let bounds = self.potential_bounds(cell as i32 / edge, cell as i32 % edge, edge);
+
+            for (x, y) in region_keys(bounds) {
+                if (0..columns).contains(&x) && (0..rows).contains(&y) {
+                    dirty[(y * columns + x) as usize] = true;
+                }
+            }
+        }
+
+        self.regions.retain(|(x, y), _| {
+            !(*x >= 0
+                && *y >= 0
+                && *x < columns
+                && *y < rows
+                && dirty[(*y * columns + *x) as usize])
+        });
     }
 
     /// Replace the city maps. The regions that the changed tiles reach paint again.
@@ -251,6 +327,18 @@ impl Regions {
     }
 }
 
+/// The keys of the regions that `rect` meets.
+fn region_keys(rect: Rect) -> impl Iterator<Item = (i32, i32)> {
+    let (x0, y0) = (rect.x.div_euclid(REGION), rect.y.div_euclid(REGION));
+    let (x1, y1) = (
+        (rect.x + rect.w - 1).div_euclid(REGION),
+        (rect.y + rect.h - 1).div_euclid(REGION),
+    );
+
+    (y0..=y1).flat_map(move |y| (x0..=x1).map(move |x| (x, y)))
+}
+
+#[allow(dead_code)]
 fn intersects(a: Rect, b: Rect) -> bool {
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 }

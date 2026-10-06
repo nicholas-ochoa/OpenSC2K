@@ -506,6 +506,40 @@ impl Builder {
         self.revision += 1;
     }
 
+    /// Change the city maps in place. `edit` returns the cells that it changed;
+    /// their tiles and the tiles beside them paint again.
+    pub fn edit_city(&mut self, edit: impl FnOnce(&mut City) -> Vec<usize>) -> Vec<usize> {
+        let changed = edit(&mut self.city);
+
+        if changed.is_empty() {
+            return changed;
+        }
+
+        self.maximum_altitude = maximum_altitude(&self.city);
+        let edge = self.city.edge;
+
+        if changed.len() > self.bounds.len() / 8 {
+            self.tiles.clear();
+            self.bounds.fill(region::Bounds::UNKNOWN);
+        } else {
+            for &i in &changed {
+                let (x, y) = (i as i32 / edge, i as i32 % edge);
+
+                for nx in (x - 1).max(0)..=(x + 1).min(edge - 1) {
+                    for ny in (y - 1).max(0)..=(y + 1).min(edge - 1) {
+                        let n = self.city.index(nx, ny);
+                        self.bounds[n] = region::Bounds::UNKNOWN;
+                        self.tiles.remove(&n);
+                    }
+                }
+            }
+        }
+
+        self.revision += 1;
+
+        changed
+    }
+
     /// Replaces the moving object draws, and paints again only the tiles whose
     /// draws changed. Returns the old and new rectangles of the changed draws.
     pub fn update_moving(&mut self, moving: HashMap<usize, Vec<Draw>>) -> Vec<Rect> {

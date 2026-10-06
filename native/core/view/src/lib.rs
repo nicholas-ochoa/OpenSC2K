@@ -12,7 +12,9 @@ pub mod moving;
 pub mod picking;
 pub mod present;
 pub mod regions;
+pub mod scene;
 pub mod snapshot;
+pub mod sync;
 
 /// A frame of 0x00RRGGBB pixels, as a window surface takes them.
 pub struct Frame<'a> {

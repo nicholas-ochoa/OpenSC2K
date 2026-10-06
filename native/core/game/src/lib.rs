@@ -12,6 +12,7 @@ pub mod edits;
 pub mod engine;
 pub mod newspaper;
 pub mod results;
+pub mod runner;
 pub mod session;
 pub mod speed;
 pub mod state;

@@ -1,19 +1,19 @@
 //! The native OpenSC2K game. It opens a window, loads the graphics pack of the
-//! shared settings, and shows a city with the simulation running.
+//! shared settings, and shows a city while the simulation runs on its thread.
 
 mod audio;
 mod city_view;
+mod cli;
+mod game;
 mod settings;
 
-use city_view::CityView;
-use sc2k_assets::packs::graphics::GraphicsPack;
+use game::Game;
 use sc2k_game::edits::{self, Selection};
-use sc2k_game::session::Session;
 use sc2k_sim::sim::geom::Vec2i;
 use sc2k_sim::sim::tools::ids::group;
 use sc2k_view::Frame;
-use sc2k_view::art::CityArt;
 use sc2k_view::camera::Viewport;
+use sc2k_view::data_view::{MODES, TITLES};
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -24,16 +24,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
-const WINDOW_WIDTH: f64 = 1280.0;
-const WINDOW_HEIGHT: f64 = 800.0;
 const KEY_PAN_PIXELS: f64 = 64.0;
-
-struct Game {
-    audio: audio::Audio,
-    art: CityArt,
-    session: Session,
-    view: CityView,
-}
 
 struct App {
     game: Game,
@@ -60,40 +51,25 @@ impl App {
         let delta = now.duration_since(self.last_frame).as_secs_f64() * 1000.0;
         self.last_frame = now;
         let elapsed = now.duration_since(self.started).as_millis() as i64;
-        let tick = self.game.session.advance(delta, elapsed, false);
-
-        if !tick.error.is_empty() {
-            eprintln!("simulation: {}", tick.error);
-        }
-
         let game = &mut self.game;
+        game.runner.advance(delta, elapsed, false);
+        game.receive();
         game.audio.advance(delta);
-        game.audio
-            .play_sound_events(&tick.sound_events, game.view.camera.graphics_view() as i64);
-
-        for track in &tick.music_track_requests {
-            if game.session.city.music_enabled() {
-                game.audio.play_music_track(i64::from(*track), true);
-            }
-        }
-
-        game.session.engine.day.midi_playback_active = game.audio.music_active();
-
-        self.game.view.advance_palette(delta);
-        self.game.view.animation_phase = elapsed / 100;
+        game.view.advance_palette(delta);
+        game.view.animation_phase = elapsed / 100;
         let size = window.inner_size();
         let (width, height) = (size.width.max(1), size.height.max(1));
         let _ = surface.resize(
             NonZeroU32::new(width).unwrap(),
             NonZeroU32::new(height).unwrap(),
         );
-        self.game.view.set_viewport(Viewport {
+        game.view.set_viewport(Viewport {
             x: 0.0,
             y: 0.0,
             width: f64::from(width),
             height: f64::from(height),
         });
-        self.game.view.camera.map_pixel_ratio = window.scale_factor().round().max(1.0);
+        game.view.camera.map_pixel_ratio = window.scale_factor().round().max(1.0);
 
         let Ok(mut buffer) = surface.buffer_mut() else {
             return;
@@ -104,24 +80,19 @@ impl App {
             height: height as usize,
             pixels: &mut buffer,
         };
-
-        self.game
-            .view
-            .draw(&mut frame, &self.game.session, &self.game.art);
+        game.view.draw(&mut frame, &game.art);
         let _ = buffer.present();
+        let status = &game.status;
         window.set_title(&format!(
             "OpenSC2K — {} — day {} — ${} — speed {} — {}",
-            self.game.session.city_name(),
-            self.game.session.city.age_in_days(),
-            edits::funds(&self.game.session),
-            self.game.session.speed.speed,
-            self.status
+            status.city_name, status.days, status.funds, status.speed, self.status
         ));
         window.request_redraw();
     }
 
     fn key(&mut self, key: Key) {
-        let view = &mut self.game.view;
+        let game = &mut self.game;
+        let view = &mut game.view;
 
         match key {
             Key::Named(NamedKey::ArrowLeft) => view.camera.pan_screen(-KEY_PAN_PIXELS, 0.0),
@@ -136,49 +107,9 @@ impl App {
                     view.camera.change_zoom(-1, None);
                 }
                 "0" => view.camera.reset_zoom(),
-                "[" | "]" => {
-                    let counter_clockwise = text.as_str() == "[";
-                    let edge = self.game.session.city.map_size as i32;
-                    let center = view.tile_at(&self.game.session, view.camera.viewport.center());
-
-                    match self.game.session.rotate(counter_clockwise) {
-                        Ok(()) => {
-                            view.invalidate();
-
-                            if let Some((x, y)) = center {
-                                let (x, y) = if counter_clockwise {
-                                    (y, edge - 1 - x)
-                                } else {
-                                    (edge - 1 - y, x)
-                                };
-                                let altitude = self
-                                    .game
-                                    .session
-                                    .city
-                                    .land_altitude(i64::from(x), i64::from(y))
-                                    as i32;
-                                view.camera.center_on(sc2k_view::geometry::tile_center(
-                                    edge, x, y, altitude,
-                                ));
-                            }
-
-                            self.status = if counter_clockwise {
-                                "Rotated counterclockwise".into()
-                            } else {
-                                "Rotated clockwise".into()
-                            };
-                        }
-                        Err(error) => self.status = format!("Cannot rotate city: {error}"),
-                    }
-                }
-                "u" => {
-                    view.options.underground = !view.options.underground;
-                    view.invalidate();
-                }
+                "u" => view.options.underground = !view.options.underground,
                 "p" => view.options.pipes = !view.options.pipes,
                 "v" => {
-                    use sc2k_view::data_view::{MODES, TITLES};
-
                     let next = match view.data_mode {
                         None => Some(0),
                         Some(mode) => MODES
@@ -190,7 +121,9 @@ impl App {
 
                     view.data_mode = next.map(|index| MODES[index]);
                     self.status = next.map_or_else(|| "City".into(), |index| TITLES[index].into());
+                    game.refresh_data_values();
                 }
+                "[" | "]" => self.rotate(text.as_str() == "["),
                 "b" => self.tool = (group::BULLDOZER, 0),
                 "x" => self.tool = (group::ROADS, 0),
                 "w" => self.tool = (group::POWER, 0),
@@ -201,40 +134,78 @@ impl App {
                 "k" => self.tool = (group::POWER, 2),
                 "q" => self.tool = (group::QUERY, 0),
                 "y" => {
-                    if let Some(undo) = self.game.session.undo.take() {
-                        self.status = match undo.apply(&mut self.game.session) {
-                            Ok(()) => "Undid the last edit.".into(),
-                            Err(error) => error,
-                        };
+                    let undone = game
+                        .runner
+                        .call(|session| session.undo.take().map(|undo| undo.apply(session)));
+
+                    if let Some(result) = undone {
+                        self.status =
+                            result.map_or_else(|error| error, |()| "Undid the last edit.".into());
                     }
                 }
                 digit @ ("1" | "2" | "3" | "4" | "5") => {
-                    self.game.session.set_speed(digit.parse().unwrap_or(1));
+                    let speed: i64 = digit.parse().unwrap_or(1);
+                    game.runner.call(move |session| session.set_speed(speed));
                 }
                 _ => {}
             },
             _ => {}
         }
     }
-}
 
-impl App {
+    fn rotate(&mut self, counter_clockwise: bool) {
+        let game = &mut self.game;
+        let edge = game.view.edge();
+        let center = game.view.tile_at(game.view.camera.viewport.center());
+
+        match game
+            .runner
+            .call(move |session| session.rotate(counter_clockwise))
+        {
+            Ok(()) => {
+                // the rotated maps arrive with the next update
+                game.receive();
+
+                if let Some((x, y)) = center {
+                    let (x, y) = if counter_clockwise {
+                        (y, edge - 1 - x)
+                    } else {
+                        (edge - 1 - y, x)
+                    };
+                    game.view
+                        .camera
+                        .center_on(sc2k_view::geometry::tile_center(edge, x, y, 0));
+                }
+
+                self.status = if counter_clockwise {
+                    "Rotated counterclockwise".into()
+                } else {
+                    "Rotated clockwise".into()
+                };
+            }
+            Err(error) => self.status = format!("Cannot rotate city: {error}"),
+        }
+    }
+
     fn apply_tool(&mut self) {
         let path = std::mem::take(&mut self.selection);
-        let (Some(first), Some(last)) = (path.first(), path.last()) else {
+        let (Some(first), Some(last)) = (path.first().copied(), path.last().copied()) else {
             return;
         };
 
-        let point = |tile: &(i32, i32)| Vec2i::new(i64::from(tile.0), i64::from(tile.1));
+        let point = |tile: (i32, i32)| Vec2i::new(i64::from(tile.0), i64::from(tile.1));
         let mut selection = Selection::new(self.tool.0, self.tool.1, point(first), point(last));
-        selection.path = path.iter().map(point).collect();
+        selection.path = path.into_iter().map(point).collect();
         selection.underground = self.game.view.options.underground;
 
         // a bridge or connection that the route asks for takes the first choice
         selection.bridge = 0;
         selection.connection = 0;
         selection.confirmation = 1;
-        let outcome = edits::apply(&mut self.game.session, &selection);
+        let outcome = self
+            .game
+            .runner
+            .call(move |session| edits::apply(session, &selection));
 
         for sound in &outcome.sounds {
             self.game.audio.play_sound(*sound, false, false);
@@ -259,7 +230,7 @@ impl ApplicationHandler for App {
 
         let attributes = Window::default_attributes()
             .with_title("OpenSC2K")
-            .with_inner_size(winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT));
+            .with_inner_size(winit::dpi::LogicalSize::new(cli::WIDTH, cli::HEIGHT));
         let window = Rc::new(event_loop.create_window(attributes).expect("a window"));
         let context = softbuffer::Context::new(window.clone()).expect("a drawing context");
         self.surface =
@@ -278,7 +249,7 @@ impl ApplicationHandler for App {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 let point = (position.x, position.y);
-                let tile = self.game.view.tile_at(&self.game.session, point);
+                let tile = self.game.view.tile_at(point);
 
                 if let Some(tile) = tile
                     && !self.selection.is_empty()
@@ -305,26 +276,21 @@ impl ApplicationHandler for App {
             }
             WindowEvent::MouseInput {
                 state,
-                button: MouseButton::Right | MouseButton::Middle,
-                ..
-            } => {
-                self.dragging = (state == ElementState::Pressed).then_some(self.cursor);
-            }
-            WindowEvent::MouseInput {
-                state,
                 button: MouseButton::Left,
                 ..
             } => {
                 if state == ElementState::Pressed {
-                    self.selection = self
-                        .game
-                        .view
-                        .tile_at(&self.game.session, self.cursor)
-                        .into_iter()
-                        .collect();
+                    self.selection = self.game.view.tile_at(self.cursor).into_iter().collect();
                 } else {
                     self.apply_tool();
                 }
+            }
+            WindowEvent::MouseInput {
+                state,
+                button: MouseButton::Right | MouseButton::Middle,
+                ..
+            } => {
+                self.dragging = (state == ElementState::Pressed).then_some(self.cursor);
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 let steps = match delta {
@@ -344,130 +310,29 @@ impl ApplicationHandler for App {
     }
 }
 
-fn load_game(city_path: PathBuf) -> Result<Game, String> {
-    let settings = settings::Settings::load();
-    let folder = settings
-        .graphics_folder()
-        .ok_or("No graphics pack is set. Import the game assets first.")?;
-    let pack = GraphicsPack::load(&folder.to_string_lossy())?;
-    let art = CityArt::new(&pack);
-    let seed = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(1, |time| time.as_millis() as i64);
-    let session = Session::open(&city_path, seed)?;
-    let view = CityView::new(&session);
-    let config = &settings.config;
-    let mut audio = audio::Audio::new(&audio::AudioSettings {
-        music_volume: config.float("audio", "music_volume", 0.8) as f32,
-        effects_volume: config.float("audio", "effects_volume", 0.8) as f32,
-        shuffle: config.bool("audio", "shuffle_music", false),
-        sound_pack: settings.path("audio", "sound_pack_folder"),
-        music_pack: settings.path("audio", "music_pack_folder"),
-        soundfont_choice: config.string("audio", "music_soundfont", "system"),
-        soundfont_path: config.string("audio", "music_soundfont_path", ""),
-    });
-
-    if session.city.music_enabled() {
-        let track = audio.next_general_track();
-        audio.play_music_track(track, true);
-    }
-
-    if !audio.notice.is_empty() {
-        eprintln!("{}", audio.notice);
-    }
-
-    Ok(Game {
-        audio,
-        art,
-        session,
-        view,
-    })
-}
-
-/// Render one frame of `game` to a PNG file, without a window.
-fn snapshot(game: &mut Game, path: &str, width: usize, height: usize) -> Result<(), String> {
-    let mut pixels = vec![0_u32; width * height];
-    game.view.set_viewport(Viewport {
-        x: 0.0,
-        y: 0.0,
-        width: width as f64,
-        height: height as f64,
-    });
-    let mut frame = Frame {
-        width,
-        height,
-        pixels: &mut pixels,
-    };
-    game.view.draw(&mut frame, &game.session, &game.art);
-    let rgba: Vec<u8> = pixels
-        .iter()
-        .flat_map(|pixel| [(pixel >> 16) as u8, (pixel >> 8) as u8, *pixel as u8, 255])
-        .collect();
-    let bytes = sc2k_formats::png::encode_rgba(width as u32, height as u32, &rgba)?;
-
-    std::fs::write(path, bytes).map_err(|error| error.to_string())
-}
-
-/// Render the whole city in graphics size `view` to a PNG file, as the CPU
-/// painter of the Godot build exports it: moving objects and disaster markers
-/// at phase 0, over the export background.
-fn render_city(game: &mut Game, path: &str, view: usize, underground: bool) -> Result<(), String> {
-    use sc2k_view::moving::{marker_cells, moving_draws};
-    use sc2k_view::present::{cycled_colors, whole_city};
-    use sc2k_view::regions::{Options, Regions};
-    use sc2k_view::snapshot::painter_city;
-
-    const EXPORT_BACKGROUND: u32 = 0x0018242c;
-    const UNDERGROUND_INDEX: usize = 0xff;
-    let city = &game.session.city;
-    let options = Options {
-        underground,
-        ..Options::default()
-    };
-    let mut regions = Regions::new(painter_city(city, 32), &game.art, view, options)?;
-
-    if !underground {
-        regions.set_moving(moving_draws(
-            city,
-            &game.art.views[view],
-            &marker_cells(city),
-            view,
-            0,
-            32,
-            true,
-        ));
-    }
-
-    let identity: Vec<i32> = (0..256).collect();
-    let colors = cycled_colors(&game.art.palette, &identity);
-    let background = if underground {
-        colors[UNDERGROUND_INDEX]
-    } else {
-        EXPORT_BACKGROUND
-    };
-    let (width, height, rgba) = whole_city(&mut regions, &colors, background);
-    let bytes = sc2k_formats::png::encode_rgba(width as u32, height as u32, &rgba)?;
-
-    std::fs::write(path, bytes).map_err(|error| error.to_string())
+fn exit_with(error: String) -> ! {
+    eprintln!("{error}");
+    std::process::exit(1);
 }
 
 fn main() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
 
     let Some(city_path) = arguments.first().map(PathBuf::from) else {
-        eprintln!("usage: opensc2k <city file> [--snapshot out.png [zoom steps]]");
+        eprintln!(
+            "usage: opensc2k <city file> [--snapshot out.png [zoom steps] | --render out.png [view] [underground] | --benchmark [frames] [speed]]"
+        );
         std::process::exit(2);
     };
 
-    let mut game = match load_game(city_path) {
-        Ok(game) => game,
-        Err(error) => {
-            eprintln!("{error}");
-            std::process::exit(1);
-        }
-    };
-
     if arguments.get(1).map(String::as_str) == Some("--render") {
+        let settings = settings::Settings::load();
+        let folder = settings.graphics_folder().unwrap_or_default();
+        let pack = sc2k_assets::packs::graphics::GraphicsPack::load(&folder.to_string_lossy())
+            .unwrap_or_else(|error| exit_with(error));
+        let art = sc2k_view::art::CityArt::new(&pack);
+        let session = sc2k_game::session::Session::open(&city_path, 1)
+            .unwrap_or_else(|error| exit_with(error));
         let path = arguments
             .get(2)
             .cloned()
@@ -477,59 +342,54 @@ fn main() {
             .and_then(|text| text.parse().ok())
             .unwrap_or(2);
         let underground = arguments.get(4).map(String::as_str) == Some("underground");
-
-        if let Err(error) = render_city(&mut game, &path, view, underground) {
-            eprintln!("{error}");
-            std::process::exit(1);
-        }
+        cli::render_city(&session, &art, &path, view, underground)
+            .unwrap_or_else(|error| exit_with(error));
 
         return;
     }
 
-    if arguments.get(1).map(String::as_str) == Some("--snapshot") {
-        let path = arguments
-            .get(2)
-            .cloned()
-            .unwrap_or_else(|| "snapshot.png".into());
-        let steps: i32 = arguments
-            .get(3)
-            .and_then(|text| text.parse().ok())
-            .unwrap_or(0);
-        game.view.set_viewport(Viewport {
-            x: 0.0,
-            y: 0.0,
-            width: WINDOW_WIDTH,
-            height: WINDOW_HEIGHT,
-        });
-        game.view.camera.change_zoom(steps, None);
+    let mut game = Game::load(&city_path).unwrap_or_else(|error| exit_with(error));
 
-        if let Err(error) = snapshot(
-            &mut game,
-            &path,
-            WINDOW_WIDTH as usize,
-            WINDOW_HEIGHT as usize,
-        ) {
-            eprintln!("{error}");
-            std::process::exit(1);
+    match arguments.get(1).map(String::as_str) {
+        Some("--snapshot") => {
+            let path = arguments
+                .get(2)
+                .cloned()
+                .unwrap_or_else(|| "snapshot.png".into());
+            let steps: i32 = arguments
+                .get(3)
+                .and_then(|text| text.parse().ok())
+                .unwrap_or(0);
+            cli::snapshot(&mut game, &path, steps).unwrap_or_else(|error| exit_with(error));
         }
+        Some("--benchmark") => {
+            let frames: usize = arguments
+                .get(2)
+                .and_then(|text| text.parse().ok())
+                .unwrap_or(300);
+            let speed: i64 = arguments
+                .get(3)
+                .and_then(|text| text.parse().ok())
+                .unwrap_or(5);
+            cli::benchmark(&mut game, frames, speed);
+        }
+        _ => {
+            let event_loop = EventLoop::new().expect("an event loop");
+            event_loop.set_control_flow(ControlFlow::Poll);
+            let mut app = App {
+                game,
+                window: None,
+                surface: None,
+                last_frame: Instant::now(),
+                started: Instant::now(),
+                cursor: (0.0, 0.0),
+                dragging: None,
+                tool: (group::BULLDOZER, 0),
+                selection: Vec::new(),
+                status: String::new(),
+            };
 
-        return;
+            event_loop.run_app(&mut app).expect("the event loop");
+        }
     }
-
-    let event_loop = EventLoop::new().expect("an event loop");
-    event_loop.set_control_flow(ControlFlow::Poll);
-    let mut app = App {
-        game,
-        window: None,
-        surface: None,
-        last_frame: Instant::now(),
-        started: Instant::now(),
-        cursor: (0.0, 0.0),
-        dragging: None,
-        tool: (group::BULLDOZER, 0),
-        selection: Vec::new(),
-        status: String::new(),
-    };
-
-    event_loop.run_app(&mut app).expect("the event loop");
 }

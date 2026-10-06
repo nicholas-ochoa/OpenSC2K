@@ -3,7 +3,7 @@
 //! the tile of its object, so the painter paints it in tile order.
 
 use super::art::ViewSprites;
-use sc2k_render::{Draw, Rect};
+use sc2k_render::{City as PainterCity, Draw, Rect};
 use sc2k_sim::sim::city::City;
 use sc2k_sim::sim::ids::building_tile_ids as tiles;
 use sc2k_sim::sim::overlay;
@@ -55,6 +55,8 @@ const SPECIAL_OVERLAYS: [(i64, &[i32]); 5] = [
     (0xff, &[396, 397, 398, 399]),
 ];
 const RAISED_TERRAIN: i64 = 0x0d;
+/// The first animated marker value.
+const MARKER_FIRST: u8 = 0xfb;
 const LARGE: usize = 2;
 
 /// The geometry of one graphics size.
@@ -95,18 +97,56 @@ pub struct MovingDraw {
     pub draw: Draw,
 }
 
-struct Thing {
-    record: i64,
-    kind: i64,
-    direction: i64,
-    state: i64,
-    x: i64,
-    y: i64,
-    z: i64,
-    px: i64,
-    py: i64,
-    dx: i64,
-    dy: i64,
+/// One moving object record whose tile overlay names it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Thing {
+    pub record: i64,
+    pub kind: i64,
+    pub direction: i64,
+    pub state: i64,
+    pub x: i64,
+    pub y: i64,
+    pub z: i64,
+    pub px: i64,
+    pub py: i64,
+    pub dx: i64,
+    pub dy: i64,
+}
+
+const WATER_FLAG: u8 = 0x04;
+const FLIPPED_FLAG: u8 = 0x02;
+
+/// The map reads of the moving draws, over the painter city.
+struct Maps<'a>(&'a PainterCity);
+
+impl Maps<'_> {
+    fn index(&self, x: i64, y: i64) -> usize {
+        (x * i64::from(self.0.edge) + y) as usize
+    }
+
+    fn land_altitude(&self, x: i64, y: i64) -> i64 {
+        i64::from(self.0.altitude[self.index(x, y)] & 31)
+    }
+
+    fn water_altitude(&self, x: i64, y: i64) -> i64 {
+        i64::from((self.0.altitude[self.index(x, y)] >> 5) & 31)
+    }
+
+    fn is_water(&self, x: i64, y: i64) -> bool {
+        self.0.flags[self.index(x, y)] & WATER_FLAG != 0
+    }
+
+    fn is_flipped(&self, x: i64, y: i64) -> bool {
+        self.0.flags[self.index(x, y)] & FLIPPED_FLAG != 0
+    }
+
+    fn building_id(&self, x: i64, y: i64) -> i64 {
+        i64::from(self.0.buildings[self.index(x, y)])
+    }
+
+    fn terrain_id(&self, x: i64, y: i64) -> i64 {
+        i64::from(self.0.terrain[self.index(x, y)])
+    }
 }
 
 struct Sprite {
@@ -116,7 +156,7 @@ struct Sprite {
     tornado: Option<i32>,
 }
 
-fn object_altitude(city: &City, x: i64, y: i64) -> i64 {
+fn object_altitude(city: &Maps, x: i64, y: i64) -> i64 {
     if city.is_water(x, y) {
         city.water_altitude(x, y)
     } else {
@@ -124,7 +164,7 @@ fn object_altitude(city: &City, x: i64, y: i64) -> i64 {
     }
 }
 
-fn tile_visible(city: &City, x: i64, y: i64, visible: i64) -> bool {
+fn tile_visible(city: &Maps, x: i64, y: i64, visible: i64) -> bool {
     visible >= 32 || object_altitude(city, x, y) < visible
 }
 
@@ -162,7 +202,7 @@ fn thing_sprite(thing: &Thing, view: usize) -> Option<Sprite> {
     })
 }
 
-fn train_sprite(city: &City, thing: &Thing) -> Option<Sprite> {
+fn train_sprite(city: &Maps, thing: &Thing) -> Option<Sprite> {
     let (x, y) = (thing.x, thing.y);
     let tile = city.building_id(x, y);
     let step = 12;
@@ -219,7 +259,7 @@ fn train_sprite(city: &City, thing: &Thing) -> Option<Sprite> {
 
 /// The layers of the monster: sprite, screen x and y, and flip.
 fn monster_layers(
-    city: &City,
+    city: &Maps,
     thing: &Thing,
     view: usize,
     phase: i64,
@@ -362,13 +402,13 @@ fn size(sprites: &ViewSprites, id: i32) -> Option<(i32, i32)> {
 
 /// The draws of one moving object.
 fn thing_draws(
-    city: &City,
+    city: &Maps,
     sprites: &ViewSprites,
     thing: &Thing,
     g: Geometry,
     phase: i64,
 ) -> Vec<Draw> {
-    let edge = city.map_size as i32;
+    let edge = city.0.edge;
     let (x, y) = (thing.x as i32, thing.y as i32);
     let kind = thing.kind;
     let mut draws = Vec::new();
@@ -493,7 +533,7 @@ fn thing_draws(
 
 /// The draw of an animated disaster marker on tile (x, y).
 fn marker_draw(
-    city: &City,
+    city: &Maps,
     sprites: &ViewSprites,
     x: i64,
     y: i64,
@@ -510,7 +550,7 @@ fn marker_draw(
         return None;
     }
 
-    let edge = city.map_size;
+    let edge = i64::from(city.0.edge);
     let mut phase = phase + x * 3 + y * 5;
 
     if marker == 0xff {
@@ -546,30 +586,43 @@ pub fn marker_cells(city: &City) -> Vec<(usize, i64)> {
         .chunk("XTXT")
         .map(|chunk| chunk.data.as_slice())
         .unwrap_or_default();
-    let cells = city.map_size * city.map_size;
+    let cells = (city.map_size * city.map_size) as usize;
 
-    (0..cells)
-        .filter_map(|cell| {
-            let marker = overlay::marker_at(text, cell);
+    // the marker of a layered or combined index is in its first byte plane; a
+    // combined index above a byte is a sign or a facility, never a marker
+    let mut result = Vec::new();
 
-            (marker >= 0xfb).then_some((cell as usize, marker))
-        })
-        .collect()
+    // most chunks hold no marker; their test vectorizes
+    for (block, bytes) in text.get(..cells).unwrap_or_default().chunks(64).enumerate() {
+        if bytes
+            .iter()
+            .fold(0, |high, byte| high | u8::from(*byte >= MARKER_FIRST))
+            == 0
+        {
+            continue;
+        }
+
+        for (offset, byte) in bytes.iter().enumerate() {
+            let cell = block * 64 + offset;
+
+            if *byte >= MARKER_FIRST {
+                let marker = overlay::marker_at(text, cell as i64);
+
+                if marker >= i64::from(MARKER_FIRST) {
+                    result.push((cell, marker));
+                }
+            }
+        }
+    }
+
+    result
 }
 
 /// The moving draws of `city` in graphics size `view`, by map cell. `visible`
 /// is the number of altitude levels that show. `vehicles` false hides planes,
 /// helicopters, ships, and trains.
-pub fn moving_draws(
-    city: &City,
-    sprites: &ViewSprites,
-    markers: &[(usize, i64)],
-    view: usize,
-    phase: i64,
-    visible: i64,
-    vehicles: bool,
-) -> HashMap<usize, Vec<Draw>> {
-    let g = geometry(view);
+/// The moving objects of `city` whose tile overlays name them.
+pub fn things_of(city: &City) -> Vec<Thing> {
     let edge = city.map_size;
     let data = city
         .chunk("XTHG")
@@ -579,13 +632,36 @@ pub fn moving_draws(
         .chunk("XTXT")
         .map(|chunk| chunk.data.as_slice())
         .unwrap_or_default();
+
+    (0..things::count(data))
+        .map(|record| read_thing(data, record))
+        .filter(|thing| {
+            thing.kind > 0
+                && (0..edge).contains(&thing.x)
+                && (0..edge).contains(&thing.y)
+                && overlay::read(text, thing.x * edge + thing.y) == overlay::thing_id(thing.record)
+        })
+        .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn moving_draws(
+    painter: &PainterCity,
+    things: &[Thing],
+    sprites: &ViewSprites,
+    markers: &[(usize, i64)],
+    view: usize,
+    phase: i64,
+    visible: i64,
+    vehicles: bool,
+) -> HashMap<usize, Vec<Draw>> {
+    let g = geometry(view);
+    let city = &Maps(painter);
+    let edge = i64::from(painter.edge);
     let mut result: HashMap<usize, Vec<Draw>> = HashMap::new();
 
-    for record in 0..things::count(data) {
-        let thing = read_thing(data, record);
-
-        if thing.kind <= 0
-            || thing.kind as usize >= THING_MINIMUM_VIEW.len()
+    for thing in things {
+        if thing.kind as usize >= THING_MINIMUM_VIEW.len()
             || (view as i32) < THING_MINIMUM_VIEW[thing.kind as usize]
         {
             continue;
@@ -595,23 +671,17 @@ pub fn moving_draws(
             continue;
         }
 
-        let (x, y) = (thing.x, thing.y);
-
-        if !(0..edge).contains(&x) || !(0..edge).contains(&y) || !tile_visible(city, x, y, visible)
-        {
+        if !tile_visible(city, thing.x, thing.y, visible) {
             continue;
         }
 
-        let cell = (x * edge + y) as usize;
-
-        if overlay::read(text, cell as i64) != overlay::thing_id(record) {
-            continue;
-        }
-
-        let draws = thing_draws(city, sprites, &thing, g, phase);
+        let draws = thing_draws(city, sprites, thing, g, phase);
 
         if !draws.is_empty() {
-            result.entry(cell).or_default().extend(draws);
+            result
+                .entry((thing.x * edge + thing.y) as usize)
+                .or_default()
+                .extend(draws);
         }
     }
 
