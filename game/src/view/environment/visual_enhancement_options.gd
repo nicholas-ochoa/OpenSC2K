@@ -21,10 +21,7 @@ const FIELDS := [
 	["life_car_amount", "Car amount", "number", 1.0, 0.25, 2.0, 0.05],
 	["life_people_enabled", "Pedestrians", "bool", true],
 	["life_people_amount", "Pedestrian amount", "number", 1.0, 0.25, 2.0, 0.05],
-	["traffic_helicopters_enabled", "Smooth helicopters", "bool", true],
-	["traffic_planes_enabled", "Smooth airplanes", "bool", true],
-	["traffic_ships_enabled", "Smooth ships and sailboats", "bool", true],
-	["traffic_trains_enabled", "Smooth trains", "bool", true],
+	["traffic_vehicles_enabled", "Smooth vehicles", "bool", true],
 	["traffic_shadows_enabled", "Transparent aircraft shadows", "bool", true],
 	["day_enabled", "Day and night", "bool", true],
 	["day_mode", "Time of day", "choice", 0, ["Cycle", "Fixed time"]],
@@ -73,6 +70,12 @@ static func normalize(source: Variant) -> Dictionary:
 				result[field[0]] = str(value).strip_edges() if value is String else field[3]
 				if field[0] == "brightmap_folder" and not result[field[0]].is_empty():
 					result[field[0]] = AppPaths.stored_path(result[field[0]])
+	if not input.has("traffic_vehicles_enabled"):
+		# Keep smoothing enabled if any previously separate vehicle option was enabled.
+		var previous := ["traffic_helicopters_enabled", "traffic_planes_enabled", "traffic_ships_enabled", "traffic_trains_enabled"]
+		result.traffic_vehicles_enabled = previous.any(func(key: String) -> bool:
+			var value: Variant = input.get(key, true)
+			return value if value is bool else true)
 	return result
 
 

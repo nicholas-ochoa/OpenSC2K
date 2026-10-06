@@ -78,16 +78,24 @@ func _check_motion() -> void:
 
 
 func _check_lifecycle() -> void:
+	var legacy := {"traffic_planes_enabled": false, "traffic_helicopters_enabled": false,
+		"traffic_ships_enabled": false, "traffic_trains_enabled": false}
+	assert(not VisualEnhancementOptions.normalize(legacy).traffic_vehicles_enabled)
+	legacy.traffic_ships_enabled = true
+	assert(VisualEnhancementOptions.normalize(legacy).traffic_vehicles_enabled)
+	legacy.traffic_vehicles_enabled = false
+	assert(not VisualEnhancementOptions.normalize(legacy).traffic_vehicles_enabled,
+		"The combined setting must take priority over older separate settings")
 	var city := fixture(1)
 	var motion := CityTrafficMotion.new()
 	var options := VisualEnhancementOptions.normalize({})
 	motion.observe(city, options)
 	write_thing(city, 1, {"px": 12})
 	motion.observe(city, options)
-	options.traffic_planes_enabled = false
+	options.traffic_vehicles_enabled = false
 	motion.observe(city, options)
 	assert(motion.tracks.is_empty())
-	options.traffic_planes_enabled = true
+	options.traffic_vehicles_enabled = true
 	motion.observe(city, options)
 	assert(motion.tracks[1].current == motion.tracks[1].target)
 	write_thing(city, 1, {"x": 100})
@@ -177,16 +185,16 @@ func _check_application() -> void:
 	before = DocumentState.capture(city.document)
 	app.moving_sprites.process(0.0125)
 	assert(app.map_view.dynamic_sprites[0].position.is_equal_approx(train_position + Vector2(1, 0.5)))
-	app.preferences.visual_enhancements.traffic_trains_enabled = false
+	app.preferences.visual_enhancements.traffic_vehicles_enabled = false
 	app.moving_sprites.refresh_moving_things()
 	assert(motion.tracks.is_empty() and app.map_view.dynamic_sprites[0].position == train_position + Vector2(16, 8))
 	assert(DocumentState.capture(city.document) == before)
 	var tab := app.main_overlays.settings_dialog.visual_tab
 	var selected := tab.selected_values()
-	assert(selected.traffic_planes_enabled and selected.traffic_helicopters_enabled and selected.traffic_ships_enabled and selected.traffic_trains_enabled)
-	selected.traffic_planes_enabled = false
+	assert(selected.traffic_vehicles_enabled)
+	selected.traffic_vehicles_enabled = false
 	tab.show_values(selected)
-	assert(not tab.selected_values().traffic_planes_enabled and tab.selected_values().traffic_ships_enabled)
+	assert(not tab.selected_values().traffic_vehicles_enabled and tab.selected_values().traffic_shadows_enabled)
 	var save := AppSettingsStore.SaveOptions.new()
 	save.visual_enhancements = tab.selected_values()
 	var path := "user://traffic-motion-settings.cfg"
@@ -252,10 +260,10 @@ static func _check_trains() -> void:
 			motion.advance(0.1875)
 			assert(motion.tracks[1].current == motion.tracks[1].target)
 			assert(DocumentState.capture(city.document) == before)
-			options.traffic_trains_enabled = false
+			options.traffic_vehicles_enabled = false
 			motion.observe(city, options)
 			assert(motion.tracks.is_empty())
-			options.traffic_trains_enabled = true
+			options.traffic_vehicles_enabled = true
 	# Rail artwork offsets and elevated bridge decks belong to the displayed anchor.
 	var city := fixture(10)
 	city.set_building_id(64, 64, BuildingTileIds.RAIL_BRIDGE)

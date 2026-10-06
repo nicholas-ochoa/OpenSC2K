@@ -3,8 +3,8 @@ extends RefCounted
 ## Interpolate completed moving-object positions. Never predict or write a route.
 
 const STEP_SECONDS := GameSpeedController.BASE_TICK_MSEC / 1000.0
-const OPTION_BY_TYPE := {1: "traffic_planes_enabled", 2: "traffic_helicopters_enabled", 3: "traffic_ships_enabled", 9: "traffic_ships_enabled",
-	10: "traffic_trains_enabled", 11: "traffic_trains_enabled", 15: "disaster_motion"}
+const OPTION_BY_TYPE := {1: "traffic_vehicles_enabled", 2: "traffic_vehicles_enabled", 3: "traffic_vehicles_enabled", 9: "traffic_vehicles_enabled",
+	10: "traffic_vehicles_enabled", 11: "traffic_vehicles_enabled", 15: "disaster_motion"}
 
 var tracks: Dictionary[int, Track] = {}
 var _signature: Array = []

@@ -20,7 +20,7 @@ const SECTIONS := [
 	["Environment", "Water reflections, waves, coastal surf and underwater terrain. Seasonal water colors require Seasons.",
 		["water_reflections", "water_waves_enabled", "water_topography", "season_water_strength"]],
 	["Traffic & Movement", "Decorative cars and pedestrians, plus smoother movement for existing vehicles.",
-		["life_cars_enabled", "life_car_amount", "life_people_enabled", "life_people_amount", "traffic_helicopters_enabled", "traffic_planes_enabled", "traffic_ships_enabled", "traffic_trains_enabled", "traffic_shadows_enabled"]],
+		["life_cars_enabled", "life_car_amount", "life_people_enabled", "life_people_amount", "traffic_vehicles_enabled", "traffic_shadows_enabled"]],
 	["Disaster Effects", "Extra effects for disasters and demolition. These settings do not change disaster frequency, damage or emergency response.",
 		["disaster_enabled", "disaster_strength", "disaster_crowds", "disaster_dust", "disaster_lights", "disaster_motion", "disaster_shake"]],
 	["Animation", "Shared timing for visual cycles and animated effects. Cycle durations use Turtle speed when linked; otherwise they use real time.",
@@ -46,6 +46,7 @@ const LABELS := {
 	"lut_path": "Custom color filter (LUT PNG)", "brightmap_folder": "Custom light masks (brightmaps)",
 }
 const HINTS := {
+	"traffic_vehicles_enabled": "Smooth movement of helicopters, airplanes, ships, sailboats and trains.",
 	"water_waves_enabled": "Moving waves and breaking surf along the terrain shoreline. Turn off for a still water surface.",
 	"disaster_enabled": "Enable additional presentation effects. Turning this off restores the original disaster visuals; disasters still occur.",
 	"disaster_strength": "Intensity of added visual effects. At 0%, added crowds, dust and lighting are off. Tornado smoothing and camera shake remain separate.",
