@@ -8,6 +8,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_check_moving_texture_reuse()
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(32, 32)
 	viewport.transparent_bg = true
@@ -92,6 +93,17 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	var shadowed := viewport.get_texture().get_image().get_pixel(8, 8)
 	assert(shadowed.b < unshadowed.b, "Water pass erased cloud shadows")
+	mirror.fill(Color(40.0 / 255.0, 0, 0, 1))
+	(sprite.texture as ImageTexture).update(mirror)
+	material.set_shader_parameter("water_geometry_preview", true)
+	await RenderingServer.frame_post_draw
+	var shaded_mirror := viewport.get_texture().get_image().get_pixel(8, 8)
+	material.set_shader_parameter("cloud_enabled", false)
+	await RenderingServer.frame_post_draw
+	var clear_mirror := viewport.get_texture().get_image().get_pixel(8, 8)
+	assert(absf(shaded_mirror.r / clear_mirror.r - shadowed.b / unshadowed.b) < 0.02,
+		"Water and reflected artwork must receive the same cloud shadow")
+	material.set_shader_parameter("water_geometry_preview", false)
 	material.set_shader_parameter("water_enabled", false)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == original.get_data(), "Off did not restore exact original pixels")
@@ -239,3 +251,30 @@ func _check_seasonal_water(viewport: SubViewport, material: ShaderMaterial) -> v
 	var light := viewport.get_texture().get_image().get_pixel(8, 8)
 	assert(light.r > 0.89 and light.g < 0.16 and light.b < 0.06, "Water tint recolored reflected night lights")
 	material.set_shader_parameter("water_season_strength", 0.0)
+
+
+func _check_moving_texture_reuse() -> void:
+	var region := WaterReflectionRegion.new()
+	region.bounds = Rect2i(0, 0, 8, 8)
+	for key in ["surface", "reflected", "emission", "seasons"]:
+		region.set(key, Image.create(8, 8, false, Image.FORMAT_RGBA8))
+	region.surface.fill(Color(1.0 / 255.0, 0, 0, 1))
+	var ship := WaterReflectionSprite.new()
+	ship.image = Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	ship.image.fill(Color.RED)
+	ship.emission = ship.image.duplicate()
+	ship.position = Vector2i(1, 1)
+	var first := region.compose_moving([ship]).duplicate()
+	assert((first.reflected as ImageTexture).get_image().get_pixel(1, 1) == Color.RED)
+	var moved := WaterReflectionSprite.new()
+	moved.image = ship.image
+	moved.emission = ship.emission
+	moved.position = Vector2i(4, 4)
+	var second := region.compose_moving([moved])
+	for key in ["reflected", "emission", "seasons"]:
+		assert(second[key] == first[key], "Moving water reflections reallocated a GPU texture")
+	var pixels := (second.reflected as ImageTexture).get_image()
+	assert(pixels.get_pixel(1, 1).a == 0.0, "Moving reflection left stale pixels")
+	assert(pixels.get_pixel(4, 4) == Color.RED)
+	assert(region.compose_moving([]).is_empty(), "Removing the last ship retained its reflection")
+	assert(not region.compose_moving([ship]).is_empty(), "A returning ship lost its reflection")

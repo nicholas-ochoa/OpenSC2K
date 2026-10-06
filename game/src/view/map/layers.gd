@@ -28,10 +28,12 @@ var _retained_data_signature: Array = []
 var environment_parameters: Dictionary = {}
 var water_layer: CityWaterLayer
 var _visual_materials: Dictionary = {}
+var _environment := CityEnvironmentParameters.new()
 
 
 func set_environment(parameters: Dictionary) -> void:
 	environment_parameters = parameters
+	_environment.update(parameters)
 	if water_layer != null:
 		water_layer.set_environment(parameters)
 	for material: ShaderMaterial in [_base_material, _dynamic_material]:
@@ -41,10 +43,7 @@ func set_environment(parameters: Dictionary) -> void:
 
 
 func _apply_environment(material: ShaderMaterial) -> void:
-	if material == null:
-		return
-	for key in environment_parameters:
-		material.set_shader_parameter(key, environment_parameters[key])
+	_environment.apply(material)
 
 
 func visual_material(emission: Texture2D, seasons: Texture2D) -> ShaderMaterial:

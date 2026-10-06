@@ -76,7 +76,9 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 
 
 func _sync_layer(source_to_canvas: Transform2D, edge: int, rotation: int) -> void:
-	if layer == null and opacity <= 0.0:
+	if opacity <= 0.001:
+		if layer != null:
+			layer.hide()
 		return
 	if layer == null:
 		layer = ColorRect.new()
@@ -96,9 +98,7 @@ func _sync_layer(source_to_canvas: Transform2D, edge: int, rotation: int) -> voi
 	var bounds := app.map_view.camera._camera_rect()
 	layer.position = bounds.position
 	layer.size = bounds.size
-	layer.visible = opacity > 0.001
-	for key in parameters:
-		material.set_shader_parameter(key, parameters[key])
+	layer.show()
 	var lift := Transform2D(0.0, Vector2(0, HEIGHT_PIXELS))
 	material.set_shader_parameter("cloud_canvas_to_body_grid", shader_basis(source_to_grid(edge, rotation) * lift * source_to_canvas.affine_inverse()))
 

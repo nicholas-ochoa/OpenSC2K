@@ -63,8 +63,8 @@ func compose_moving(sprites: Array[WaterReflectionSprite]) -> Dictionary:
 	if signature == moving_signature:
 		return moving_textures
 	moving_signature = signature
-	moving_textures.clear()
 	if overlapping.is_empty():
+		moving_textures.clear()
 		return moving_textures
 	var pixels := reflected.duplicate()
 	var lights := emission.duplicate()
@@ -87,6 +87,10 @@ func compose_moving(sprites: Array[WaterReflectionSprite]) -> Dictionary:
 				pixels.set_pixel(x, y, pixel)
 				lights.set_pixel(x, y, sprite.emission.get_pixelv(point))
 				natural.set_pixel(x, y, Color.TRANSPARENT)
-	moving_textures = {"reflected": ImageTexture.create_from_image(pixels), "emission": ImageTexture.create_from_image(lights),
-		"seasons": ImageTexture.create_from_image(natural)}
+	# Region dimensions stay fixed. Keep GPU allocations while ships move.
+	for pair in [["reflected", pixels], ["emission", lights], ["seasons", natural]]:
+		if moving_textures.has(pair[0]):
+			(moving_textures[pair[0]] as ImageTexture).update(pair[1])
+		else:
+			moving_textures[pair[0]] = ImageTexture.create_from_image(pair[1])
 	return moving_textures

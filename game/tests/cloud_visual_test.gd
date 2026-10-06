@@ -54,6 +54,13 @@ func _run() -> void:
 	main.map_view.zoom_factor = 1.0
 	main.visual_environment.process(1.0)
 	assert(not clouds.layer.visible and clouds.parameters.cloud_enabled)
+	var hidden_drift: Vector2 = clouds.material.get_shader_parameter("cloud_drift")
+	main.visual_environment.process(2.0)
+	assert(clouds.material.get_shader_parameter("cloud_drift") == hidden_drift)
+	main.map_view.zoom_factor = 0.25
+	main.visual_environment.process(1.0)
+	assert(clouds.layer.visible and clouds.material.get_shader_parameter("cloud_drift") == clouds.drift,
+		"Clouds must catch up to their current position when shown again")
 	var source_point := Vector2(1450, 880)
 	var fixed_grid := CityVisualClouds.source_to_grid(128, main.document_state.city.compass_rotation()) * source_point
 	for zoom in [0.1, 0.25, 0.5, 1.0, 2.0, 4.0]:

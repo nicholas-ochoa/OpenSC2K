@@ -174,7 +174,7 @@ func process(delta: float) -> void:
 	parameters.merge(clouds.parameters)
 	parameters.merge(profiles.parameters(options, hour, parameters.environment_seasons, app.map_view.get_viewport().use_hdr_2d))
 	app.map_view.layers.set_environment(parameters)
-	if clouds.material != null:
+	if clouds.layer != null and clouds.layer.visible:
 		app.map_view.layers._apply_environment(clouds.material)
 
 

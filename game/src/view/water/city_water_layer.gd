@@ -13,6 +13,7 @@ var whole_sprites: Sc2SpriteArchive
 var whole_divisor := 1
 var whole_source_id := 0
 var whole_regions: Dictionary = {}
+var _environment := CityEnvironmentParameters.new()
 
 
 func _ready() -> void:
@@ -20,24 +21,25 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not visible:
+	if not visible or environment.get("water_frozen", false) or delta <= 0.0:
 		return
-	if not environment.get("water_frozen", false):
-		clock = fposmod(clock + maxf(delta, 0.0), 3600.0)
+	clock = fposmod(clock + delta, 3600.0)
 	for node: Sprite2D in nodes.values():
 		(node.material as ShaderMaterial).set_shader_parameter("water_clock", clock)
 
 
 func set_environment(parameters: Dictionary) -> void:
 	environment = parameters
+	_environment.update(parameters)
 	visible = environment.get("water_enabled", false) and not nodes.is_empty()
+	if not visible:
+		return
 	for node: Sprite2D in nodes.values():
 		_apply(node.material as ShaderMaterial)
 
 
 func _apply(material: ShaderMaterial) -> void:
-	for key in environment:
-		material.set_shader_parameter(key, environment[key])
+	_environment.apply(material)
 
 
 func configure_whole(context: CityGpuBuildContext, sprites: Sc2SpriteArchive, divisor: int, source_id: int) -> void:
@@ -91,6 +93,7 @@ func sync(source: CityMapSource, view_scale: float, offset: Vector2, palette: Te
 				var material := ShaderMaterial.new()
 				material.shader = WATER_SHADER
 				node.material = material
+				material.set_shader_parameter("water_clock", clock)
 				add_child(node)
 				nodes[key] = node
 			if not node.has_meta("region") or node.get_meta("region") != region:

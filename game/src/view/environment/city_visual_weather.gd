@@ -115,7 +115,10 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 
 
 func _sync_layer(enabled: bool) -> void:
-	if not enabled and layer == null:
+	var visible := enabled and (rain > 0.001 or snow > 0.001 or flash > 0.001)
+	if not visible:
+		if layer != null:
+			layer.hide()
 		return
 	if layer == null:
 		layer = ColorRect.new()
@@ -133,7 +136,7 @@ func _sync_layer(enabled: bool) -> void:
 	var bounds := app.map_view.camera._camera_rect()
 	layer.position = bounds.position
 	layer.size = bounds.size
-	layer.visible = enabled and (rain > 0.001 or snow > 0.001 or flash > 0.001)
+	layer.show()
 	material.set_shader_parameter("extent", bounds.size)
 	material.set_shader_parameter("clock", clock)
 	material.set_shader_parameter("rain", rain)

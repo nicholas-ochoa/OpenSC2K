@@ -1,5 +1,11 @@
 [
   {
+    "id": "environment_parameters_test",
+    "script": "tests/environment_parameters_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "weather_audio_test",
     "script": "tests/weather_audio_test.gd",
     "domain": "audio",

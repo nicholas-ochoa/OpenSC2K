@@ -66,7 +66,9 @@ void fragment() {
 		base = water_body(base, bottom, depth, world, water_topography);
 		base *= 1.0 + water_light_lines(world, round(surface.b * 255.0), water_clock, water_rain);
 	}
-	base = environment_ambient(cloud_shadow(base, cloud_ground_grid));
+	// Surface and reflection share the same shadow at this fragment.
+	float cloud_shade = cloud_shadow(vec3(1.0), cloud_ground_grid).r;
+	base = environment_ambient(base * cloud_shade);
 	vec3 combined = base;
 	if (water_reflections_enabled) {
 		vec4 original_reflection = texture(TEXTURE, UV);
@@ -83,7 +85,7 @@ void fragment() {
 			reflected = original_reflection;
 		}
 		if (reflected.a > 0.0) {
-			vec3 mirror_color = environment_color(cloud_shadow(palette_color(reflected.r), cloud_ground_grid), reflected_uv);
+			vec3 mirror_color = environment_color(palette_color(reflected.r) * cloud_shade, reflected_uv);
 			float strength = water_geometry_preview ? 1.0 : mix(0.15, 0.23, 1.0 - exp(-depth * 0.4) * bottom.a);
 			if (!water_geometry_preview) { mirror_color *= vec3(0.78, 0.87, 1.0); }
 			combined = mix(base, mirror_color, reflected.a * strength);
