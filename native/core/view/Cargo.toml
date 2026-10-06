@@ -10,3 +10,6 @@ description = "The city view of OpenSC2K without engine types: camera, region ca
 sc2k_assets = { path = "../assets" }
 sc2k_render = { path = "../render" }
 sc2k_sim = { path = "../sim" }
+
+[dev-dependencies]
+sc2k_formats = { path = "../formats" }

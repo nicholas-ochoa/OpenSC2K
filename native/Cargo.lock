@@ -1600,6 +1600,7 @@ name = "sc2k_view"
 version = "0.1.0"
 dependencies = [
  "sc2k_assets",
+ "sc2k_formats",
  "sc2k_render",
  "sc2k_sim",
 ]

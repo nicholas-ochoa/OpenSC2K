@@ -147,3 +147,43 @@ pub fn line(frame: &mut Frame, from: (f64, f64), to: (f64, f64), color: u32) {
         }
     }
 }
+
+/// The RGBA pixels of the whole map of `regions`, with moving draws already
+/// set, through `colors` over `background`.
+pub fn whole_city(
+    regions: &mut Regions,
+    colors: &[u32; 256],
+    background: u32,
+) -> (usize, usize, Vec<u8>) {
+    let (width, height) = regions.size();
+    let (width, height) = (width.max(0) as usize, height.max(0) as usize);
+    let mut rgba = vec![0_u8; width * height * 4];
+
+    for region_y in 0..(height as i32 + REGION - 1) / REGION {
+        for region_x in 0..(width as i32 + REGION - 1) / REGION {
+            let Some(region) = regions.region(region_x, region_y) else {
+                continue;
+            };
+
+            for row in 0..region.height as usize {
+                for column in 0..region.width as usize {
+                    let index = region.indices[row * region.width as usize + column];
+                    let color = if index == CLEAR {
+                        background
+                    } else {
+                        colors[index as usize]
+                    };
+                    let at = ((region.y as usize + row) * width + region.x as usize + column) * 4;
+                    rgba[at..at + 4].copy_from_slice(&[
+                        (color >> 16) as u8,
+                        (color >> 8) as u8,
+                        color as u8,
+                        255,
+                    ]);
+                }
+            }
+        }
+    }
+
+    (width, height, rgba)
+}

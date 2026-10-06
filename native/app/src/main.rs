@@ -358,6 +358,49 @@ fn snapshot(game: &mut Game, path: &str, width: usize, height: usize) -> Result<
     std::fs::write(path, bytes).map_err(|error| error.to_string())
 }
 
+/// Render the whole city in graphics size `view` to a PNG file, as the CPU
+/// painter of the Godot build exports it: moving objects and disaster markers
+/// at phase 0, over the export background.
+fn render_city(game: &mut Game, path: &str, view: usize, underground: bool) -> Result<(), String> {
+    use sc2k_view::moving::{marker_cells, moving_draws};
+    use sc2k_view::present::{cycled_colors, whole_city};
+    use sc2k_view::regions::{Options, Regions};
+    use sc2k_view::snapshot::painter_city;
+
+    const EXPORT_BACKGROUND: u32 = 0x0018242c;
+    const UNDERGROUND_INDEX: usize = 0xff;
+    let city = &game.session.city;
+    let options = Options {
+        underground,
+        ..Options::default()
+    };
+    let mut regions = Regions::new(painter_city(city, 32), &game.art, view, options)?;
+
+    if !underground {
+        regions.set_moving(moving_draws(
+            city,
+            &game.art.views[view],
+            &marker_cells(city),
+            view,
+            0,
+            32,
+            true,
+        ));
+    }
+
+    let identity: Vec<i32> = (0..256).collect();
+    let colors = cycled_colors(&game.art.palette, &identity);
+    let background = if underground {
+        colors[UNDERGROUND_INDEX]
+    } else {
+        EXPORT_BACKGROUND
+    };
+    let (width, height, rgba) = whole_city(&mut regions, &colors, background);
+    let bytes = sc2k_formats::png::encode_rgba(width as u32, height as u32, &rgba)?;
+
+    std::fs::write(path, bytes).map_err(|error| error.to_string())
+}
+
 fn main() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
 
@@ -373,6 +416,25 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    if arguments.get(1).map(String::as_str) == Some("--render") {
+        let path = arguments
+            .get(2)
+            .cloned()
+            .unwrap_or_else(|| "city.png".into());
+        let view: usize = arguments
+            .get(3)
+            .and_then(|text| text.parse().ok())
+            .unwrap_or(2);
+        let underground = arguments.get(4).map(String::as_str) == Some("underground");
+
+        if let Err(error) = render_city(&mut game, &path, view, underground) {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+
+        return;
+    }
 
     if arguments.get(1).map(String::as_str) == Some("--snapshot") {
         let path = arguments
