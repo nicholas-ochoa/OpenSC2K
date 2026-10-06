@@ -63,7 +63,7 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 		"cloud_span": FIELD_SPAN,
 		"cloud_drift": drift,
 		"cloud_density": density,
-		"cloud_shadow_strength": float(options.get("cloud_shadow_strength", 0.22)) * (1.0 - darkness * 0.85),
+		"cloud_shadow_strength": float(options.get("cloud_shadow_strength", 0.4)) * (1.0 - darkness * 0.85),
 		"cloud_canvas_to_grid": shader_basis(canvas_to_grid),
 		"cloud_projection": Vector4(grid_to_source.x.x, grid_to_source.x.y, grid_to_source.y.x, grid_to_source.y.y) / 16.0,
 		"cloud_height_grid": projection.y * HEIGHT_PIXELS,

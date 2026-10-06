@@ -7,7 +7,7 @@ uniform vec4 cloud_projection = vec4(1.0, 0.5, -1.0, 0.5);
 uniform vec2 cloud_drift = vec2(0.0);
 uniform float cloud_span = 192.0;
 uniform float cloud_density = 0.4;
-uniform float cloud_shadow_strength = 0.22;
+uniform float cloud_shadow_strength = 0.4;
 uniform vec2 cloud_shadow_offset = vec2(4.0, 2.0);
 
 vec2 cloud_grid_at(vec2 canvas_position) {

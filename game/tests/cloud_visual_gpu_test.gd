@@ -46,7 +46,7 @@ func _run() -> void:
 				changed += 1
 			else:
 				sunny += 1
-			assert(b.r <= a.r + 0.01 and b.r >= a.r * 0.75, "Shadows changed hue or exceeded strength")
+			assert(b.r <= a.r + 0.01 and b.r >= a.r * 0.6 - 0.01, "Shadows changed hue or exceeded strength")
 			assert(is_equal_approx(a.a, b.a), "Shadows changed the city silhouette")
 	assert(changed > 30 and sunny > 30, "The field must have both cloud shadows and sunny gaps")
 	assert(shaded.get_pixel(0, 0).a == 0.0)

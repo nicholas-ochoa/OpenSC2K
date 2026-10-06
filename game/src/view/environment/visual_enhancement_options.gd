@@ -15,7 +15,7 @@ const FIELDS := [
 	["water_waves_enabled", "Waves and coastal surf", "bool", true],
 	["cloud_enabled", "Clouds and cloud shadows", "bool", true],
 	["cloud_density", "Cloud density", "number", 0.4, 0.0, 1.0, 0.05],
-	["cloud_shadow_strength", "Cloud shadow strength", "number", 0.22, 0.0, 0.5, 0.02],
+	["cloud_shadow_strength", "Cloud shadow strength", "number", 0.4, 0.0, 0.5, 0.02],
 	["cloud_speed", "Cloud movement speed", "number", 1.0, 0.0, 3.0, 0.1],
 	["life_cars_enabled", "Individual cars", "bool", true],
 	["life_car_amount", "Car amount", "number", 1.0, 0.25, 2.0, 0.05],
