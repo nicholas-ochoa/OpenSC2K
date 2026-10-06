@@ -10,9 +10,7 @@ fn part(parts: &[&str], index: usize) -> i64 {
     let text = strip_edges(text);
     let digits = text.bytes().take_while(u8::is_ascii_digit).count();
 
-    text[..digits]
-        .parse()
-        .unwrap_or(if digits > 0 { i64::MAX } else { 0 })
+    text[..digits].parse().unwrap_or(if digits > 0 { i64::MAX } else { 0 })
 }
 
 /// Compare dotted versions such as "0.10.2" and "0.9": -1, 0, or 1. A missing

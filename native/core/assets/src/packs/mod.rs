@@ -24,10 +24,7 @@ pub fn path_problem(path: &str) -> Option<PathProblem> {
         return Some(PathProblem::NotRelative);
     }
 
-    if path
-        .split('/')
-        .any(|part| part.is_empty() || part == "." || part == "..")
-    {
+    if path.split('/').any(|part| part.is_empty() || part == "." || part == "..") {
         return Some(PathProblem::BadComponent);
     }
 
@@ -62,18 +59,14 @@ fn is_one(value: Option<&Value>) -> bool {
 
 /// A nonempty name after the whitespace is removed.
 fn has_name(value: Option<&Value>) -> bool {
-    value.and_then(Value::as_str).is_some_and(|name| {
-        !name
-            .trim_matches(|character: char| character <= ' ')
-            .is_empty()
-    })
+    value
+        .and_then(Value::as_str)
+        .is_some_and(|name| !name.trim_matches(|character: char| character <= ' ').is_empty())
 }
 
 /// True when the manifest has `format`, version 1, and a name.
 pub fn has_header(manifest: &sc2k_formats::json::Object, format: &str) -> bool {
-    manifest.get("format").and_then(Value::as_str) == Some(format)
-        && is_one(manifest.get("version"))
-        && has_name(manifest.get("name"))
+    manifest.get("format").and_then(Value::as_str) == Some(format) && is_one(manifest.get("version")) && has_name(manifest.get("name"))
 }
 
 #[cfg(test)]

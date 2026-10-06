@@ -45,13 +45,7 @@ pub fn snapshot(game: &mut Game, path: &str, steps: i32) -> Result<(), String> {
 /// Render the whole city in graphics size `view` to a PNG file, as the CPU
 /// painter of the Godot build exports it: moving objects and disaster markers
 /// at phase 0, over the export background.
-pub fn render_city(
-    session: &Session,
-    art: &CityArt,
-    path: &str,
-    view: usize,
-    underground: bool,
-) -> Result<(), String> {
+pub fn render_city(session: &Session, art: &CityArt, path: &str, view: usize, underground: bool) -> Result<(), String> {
     use sc2k_view::moving::{marker_cells, moving_draws, things_of};
     use sc2k_view::present::{cycled_colors, whole_city};
     use sc2k_view::regions::{Options, Regions};
@@ -117,14 +111,9 @@ pub fn benchmark(game: &mut Game, frames: usize, speed: i64) {
         game.receive();
         game.view.advance_palette(FRAME_MSEC);
         game.view.animation_phase = now / 100;
-        game.view.camera.pan_screen(
-            if (frame_index / 120) % 2 == 0 {
-                4.0
-            } else {
-                -4.0
-            },
-            1.0,
-        );
+        game.view
+            .camera
+            .pan_screen(if (frame_index / 120) % 2 == 0 { 4.0 } else { -4.0 }, 1.0);
         let mut frame = Frame {
             width,
             height,

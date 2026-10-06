@@ -78,18 +78,8 @@ pub fn normalize_pixel_end(bytes: &[u8]) -> Vec<u8> {
 }
 
 /// 1 for a shape with an opaque pixel, 0 for a blank shape, or the decode error.
-pub fn shape_state(
-    width: i64,
-    height: i64,
-    encoded: &[u8],
-    allow_unpadded_odd_runs: bool,
-) -> Result<bool, String> {
-    let decoded = sprite::decode(
-        encoded,
-        width as i32,
-        height as i32,
-        allow_unpadded_odd_runs,
-    )?;
+pub fn shape_state(width: i64, height: i64, encoded: &[u8], allow_unpadded_odd_runs: bool) -> Result<bool, String> {
+    let decoded = sprite::decode(encoded, width as i32, height as i32, allow_unpadded_odd_runs)?;
 
     Ok(decoded.pixels.iter().any(|&pixel| pixel >= 0))
 }
@@ -142,12 +132,7 @@ pub fn encode_pixels(width: usize, height: usize, pixels: &[i32]) -> Option<Vec<
 }
 
 /// The SHAP payload of new artwork.
-pub fn shape_payload(
-    sprite_id: i64,
-    width: i64,
-    height: i64,
-    pixels: &[i32],
-) -> Result<Vec<u8>, String> {
+pub fn shape_payload(sprite_id: i64, width: i64, height: i64, pixels: &[i32]) -> Result<Vec<u8>, String> {
     if !(0..=0xffff).contains(&sprite_id) {
         return Err("SHAP sprite ID is outside the 16-bit range".into());
     }
@@ -164,8 +149,7 @@ pub fn shape_payload(
         return Err("SHAP palette index is invalid".into());
     }
 
-    let data = encode_pixels(width as usize, height as usize, pixels)
-        .ok_or("SHAP pixels cannot be encoded")?;
+    let data = encode_pixels(width as usize, height as usize, pixels).ok_or("SHAP pixels cannot be encoded")?;
     let mut payload = Vec::with_capacity(SHAPE_HEADER_LENGTH + data.len());
     payload.extend_from_slice(&(sprite_id as u16).to_be_bytes());
     payload.extend_from_slice(&(width as u16).to_be_bytes());
@@ -184,13 +168,7 @@ pub fn name_payload(sprite_id: i64, text: &str) -> Result<Vec<u8>, String> {
 
     let mut bytes: Vec<u8> = text
         .chars()
-        .map(|character| {
-            if character.is_ascii() {
-                character as u8
-            } else {
-                b' '
-            }
-        })
+        .map(|character| if character.is_ascii() { character as u8 } else { b' ' })
         .collect();
 
     if bytes.len() + 1 > 0xffff {
@@ -300,27 +278,16 @@ impl Mif {
         mif
     }
 
-    fn parse_shape(
-        &mut self,
-        bytes: &[u8],
-        start: usize,
-        end: usize,
-        duplicates: &mut Vec<(i64, i64)>,
-    ) -> Result<(), String> {
+    fn parse_shape(&mut self, bytes: &[u8], start: usize, end: usize, duplicates: &mut Vec<(i64, i64)>) -> Result<(), String> {
         if end - start < SHAPE_HEADER_LENGTH {
             return Err("SHAP payload is shorter than its header".into());
         }
 
         let sprite_id = u16_be(bytes, start) as i64;
-        let (width, height) = (
-            u16_be(bytes, start + 2) as i64,
-            u16_be(bytes, start + 4) as i64,
-        );
+        let (width, height) = (u16_be(bytes, start + 2) as i64, u16_be(bytes, start + 4) as i64);
 
         if start + SHAPE_HEADER_LENGTH + u32_be(bytes, start + 6) != end {
-            return Err(format!(
-                "SHAP sprite {sprite_id} has an invalid pixel length"
-            ));
+            return Err(format!("SHAP sprite {sprite_id} has an invalid pixel length"));
         }
 
         let mut piece = Piece {
@@ -350,8 +317,7 @@ impl Mif {
             }
         };
         let encoded = normalize_pixel_end(&bytes[offset..end]);
-        let opaque = shape_state(width, height, &encoded, true)
-            .map_err(|error| format!("sprite {sprite_id} at 0x{offset:x}: {error}"))?;
+        let opaque = shape_state(width, height, &encoded, true).map_err(|error| format!("sprite {sprite_id} at 0x{offset:x}: {error}"))?;
         piece.shape = Some(Shape {
             width,
             height,
@@ -407,13 +373,11 @@ pub fn to_bytes(info: &[u8], pieces: &[(String, Vec<u8>)]) -> Result<Vec<u8>, St
             return Err("TILE piece has an invalid tag".into());
         }
 
-        tile.extend(piece_tag.chars().map(|character| {
-            if character.is_ascii() {
-                character as u8
-            } else {
-                b' '
-            }
-        }));
+        tile.extend(
+            piece_tag
+                .chars()
+                .map(|character| if character.is_ascii() { character as u8 } else { b' ' }),
+        );
         tile.extend_from_slice(&(payload.len() as u32).to_be_bytes());
         tile.extend_from_slice(payload);
     }
@@ -440,11 +404,7 @@ mod tests {
     fn a_saved_tile_set_parses_again() {
         let shape = shape_payload(7, 2, 1, &[5, -1]).unwrap();
         let name = name_payload(7, "Park").unwrap();
-        let bytes = to_bytes(
-            b"NIW_",
-            &[("SHAP".into(), shape.clone()), ("NAME".into(), name)],
-        )
-        .unwrap();
+        let bytes = to_bytes(b"NIW_", &[("SHAP".into(), shape.clone()), ("NAME".into(), name)]).unwrap();
         let mif = Mif::parse(&bytes);
         assert_eq!(mif.error, "");
         assert_eq!((mif.info.len(), mif.piece_count), (INFO_LENGTH, 2));
@@ -460,22 +420,9 @@ mod tests {
 
     #[test]
     fn malformed_files_report_their_problem() {
-        assert_eq!(
-            Mif::parse(b"MIFF").error,
-            "file is shorter than the MIFF header"
-        );
-        assert_eq!(
-            Mif::parse(b"MIFF\0\0\0\x04SC2K").error,
-            "INFO chunk is missing"
-        );
-        assert!(
-            shape_payload(1, 256, 1, &[0; 256])
-                .unwrap_err()
-                .contains("dimensions")
-        );
-        assert_eq!(
-            encode_pixels(2, 1, &[-1, -1]).unwrap(),
-            vec![2, 1, 2, 3, 2, 1, 2, 2]
-        );
+        assert_eq!(Mif::parse(b"MIFF").error, "file is shorter than the MIFF header");
+        assert_eq!(Mif::parse(b"MIFF\0\0\0\x04SC2K").error, "INFO chunk is missing");
+        assert!(shape_payload(1, 256, 1, &[0; 256]).unwrap_err().contains("dimensions"));
+        assert_eq!(encode_pixels(2, 1, &[-1, -1]).unwrap(), vec![2, 1, 2, 3, 2, 1, 2, 2]);
     }
 }

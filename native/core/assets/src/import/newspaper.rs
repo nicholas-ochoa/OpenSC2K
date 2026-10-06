@@ -35,10 +35,7 @@ pub struct Records(pub Vec<(i64, Vec<u8>)>);
 
 impl Records {
     pub fn get(&self, id: i64) -> Option<&[u8]> {
-        self.0
-            .iter()
-            .find(|(known, _)| *known == id)
-            .map(|(_, bytes)| bytes.as_slice())
+        self.0.iter().find(|(known, _)| *known == id).map(|(_, bytes)| bytes.as_slice())
     }
 
     pub fn has(&self, id: i64) -> bool {
@@ -116,30 +113,16 @@ pub fn find_records(source: &[SourceRecord]) -> (Records, Records) {
     for record in source {
         if record.kind == "DATA" && record.id == GRAMMAR_ID && container.is_none() {
             container = Some(&record.source);
-        } else if record.kind.is_empty()
-            && !files
-                .iter()
-                .any(|(name, _)| *name == record.name.to_uppercase())
-        {
+        } else if record.kind.is_empty() && !files.iter().any(|(name, _)| *name == record.name.to_uppercase()) {
             files.push((record.name.to_uppercase(), &record.bytes));
         }
     }
 
-    let file = |name: String| {
-        files
-            .iter()
-            .find(|(known, _)| *known == name)
-            .map(|(_, bytes)| *bytes)
-    };
+    let file = |name: String| files.iter().find(|(known, _)| *known == name).map(|(_, bytes)| *bytes);
 
-    for (names, target) in [
-        (&TEXT_FILE_NAMES, &mut text),
-        (&NEWSPAPER_FILE_NAMES, &mut newspaper),
-    ] {
+    for (names, target) in [(&TEXT_FILE_NAMES, &mut text), (&NEWSPAPER_FILE_NAMES, &mut newspaper)] {
         for name in names {
-            if let (Some(data), Some(index)) =
-                (file(format!("{name}.DAT")), file(format!("{name}.IDX")))
-            {
+            if let (Some(data), Some(index)) = (file(format!("{name}.DAT")), file(format!("{name}.IDX"))) {
                 for (id, bytes) in indexed_records(data, index).0 {
                     target.keep(id, &bytes);
                 }
@@ -153,15 +136,9 @@ pub fn find_records(source: &[SourceRecord]) -> (Records, Records) {
         if record.kind.is_empty() {
             let name = basename(&record.name).to_uppercase();
 
-            if let Some(number) = name
-                .strip_prefix(TEXT_RESOURCE_PREFIX)
-                .filter(|number| is_valid_int(number))
-            {
+            if let Some(number) = name.strip_prefix(TEXT_RESOURCE_PREFIX).filter(|number| is_valid_int(number)) {
                 text.keep(number.parse().unwrap_or(0), &record.bytes);
-            } else if let Some(number) = name
-                .strip_prefix(NEWSPAPER_RESOURCE_PREFIX)
-                .filter(|number| is_valid_int(number))
-            {
+            } else if let Some(number) = name.strip_prefix(NEWSPAPER_RESOURCE_PREFIX).filter(|number| is_valid_int(number)) {
                 let id = number.parse().unwrap_or(-1);
 
                 if NEWSPAPER_IDS.contains(&id) {
@@ -272,11 +249,7 @@ fn top_level_byte(grammar: &[u8], start: usize, wanted: u8, is_johab: bool) -> O
             return Some(cursor);
         }
 
-        cursor += if ARGUMENT_OPCODES.contains(&grammar[cursor]) {
-            2
-        } else {
-            1
-        };
+        cursor += if ARGUMENT_OPCODES.contains(&grammar[cursor]) { 2 } else { 1 };
     }
 
     None
@@ -305,14 +278,7 @@ pub fn has_headline_ends(records: &Records) -> bool {
             if phrase_id * 4 + 4 <= offsets.len() {
                 stories += 1;
 
-                if top_level_byte(
-                    grammar,
-                    u32_be(offsets, phrase_id * 4),
-                    HEADLINE_END,
-                    is_johab,
-                )
-                .is_some()
-                {
+                if top_level_byte(grammar, u32_be(offsets, phrase_id * 4), HEADLINE_END, is_johab).is_some() {
                     marked += 1;
                 }
             }
@@ -336,11 +302,7 @@ pub fn windows_newspaper(records: &Records) -> Records {
     let mut grammar = records.bytes(GRAMMAR_ID).to_vec();
     let is_johab = johab::is_grammar(&grammar, offsets);
 
-    if bases.len() != counts.len()
-        || !bases.len().is_multiple_of(2)
-        || !offsets.len().is_multiple_of(4)
-        || !has_headline_ends(records)
-    {
+    if bases.len() != counts.len() || !bases.len().is_multiple_of(2) || !offsets.len().is_multiple_of(4) || !has_headline_ends(records) {
         return Records::default();
     }
 
@@ -366,11 +328,8 @@ pub fn windows_newspaper(records: &Records) -> Records {
                 }
 
                 if shifted && (SHIFTED_TOKEN_FIRST..=SHIFTED_TOKEN_LAST).contains(&value) {
-                    grammar[cursor] =
-                        EXTENDED_TOKEN_BYTES[usize::from(value - SHIFTED_TOKEN_FIRST)];
-                } else if let Some(&(_, quote)) =
-                    QUOTE_BYTES.iter().find(|(curly, _)| *curly == value)
-                {
+                    grammar[cursor] = EXTENDED_TOKEN_BYTES[usize::from(value - SHIFTED_TOKEN_FIRST)];
+                } else if let Some(&(_, quote)) = QUOTE_BYTES.iter().find(|(curly, _)| *curly == value) {
                     grammar[cursor] = quote;
                 }
 

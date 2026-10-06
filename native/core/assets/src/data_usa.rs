@@ -15,27 +15,23 @@ pub const PHRASE_COUNT: usize = 2500;
 
 /// Resource 1004: the initial priority of each story type.
 pub const STORY_PRIORITIES: [i64; 80] = [
-    0, 0, 1000, 1000, 1000, 1000, 360, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200,
-    200, 200, 200, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000,
-    1000, 1000, 200, 200, 300, 200, 200, 0, 0, 0, 0, 500, 500, 500, 500, 500, 500, 500, 500, 500,
-    500, 500, 500, 500, 500, 500, 200, 200, 200, 200, 200, 200, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,
+    0, 0, 1000, 1000, 1000, 1000, 360, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 1000, 1000, 1000, 1000,
+    1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 200, 200, 300, 200, 200, 0, 0, 0, 0, 500, 500, 500, 500, 500, 500,
+    500, 500, 500, 500, 500, 500, 500, 500, 500, 200, 200, 200, 200, 200, 200, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 
 /// Resource 1005: the monthly priority decay of each story type.
 pub const STORY_DECAYS: [i64; 80] = [
-    0, 0, 500, 500, 250, 250, 10, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 250,
-    250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 100, 50, 50, 50, 50, 50, 0, 0,
-    0, 0, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 50, 50, 50,
-    50, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 500, 500, 250, 250, 10, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 250, 250, 250, 250, 250, 250, 250, 250, 250,
+    250, 250, 250, 250, 250, 100, 50, 50, 50, 50, 50, 0, 0, 0, 0, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+    500, 50, 50, 50, 50, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 
 /// The bytes of the grammar tokens from phrase 32. Tokens 1 to 31 name their phrase.
 pub const EXTENDED_TOKEN_BYTES: [u8; 60] = [
-    0x7f, 0x9e, 0x9f, 0xa9, 0xaa, 0xab, 0xac, 0xae, 0xaf, 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb8, 0xb9,
-    0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf, 0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc8, 0xc9, 0xca, 0xcb,
-    0xcc, 0xcd, 0xce, 0xcf, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xdf, 0xee, 0xef, 0xf0, 0xf1, 0xf2, 0xf3,
-    0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
+    0x7f, 0x9e, 0x9f, 0xa9, 0xaa, 0xab, 0xac, 0xae, 0xaf, 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xdf, 0xee, 0xef,
+    0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -80,15 +76,10 @@ fn resources(data: &[u8], index: &[u8]) -> Result<Vec<(u32, Vec<u8>)>, String> {
         let data_offset = read_u32_le(index, at + 4) as usize;
 
         if data_offset > data.len() {
-            return Err(format!(
-                "DATA_USA resource {resource_id} has an invalid offset"
-            ));
+            return Err(format!("DATA_USA resource {resource_id} has an invalid offset"));
         }
 
-        if records
-            .last()
-            .is_some_and(|&(_, previous)| data_offset < previous)
-        {
+        if records.last().is_some_and(|&(_, previous)| data_offset < previous) {
             return Err("DATA_USA resource offsets are not ordered".into());
         }
 
@@ -99,9 +90,7 @@ fn resources(data: &[u8], index: &[u8]) -> Result<Vec<(u32, Vec<u8>)>, String> {
         .iter()
         .enumerate()
         .map(|(position, &(resource_id, start))| {
-            let end = records
-                .get(position + 1)
-                .map_or(data.len(), |&(_, next)| next);
+            let end = records.get(position + 1).map_or(data.len(), |&(_, next)| next);
             (resource_id, data[start..end].to_vec())
         })
         .collect())
@@ -154,9 +143,7 @@ pub fn parse(data: &[u8], index: &[u8]) -> Result<DataUsa, String> {
 
     for table_id in 0..TABLE_ENTRY_COUNT {
         if (bases[table_id] + counts[table_id]) as usize > PHRASE_COUNT {
-            return Err(format!(
-                "DATA_USA phrase table {table_id} is outside the offset table"
-            ));
+            return Err(format!("DATA_USA phrase table {table_id} is outside the offset table"));
         }
     }
 
@@ -164,9 +151,7 @@ pub fn parse(data: &[u8], index: &[u8]) -> Result<DataUsa, String> {
         let start = offset as usize;
 
         if start >= grammar.len() {
-            return Err(format!(
-                "DATA_USA phrase {phrase_id} has an invalid text offset"
-            ));
+            return Err(format!("DATA_USA phrase {phrase_id} has an invalid text offset"));
         }
 
         if !grammar[start..].contains(&0) {
@@ -231,37 +216,22 @@ mod tests {
     #[test]
     fn malformed_files_are_rejected() {
         let (data, index) = files(&grammar_resources());
-        assert!(
-            parse(&data, &index[..index.len() - 1])
-                .unwrap_err()
-                .contains("partial record")
-        );
+        assert!(parse(&data, &index[..index.len() - 1]).unwrap_err().contains("partial record"));
 
         let mut unordered = index.clone();
         unordered[12..16].copy_from_slice(&0u32.to_le_bytes());
         unordered[4..8].copy_from_slice(&8u32.to_le_bytes());
-        assert!(
-            parse(&data, &unordered)
-                .unwrap_err()
-                .contains("not ordered")
-        );
+        assert!(parse(&data, &unordered).unwrap_err().contains("not ordered"));
 
         let mut missing = grammar_resources();
         missing.pop();
         let (data, index) = files(&missing);
-        assert_eq!(
-            parse(&data, &index).unwrap_err(),
-            "DATA_USA resource 1003 is missing"
-        );
+        assert_eq!(parse(&data, &index).unwrap_err(), "DATA_USA resource 1003 is missing");
 
         let mut high = grammar_resources();
         high[2].1[0] = 0x80;
         let (data, index) = files(&high);
-        assert!(
-            parse(&data, &index)
-                .unwrap_err()
-                .contains("invalid text offset")
-        );
+        assert!(parse(&data, &index).unwrap_err().contains("invalid text offset"));
 
         let mut open = grammar_resources();
         open[3].1 = b"ab\0cd".to_vec();

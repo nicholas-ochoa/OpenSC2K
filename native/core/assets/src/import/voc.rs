@@ -52,9 +52,7 @@ pub fn convert(data: &[u8]) -> Result<Vec<u8>, String> {
             return Err("Truncated Creative Voice block header.".into());
         }
 
-        let length = usize::from(data[cursor])
-            | (usize::from(data[cursor + 1]) << 8)
-            | (usize::from(data[cursor + 2]) << 16);
+        let length = usize::from(data[cursor]) | (usize::from(data[cursor + 1]) << 8) | (usize::from(data[cursor + 2]) << 16);
         cursor += 3;
 
         if !has_range(data, cursor, length) {
@@ -71,16 +69,8 @@ pub fn convert(data: &[u8]) -> Result<Vec<u8>, String> {
                     return Err("Unsupported Creative Voice sample codec.".into());
                 }
 
-                next_rate = if extended_rate > 0 {
-                    extended_rate
-                } else {
-                    rate_of(block[0])
-                };
-                next_channels = if extended_rate > 0 {
-                    extended_channels
-                } else {
-                    1
-                };
+                next_rate = if extended_rate > 0 { extended_rate } else { rate_of(block[0]) };
+                next_channels = if extended_rate > 0 { extended_channels } else { 1 };
                 next_bits = 8;
                 extended_rate = 0;
                 block[2..].to_vec()
@@ -146,8 +136,7 @@ pub fn convert(data: &[u8]) -> Result<Vec<u8>, String> {
                 }
 
                 extended_channels = i64::from(block[3]) + 1;
-                extended_rate =
-                    256_000_000 / ((65536 - u16_le(block, 0) as i64) * extended_channels);
+                extended_rate = 256_000_000 / ((65536 - u16_le(block, 0) as i64) * extended_channels);
                 continue;
             }
             9 => {
@@ -173,19 +162,14 @@ pub fn convert(data: &[u8]) -> Result<Vec<u8>, String> {
             return Err("Invalid Creative Voice sample format.".into());
         }
 
-        if !samples.is_empty()
-            && (rate != next_rate || channels != next_channels || bits != next_bits)
-        {
+        if !samples.is_empty() && (rate != next_rate || channels != next_channels || bits != next_bits) {
             return Err("Creative Voice changes sample format within one sound.".into());
         }
 
         (rate, channels, bits) = (next_rate, next_channels, next_bits);
         let frame = (channels * (bits / 8)) as usize;
 
-        if frame == 0
-            || !pcm.len().is_multiple_of(frame)
-            || samples.len() + pcm.len() > MAX_PCM_BYTES
-        {
+        if frame == 0 || !pcm.len().is_multiple_of(frame) || samples.len() + pcm.len() > MAX_PCM_BYTES {
             return Err("Invalid or oversized Creative Voice sample data.".into());
         }
 
@@ -230,22 +214,14 @@ mod tests {
     #[test]
     fn sample_blocks_and_endless_loops_convert() {
         // repeat forever: 4 samples of 8-bit PCM at 1,000,000 / (256 - 156) = 10,000 Hz
-        let data = voc(&[
-            6, 2, 0, 0, 0xff, 0xff, 1, 6, 0, 0, 156, 0, 1, 2, 3, 4, 7, 0, 0, 0, 0,
-        ]);
+        let data = voc(&[6, 2, 0, 0, 0xff, 0xff, 1, 6, 0, 0, 156, 0, 1, 2, 3, 4, 7, 0, 0, 0, 0]);
         let wave = convert(&data).unwrap();
         assert_eq!(&wave[wave.len() - 68..wave.len() - 64], b"smpl");
-        assert_eq!(
-            u32::from_le_bytes([wave[24], wave[25], wave[26], wave[27]]),
-            10_000
-        );
+        assert_eq!(u32::from_le_bytes([wave[24], wave[25], wave[26], wave[27]]), 10_000);
         assert_eq!(
             convert(&voc(&[2, 1, 0, 0, 0])).unwrap_err(),
             "Creative Voice continuation has no sample format."
         );
-        assert_eq!(
-            convert(b"RIFF").unwrap_err(),
-            "Missing Creative Voice header."
-        );
+        assert_eq!(convert(b"RIFF").unwrap_err(), "Missing Creative Voice header.");
     }
 }

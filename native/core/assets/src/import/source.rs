@@ -16,8 +16,7 @@ const DISC_IMAGES: [&str; 6] = ["iso", "cue", "img", "toast", "cdr", "dmg"];
 const ARCHIVES: [&str; 4] = ["pkg", "zip", "7z", "rar"];
 const EXECUTABLES: [&str; 3] = ["exe", "dll", "wad"];
 const LOOSE: [&str; 17] = [
-    "wav", "mid", "midi", "xmi", "voc", "bmp", "pal", "dat", "idx", "mif", "hed", "bin", "raw",
-    "rsc", "spr", "scl", "db",
+    "wav", "mid", "midi", "xmi", "voc", "bmp", "pal", "dat", "idx", "mif", "hed", "bin", "raw", "rsc", "spr", "scl", "db",
 ];
 const APPLE_HEADERS: [u32; 2] = [0x0005_1607, 0x0005_1600];
 /// The string resources of the game programs.
@@ -167,7 +166,9 @@ impl Source {
 
         for file in source.files.clone() {
             if source.bytes_read >= MAX_SOURCE_BYTES {
-                source.warnings.push("The asset scan reached its memory limit. Select one game's folder to include the remaining files.".into());
+                source
+                    .warnings
+                    .push("The asset scan reached its memory limit. Select one game's folder to include the remaining files.".into());
                 break;
             }
 
@@ -185,11 +186,7 @@ impl Source {
             0 => {}
             _ => {
                 let folder = source.preferred_folder();
-                let names: Vec<String> = source
-                    .platforms
-                    .iter()
-                    .map(|(family, _)| family.clone())
-                    .collect();
+                let names: Vec<String> = source.platforms.iter().map(|(family, _)| family.clone()).collect();
 
                 if !folder.is_empty() && folder != source.root && selected_path.is_dir() {
                     let mut chosen = Self::scan(&folder);
@@ -225,13 +222,13 @@ impl Source {
 
     fn list(&mut self, folder: &str, depth: usize) {
         if depth > MAX_DEPTH || self.files.len() >= MAX_FILES {
-            self.warnings.push("The folder scan reached its limit. Select a smaller game folder to include the remaining files.".into());
+            self.warnings
+                .push("The folder scan reached its limit. Select a smaller game folder to include the remaining files.".into());
             return;
         }
 
         let Ok(entries) = fs::read_dir(folder) else {
-            self.warnings
-                .push(format!("Cannot read folder: {}", file_name(folder)));
+            self.warnings.push(format!("Cannot read folder: {}", file_name(folder)));
             return;
         };
 
@@ -285,8 +282,7 @@ impl Source {
         }
 
         let mut bytes = Vec::with_capacity(length as usize);
-        file.read_to_end(&mut bytes)
-            .map_err(|_| ReadProblem::Unreadable)?;
+        file.read_to_end(&mut bytes).map_err(|_| ReadProblem::Unreadable)?;
         self.bytes_read += bytes.len() as u64;
 
         Ok(bytes)
@@ -298,8 +294,7 @@ impl Source {
         let extension = extension(&name);
         let resource_fork = extension == "rsrc" || name.starts_with("._");
         let executable = EXECUTABLES.contains(&extension.as_str());
-        let mac_candidate =
-            extension == "bin" || upper.contains("SIMCITY") || upper.contains("SIM CITY");
+        let mac_candidate = extension == "bin" || upper.contains("SIMCITY") || upper.contains("SIM CITY");
         let loose = LOOSE.contains(&extension.as_str());
 
         if !explicitly_selected && !resource_fork && !executable && !loose && !mac_candidate {
@@ -312,16 +307,13 @@ impl Source {
                 return self.warnings.push(format!("Cannot read {name}"));
             }
             Err(ReadProblem::TooLarge) => {
-                return self.warnings.push(format!(
-                    "Skipped large container {name}. Select its extracted files."
-                ));
+                return self
+                    .warnings
+                    .push(format!("Skipped large container {name}. Select its extracted files."));
             }
         };
 
-        let apple = bytes.len() >= 4
-            && APPLE_HEADERS.contains(&u32::from_be_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3],
-            ]));
+        let apple = bytes.len() >= 4 && APPLE_HEADERS.contains(&u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]));
 
         if resource_fork || apple {
             return self.accept(Container::macintosh(&bytes), "Macintosh", &name, path);
@@ -354,12 +346,7 @@ impl Source {
 
                 // setup programs and support DLLs can use another Windows ABI; their
                 // resource tables alone must not mark a second game platform
-                self.accept(
-                    parsed,
-                    if named || strings { family } else { "" },
-                    &name,
-                    path,
-                );
+                self.accept(parsed, if named || strings { family } else { "" }, &name, path);
             } else if explicitly_selected && upper != "SC2000.EXE" && upper != "SC2K.EXE" {
                 self.warnings.push(format!("{name}: {}", parsed.error));
             }
@@ -383,9 +370,7 @@ impl Source {
             if Path::new(&fork_path).is_file() {
                 match self.read_bytes(&fork_path) {
                     Ok(fork) => self.accept(Container::macintosh(&fork), "Macintosh", &name, path),
-                    Err(_) => self
-                        .warnings
-                        .push(format!("Cannot read the resource fork for {name}")),
+                    Err(_) => self.warnings.push(format!("Cannot read the resource fork for {name}")),
                 }
 
                 return;
@@ -422,21 +407,19 @@ impl Source {
             }
         }
 
-        self.records
-            .extend(parsed.resources.into_iter().map(|resource| Record {
-                name: resource.name,
-                kind: resource.kind,
-                id: resource.id,
-                bytes: resource.bytes,
-                source: path.to_string(),
-            }));
+        self.records.extend(parsed.resources.into_iter().map(|resource| Record {
+            name: resource.name,
+            kind: resource.kind,
+            id: resource.id,
+            bytes: resource.bytes,
+            source: path.to_string(),
+        }));
     }
 
     /// The folder of the preferred version when no other version is inside it.
     fn preferred_folder(&self) -> String {
         for family in PLATFORM_PREFERENCE {
-            let Some((_, folders)) = self.platforms.iter().find(|(known, _)| known == family)
-            else {
+            let Some((_, folders)) = self.platforms.iter().find(|(known, _)| known == family) else {
                 continue;
             };
 
@@ -469,11 +452,7 @@ fn common_folder(paths: &[String]) -> String {
     for path in paths {
         while !common.is_empty() && *path != common && !path.starts_with(&format!("{common}/")) {
             let parent = base_dir(&common);
-            common = if parent == common {
-                String::new()
-            } else {
-                parent
-            };
+            common = if parent == common { String::new() } else { parent };
         }
     }
 

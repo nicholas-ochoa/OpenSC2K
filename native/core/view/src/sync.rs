@@ -14,11 +14,7 @@ fn sync_bytes(target: &mut [u8], source: &[u8], changed: &mut Vec<usize>, cells:
         return;
     }
 
-    for (block, (a, b)) in target
-        .chunks_mut(BLOCK)
-        .zip(source.chunks(BLOCK))
-        .enumerate()
-    {
+    for (block, (a, b)) in target.chunks_mut(BLOCK).zip(source.chunks(BLOCK)).enumerate() {
         if a == b {
             continue;
         }
@@ -38,11 +34,7 @@ fn sync_bytes(target: &mut [u8], source: &[u8], changed: &mut Vec<usize>, cells:
 pub fn sync(painter: &mut PainterCity, city: &City, altitude_bytes: &mut Vec<u8>) -> Vec<usize> {
     let cells = painter.altitude.len();
     let mut changed = Vec::new();
-    let chunk = |id: &str| {
-        city.chunk(id)
-            .map(|chunk| chunk.data.as_slice())
-            .unwrap_or_default()
-    };
+    let chunk = |id: &str| city.chunk(id).map(|chunk| chunk.data.as_slice()).unwrap_or_default();
 
     sync_bytes(&mut painter.terrain, chunk("XTER"), &mut changed, cells);
     sync_bytes(&mut painter.buildings, chunk("XBLD"), &mut changed, cells);
@@ -62,11 +54,7 @@ pub fn sync(painter: &mut PainterCity, city: &City, altitude_bytes: &mut Vec<u8>
             painter.altitude.iter_mut().for_each(|word| *word = -1);
         }
 
-        for (block, (words, cached)) in altitude
-            .chunks(BLOCK * 2)
-            .zip(altitude_bytes.chunks_mut(BLOCK * 2))
-            .enumerate()
-        {
+        for (block, (words, cached)) in altitude.chunks(BLOCK * 2).zip(altitude_bytes.chunks_mut(BLOCK * 2)).enumerate() {
             if words == cached {
                 continue;
             }
@@ -88,10 +76,7 @@ pub fn sync(painter: &mut PainterCity, city: &City, altitude_bytes: &mut Vec<u8>
 
     let traffic = chunk("XTRF");
 
-    if !traffic.is_empty()
-        && painter.traffic != traffic
-        && traffic.len() as i64 == city.decoded_size("XTRF")
-    {
+    if !traffic.is_empty() && painter.traffic != traffic && traffic.len() as i64 == city.decoded_size("XTRF") {
         let side = traffic.len().isqrt().max(1);
         let scale = (painter.edge as usize / side).max(1);
         let old = std::mem::replace(&mut painter.traffic, traffic.to_vec());
@@ -124,19 +109,12 @@ pub fn sync(painter: &mut PainterCity, city: &City, altitude_bytes: &mut Vec<u8>
 
 /// Traffic sprites change only at these density limits.
 fn traffic_band(density: u8) -> usize {
-    [28, 56, 85, 170]
-        .iter()
-        .filter(|limit| density > **limit)
-        .count()
+    [28, 56, 85, 170].iter().filter(|limit| density > **limit).count()
 }
 
 /// The sprite offsets of the stationary dispatch units by map cell, as
 /// `sc2k_render::City::set_dispatch` reads them from XTHG and XTXT.
-pub fn dispatch_sprites(
-    things: &[u8],
-    text: &[u8],
-    edge: i32,
-) -> std::collections::HashMap<usize, i32> {
+pub fn dispatch_sprites(things: &[u8], text: &[u8], edge: i32) -> std::collections::HashMap<usize, i32> {
     use sc2k_sim::sim::{overlay, things as records};
 
     let mut result = std::collections::HashMap::new();

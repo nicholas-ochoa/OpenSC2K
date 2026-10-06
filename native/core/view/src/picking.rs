@@ -2,18 +2,14 @@
 //! altitude gives candidate tiles; the front-most tile whose visible surface
 //! holds the point wins. This is IsometricGeometry.screen_to_tile.
 
-use super::geometry::{
-    ALTITUDE_STEP, HALF_HEIGHT, HALF_WIDTH, SIDE_MARGIN, TILE_HEIGHT, TILE_WIDTH, TOP_MARGIN,
-};
+use super::geometry::{ALTITUDE_STEP, HALF_HEIGHT, HALF_WIDTH, SIDE_MARGIN, TILE_HEIGHT, TILE_WIDTH, TOP_MARGIN};
 use sc2k_render::City;
 use std::collections::BTreeSet;
 
 const DEEP_WATER_FIRST: u8 = 0x10;
 const SHAPE_MASK: u8 = 0x0f;
 /// Each bit raises one dry-terrain corner in top, right, bottom, left order.
-const CORNER_MASKS: [u8; 15] = [
-    0x0, 0x9, 0x3, 0x6, 0xc, 0xb, 0x7, 0xe, 0xd, 0x1, 0x2, 0x4, 0x8, 0xf, 0x0,
-];
+const CORNER_MASKS: [u8; 15] = [0x0, 0x9, 0x3, 0x6, 0xc, 0xb, 0x7, 0xe, 0xd, 0x1, 0x2, 0x4, 0x8, 0xf, 0x0];
 const WATER_FLAG: u8 = 4;
 
 fn land(city: &City, index: usize) -> i32 {
@@ -26,11 +22,7 @@ fn water(city: &City, index: usize) -> i32 {
 
 fn visible(city: &City, index: usize) -> bool {
     let wet = city.flags[index] & WATER_FLAG != 0;
-    let height = if wet {
-        water(city, index)
-    } else {
-        land(city, index)
-    };
+    let height = if wet { water(city, index) } else { land(city, index) };
 
     city.visible >= 32 || height < city.visible
 }
@@ -50,22 +42,13 @@ pub fn surface_polygon(city: &City, x: i32, y: i32) -> [(f64, f64); 4] {
     );
     let mut polygon = [
         (left.0 + f64::from(HALF_WIDTH), left.1),
-        (
-            left.0 + f64::from(TILE_WIDTH),
-            left.1 + f64::from(HALF_HEIGHT),
-        ),
-        (
-            left.0 + f64::from(HALF_WIDTH),
-            left.1 + f64::from(TILE_HEIGHT - 1),
-        ),
+        (left.0 + f64::from(TILE_WIDTH), left.1 + f64::from(HALF_HEIGHT)),
+        (left.0 + f64::from(HALF_WIDTH), left.1 + f64::from(TILE_HEIGHT - 1)),
         (left.0, left.1 + f64::from(HALF_HEIGHT)),
     ];
 
     if terrain < DEEP_WATER_FIRST {
-        let raised = CORNER_MASKS
-            .get(usize::from(terrain & SHAPE_MASK))
-            .copied()
-            .unwrap_or(0);
+        let raised = CORNER_MASKS.get(usize::from(terrain & SHAPE_MASK)).copied().unwrap_or(0);
 
         for (corner, point) in polygon.iter_mut().enumerate() {
             if raised & (1 << corner) != 0 {
@@ -105,13 +88,8 @@ pub fn tile_at(city: &City, point: (f64, f64)) -> Option<(i32, i32)> {
     let mut candidates = BTreeSet::new();
 
     for altitude in 0..32 {
-        let sum = (point.1 - f64::from(TOP_MARGIN) - f64::from(HALF_HEIGHT)
-            + f64::from(altitude * ALTITUDE_STEP))
-            / f64::from(HALF_HEIGHT);
-        let center = (
-            ((sum + difference) * 0.5).round() as i32,
-            ((sum - difference) * 0.5).round() as i32,
-        );
+        let sum = (point.1 - f64::from(TOP_MARGIN) - f64::from(HALF_HEIGHT) + f64::from(altitude * ALTITUDE_STEP)) / f64::from(HALF_HEIGHT);
+        let center = (((sum + difference) * 0.5).round() as i32, ((sum - difference) * 0.5).round() as i32);
 
         for dx in -1..=1 {
             for dy in -1..=1 {

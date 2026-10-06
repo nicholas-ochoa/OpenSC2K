@@ -7,8 +7,7 @@ use sc2k_formats::json::{Object, Value};
 const CURRENT: [(&str, i64); 4] = [("graphics", 1), ("sound", 1), ("music", 1), ("data", 1)];
 /// Source platforms whose content changed alone. DOS and Macintosh graphics
 /// use the Windows palette layout from 2; DOS graphics have the toolbar from 3.
-const CURRENT_BY_PLATFORM: [(&str, &str, i64); 2] =
-    [("graphics", "DOS", 3), ("graphics", "Macintosh", 2)];
+const CURRENT_BY_PLATFORM: [(&str, &str, i64); 2] = [("graphics", "DOS", 3), ("graphics", "Macintosh", 2)];
 /// Packs that importers wrote before they recorded a revision.
 pub const UNRECORDED: i64 = 1;
 /// A pack that a person made, not an importer.
@@ -44,12 +43,7 @@ pub fn current(kind: &str, platform: &str) -> i64 {
         .iter()
         .find(|(known, source, _)| *known == kind && *source == platform)
         .map(|(_, _, revision)| *revision)
-        .or_else(|| {
-            CURRENT
-                .iter()
-                .find(|(known, _)| *known == kind)
-                .map(|(_, revision)| *revision)
-        })
+        .or_else(|| CURRENT.iter().find(|(known, _)| *known == kind).map(|(_, revision)| *revision))
         .unwrap_or(0)
 }
 
@@ -73,10 +67,6 @@ mod tests {
         assert_eq!(read(&manifest(r#"{"source_platform": "DOS"}"#)), UNRECORDED);
         assert_eq!(read(&manifest(r#"{"name": "Mine"}"#)), NOT_IMPORTED);
         assert_eq!(current("graphics", "DOS"), 3);
-        assert!(
-            is_outdated("graphics", 2, "DOS")
-                && !is_outdated("sound", 1, "DOS")
-                && !is_outdated("data", NOT_IMPORTED, "")
-        );
+        assert!(is_outdated("graphics", 2, "DOS") && !is_outdated("sound", 1, "DOS") && !is_outdated("data", NOT_IMPORTED, ""));
     }
 }

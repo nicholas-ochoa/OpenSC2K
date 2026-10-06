@@ -23,20 +23,14 @@ impl Node {
 
     pub fn get(&self, key: &str) -> Option<&Node> {
         match self {
-            Node::Object(entries) => entries
-                .iter()
-                .find(|(name, _)| name == key)
-                .map(|(_, value)| value),
+            Node::Object(entries) => entries.iter().find(|(name, _)| name == key).map(|(_, value)| value),
             _ => None,
         }
     }
 
     pub fn get_mut(&mut self, key: &str) -> Option<&mut Node> {
         match self {
-            Node::Object(entries) => entries
-                .iter_mut()
-                .find(|(name, _)| name == key)
-                .map(|(_, value)| value),
+            Node::Object(entries) => entries.iter_mut().find(|(name, _)| name == key).map(|(_, value)| value),
             _ => None,
         }
     }

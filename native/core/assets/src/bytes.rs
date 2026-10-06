@@ -24,8 +24,5 @@ pub fn read_u32_le(data: &[u8], at: usize) -> u32 {
 /// Bytes as Latin-1 text, as Godot's `get_string_from_ascii`. The text ends at
 /// the first zero byte.
 pub fn latin1(data: &[u8]) -> String {
-    data.iter()
-        .take_while(|&&byte| byte != 0)
-        .map(|&byte| char::from(byte))
-        .collect()
+    data.iter().take_while(|&&byte| byte != 0).map(|&byte| char::from(byte)).collect()
 }

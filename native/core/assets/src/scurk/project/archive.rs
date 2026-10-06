@@ -3,10 +3,7 @@
 //! keeps the first error that stops it, as the script did.
 
 use super::text::{basename, extension, is_identifier};
-use super::{
-    MAX_CHECKPOINTS, MAX_DATA_BYTES, MAX_DOCUMENTS, MAX_FILE_BYTES, MAX_LAYERS, MAX_MIF_BYTES,
-    MAX_RESOURCES, MAX_STAMPS,
-};
+use super::{MAX_CHECKPOINTS, MAX_DATA_BYTES, MAX_DOCUMENTS, MAX_FILE_BYTES, MAX_LAYERS, MAX_MIF_BYTES, MAX_RESOURCES, MAX_STAMPS};
 use super::{Node, index_palette, integer_in, valid_dimensions};
 use sc2k_formats::json::{self, Object, Value};
 use sc2k_formats::{png, zip};
@@ -63,13 +60,7 @@ pub fn encode(record: &Node, palette_rgb: &[u8]) -> Result<Vec<u8>, String> {
         error: String::new(),
     };
     let mut project = encoder.snapshot(record, "current");
-    encoder.add(
-        ORIGINAL_MIF,
-        record
-            .get("original_mif")
-            .map(Node::as_bytes)
-            .unwrap_or_default(),
-    );
+    encoder.add(ORIGINAL_MIF, record.get("original_mif").map(Node::as_bytes).unwrap_or_default());
     project.set("original_mif", Node::Str(ORIGINAL_MIF.into()));
 
     if let Some(Node::Array(checkpoints)) = project.get_mut("checkpoints") {
@@ -96,48 +87,26 @@ pub fn encode(record: &Node, palette_rgb: &[u8]) -> Result<Vec<u8>, String> {
     let colors = encoder
         .palette
         .chunks_exact(3)
-        .map(|rgb| {
-            Value::Array(
-                rgb.iter()
-                    .map(|channel| Value::Int(i64::from(*channel)))
-                    .collect(),
-            )
-        })
+        .map(|rgb| Value::Array(rgb.iter().map(|channel| Value::Int(i64::from(*channel))).collect()))
         .collect();
     let mut palette = Object::new();
     palette.insert(
         "kind",
-        Value::String(
-            if palette_rgb.is_empty() {
-                INDEX_KIND
-            } else {
-                RGB_KIND
-            }
-            .into(),
-        ),
+        Value::String(if palette_rgb.is_empty() { INDEX_KIND } else { RGB_KIND }.into()),
     );
     palette.insert("colors", Value::Array(colors));
-    encoder.add(
-        PALETTE,
-        json::stringify(&Value::Object(palette), JSON_INDENT, true).as_bytes(),
-    );
+    encoder.add(PALETTE, json::stringify(&Value::Object(palette), JSON_INDENT, true).as_bytes());
 
     let mut manifest = Object::new();
     manifest.insert("format", Value::String(FORMAT.into()));
     manifest.insert("version", Value::Int(VERSION));
     manifest.insert("palette", Value::String(PALETTE.into()));
     manifest.insert("project", project.to_json());
-    encoder.add(
-        MANIFEST,
-        json::stringify(&Value::Object(manifest), JSON_INDENT, true).as_bytes(),
-    );
+    encoder.add(MANIFEST, json::stringify(&Value::Object(manifest), JSON_INDENT, true).as_bytes());
 
     let mut members = encoder.members;
     members.sort_by(|a, b| a.0.cmp(&b.0));
-    let borrowed: Vec<(String, &[u8])> = members
-        .iter()
-        .map(|(name, data)| (name.clone(), data.as_slice()))
-        .collect();
+    let borrowed: Vec<(String, &[u8])> = members.iter().map(|(name, data)| (name.clone(), data.as_slice())).collect();
 
     zip::encode(&borrowed, MAX_FILE_BYTES, MAX_FILE_BYTES, false)
 }
@@ -171,10 +140,7 @@ impl Encoder {
                 .iter()
                 .map(|&color| if color == -1 { MASK_CLEAR } else { MASK_OPAQUE })
                 .collect();
-            image
-                .iter_mut()
-                .filter(|color| **color == -1)
-                .for_each(|color| *color = 0);
+            image.iter_mut().filter(|color| **color == -1).for_each(|color| *color = 0);
 
             match png::encode_indexed(width, height, &mask, &index_palette()) {
                 Ok(bytes) => {
@@ -207,13 +173,7 @@ impl Encoder {
     fn snapshot(&mut self, value: &Node, prefix: &str) -> Node {
         let mut record = value.clone();
         let mif_path = format!("{prefix}/current.mif");
-        self.add(
-            &mif_path,
-            value
-                .get("current_mif")
-                .map(Node::as_bytes)
-                .unwrap_or_default(),
-        );
+        self.add(&mif_path, value.get("current_mif").map(Node::as_bytes).unwrap_or_default());
         record.set("current_mif", Node::Str(mif_path));
 
         let mut keys = value.get("documents").map(Node::keys).unwrap_or_default();
@@ -221,40 +181,19 @@ impl Encoder {
 
         for (index, key) in keys.iter().enumerate() {
             let directory = format!("{prefix}/documents/{index:04}");
-            let Some(document) = record
-                .get_mut("documents")
-                .and_then(|documents| documents.get_mut(key))
-            else {
+            let Some(document) = record.get_mut("documents").and_then(|documents| documents.get_mut(key)) else {
                 continue;
             };
             let width = document.get("width").map(Node::to_int).unwrap_or_default();
             let height = document.get("height").map(Node::to_int).unwrap_or_default();
-            let original = document
-                .get("original_pixels")
-                .map(Node::as_pixels)
-                .unwrap_or_default()
-                .to_vec();
-            let descriptor = self.pixels(
-                &original,
-                width,
-                height,
-                &format!("{directory}/original.png"),
-            );
+            let original = document.get("original_pixels").map(Node::as_pixels).unwrap_or_default().to_vec();
+            let descriptor = self.pixels(&original, width, height, &format!("{directory}/original.png"));
             document.set("original_pixels", descriptor);
 
             if let Some(Node::Array(layers)) = document.get_mut("layers") {
                 for (layer_index, layer) in layers.iter_mut().enumerate() {
-                    let pixels = layer
-                        .get("pixels")
-                        .map(Node::as_pixels)
-                        .unwrap_or_default()
-                        .to_vec();
-                    let descriptor = self.pixels(
-                        &pixels,
-                        width,
-                        height,
-                        &format!("{directory}/layers/{layer_index:04}.png"),
-                    );
+                    let pixels = layer.get("pixels").map(Node::as_pixels).unwrap_or_default().to_vec();
+                    let descriptor = self.pixels(&pixels, width, height, &format!("{directory}/layers/{layer_index:04}.png"));
                     layer.set("pixels", descriptor);
                 }
             }
@@ -266,10 +205,7 @@ impl Encoder {
         for (index, key) in keys.iter().enumerate() {
             let mut kind = extension(key).to_lowercase();
 
-            if kind.is_empty()
-                || kind.chars().count() > MAX_EXTENSION_LENGTH
-                || !is_identifier(&kind)
-            {
+            if kind.is_empty() || kind.chars().count() > MAX_EXTENSION_LENGTH || !is_identifier(&kind) {
                 kind = "bin".into();
             }
 
@@ -290,17 +226,8 @@ impl Encoder {
             for (index, stamp) in stamps.iter_mut().enumerate() {
                 let width = stamp.get("width").map(Node::to_int).unwrap_or_default();
                 let height = stamp.get("height").map(Node::to_int).unwrap_or_default();
-                let pixels = stamp
-                    .get("pixels")
-                    .map(Node::as_pixels)
-                    .unwrap_or_default()
-                    .to_vec();
-                let descriptor = self.pixels(
-                    &pixels,
-                    width,
-                    height,
-                    &format!("{prefix}/stamps/{index:04}.png"),
-                );
+                let pixels = stamp.get("pixels").map(Node::as_pixels).unwrap_or_default().to_vec();
+                let descriptor = self.pixels(&pixels, width, height, &format!("{prefix}/stamps/{index:04}.png"));
                 stamp.set("pixels", descriptor);
             }
         }
@@ -335,27 +262,17 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
         return Err(decoder.error);
     }
 
-    if manifest.get("format").and_then(Node::as_str) != Some(FORMAT)
-        || !integer_in(manifest.get("version"), VERSION, VERSION)
-    {
+    if manifest.get("format").and_then(Node::as_str) != Some(FORMAT) || !integer_in(manifest.get("version"), VERSION, VERSION) {
         return Err("The project archive format or version is not supported.".into());
     }
 
-    if manifest
-        .keys()
-        .iter()
-        .any(|key| !MANIFEST_FIELDS.contains(&key.as_str()))
-    {
+    if manifest.keys().iter().any(|key| !MANIFEST_FIELDS.contains(&key.as_str())) {
         return Err("The project archive manifest has an unsupported field.".into());
     }
 
     let palette = decoder.json(manifest.get("palette"));
 
-    if palette
-        .keys()
-        .iter()
-        .any(|key| !PALETTE_FIELDS.contains(&key.as_str()))
-    {
+    if palette.keys().iter().any(|key| !PALETTE_FIELDS.contains(&key.as_str())) {
         return Err("The project palette has an unsupported field.".into());
     }
 
@@ -394,10 +311,7 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
         return Err("The project index palette is invalid.".into());
     }
 
-    let Some(source) = manifest
-        .get("project")
-        .filter(|project| project.is_object())
-    else {
+    let Some(source) = manifest.get("project").filter(|project| project.is_object()) else {
         return Err("The project record is invalid.".into());
     };
 
@@ -414,10 +328,7 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
         None => {}
         Some(Node::Array(checkpoints)) if checkpoints.len() <= MAX_CHECKPOINTS => {
             for entry in checkpoints.iter_mut() {
-                let Some(snapshot) = entry
-                    .get("snapshot")
-                    .filter(|snapshot| snapshot.is_object())
-                else {
+                let Some(snapshot) = entry.get("snapshot").filter(|snapshot| snapshot.is_object()) else {
                     return Err("The project checkpoint is invalid.".into());
                 };
                 let snapshot = decoder.snapshot(&snapshot.clone());
@@ -435,26 +346,13 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
         return Err(decoder.error);
     }
 
-    if let Some((path, _)) = decoder
-        .members
-        .iter()
-        .find(|(path, _)| !decoder.used.contains(path))
-    {
-        return Err(format!(
-            "The project archive contains an unreferenced member: {path}"
-        ));
+    if let Some((path, _)) = decoder.members.iter().find(|(path, _)| !decoder.used.contains(path)) {
+        return Err(format!("The project archive contains an unreferenced member: {path}"));
     }
 
-    let palette_rgb = if kind == RGB_KIND {
-        decoder.palette_rgb
-    } else {
-        Vec::new()
-    };
+    let palette_rgb = if kind == RGB_KIND { decoder.palette_rgb } else { Vec::new() };
 
-    Ok(Decoded {
-        record,
-        palette_rgb,
-    })
+    Ok(Decoded { record, palette_rgb })
 }
 
 struct Decoder {
@@ -493,10 +391,7 @@ impl Decoder {
             return Node::empty_object();
         }
 
-        let end = bytes
-            .iter()
-            .position(|byte| *byte == 0)
-            .unwrap_or(bytes.len());
+        let end = bytes.iter().position(|byte| *byte == 0).unwrap_or(bytes.len());
         let text = String::from_utf8_lossy(&bytes[..end]);
 
         match json::parse(&text) {
@@ -550,10 +445,7 @@ impl Decoder {
             ]))
         };
 
-        if bytes.len() < PNG_HEADER_SIZE
-            || dimension(PNG_WIDTH_OFFSET) != width
-            || dimension(PNG_HEIGHT_OFFSET) != height
-        {
+        if bytes.len() < PNG_HEADER_SIZE || dimension(PNG_WIDTH_OFFSET) != width || dimension(PNG_HEIGHT_OFFSET) != height {
             self.error = "A project PNG has the wrong dimensions.".into();
 
             return Vec::new();
@@ -575,9 +467,7 @@ impl Decoder {
     }
 
     fn pixels(&mut self, value: Option<&Node>, width: i64, height: i64) -> Vec<i32> {
-        let Some(value) =
-            value.filter(|value| value.is_object() && self.charge(width * height * 2))
-        else {
+        let Some(value) = value.filter(|value| value.is_object() && self.charge(width * height * 2)) else {
             if self.error.is_empty() {
                 self.error = "The project pixel record is invalid.".into();
             }
@@ -585,11 +475,7 @@ impl Decoder {
             return Vec::new();
         };
 
-        if value
-            .keys()
-            .iter()
-            .any(|key| !PIXEL_FIELDS.contains(&key.as_str()))
-        {
+        if value.keys().iter().any(|key| !PIXEL_FIELDS.contains(&key.as_str())) {
             self.error = "The project pixel record has an unsupported field.".into();
 
             return Vec::new();
@@ -640,16 +526,13 @@ impl Decoder {
 
             if let Node::Object(entries) = documents {
                 for (_, document) in entries.iter_mut() {
-                    if !document.is_object()
-                        || !valid_dimensions(document.get("width"), document.get("height"))
-                    {
+                    if !document.is_object() || !valid_dimensions(document.get("width"), document.get("height")) {
                         self.error = "The project document size is invalid.".into();
 
                         return Node::empty_object();
                     }
 
-                    if !matches!(document.get("layers"), Some(Node::Array(layers)) if !layers.is_empty() && layers.len() <= MAX_LAYERS)
-                    {
+                    if !matches!(document.get("layers"), Some(Node::Array(layers)) if !layers.is_empty() && layers.len() <= MAX_LAYERS) {
                         self.error = "The project layers are invalid.".into();
 
                         return Node::empty_object();
@@ -657,11 +540,7 @@ impl Decoder {
 
                     let width = document.get("width").map(Node::to_int).unwrap_or_default();
                     let height = document.get("height").map(Node::to_int).unwrap_or_default();
-                    let original = self.pixels(
-                        document.get("original_pixels").cloned().as_ref(),
-                        width,
-                        height,
-                    );
+                    let original = self.pixels(document.get("original_pixels").cloned().as_ref(), width, height);
                     document.set("original_pixels", Node::Pixels(original));
 
                     if let Some(Node::Array(layers)) = document.get_mut("layers") {
@@ -672,8 +551,7 @@ impl Decoder {
                                 return Node::empty_object();
                             }
 
-                            let pixels =
-                                self.pixels(layer.get("pixels").cloned().as_ref(), width, height);
+                            let pixels = self.pixels(layer.get("pixels").cloned().as_ref(), width, height);
                             layer.set("pixels", Node::Pixels(pixels));
 
                             if !self.error.is_empty() {
@@ -714,8 +592,7 @@ impl Decoder {
             }
 
             for stamp in items.iter_mut() {
-                if !stamp.is_object() || !valid_dimensions(stamp.get("width"), stamp.get("height"))
-                {
+                if !stamp.is_object() || !valid_dimensions(stamp.get("width"), stamp.get("height")) {
                     self.error = "The project stamp size is invalid.".into();
 
                     return Node::empty_object();

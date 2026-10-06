@@ -27,10 +27,7 @@ impl Viewport {
     }
 
     pub fn contains(&self, point: (f64, f64)) -> bool {
-        point.0 >= self.x
-            && point.1 >= self.y
-            && point.0 < self.x + self.width
-            && point.1 < self.y + self.height
+        point.0 >= self.x && point.1 >= self.y && point.0 < self.x + self.width && point.1 < self.y + self.height
     }
 }
 
@@ -77,12 +74,7 @@ impl Camera {
         let padding = f64::from(TOP_MARGIN - SIDE_MARGIN);
         let (width, height) = view_size(VIEW_LARGE, self.edge);
 
-        (
-            -padding,
-            0.0,
-            f64::from(width) + padding * 2.0,
-            f64::from(height),
-        )
+        (-padding, 0.0, f64::from(width) + padding * 2.0, f64::from(height))
     }
 
     /// The screen position of source point (0, 0).
@@ -90,10 +82,7 @@ impl Camera {
         let (cx, cy) = self.viewport.center();
         let scale = self.scale();
 
-        (
-            (cx - self.center.0 * scale).round(),
-            (cy - self.center.1 * scale).round(),
-        )
+        ((cx - self.center.0 * scale).round(), (cy - self.center.1 * scale).round())
     }
 
     pub fn screen_to_source(&self, point: (f64, f64)) -> (f64, f64) {
@@ -116,10 +105,7 @@ impl Camera {
         let (_, _, width, height) = self.bounds();
 
         for _ in 0..MAXIMUM_FIT_ZOOM_LEVELS {
-            let shown = (
-                width * levels[0] * self.map_pixel_ratio,
-                height * levels[0] * self.map_pixel_ratio,
-            );
+            let shown = (width * levels[0] * self.map_pixel_ratio, height * levels[0] * self.map_pixel_ratio);
 
             if shown.0 <= self.viewport.width && shown.1 <= self.viewport.height {
                 break;
@@ -159,10 +145,7 @@ impl Camera {
         self.zoom = levels[new];
         let (cx, cy) = self.viewport.center();
         let scale = self.scale();
-        self.center = (
-            source.0 + (cx - anchor.0) / scale,
-            source.1 + (cy - anchor.1) / scale,
-        );
+        self.center = (source.0 + (cx - anchor.0) / scale, source.1 + (cy - anchor.1) / scale);
         self.clamp();
 
         true
@@ -192,10 +175,7 @@ impl Camera {
     pub fn clamp(&mut self) {
         let (x, y, width, height) = self.bounds();
         let scale = self.scale();
-        let half = (
-            self.viewport.width / (scale * 2.0),
-            self.viewport.height / (scale * 2.0),
-        );
+        let half = (self.viewport.width / (scale * 2.0), self.viewport.height / (scale * 2.0));
         let clamp_axis = |value: f64, start: f64, size: f64, half: f64| {
             if half >= size / 2.0 {
                 start + size / 2.0
@@ -233,12 +213,7 @@ impl Camera {
         let (x, y) = self.screen_to_source((self.viewport.x, self.viewport.y));
         let scale = self.scale();
 
-        (
-            x,
-            y,
-            self.viewport.width / scale,
-            self.viewport.height / scale,
-        )
+        (x, y, self.viewport.width / scale, self.viewport.height / scale)
     }
 }
 

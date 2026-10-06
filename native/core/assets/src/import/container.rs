@@ -63,8 +63,7 @@ fn u32_be(data: &[u8], at: usize) -> usize {
 
 /// Text without leading and trailing whitespace and control characters.
 fn strip_edges(text: &str) -> String {
-    text.trim_matches(|character: char| character <= ' ')
-        .to_string()
+    text.trim_matches(|character: char| character <= ' ').to_string()
 }
 
 /// UTF-16LE text up to its first zero unit.
@@ -136,11 +135,7 @@ impl Container {
                 data.len()
             };
 
-            if name.is_empty()
-                || start < first
-                || end < start
-                || !has_range(data, start, end - start)
-            {
+            if name.is_empty() || start < first || end < start || !has_range(data, start, end - start) {
                 return Self::failed(&format!("Invalid asset directory entry {index}."));
             }
 
@@ -180,15 +175,9 @@ impl Container {
                 fork = &data[offset..offset + length];
                 break;
             }
-        } else if has_range(data, 0, MAC_BINARY_HEADER)
-            && data[0] == 0
-            && (1..=63).contains(&data[1])
-            && data[74] == 0
-            && data[82] == 0
-        {
+        } else if has_range(data, 0, MAC_BINARY_HEADER) && data[0] == 0 && (1..=63).contains(&data[1]) && data[74] == 0 && data[82] == 0 {
             // MacBinary stores a padded data fork before its resource fork
-            let offset = MAC_BINARY_HEADER
-                + u32_be(data, 83).div_ceil(MAC_BINARY_HEADER) * MAC_BINARY_HEADER;
+            let offset = MAC_BINARY_HEADER + u32_be(data, 83).div_ceil(MAC_BINARY_HEADER) * MAC_BINARY_HEADER;
             let length = u32_be(data, 87);
 
             if length > 0 && has_range(data, offset, length) {
@@ -207,10 +196,7 @@ impl Container {
         let (data_start, map_start) = (u32_be(fork, 0), u32_be(fork, 4));
         let (data_length, map_length) = (u32_be(fork, 8), u32_be(fork, 12));
 
-        if !has_range(fork, data_start, data_length)
-            || map_length < MAC_MAP_HEADER_SIZE
-            || !has_range(fork, map_start, map_length)
-        {
+        if !has_range(fork, data_start, data_length) || map_length < MAC_MAP_HEADER_SIZE || !has_range(fork, map_start, map_length) {
             return Self::failed("Invalid Macintosh resource map.");
         }
 
@@ -256,12 +242,7 @@ impl Container {
                     return Self::failed("The Macintosh resource data is truncated.");
                 }
 
-                result.push(
-                    format!("{kind}/{id}"),
-                    &fork[start + 4..start + 4 + length],
-                    kind.clone(),
-                    id,
-                );
+                result.push(format!("{kind}/{id}"), &fork[start + 4..start + 4 + length], kind.clone(), id);
             }
         }
 
@@ -307,9 +288,7 @@ impl Container {
         let root = pe_offset(data, sections, section_count, rva);
 
         match root {
-            Some(root) if rva != 0 => {
-                result.pe_directory(data, root, root, sections, section_count, &[], 0)
-            }
+            Some(root) if rva != 0 => result.pe_directory(data, root, root, sections, section_count, &[], 0),
             _ => return Self::failed("The executable contains no resource directory."),
         }
 
@@ -361,17 +340,8 @@ impl Container {
                     return self.fail("The NE resource data is truncated.");
                 }
 
-                let number = if id & 0x8000 != 0 {
-                    (id & 0x7fff) as i64
-                } else {
-                    -1
-                };
-                self.push(
-                    ne_name(data, table, end, id),
-                    &data[start..start + size],
-                    kind.clone(),
-                    number,
-                );
+                let number = if id & 0x8000 != 0 { (id & 0x7fff) as i64 } else { -1 };
+                self.push(ne_name(data, table, end, id), &data[start..start + size], kind.clone(), number);
             }
 
             cursor += count * NE_RECORD_SIZE;
@@ -414,9 +384,7 @@ impl Container {
             if identifier & PE_HIGH_BIT != 0 {
                 let text_start = root + (identifier & !PE_HIGH_BIT);
 
-                if !has_range(data, text_start, 2)
-                    || !has_range(data, text_start + 2, u16_le(data, text_start) * 2)
-                {
+                if !has_range(data, text_start, 2) || !has_range(data, text_start + 2, u16_le(data, text_start) * 2) {
                     return self.fail("The PE resource name is truncated.");
                 }
 
@@ -458,12 +426,7 @@ impl Container {
             } else {
                 -1
             };
-            self.push(
-                path[1].clone(),
-                &data[start..start + size],
-                path[0].clone(),
-                id,
-            );
+            self.push(path[1].clone(), &data[start..start + size], path[0].clone(), id);
         }
     }
 }
@@ -485,14 +448,9 @@ fn ne_name(data: &[u8], table: usize, end: usize, value: usize) -> String {
 fn pe_offset(data: &[u8], sections: usize, count: usize, rva: usize) -> Option<usize> {
     (0..count).find_map(|index| {
         let entry = sections + index * PE_SECTION_SIZE;
-        let (address, length, start) = (
-            u32_le(data, entry + 12),
-            u32_le(data, entry + 16),
-            u32_le(data, entry + 20),
-        );
+        let (address, length, start) = (u32_le(data, entry + 12), u32_le(data, entry + 16), u32_le(data, entry + 20));
 
-        (rva >= address && rva - address < length && has_range(data, start, length))
-            .then(|| start + rva - address)
+        (rva >= address && rva - address < length && has_range(data, start, length)).then(|| start + rva - address)
     })
 }
 
@@ -514,22 +472,13 @@ mod tests {
             .iter()
             .map(|resource| (resource.name.as_str(), resource.bytes.as_slice()))
             .collect();
-        assert_eq!(
-            names,
-            vec![("A.X", b"aa".as_slice()), ("B", b"bb".as_slice())]
-        );
-        assert_eq!(
-            Container::named_archive(&data[..10]).error,
-            "The asset directory is truncated."
-        );
+        assert_eq!(names, vec![("A.X", b"aa".as_slice()), ("B", b"bb".as_slice())]);
+        assert_eq!(Container::named_archive(&data[..10]).error, "The asset directory is truncated.");
     }
 
     #[test]
     fn executables_need_a_resource_table() {
-        assert_eq!(
-            Container::windows(b"ZM").error,
-            "No Windows executable header was found."
-        );
+        assert_eq!(Container::windows(b"ZM").error, "No Windows executable header was found.");
         assert_eq!(
             Container::macintosh(&[0; 8]).error,
             "No readable Macintosh resource fork was found."

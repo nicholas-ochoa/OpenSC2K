@@ -24,7 +24,5 @@ pub fn basename(path: &str) -> &str {
 
 /// Godot's `is_valid_identifier`: ASCII letters, digits, and underscores, and no first digit.
 pub fn is_identifier(text: &str) -> bool {
-    !text.is_empty()
-        && !text.starts_with(|c: char| c.is_ascii_digit())
-        && text.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    !text.is_empty() && !text.starts_with(|c: char| c.is_ascii_digit()) && text.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }

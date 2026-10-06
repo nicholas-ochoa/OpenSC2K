@@ -40,8 +40,7 @@ pub struct Converted {
 }
 
 pub fn is_dos(bytes: &[u8]) -> bool {
-    bytes.len() > DOS_DIRECTORY_ENTRY
-        && latin1(&bytes[..DOS_SIGNATURE.len()]).as_bytes() == DOS_SIGNATURE
+    bytes.len() > DOS_DIRECTORY_ENTRY && latin1(&bytes[..DOS_SIGNATURE.len()]).as_bytes() == DOS_SIGNATURE
 }
 
 pub fn is_mac(bytes: &[u8]) -> bool {
@@ -80,19 +79,12 @@ pub fn mac_index(index: i32) -> i32 {
 /// The sprites of a DOS tile set.
 pub fn dos(bytes: &[u8]) -> Result<Vec<Converted>, String> {
     let files = dos_files(bytes);
-    let file = |name: &str| {
-        files
-            .iter()
-            .find(|(known, _)| known == name)
-            .map(|(_, data)| data.as_slice())
-    };
+    let file = |name: &str| files.iter().find(|(known, _)| known == name).map(|(_, data)| data.as_slice());
     let mut result = Vec::new();
     let mut ids = HashSet::new();
 
     for (name, first, end) in SECTIONS {
-        let (Some(header), Some(data)) =
-            (file(&format!("{name}.HED")), file(&format!("{name}.DAT")))
-        else {
+        let (Some(header), Some(data)) = (file(&format!("{name}.HED")), file(&format!("{name}.DAT"))) else {
             continue;
         };
 
@@ -118,11 +110,7 @@ pub fn dos(bytes: &[u8]) -> Result<Vec<Converted>, String> {
 /// The sprites of a Macintosh tile set.
 pub fn mac(bytes: &[u8]) -> Result<Vec<Converted>, String> {
     let decoded = sprites::mac_tile_set(bytes);
-    let result: Vec<Converted> = decoded
-        .sprites
-        .iter()
-        .filter_map(|entry| convert(entry, mac_index))
-        .collect();
+    let result: Vec<Converted> = decoded.sprites.iter().filter_map(|entry| convert(entry, mac_index)).collect();
 
     if result.is_empty() {
         let error = if decoded.error.is_empty() {
@@ -147,8 +135,7 @@ fn dos_files(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
     while position + DOS_DIRECTORY_ENTRY <= data_start.min(bytes.len()) {
         let name = latin1(&bytes[position..position + DOS_NAME_LENGTH]);
         let at = position + DOS_NAME_LENGTH;
-        let offset =
-            u32::from_le_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]) as usize;
+        let offset = u32::from_le_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]) as usize;
 
         if name.is_empty() || offset > bytes.len() {
             break;
@@ -162,10 +149,7 @@ fn dos_files(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
 
     for (index, (name, start)) in entries.iter().enumerate() {
-        let end = entries
-            .get(index + 1)
-            .map_or(bytes.len(), |next| next.1)
-            .max(*start);
+        let end = entries.get(index + 1).map_or(bytes.len(), |next| next.1).max(*start);
         let data = bytes[*start..end].to_vec();
 
         match files.iter_mut().find(|(known, _)| known == name) {
@@ -198,10 +182,7 @@ fn convert(entry: &Sprite, map: fn(i32) -> i32) -> Option<Converted> {
     };
     let pixels: Vec<i32> = pixels.into_iter().map(map).collect();
 
-    if entry.width < 1
-        || pixels.len() != entry.width * entry.height
-        || !pixels.iter().all(|pixel| (-1..=255).contains(pixel))
-    {
+    if entry.width < 1 || pixels.len() != entry.width * entry.height || !pixels.iter().all(|pixel| (-1..=255).contains(pixel)) {
         return None;
     }
 
@@ -219,27 +200,13 @@ mod tests {
 
     #[test]
     fn indices_follow_the_sc2kfix_table() {
+        assert_eq!([dos_index(0), dos_index(1), dos_index(203), dos_index(204)], [16, 17, 219, 0x0a]);
         assert_eq!(
-            [dos_index(0), dos_index(1), dos_index(203), dos_index(204)],
-            [16, 17, 219, 0x0a]
-        );
-        assert_eq!(
-            [
-                dos_index(212),
-                dos_index(224),
-                dos_index(232),
-                dos_index(233)
-            ],
+            [dos_index(212), dos_index(224), dos_index(232), dos_index(233)],
             [0xea, 224, 0x34, 0xb4]
         );
-        assert_eq!(
-            [dos_index(250), dos_index(255), dos_index(-1)],
-            [0, 0xff, -1]
-        );
-        assert_eq!(
-            [mac_index(0xfc), mac_index(0xff), mac_index(20)],
-            [0x61, 0, 36]
-        );
+        assert_eq!([dos_index(250), dos_index(255), dos_index(-1)], [0, 0xff, -1]);
+        assert_eq!([mac_index(0xfc), mac_index(0xff), mac_index(20)], [0x61, 0, 36]);
     }
 
     #[test]
@@ -251,12 +218,6 @@ mod tests {
         bytes.extend([1, 2, 3]);
         assert!(is_dos(&bytes) && !is_mac(&bytes));
         let files = dos_files(&bytes);
-        assert_eq!(
-            files,
-            [
-                ("LARGE.DAT".into(), vec![1, 2]),
-                ("LARGE.HED".into(), vec![3])
-            ]
-        );
+        assert_eq!(files, [("LARGE.DAT".into(), vec![1, 2]), ("LARGE.HED".into(), vec![3])]);
     }
 }

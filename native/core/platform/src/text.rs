@@ -22,9 +22,7 @@ pub fn display(value: &Value) -> String {
         Value::Null => "<null>".into(),
         Value::Bool(flag) => flag.to_string(),
         Value::Int(number) => format!("{number}.0"),
-        Value::Float(number)
-            if number.is_finite() && *number == number.floor() && number.abs() < 1e15 =>
-        {
+        Value::Float(number) if number.is_finite() && *number == number.floor() && number.abs() < 1e15 => {
             format!("{number:.1}")
         }
         Value::Float(number) => number.to_string(),

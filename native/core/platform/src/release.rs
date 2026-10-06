@@ -74,19 +74,14 @@ pub fn parse_version(value: &str) -> Option<[i64; 3]> {
             return None;
         }
 
-        *number = part
-            .parse()
-            .ok()
-            .filter(|&value| value <= VERSION_PART_LIMIT)?;
+        *number = part.parse().ok().filter(|&value| value <= VERSION_PART_LIMIT)?;
     }
 
     Some(numbers)
 }
 
 pub fn normalized_version(value: &str) -> String {
-    parse_version(value).map_or(String::new(), |[major, minor, patch]| {
-        format!("{major}.{minor}.{patch}")
-    })
+    parse_version(value).map_or(String::new(), |[major, minor, patch]| format!("{major}.{minor}.{patch}"))
 }
 
 pub fn is_newer(candidate: &str, current: &str) -> bool {
@@ -140,20 +135,11 @@ pub fn wait_text(seconds: i64) -> String {
 }
 
 /// The outcome of a finished request for the latest release.
-pub fn read_response(
-    transport: Transport,
-    response_code: i64,
-    headers: &[String],
-    body: &[u8],
-    current: &str,
-    now: i64,
-) -> Outcome {
+pub fn read_response(transport: Transport, response_code: i64, headers: &[String], body: &[u8], current: &str, now: i64) -> Outcome {
     match transport {
         Transport::Success => {}
         Transport::Connect => {
-            return Outcome::failed(
-                "Cannot connect to GitHub. Check the internet connection, then try again.",
-            );
+            return Outcome::failed("Cannot connect to GitHub. Check the internet connection, then try again.");
         }
         Transport::Tls => return Outcome::failed("Cannot make a secure connection to GitHub."),
         Transport::Timeout => {
@@ -173,9 +159,7 @@ pub fn read_response(
         }
 
         if response_code == 429 {
-            return Outcome::failed(
-                "GitHub has limited update checks from this network. Try again later.",
-            );
+            return Outcome::failed("GitHub has limited update checks from this network. Try again later.");
         }
     }
 
@@ -190,25 +174,18 @@ pub fn read_response(
     }
 
     if response_code != 200 {
-        return Outcome::failed(format!(
-            "GitHub returned an unexpected response (HTTP {response_code})."
-        ));
+        return Outcome::failed(format!("GitHub returned an unexpected response (HTTP {response_code})."));
     }
 
     let data = json::parse(&String::from_utf8_lossy(body)).ok();
     let release = data.as_ref().and_then(Value::as_object);
-    let Some(tag) = release
-        .and_then(|release| release.get("tag_name"))
-        .and_then(Value::as_str)
-    else {
+    let Some(tag) = release.and_then(|release| release.get("tag_name")).and_then(Value::as_str) else {
         return Outcome::failed("GitHub returned release information that OpenSC2K cannot read.");
     };
     let version = normalized_version(tag);
 
     if version.is_empty() {
-        return Outcome::failed(format!(
-            "The latest release has a version that OpenSC2K cannot read: {tag}."
-        ));
+        return Outcome::failed(format!("The latest release has a version that OpenSC2K cannot read: {tag}."));
     }
 
     // open only a release page of this project
@@ -240,16 +217,11 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let shifted = days + 719_468;
     let era = shifted.div_euclid(146_097);
     let day_of_era = shifted.rem_euclid(146_097);
-    let year_of_era =
-        (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let year_of_era = (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
     let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
     let month_index = (5 * day_of_year + 2) / 153;
     let day = day_of_year - (153 * month_index + 2) / 5 + 1;
-    let month = if month_index < 10 {
-        month_index + 3
-    } else {
-        month_index - 9
-    };
+    let month = if month_index < 10 { month_index + 3 } else { month_index - 9 };
     let year = year_of_era + era * 400 + i64::from(month <= 2);
 
     (year, month, day)
@@ -260,11 +232,7 @@ pub fn status_text(checked_at: i64, error: &str, bias_minutes: i64) -> String {
     let local = checked_at + bias_minutes * SECONDS_PER_MINUTE;
     let (year, month, day) = civil_from_days(local.div_euclid(SECONDS_PER_DAY));
     let seconds = local.rem_euclid(SECONDS_PER_DAY);
-    let stamp = format!(
-        "{year:04}-{month:02}-{day:02} {:02}:{:02}",
-        seconds / 3600,
-        seconds / 60 % 60
-    );
+    let stamp = format!("{year:04}-{month:02}-{day:02} {:02}:{:02}", seconds / 3600, seconds / 60 % 60);
 
     if error.is_empty() {
         format!("Last checked {stamp}.")
@@ -283,9 +251,7 @@ mod tests {
         assert_eq!(parse_version("1.02.3"), None);
         assert_eq!(parse_version("1.2"), None);
         assert_eq!(parse_version("65536.0.0"), None);
-        assert!(
-            is_newer("0.10.0", "0.9.9") && !is_newer("0.9.9", "0.9.9") && !is_newer("x", "0.1.0")
-        );
+        assert!(is_newer("0.10.0", "0.9.9") && !is_newer("0.9.9", "0.9.9") && !is_newer("x", "0.1.0"));
     }
 
     #[test]
@@ -297,14 +263,7 @@ mod tests {
             (Status::UpdateAvailable, "1.4.0", LATEST_RELEASE_PAGE)
         );
 
-        let limited = read_response(
-            Transport::Success,
-            403,
-            &["Retry-After: 61".into()],
-            b"",
-            "1.0.0",
-            0,
-        );
+        let limited = read_response(Transport::Success, 403, &["Retry-After: 61".into()], b"", "1.0.0", 0);
         assert_eq!(
             limited.message,
             "GitHub has limited update checks from this network. Try again in 2 minutes."
@@ -321,14 +280,8 @@ mod tests {
 
     #[test]
     fn the_status_uses_local_time() {
-        assert_eq!(
-            status_text(1_790_000_000, "", 0),
-            "Last checked 2026-09-21 14:13."
-        );
-        assert_eq!(
-            status_text(0, "Offline.", -60),
-            "Last check failed 1969-12-31 23:00. Offline."
-        );
+        assert_eq!(status_text(1_790_000_000, "", 0), "Last checked 2026-09-21 14:13.");
+        assert_eq!(status_text(0, "Offline.", -60), "Last check failed 1969-12-31 23:00. Offline.");
         assert!(is_due(0, 5) && is_due(100, 50) && !is_due(100, 200));
     }
 }

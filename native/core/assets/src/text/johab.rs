@@ -27,11 +27,7 @@ fn table() -> &'static [[u32; TRAILS]] {
             let points = &mut table[usize::from(lead) - FIRST_LEAD];
 
             for (trail, character) in row.chars().enumerate().take(TRAILS) {
-                points[trail] = if character == INVALID_PAIR {
-                    0
-                } else {
-                    u32::from(character)
-                };
+                points[trail] = if character == INVALID_PAIR { 0 } else { u32::from(character) };
             }
         }
 
@@ -42,9 +38,7 @@ fn table() -> &'static [[u32; TRAILS]] {
 /// The Unicode code point of the Johab pair at `at`, or 0 for an invalid pair.
 pub fn code_point(bytes: &[u8], at: usize) -> u32 {
     match (bytes.get(at), bytes.get(at + 1)) {
-        (Some(&lead), Some(&trail)) if usize::from(lead) >= FIRST_LEAD => {
-            table()[usize::from(lead) - FIRST_LEAD][usize::from(trail)]
-        }
+        (Some(&lead), Some(&trail)) if usize::from(lead) >= FIRST_LEAD => table()[usize::from(lead) - FIRST_LEAD][usize::from(trail)],
         _ => 0,
     }
 }
@@ -181,18 +175,10 @@ mod tests {
 
     #[test]
     fn text_needs_enough_syllables_and_whole_pairs() {
-        let long: Vec<u8> = KOREAN
-            .iter()
-            .copied()
-            .cycle()
-            .take(KOREAN.len() * 8)
-            .collect();
+        let long: Vec<u8> = KOREAN.iter().copied().cycle().take(KOREAN.len() * 8).collect();
         assert!(is_text(&long, &[]));
         assert!(!is_text(&KOREAN, &[]), "too few syllables");
-        assert!(
-            !is_text(&long, &[1]),
-            "a pair cannot cross a record boundary"
-        );
+        assert!(!is_text(&long, &[1]), "a pair cannot cross a record boundary");
         assert_eq!(decode_text(&[b'A', 0xd0, 0x65]), "A한");
         assert_eq!(
             decode_text(&[b'A', 0xff, 0xff]),

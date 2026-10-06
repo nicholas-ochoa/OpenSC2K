@@ -42,8 +42,5 @@ pub fn tile_left(edge: i32, x: i32, y: i32, altitude: i32) -> (i32, i32) {
 pub fn tile_center(edge: i32, x: i32, y: i32, altitude: i32) -> (f64, f64) {
     let (left, top) = tile_left(edge, x, y, altitude);
 
-    (
-        f64::from(left + HALF_WIDTH),
-        f64::from(top) + f64::from(TILE_HEIGHT - 1) / 2.0,
-    )
+    (f64::from(left + HALF_WIDTH), f64::from(top) + f64::from(TILE_HEIGHT - 1) / 2.0)
 }

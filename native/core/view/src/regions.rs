@@ -19,11 +19,7 @@ const REGION_LIMIT: usize = 512;
 
 /// The tile and margin sizes of each graphics size: tile width and height,
 /// half width and height, altitude step, side and top margins.
-const SIZES: [(i32, i32, i32, i32, i32, i32, i32); 3] = [
-    (8, 5, 4, 2, 3, 8, 128),
-    (16, 9, 8, 4, 6, 16, 256),
-    (32, 17, 16, 8, 12, 32, 512),
-];
+const SIZES: [(i32, i32, i32, i32, i32, i32, i32); 3] = [(8, 5, 4, 2, 3, 8, 128), (16, 9, 8, 4, 6, 16, 256), (32, 17, 16, 8, 12, 32, 512)];
 
 /// The display choices that change the painted pixels.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -71,10 +67,7 @@ pub struct Regions {
 /// Shadows darken 0x74 through 0x7e to 0x7e, and 0x5f to 0x64.
 fn shadow_pairs() -> Vec<([u8; 4], [u8; 4])> {
     let gray = |index: u8| [index, index, index, 255];
-    let mut pairs: Vec<([u8; 4], [u8; 4])> = (0x74..=0x7e)
-        .rev()
-        .map(|index| (gray(index), gray(0x7e)))
-        .collect();
+    let mut pairs: Vec<([u8; 4], [u8; 4])> = (0x74..=0x7e).rev().map(|index| (gray(index), gray(0x7e))).collect();
     pairs.push((gray(0x5f), gray(0x64)));
     pairs
 }
@@ -94,14 +87,7 @@ impl Regions {
             effects: 0,
         };
         let target = [TARGET_INDEX, TARGET_INDEX, TARGET_INDEX, 255];
-        let mut builder = Builder::new(
-            city,
-            config,
-            art.views[view].clone(),
-            target,
-            ATLAS_EDGE,
-            false,
-        )?;
+        let mut builder = Builder::new(city, config, art.views[view].clone(), target, ATLAS_EDGE, false)?;
 
         for (from, to) in shadow_pairs() {
             builder.shadows.insert(from, to);
@@ -132,9 +118,7 @@ impl Regions {
     /// Apply a scene update to the maps. The regions that the changed tiles
     /// reach paint again.
     pub fn apply(&mut self, update: &super::scene::Update) {
-        let mut changed = self
-            .builder
-            .edit_city(|city| super::scene::apply(city, update));
+        let mut changed = self.builder.edit_city(|city| super::scene::apply(city, update));
 
         if changed.len() > self.builder.city.altitude.len() / 8 {
             self.regions.clear();
@@ -156,9 +140,7 @@ impl Regions {
     /// regions that the changed tiles reach paint again.
     pub fn sync(&mut self, city: &sc2k_sim::sim::city::City) {
         let altitude_bytes = &mut self.altitude_bytes;
-        let mut changed = self
-            .builder
-            .edit_city(|painter| super::sync::sync(painter, city, altitude_bytes));
+        let mut changed = self.builder.edit_city(|painter| super::sync::sync(painter, city, altitude_bytes));
 
         if changed.len() > self.builder.city.altitude.len() / 8 {
             self.regions.clear();
@@ -193,13 +175,8 @@ impl Regions {
             }
         }
 
-        self.regions.retain(|(x, y), _| {
-            !(*x >= 0
-                && *y >= 0
-                && *x < columns
-                && *y < rows
-                && dirty[(*y * columns + *x) as usize])
-        });
+        self.regions
+            .retain(|(x, y), _| !(*x >= 0 && *y >= 0 && *x < columns && *y < rows && dirty[(*y * columns + *x) as usize]));
     }
 
     /// Replace the city maps. The regions that the changed tiles reach paint again.
@@ -213,12 +190,8 @@ impl Regions {
 
             for cell in changed {
                 let bounds = self.potential_bounds(cell as i32 / edge, cell as i32 % edge, edge);
-                self.regions.retain(|_, region| {
-                    !intersects(
-                        bounds,
-                        Rect::new(region.x, region.y, region.width, region.height),
-                    )
-                });
+                self.regions
+                    .retain(|_, region| !intersects(bounds, Rect::new(region.x, region.y, region.width, region.height)));
             }
         }
 
@@ -233,31 +206,21 @@ impl Regions {
         }
 
         for rect in self.builder.update_moving(moving) {
-            self.regions.retain(|_, region| {
-                !intersects(
-                    rect,
-                    Rect::new(region.x, region.y, region.width, region.height),
-                )
-            });
+            self.regions
+                .retain(|_, region| !intersects(rect, Rect::new(region.x, region.y, region.width, region.height)));
         }
     }
 
     /// The view rectangle that the sprites of tile (x, y) can touch.
     fn potential_bounds(&self, x: i32, y: i32, edge: i32) -> Rect {
-        let (tile_width, tile_height, half_width, half_height, step, side, top_margin) =
-            SIZES[self.view];
+        let (tile_width, tile_height, half_width, half_height, step, side, top_margin) = SIZES[self.view];
         let (limit_width, limit_height) = self.sprite_limit;
         let screen_x = side + edge * half_width + (x - y) * half_width;
         let base = top_margin + (x + y) * half_height;
         let top = base - 32 * step - limit_height;
         let bottom = base + tile_height + limit_width / 4 + 1;
 
-        Rect::new(
-            screen_x - limit_width,
-            top,
-            tile_width + limit_width * 2 + 1,
-            bottom - top,
-        )
+        Rect::new(screen_x - limit_width, top, tile_width + limit_width * 2 + 1, bottom - top)
     }
 
     /// The painted region at region coordinates (rx, ry).
@@ -267,8 +230,7 @@ impl Regions {
 
         if !self.regions.contains_key(&(rx, ry)) {
             let (width, height) = self.size();
-            let bounds = Rect::new(rx * REGION, ry * REGION, REGION, REGION)
-                .clip(Rect::new(0, 0, width, height));
+            let bounds = Rect::new(rx * REGION, ry * REGION, REGION, REGION).clip(Rect::new(0, 0, width, height));
 
             if !bounds.area() {
                 return None;
@@ -277,13 +239,7 @@ impl Regions {
             let (rgba, _) = self.builder.raster(bounds, [0, 0, 0, 0]).ok()?;
             let indices = rgba
                 .chunks_exact(4)
-                .map(|pixel| {
-                    if pixel[3] == 0 {
-                        CLEAR
-                    } else {
-                        u16::from(pixel[0])
-                    }
-                })
+                .map(|pixel| if pixel[3] == 0 { CLEAR } else { u16::from(pixel[0]) })
                 .collect();
 
             if self.regions.len() >= REGION_LIMIT {
@@ -310,11 +266,7 @@ impl Regions {
     }
 
     fn evict(&mut self) {
-        let mut ages: Vec<((i32, i32), u64)> = self
-            .regions
-            .iter()
-            .map(|(key, region)| (*key, region.used))
-            .collect();
+        let mut ages: Vec<((i32, i32), u64)> = self.regions.iter().map(|(key, region)| (*key, region.used)).collect();
         ages.sort_by_key(|(_, used)| *used);
 
         for (key, _) in ages.into_iter().take(REGION_LIMIT / 4) {
@@ -330,10 +282,7 @@ impl Regions {
 /// The keys of the regions that `rect` meets.
 fn region_keys(rect: Rect) -> impl Iterator<Item = (i32, i32)> {
     let (x0, y0) = (rect.x.div_euclid(REGION), rect.y.div_euclid(REGION));
-    let (x1, y1) = (
-        (rect.x + rect.w - 1).div_euclid(REGION),
-        (rect.y + rect.h - 1).div_euclid(REGION),
-    );
+    let (x1, y1) = ((rect.x + rect.w - 1).div_euclid(REGION), (rect.y + rect.h - 1).div_euclid(REGION));
 
     (y0..=y1).flat_map(move |y| (x0..=x1).map(move |x| (x, y)))
 }
@@ -347,9 +296,7 @@ fn intersects(a: Rect, b: Rect) -> bool {
 pub fn changed_cells(old: &City, new: &City) -> Vec<usize> {
     let cells = new.altitude.len();
 
-    if old.altitude.len() != cells
-        || old.traffic != new.traffic && old.traffic.len() != new.traffic.len()
-    {
+    if old.altitude.len() != cells || old.traffic != new.traffic && old.traffic.len() != new.traffic.len() {
         return (0..cells).collect();
     }
 
@@ -372,9 +319,7 @@ pub fn changed_cells(old: &City, new: &City) -> Vec<usize> {
         let planes = new.overlays.len() / cells.max(1);
 
         for (cell, flag) in changed.iter_mut().enumerate() {
-            *flag |= (0..planes.max(1)).any(|plane| {
-                old.overlays.get(plane * cells + cell) != new.overlays.get(plane * cells + cell)
-            });
+            *flag |= (0..planes.max(1)).any(|plane| old.overlays.get(plane * cells + cell) != new.overlays.get(plane * cells + cell));
         }
     }
 
@@ -406,10 +351,5 @@ pub fn changed_cells(old: &City, new: &City) -> Vec<usize> {
         }
     }
 
-    changed
-        .iter()
-        .enumerate()
-        .filter(|(_, c)| **c)
-        .map(|(cell, _)| cell)
-        .collect()
+    changed.iter().enumerate().filter(|(_, c)| **c).map(|(cell, _)| cell).collect()
 }

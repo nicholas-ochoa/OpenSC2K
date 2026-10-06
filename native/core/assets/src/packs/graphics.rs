@@ -59,25 +59,20 @@ impl GraphicsPack {
     /// The pack of a folder, or of the pack.json path in it.
     pub fn load(root: &str) -> Result<Self, String> {
         let root = root.strip_suffix("/pack.json").unwrap_or(root);
-        let text = std::fs::read_to_string(Path::new(root).join("pack.json"))
-            .map_err(|_| "Missing pack.json".to_string())?;
+        let text = std::fs::read_to_string(Path::new(root).join("pack.json")).map_err(|_| "Missing pack.json".to_string())?;
         let manifest = match json::parse(&text) {
             Ok(Value::Object(object)) => object,
             _ => return Err("pack.json must contain a JSON object".into()),
         };
 
-        let version_one = matches!(manifest.get("version"), Some(Value::Int(1)))
-            || matches!(manifest.get("version"), Some(Value::Float(v)) if *v == 1.0);
+        let version_one =
+            matches!(manifest.get("version"), Some(Value::Int(1))) || matches!(manifest.get("version"), Some(Value::Float(v)) if *v == 1.0);
 
         if manifest.get("format").and_then(Value::as_str) != Some(FORMAT) || !version_one {
             return Err("Unsupported graphics pack format or version".into());
         }
 
-        let name = manifest
-            .get("name")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string();
+        let name = manifest.get("name").and_then(Value::as_str).unwrap_or_default().to_string();
 
         if name.trim().is_empty() {
             return Err("Graphics pack name is required".into());
@@ -95,19 +90,13 @@ impl GraphicsPack {
             Some(_) => Err(message.to_string()),
         };
         let partial = flag("partial", "partial must be a boolean")?;
-        let redraw = flag(
-            "redraw_small_highway_ground",
-            "redraw_small_highway_ground must be a boolean",
-        )?;
+        let redraw = flag("redraw_small_highway_ground", "redraw_small_highway_ground must be a boolean")?;
         let mut pack = GraphicsPack {
             root: root.to_string(),
             name,
             partial,
             import_revision,
-            source_platform: manifest
-                .get("source_platform")
-                .map(text_of)
-                .unwrap_or_default(),
+            source_platform: manifest.get("source_platform").map(text_of).unwrap_or_default(),
             redraw_small_highway_ground: redraw,
             ..GraphicsPack::default()
         };
@@ -168,10 +157,8 @@ impl GraphicsPack {
         }
 
         let full = path_join(&self.root, path);
-        let bytes =
-            std::fs::read(&full).map_err(|_| format!("{path}: PNG file does not exist: {full}"))?;
-        let decoded =
-            png::decode_indexed(&bytes, true).map_err(|error| format!("{path}: {error}"))?;
+        let bytes = std::fs::read(&full).map_err(|_| format!("{path}: PNG file does not exist: {full}"))?;
+        let decoded = png::decode_indexed(&bytes, true).map_err(|error| format!("{path}: {error}"))?;
 
         Ok(IndexedImage {
             width: decoded.width as usize,
@@ -235,10 +222,7 @@ impl GraphicsPack {
     }
 
     pub fn ui_image(&self, field: &str) -> Option<&IndexedImage> {
-        self.ui
-            .iter()
-            .find(|(name, _)| name == field)
-            .map(|(_, image)| image)
+        self.ui.iter().find(|(name, _)| name == field).map(|(_, image)| image)
     }
 }
 

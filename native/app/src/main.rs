@@ -59,10 +59,7 @@ impl App {
         game.view.animation_phase = elapsed / 100;
         let size = window.inner_size();
         let (width, height) = (size.width.max(1), size.height.max(1));
-        let _ = surface.resize(
-            NonZeroU32::new(width).unwrap(),
-            NonZeroU32::new(height).unwrap(),
-        );
+        let _ = surface.resize(NonZeroU32::new(width).unwrap(), NonZeroU32::new(height).unwrap());
         game.view.set_viewport(Viewport {
             x: 0.0,
             y: 0.0,
@@ -134,13 +131,10 @@ impl App {
                 "k" => self.tool = (group::POWER, 2),
                 "q" => self.tool = (group::QUERY, 0),
                 "y" => {
-                    let undone = game
-                        .runner
-                        .call(|session| session.undo.take().map(|undo| undo.apply(session)));
+                    let undone = game.runner.call(|session| session.undo.take().map(|undo| undo.apply(session)));
 
                     if let Some(result) = undone {
-                        self.status =
-                            result.map_or_else(|error| error, |()| "Undid the last edit.".into());
+                        self.status = result.map_or_else(|error| error, |()| "Undid the last edit.".into());
                     }
                 }
                 digit @ ("1" | "2" | "3" | "4" | "5") => {
@@ -158,23 +152,14 @@ impl App {
         let edge = game.view.edge();
         let center = game.view.tile_at(game.view.camera.viewport.center());
 
-        match game
-            .runner
-            .call(move |session| session.rotate(counter_clockwise))
-        {
+        match game.runner.call(move |session| session.rotate(counter_clockwise)) {
             Ok(()) => {
                 // the rotated maps arrive with the next update
                 game.receive();
 
                 if let Some((x, y)) = center {
-                    let (x, y) = if counter_clockwise {
-                        (y, edge - 1 - x)
-                    } else {
-                        (edge - 1 - y, x)
-                    };
-                    game.view
-                        .camera
-                        .center_on(sc2k_view::geometry::tile_center(edge, x, y, 0));
+                    let (x, y) = if counter_clockwise { (y, edge - 1 - x) } else { (edge - 1 - y, x) };
+                    game.view.camera.center_on(sc2k_view::geometry::tile_center(edge, x, y, 0));
                 }
 
                 self.status = if counter_clockwise {
@@ -202,10 +187,7 @@ impl App {
         selection.bridge = 0;
         selection.connection = 0;
         selection.confirmation = 1;
-        let outcome = self
-            .game
-            .runner
-            .call(move |session| edits::apply(session, &selection));
+        let outcome = self.game.runner.call(move |session| edits::apply(session, &selection));
 
         for sound in &outcome.sounds {
             self.game.audio.play_sound(*sound, false, false);
@@ -233,8 +215,7 @@ impl ApplicationHandler for App {
             .with_inner_size(winit::dpi::LogicalSize::new(cli::WIDTH, cli::HEIGHT));
         let window = Rc::new(event_loop.create_window(attributes).expect("a window"));
         let context = softbuffer::Context::new(window.clone()).expect("a drawing context");
-        self.surface =
-            Some(softbuffer::Surface::new(&context, window.clone()).expect("a window surface"));
+        self.surface = Some(softbuffer::Surface::new(&context, window.clone()).expect("a window surface"));
         window.request_redraw();
         self.window = Some(window);
     }
@@ -244,9 +225,7 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Focused(focused) => self.game.audio.set_focus(focused),
             WindowEvent::RedrawRequested => self.redraw(),
-            WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
-                self.key(event.logical_key)
-            }
+            WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => self.key(event.logical_key),
             WindowEvent::CursorMoved { position, .. } => {
                 let point = (position.x, position.y);
                 let tile = self.game.view.tile_at(point);
@@ -265,10 +244,7 @@ impl ApplicationHandler for App {
                 };
 
                 if let Some(last) = self.dragging {
-                    self.game
-                        .view
-                        .camera
-                        .pan_screen(last.0 - point.0, last.1 - point.1);
+                    self.game.view.camera.pan_screen(last.0 - point.0, last.1 - point.1);
                     self.dragging = Some(point);
                 }
 
@@ -299,10 +275,7 @@ impl ApplicationHandler for App {
                 };
 
                 if steps.abs() >= 1.0 {
-                    self.game
-                        .view
-                        .camera
-                        .change_zoom(steps.signum() as i32, Some(self.cursor));
+                    self.game.view.camera.change_zoom(steps.signum() as i32, Some(self.cursor));
                 }
             }
             _ => {}
@@ -328,22 +301,13 @@ fn main() {
     if arguments.get(1).map(String::as_str) == Some("--render") {
         let settings = settings::Settings::load();
         let folder = settings.graphics_folder().unwrap_or_default();
-        let pack = sc2k_assets::packs::graphics::GraphicsPack::load(&folder.to_string_lossy())
-            .unwrap_or_else(|error| exit_with(error));
+        let pack = sc2k_assets::packs::graphics::GraphicsPack::load(&folder.to_string_lossy()).unwrap_or_else(|error| exit_with(error));
         let art = sc2k_view::art::CityArt::new(&pack);
-        let session = sc2k_game::session::Session::open(&city_path, 1)
-            .unwrap_or_else(|error| exit_with(error));
-        let path = arguments
-            .get(2)
-            .cloned()
-            .unwrap_or_else(|| "city.png".into());
-        let view: usize = arguments
-            .get(3)
-            .and_then(|text| text.parse().ok())
-            .unwrap_or(2);
+        let session = sc2k_game::session::Session::open(&city_path, 1).unwrap_or_else(|error| exit_with(error));
+        let path = arguments.get(2).cloned().unwrap_or_else(|| "city.png".into());
+        let view: usize = arguments.get(3).and_then(|text| text.parse().ok()).unwrap_or(2);
         let underground = arguments.get(4).map(String::as_str) == Some("underground");
-        cli::render_city(&session, &art, &path, view, underground)
-            .unwrap_or_else(|error| exit_with(error));
+        cli::render_city(&session, &art, &path, view, underground).unwrap_or_else(|error| exit_with(error));
 
         return;
     }
@@ -352,25 +316,13 @@ fn main() {
 
     match arguments.get(1).map(String::as_str) {
         Some("--snapshot") => {
-            let path = arguments
-                .get(2)
-                .cloned()
-                .unwrap_or_else(|| "snapshot.png".into());
-            let steps: i32 = arguments
-                .get(3)
-                .and_then(|text| text.parse().ok())
-                .unwrap_or(0);
+            let path = arguments.get(2).cloned().unwrap_or_else(|| "snapshot.png".into());
+            let steps: i32 = arguments.get(3).and_then(|text| text.parse().ok()).unwrap_or(0);
             cli::snapshot(&mut game, &path, steps).unwrap_or_else(|error| exit_with(error));
         }
         Some("--benchmark") => {
-            let frames: usize = arguments
-                .get(2)
-                .and_then(|text| text.parse().ok())
-                .unwrap_or(300);
-            let speed: i64 = arguments
-                .get(3)
-                .and_then(|text| text.parse().ok())
-                .unwrap_or(5);
+            let frames: usize = arguments.get(2).and_then(|text| text.parse().ok()).unwrap_or(300);
+            let speed: i64 = arguments.get(3).and_then(|text| text.parse().ok()).unwrap_or(5);
             cli::benchmark(&mut game, frames, speed);
         }
         _ => {

@@ -13,9 +13,7 @@ pub fn godot_user_folder() -> PathBuf {
     let home = env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
 
     if cfg!(target_os = "macos") {
-        return home
-            .join("Library/Application Support/Godot/app_userdata")
-            .join(PROJECT_NAME);
+        return home.join("Library/Application Support/Godot/app_userdata").join(PROJECT_NAME);
     }
 
     if cfg!(target_os = "windows") {
@@ -39,16 +37,9 @@ pub fn godot_user_folder() -> PathBuf {
 pub fn user_root() -> super::paths::Root {
     let executable_folder = env::current_exe()
         .ok()
-        .and_then(|path| {
-            path.parent()
-                .map(|folder| folder.to_string_lossy().into_owned())
-        })
+        .and_then(|path| path.parent().map(|folder| folder.to_string_lossy().into_owned()))
         .unwrap_or_default();
     let allow_portable = !cfg!(target_os = "macos");
 
-    super::paths::select(
-        &executable_folder,
-        allow_portable,
-        &godot_user_folder().to_string_lossy(),
-    )
+    super::paths::select(&executable_folder, allow_portable, &godot_user_folder().to_string_lossy())
 }

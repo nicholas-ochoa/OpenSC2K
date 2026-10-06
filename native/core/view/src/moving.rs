@@ -8,14 +8,12 @@ use sc2k_sim::sim::city::City;
 use sc2k_sim::sim::ids::building_tile_ids as tiles;
 use sc2k_sim::sim::overlay;
 use sc2k_sim::sim::things::{
-    self, FIELD_DIRECTION, FIELD_DX, FIELD_DY, FIELD_PX, FIELD_PY, FIELD_STATE, FIELD_TYPE,
-    FIELD_X, FIELD_Y, FIELD_Z,
+    self, FIELD_DIRECTION, FIELD_DX, FIELD_DY, FIELD_PX, FIELD_PY, FIELD_STATE, FIELD_TYPE, FIELD_X, FIELD_Y, FIELD_Z,
 };
 use std::collections::HashMap;
 
 const THING_SPRITES: [i32; 17] = [
-    0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383, 1380, 1374, 1374, 1374, 1374, 1384, 1497,
-    1495,
+    0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383, 1380, 1374, 1374, 1374, 1374, 1384, 1497, 1495,
 ];
 const THING_MINIMUM_VIEW: [i32; 17] = [0, 0, 2, 0, 0, 0, 1, 0, 0, 2, 2, 2, 2, 3, 0, 0, 2];
 const THING_X_DIVISOR: [i32; 3] = [4, 2, 1];
@@ -25,14 +23,12 @@ const SHIP_DIRECTION_FLIP: [bool; 8] = [false, false, false, false, true, true, 
 const THING_DIRECTION_POSITION: [i32; 4] = [0, 1, 1, 0];
 const THING_DIRECTION_FLIP: [bool; 4] = [false, false, true, true];
 const TRAIN_TILE_VARIANT: [i32; 32] = [
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 50, 50, 50, 50, 50, 10, 11, 12, 13, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0,
-    0, 0, 0,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 50, 50, 50, 50, 50, 10, 11, 12, 13, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 const TRAIN_TRANSITION_VARIANT: [i32; 8] = [0, 17, 1, 16, 0, 17, 1, 16];
 const TRAIN_SPRITE_POSITION: [i32; 18] = [0, 0, 3, 3, 4, 4, 2, 1, 2, 1, 3, 3, 4, 4, 0, 0, 2, 1];
 const TRAIN_SPRITE_FLIP: [bool; 18] = [
-    false, true, true, false, false, true, false, false, false, false, true, false, false, true,
-    false, true, false, false,
+    false, true, true, false, false, true, false, false, false, false, true, false, false, true, false, true, false, false,
 ];
 const TRAIN_SCREEN_X: [i32; 18] = [0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0];
 const TRAIN_SCREEN_Y: [i32; 18] = [0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 6, 6, 0, 0, 0, 6];
@@ -73,11 +69,8 @@ struct Geometry {
 }
 
 fn geometry(view: usize) -> Geometry {
-    let (tile_height, half_width, half_height, step, side, top) = [
-        (5, 4, 2, 3, 8, 128),
-        (9, 8, 4, 6, 16, 256),
-        (17, 16, 8, 12, 32, 512),
-    ][view];
+    let (tile_height, half_width, half_height, step, side, top) =
+        [(5, 4, 2, 3, 8, 128), (9, 8, 4, 6, 16, 256), (17, 16, 8, 12, 32, 512)][view];
 
     Geometry {
         view,
@@ -207,10 +200,7 @@ fn train_sprite(city: &Maps, thing: &Thing) -> Option<Sprite> {
     let tile = city.building_id(x, y);
     let step = 12;
     let (variant, elevation) = if tile == tiles::RAIL_BRIDGE || tile == tiles::RAIL_BRIDGE_PYLON {
-        (
-            i32::from(city.is_flipped(x, y)),
-            (city.water_altitude(x, y) + 1) * step,
-        )
+        (i32::from(city.is_flipped(x, y)), (city.water_altitude(x, y) + 1) * step)
     } else {
         let mut index = tile - tiles::RAIL_STRAIGHT_1;
 
@@ -232,38 +222,23 @@ fn train_sprite(city: &Maps, thing: &Thing) -> Option<Sprite> {
             variant = *TRAIN_TRANSITION_VARIANT.get(thing.dx as usize)?;
         }
 
-        let raised = if city.terrain_id(x, y) == RAISED_TERRAIN {
-            step
-        } else {
-            0
-        };
+        let raised = if city.terrain_id(x, y) == RAISED_TERRAIN { step } else { 0 };
 
         (variant, city.land_altitude(x, y) * step + raised)
     };
 
-    let variant = usize::try_from(variant)
-        .ok()
-        .filter(|v| *v < TRAIN_SPRITE_POSITION.len())?;
+    let variant = usize::try_from(variant).ok().filter(|v| *v < TRAIN_SPRITE_POSITION.len())?;
 
     Some(Sprite {
         id: THING_SPRITES[thing.kind as usize] + TRAIN_SPRITE_POSITION[variant],
         flip: TRAIN_SPRITE_FLIP[variant],
-        train: Some((
-            TRAIN_SCREEN_X[variant],
-            TRAIN_SCREEN_Y[variant],
-            elevation as i32,
-        )),
+        train: Some((TRAIN_SCREEN_X[variant], TRAIN_SCREEN_Y[variant], elevation as i32)),
         tornado: None,
     })
 }
 
 /// The layers of the monster: sprite, screen x and y, and flip.
-fn monster_layers(
-    city: &Maps,
-    thing: &Thing,
-    view: usize,
-    phase: i64,
-) -> Vec<(i32, i32, i32, bool)> {
+fn monster_layers(city: &Maps, thing: &Thing, view: usize, phase: i64) -> Vec<(i32, i32, i32, bool)> {
     let altitude = object_altitude(city, thing.x, thing.y) as i32;
     let body_x = (thing.x - thing.y - 3) as i32 * 16;
     let body_y = (thing.x + thing.y) as i32 * 8 - (altitude + thing.z as i32) * 12;
@@ -298,12 +273,7 @@ fn monster_layers(
         upper_y + MONSTER_UPPER_FIRST_Y[rf] + MONSTER_UPPER_SECOND_Y[rs],
         true,
     ));
-    layers.push((
-        1480 + rs as i32,
-        right_upper_x,
-        upper_y + MONSTER_UPPER_FIRST_Y[rf],
-        true,
-    ));
+    layers.push((1480 + rs as i32, right_upper_x, upper_y + MONSTER_UPPER_FIRST_Y[rf], true));
     layers.push((1478 + rf as i32, body_x + 82, upper_y, true));
 
     if dx & 0x80 != 0 {
@@ -314,10 +284,7 @@ fn monster_layers(
     layers.push((1490 + (head & 1), body_x + 60, body_y - 110, true));
     let (lower_x, lower_y) = (body_x - 20, body_y - 50);
     let (df, ds) = ((dy & 1) as usize, ((dy >> 1) & 1) as usize);
-    let (left_x, left_y) = (
-        lower_x + MONSTER_LOWER_FIRST_X[df],
-        lower_y + MONSTER_LOWER_FIRST_Y[df],
-    );
+    let (left_x, left_y) = (lower_x + MONSTER_LOWER_FIRST_X[df], lower_y + MONSTER_LOWER_FIRST_Y[df]);
     layers.push((1484 + df as i32, lower_x, lower_y, false));
     layers.push((1486 + ds as i32, left_x, left_y, false));
     layers.push((
@@ -327,10 +294,7 @@ fn monster_layers(
         false,
     ));
     let (ef, es) = (((dy >> 3) & 1) as usize, ((dy >> 4) & 1) as usize);
-    let (right_x, right_y) = (
-        body_x + 80 - MONSTER_LOWER_FIRST_X[ef],
-        lower_y + MONSTER_LOWER_FIRST_Y[ef],
-    );
+    let (right_x, right_y) = (body_x + 80 - MONSTER_LOWER_FIRST_X[ef], lower_y + MONSTER_LOWER_FIRST_Y[ef]);
     layers.push((1484 + ef as i32, body_x + 80, lower_y, true));
     layers.push((1486 + es as i32, right_x, right_y, true));
     layers.push((
@@ -372,14 +336,7 @@ fn read_thing(data: &[u8], record: i64) -> Thing {
 }
 
 /// The painter key and draw of sprite `id` at `position`, or nothing for a missing sprite.
-fn draw(
-    sprites: &ViewSprites,
-    id: i32,
-    flip: bool,
-    position: (i32, i32),
-    shadow: bool,
-    floating: i32,
-) -> Option<Draw> {
+fn draw(sprites: &ViewSprites, id: i32, flip: bool, position: (i32, i32), shadow: bool, floating: i32) -> Option<Draw> {
     let sprite = sprites.get(&(id as u64 * 2))?;
     let mut draw = Draw::new(
         id as u64 * 2 + u64::from(flip),
@@ -395,19 +352,11 @@ fn draw(
 }
 
 fn size(sprites: &ViewSprites, id: i32) -> Option<(i32, i32)> {
-    sprites
-        .get(&(id as u64 * 2))
-        .map(|sprite| (sprite.w, sprite.h))
+    sprites.get(&(id as u64 * 2)).map(|sprite| (sprite.w, sprite.h))
 }
 
 /// The draws of one moving object.
-fn thing_draws(
-    city: &Maps,
-    sprites: &ViewSprites,
-    thing: &Thing,
-    g: Geometry,
-    phase: i64,
-) -> Vec<Draw> {
+fn thing_draws(city: &Maps, sprites: &ViewSprites, thing: &Thing, g: Geometry, phase: i64) -> Vec<Draw> {
     let edge = city.0.edge;
     let (x, y) = (thing.x as i32, thing.y as i32);
     let kind = thing.kind;
@@ -421,14 +370,7 @@ fn thing_draws(
             let at = (origin.0 + sx, origin.1 + sy);
 
             if shadow {
-                draws.extend(draw(
-                    sprites,
-                    id,
-                    flip,
-                    (at.0, at.1 + g.half_height * thing.z as i32),
-                    true,
-                    -1,
-                ));
+                draws.extend(draw(sprites, id, flip, (at.0, at.1 + g.half_height * thing.z as i32), true, -1));
             }
 
             draws.extend(draw(sprites, id, flip, at, false, -1));
@@ -481,17 +423,11 @@ fn thing_draws(
     };
 
     let position = if let Some(elevation) = sprite.tornado {
-        (
-            column + g.half_width - width,
-            row + g.tile_height - elevation - height,
-        )
+        (column + g.half_width - width, row + g.tile_height - elevation - height)
     } else if let Some((screen_x, screen_y, elevation)) = sprite.train {
         let center = 32 + edge * 16 + (x - y) * 16 + 16 + screen_x;
 
-        (
-            center - width / 2,
-            512 + 17 + (x + y) * 8 + screen_y - elevation - height,
-        )
+        (center - width / 2, 512 + 17 + (x + y) * 8 + screen_y - elevation - height)
     } else {
         let altitude = object_altitude(city, thing.x, thing.y) as i32;
         let center = column + g.half_width + (thing.px - thing.py) as i32 / THING_X_DIVISOR[g.view];
@@ -500,17 +436,12 @@ fn thing_draws(
             - thing.z as i32 * g.half_height
             - height;
 
-        if [1, 2, 16].contains(&kind)
-            && city.building_id(thing.x, thing.y) < tiles::LOWER_CLASS_HOMES_1X1_2
-        {
+        if [1, 2, 16].contains(&kind) && city.building_id(thing.x, thing.y) < tiles::LOWER_CLASS_HOMES_1X1_2 {
             draws.extend(draw(
                 sprites,
                 sprite.id,
                 sprite.flip,
-                (
-                    center - width / 2,
-                    top + g.half_height * (thing.z as i32 - 2),
-                ),
+                (center - width / 2, top + g.half_height * (thing.z as i32 - 2)),
                 true,
                 floating,
             ));
@@ -519,32 +450,14 @@ fn thing_draws(
         (center - width / 2, top)
     };
 
-    draws.extend(draw(
-        sprites,
-        sprite.id,
-        sprite.flip,
-        position,
-        false,
-        floating,
-    ));
+    draws.extend(draw(sprites, sprite.id, sprite.flip, position, false, floating));
 
     draws
 }
 
 /// The draw of an animated disaster marker on tile (x, y).
-fn marker_draw(
-    city: &Maps,
-    sprites: &ViewSprites,
-    x: i64,
-    y: i64,
-    marker: i64,
-    g: Geometry,
-    phase: i64,
-) -> Option<Draw> {
-    let offsets = SPECIAL_OVERLAYS
-        .iter()
-        .find(|(value, _)| *value == marker)?
-        .1;
+fn marker_draw(city: &Maps, sprites: &ViewSprites, x: i64, y: i64, marker: i64, g: Geometry, phase: i64) -> Option<Draw> {
+    let offsets = SPECIAL_OVERLAYS.iter().find(|(value, _)| *value == marker)?.1;
 
     if city.is_water(x, y) && marker != 0xfb && marker != 0xfc {
         return None;
@@ -571,10 +484,7 @@ fn marker_draw(
         sprites,
         id,
         (phase >> 2) & 1 != 0,
-        (
-            column + g.half_width - width / 2,
-            base + g.tile_height - height,
-        ),
+        (column + g.half_width - width / 2, base + g.tile_height - height),
         false,
         -1,
     )
@@ -582,10 +492,7 @@ fn marker_draw(
 
 /// The cells of the animated disaster markers and their marker values.
 pub fn marker_cells(city: &City) -> Vec<(usize, i64)> {
-    let text = city
-        .chunk("XTXT")
-        .map(|chunk| chunk.data.as_slice())
-        .unwrap_or_default();
+    let text = city.chunk("XTXT").map(|chunk| chunk.data.as_slice()).unwrap_or_default();
     let cells = (city.map_size * city.map_size) as usize;
 
     // the marker of a layered or combined index is in its first byte plane; a
@@ -594,11 +501,7 @@ pub fn marker_cells(city: &City) -> Vec<(usize, i64)> {
 
     // most chunks hold no marker; their test vectorizes
     for (block, bytes) in text.get(..cells).unwrap_or_default().chunks(64).enumerate() {
-        if bytes
-            .iter()
-            .fold(0, |high, byte| high | u8::from(*byte >= MARKER_FIRST))
-            == 0
-        {
+        if bytes.iter().fold(0, |high, byte| high | u8::from(*byte >= MARKER_FIRST)) == 0 {
             continue;
         }
 
@@ -624,14 +527,8 @@ pub fn marker_cells(city: &City) -> Vec<(usize, i64)> {
 /// The moving objects of `city` whose tile overlays name them.
 pub fn things_of(city: &City) -> Vec<Thing> {
     let edge = city.map_size;
-    let data = city
-        .chunk("XTHG")
-        .map(|chunk| chunk.data.as_slice())
-        .unwrap_or_default();
-    let text = city
-        .chunk("XTXT")
-        .map(|chunk| chunk.data.as_slice())
-        .unwrap_or_default();
+    let data = city.chunk("XTHG").map(|chunk| chunk.data.as_slice()).unwrap_or_default();
+    let text = city.chunk("XTXT").map(|chunk| chunk.data.as_slice()).unwrap_or_default();
 
     (0..things::count(data))
         .map(|record| read_thing(data, record))
@@ -661,9 +558,7 @@ pub fn moving_draws(
     let mut result: HashMap<usize, Vec<Draw>> = HashMap::new();
 
     for thing in things {
-        if thing.kind as usize >= THING_MINIMUM_VIEW.len()
-            || (view as i32) < THING_MINIMUM_VIEW[thing.kind as usize]
-        {
+        if thing.kind as usize >= THING_MINIMUM_VIEW.len() || (view as i32) < THING_MINIMUM_VIEW[thing.kind as usize] {
             continue;
         }
 
@@ -678,10 +573,7 @@ pub fn moving_draws(
         let draws = thing_draws(city, sprites, thing, g, phase);
 
         if !draws.is_empty() {
-            result
-                .entry((thing.x * edge + thing.y) as usize)
-                .or_default()
-                .extend(draws);
+            result.entry((thing.x * edge + thing.y) as usize).or_default().extend(draws);
         }
     }
 

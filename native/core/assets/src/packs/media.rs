@@ -28,21 +28,13 @@ fn canonical_id(key: &str) -> Option<i64> {
 }
 
 /// Check the manifest `text` of a pack of `kind` ("sound" or "music") in `root`.
-pub fn read(
-    text: &str,
-    kind: &str,
-    root: &str,
-    file_exists: impl Fn(&str) -> bool,
-) -> MediaManifest {
+pub fn read(text: &str, kind: &str, root: &str, file_exists: impl Fn(&str) -> bool) -> MediaManifest {
     let mut manifest = MediaManifest {
         revision: revision::NOT_IMPORTED,
         ..MediaManifest::default()
     };
 
-    let Some(data) = json::parse(text)
-        .ok()
-        .and_then(|value| value.as_object().cloned())
-    else {
+    let Some(data) = json::parse(text).ok().and_then(|value| value.as_object().cloned()) else {
         manifest.error = format!("Cannot read {kind} pack.json: {root}");
 
         return manifest;
@@ -57,11 +49,7 @@ pub fn read(
         }
     };
 
-    manifest.name = data
-        .get("name")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string();
+    manifest.name = data.get("name").and_then(Value::as_str).unwrap_or_default().to_string();
     manifest.revision = revision::read(&data);
 
     if manifest.revision == revision::INVALID {
@@ -86,13 +74,8 @@ pub fn read(
         };
 
         match path_problem(relative) {
-            Some(PathProblem::NotRelative) => {
-                manifest.error = "Media paths must be relative and use forward slashes".into()
-            }
-            Some(PathProblem::BadComponent) => {
-                manifest.error =
-                    "Media paths cannot contain empty, dot, or parent components".into()
-            }
+            Some(PathProblem::NotRelative) => manifest.error = "Media paths must be relative and use forward slashes".into(),
+            Some(PathProblem::BadComponent) => manifest.error = "Media paths cannot contain empty, dot, or parent components".into(),
             None => {}
         }
 
@@ -102,8 +85,7 @@ pub fn read(
 
         let full = path_join(root, relative);
 
-        if !extensions.contains(&extension(relative).to_lowercase().as_str()) || !file_exists(&full)
-        {
+        if !extensions.contains(&extension(relative).to_lowercase().as_str()) || !file_exists(&full) {
             manifest.error = format!("Missing or unsupported media file: {full}");
 
             return manifest;
@@ -125,33 +107,24 @@ mod tests {
 
     #[test]
     fn manifests_list_their_files() {
-        let manifest = read_sound(
-            r#"{"format": "opensc2k-sound", "version": 1, "name": "Mine", "files": {"500": "a.wav", "501": "b.wav"}}"#,
-        );
+        let manifest =
+            read_sound(r#"{"format": "opensc2k-sound", "version": 1, "name": "Mine", "files": {"500": "a.wav", "501": "b.wav"}}"#);
         assert_eq!(manifest.error, "");
         assert_eq!(
             manifest.files,
-            vec![
-                (500, "packs/sound/a.wav".to_string()),
-                (501, "packs/sound/b.wav".to_string())
-            ]
+            vec![(500, "packs/sound/a.wav".to_string()), (501, "packs/sound/b.wav".to_string())]
         );
     }
 
     #[test]
     fn the_first_problem_stops_the_check() {
         let header = r#""format": "opensc2k-sound", "version": 1, "name": "Mine""#;
-        assert_eq!(
-            read_sound("[]").error,
-            "Cannot read sound pack.json: packs/sound"
-        );
+        assert_eq!(read_sound("[]").error, "Cannot read sound pack.json: packs/sound");
         assert_eq!(
             read_sound(r#"{"format": "x"}"#).error,
             "Invalid sound manifest format, version, name, or files"
         );
-        let bad = read_sound(&format!(
-            r#"{{{header}, "files": {{"500": "a.wav", "0501": "b.wav"}}}}"#
-        ));
+        let bad = read_sound(&format!(r#"{{{header}, "files": {{"500": "a.wav", "0501": "b.wav"}}}}"#));
         assert_eq!(
             (bad.error.as_str(), bad.files.len()),
             ("Invalid sound resource ID or path: 0501", 1)

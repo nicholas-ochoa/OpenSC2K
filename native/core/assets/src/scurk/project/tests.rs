@@ -3,12 +3,7 @@ use super::{Node, index_palette, integer_in};
 use sc2k_formats::zip;
 
 fn object(entries: Vec<(&str, Node)>) -> Node {
-    Node::Object(
-        entries
-            .into_iter()
-            .map(|(key, value)| (key.to_string(), value))
-            .collect(),
-    )
+    Node::Object(entries.into_iter().map(|(key, value)| (key.to_string(), value)).collect())
 }
 
 fn state(pixels: Vec<i32>) -> Node {
@@ -32,10 +27,7 @@ fn state(pixels: Vec<i32>) -> Node {
         ("metadata", object(vec![("scale", Node::Float(1.5))])),
         (
             "resources",
-            object(vec![
-                ("notes.TXT", Node::Bytes(b"hello".to_vec())),
-                ("odd", Node::Bytes(vec![9])),
-            ]),
+            object(vec![("notes.TXT", Node::Bytes(b"hello".to_vec())), ("odd", Node::Bytes(vec![9]))]),
         ),
         ("stamps", Node::Array(Vec::new())),
     ])
@@ -61,10 +53,7 @@ fn layer_pixels(record: &Node) -> &[i32] {
         .and_then(|documents| documents.get("1001"))
         .and_then(|document| document.get("layers"))
     {
-        Some(Node::Array(layers)) => layers[0]
-            .get("pixels")
-            .map(Node::as_pixels)
-            .unwrap_or_default(),
+        Some(Node::Array(layers)) => layers[0].get("pixels").map(Node::as_pixels).unwrap_or_default(),
         _ => &[],
     }
 }
@@ -76,27 +65,14 @@ fn archives_round_trip_with_an_rgb_palette() {
     let decoded = decode(&bytes).unwrap();
     assert_eq!(decoded.palette_rgb, palette);
     assert_eq!(layer_pixels(&decoded.record), [5, -1]);
-    assert_eq!(
-        decoded.record.get("original_mif"),
-        Some(&Node::Bytes(vec![7]))
-    );
+    assert_eq!(decoded.record.get("original_mif"), Some(&Node::Bytes(vec![7])));
     assert_eq!(decoded.record.get("revision"), Some(&Node::Float(3.0)));
     let resources = decoded.record.get("resources").unwrap();
-    assert_eq!(
-        resources.get("notes.TXT"),
-        Some(&Node::Bytes(b"hello".to_vec()))
-    );
+    assert_eq!(resources.get("notes.TXT"), Some(&Node::Bytes(b"hello".to_vec())));
 
     let archive = zip::decode(&bytes, 1 << 27, 1 << 27).unwrap();
-    let names: Vec<&str> = archive
-        .members
-        .iter()
-        .map(|(name, _)| name.as_str())
-        .collect();
-    assert!(
-        names.contains(&"current/resources/0000.txt")
-            && names.contains(&"current/resources/0001.bin")
-    );
+    let names: Vec<&str> = archive.members.iter().map(|(name, _)| name.as_str()).collect();
+    assert!(names.contains(&"current/resources/0000.txt") && names.contains(&"current/resources/0001.bin"));
     assert!(names.contains(&"checkpoints/0000/documents/0000/layers/0000.png"));
 }
 
@@ -125,26 +101,16 @@ fn damaged_archives_fail() {
     let bytes = encode(&record(vec![1, 2]), &[]).unwrap();
     let mut archive = zip::decode(&bytes, 1 << 27, 1 << 27).unwrap().members;
     archive.push(("extra.bin".into(), vec![1]));
-    let borrowed: Vec<(String, &[u8])> = archive
-        .iter()
-        .map(|(name, data)| (name.clone(), data.as_slice()))
-        .collect();
+    let borrowed: Vec<(String, &[u8])> = archive.iter().map(|(name, data)| (name.clone(), data.as_slice())).collect();
     let extra = zip::encode(&borrowed, 1 << 27, 1 << 27, false).unwrap();
     assert_eq!(
         decode(&extra).err().unwrap(),
         "The project archive contains an unreferenced member: extra.bin"
     );
 
-    let missing: Vec<(String, &[u8])> = borrowed
-        .iter()
-        .filter(|(name, _)| name != "palette.json")
-        .cloned()
-        .collect();
+    let missing: Vec<(String, &[u8])> = borrowed.iter().filter(|(name, _)| name != "palette.json").cloned().collect();
     let missing = zip::encode(&missing, 1 << 27, 1 << 27, false).unwrap();
-    assert_eq!(
-        decode(&missing).err().unwrap(),
-        "The project palette is invalid."
-    );
+    assert_eq!(decode(&missing).err().unwrap(), "The project palette is invalid.");
     assert!(encode(&record(vec![1, 2]), &[0; 5]).is_err());
 }
 

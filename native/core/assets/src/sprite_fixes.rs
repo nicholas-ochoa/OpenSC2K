@@ -18,21 +18,14 @@ pub struct Fix<'a> {
 
 /// The CRC-32 of palette indices as little-endian 32-bit values.
 fn pixels_crc(pixels: &[i32]) -> u32 {
-    let bytes: Vec<u8> = pixels
-        .iter()
-        .flat_map(|pixel| pixel.to_le_bytes())
-        .collect();
+    let bytes: Vec<u8> = pixels.iter().flat_map(|pixel| pixel.to_le_bytes()).collect();
 
     crc32::calculate(&bytes)
 }
 
 /// The corrected pixels, or `None` when `pixels` are not the original sprite.
 pub fn corrected(pixels: &[i32], width: usize, height: usize, fix: &Fix) -> Option<Vec<i32>> {
-    if width != fix.width
-        || height != fix.height
-        || pixels.len() != width * height
-        || pixels_crc(pixels) != fix.crc32
-    {
+    if width != fix.width || height != fix.height || pixels.len() != width * height || pixels_crc(pixels) != fix.crc32 {
         return None;
     }
 
@@ -51,10 +44,7 @@ pub fn corrected(pixels: &[i32], width: usize, height: usize, fix: &Fix) -> Opti
     for edit in fix.edits.chunks_exact(3) {
         let index = edit[1] * width as i64 + edit[0];
 
-        if let Some(slot) = usize::try_from(index)
-            .ok()
-            .and_then(|index| result.get_mut(index))
-        {
+        if let Some(slot) = usize::try_from(index).ok().and_then(|index| result.get_mut(index)) {
             *slot = edit[2] as i32;
         }
     }

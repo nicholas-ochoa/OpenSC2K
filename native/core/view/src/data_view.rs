@@ -150,17 +150,10 @@ pub fn color(value: i32, mode: Mode) -> Rgb {
     }
 
     match mode {
-        Mode::Height if value >= UNDERWATER_BASE => ramp(
-            &UNDERWATER,
-            (value - UNDERWATER_BASE) as f32 / MAX_SHOWN_DEPTH,
-        ),
+        Mode::Height if value >= UNDERWATER_BASE => ramp(&UNDERWATER, (value - UNDERWATER_BASE) as f32 / MAX_SHOWN_DEPTH),
         Mode::Height => ramp(&LAND_HEIGHT, value as f32 / MAX_LEVEL),
         Mode::Water | Mode::Power => {
-            let supplied = if mode == Mode::Water {
-                rgb(0x42bde8)
-            } else {
-                rgb(0xf4d35e)
-            };
+            let supplied = if mode == Mode::Water { rgb(0x42bde8) } else { rgb(0xf4d35e) };
 
             [rgb(0x687381), rgb(0xe25c46), supplied][value.clamp(0, 2) as usize]
         }
@@ -180,9 +173,7 @@ pub fn color(value: i32, mode: Mode) -> Rgb {
             lerp(
                 GROWTH_COLORS[1],
                 GROWTH_COLORS[state],
-                (distance as f32 / GROWTH_FULL_DISTANCE)
-                    .clamp(0.0, 1.0)
-                    .sqrt(),
+                (distance as f32 / GROWTH_FULL_DISTANCE).clamp(0.0, 1.0).sqrt(),
             )
         }
         Mode::Traffic if value == 0 => rgb(0x2a2a2e),
@@ -198,16 +189,10 @@ pub fn color(value: i32, mode: Mode) -> Rgb {
 pub fn values(city: &City, mode: Mode) -> Vec<i32> {
     let edge = city.map_size as usize;
     let cells = edge * edge;
-    let flags = city
-        .chunk("XBIT")
-        .map(|chunk| chunk.data.as_slice())
-        .unwrap_or_default();
+    let flags = city.chunk("XBIT").map(|chunk| chunk.data.as_slice()).unwrap_or_default();
 
     if let Some(id) = mode.chunk() {
-        let data = city
-            .chunk(id)
-            .map(|chunk| chunk.data.as_slice())
-            .unwrap_or_default();
+        let data = city.chunk(id).map(|chunk| chunk.data.as_slice()).unwrap_or_default();
         let grid = [edge, edge / 2, edge / 4]
             .into_iter()
             .find(|grid| *grid > 0 && data.len() == grid * grid);
@@ -275,14 +260,7 @@ fn smoothstep(low: f32, high: f32, value: f32) -> f32 {
 }
 
 /// Draw the mesh into the viewport of `frame`, over what is there.
-pub fn draw(
-    frame: &mut Frame,
-    camera: &Camera,
-    mesh: &DataMesh,
-    values: &[i32],
-    edge: usize,
-    mode: Mode,
-) {
+pub fn draw(frame: &mut Frame, camera: &Camera, mesh: &DataMesh, values: &[i32], edge: usize, mode: Mode) {
     let colors: Vec<Rgb> = (0..256).map(|value| color(value, mode)).collect();
     let viewport = camera.viewport;
     let clip = (
@@ -295,39 +273,20 @@ pub fn draw(
     for triangle in mesh.indices.chunks_exact(3) {
         let corner = |index: i32| {
             let index = index as usize;
-            let point = camera.source_to_screen((
-                f64::from(mesh.vertices[index][0]),
-                f64::from(mesh.vertices[index][1]),
-            ));
+            let point = camera.source_to_screen((f64::from(mesh.vertices[index][0]), f64::from(mesh.vertices[index][1])));
 
             (point, mesh.uvs[index], mesh.colors[index][2])
         };
-        let (a, b, c) = (
-            corner(triangle[0]),
-            corner(triangle[1]),
-            corner(triangle[2]),
-        );
-        let tile = (
-            (a.1[1] / 2.0).floor() as usize,
-            (a.1[0] / 2.0).floor() as usize,
-        );
+        let (a, b, c) = (corner(triangle[0]), corner(triangle[1]), corner(triangle[2]));
+        let tile = ((a.1[1] / 2.0).floor() as usize, (a.1[0] / 2.0).floor() as usize);
         let value = values.get(tile.0 * edge + tile.1).copied().unwrap_or(-1);
-        let base = if value < 0 {
-            NO_VALUE
-        } else {
-            colors[value.min(255) as usize]
-        };
+        let base = if value < 0 { NO_VALUE } else { colors[value.min(255) as usize] };
         let shade = a.2;
         fill_triangle(
             frame,
             clip,
             [a, b, c],
-            |uv| {
-                [
-                    uv[0] - (uv[0] / 2.0).floor() * 2.0,
-                    uv[1] - (uv[1] / 2.0).floor() * 2.0,
-                ]
-            },
+            |uv| [uv[0] - (uv[0] / 2.0).floor() * 2.0, uv[1] - (uv[1] / 2.0).floor() * 2.0],
             base,
             shade,
         );
@@ -370,9 +329,7 @@ fn fill_triangle(
     let right = p0.0.max(p1.0).max(p2.0).min(clip.2 - 1.0).ceil() as i64;
     let top = p0.1.min(p1.1).min(p2.1).max(clip.1).floor() as i64;
     let bottom = p0.1.max(p1.1).max(p2.1).min(clip.3 - 1.0).ceil() as i64;
-    let edge = |a: (f64, f64), b: (f64, f64), p: (f64, f64)| {
-        (b.0 - a.0) * (p.1 - a.1) - (b.1 - a.1) * (p.0 - a.0)
-    };
+    let edge = |a: (f64, f64), b: (f64, f64), p: (f64, f64)| (b.0 - a.0) * (p.1 - a.1) - (b.1 - a.1) * (p.0 - a.0);
 
     for y in top.max(0)..=bottom {
         for x in left.max(0)..=right {
@@ -394,13 +351,10 @@ fn fill_triangle(
                 (b0 * t0[1] as f64 + b1 * t1[1] as f64 + b2 * t2[1] as f64) as f32,
             ];
             let local = local(uv);
-            let distance = ((local[0].min(1.0 - local[0])) / width[0])
-                .min((local[1].min(1.0 - local[1])) / width[1]);
-            let factor = shade
-                * (EDGE_SHADE + (1.0 - EDGE_SHADE) * smoothstep(EDGE_START, EDGE_END, distance));
+            let distance = ((local[0].min(1.0 - local[0])) / width[0]).min((local[1].min(1.0 - local[1])) / width[1]);
+            let factor = shade * (EDGE_SHADE + (1.0 - EDGE_SHADE) * smoothstep(EDGE_START, EDGE_END, distance));
             let channel = |value: f32| ((value * factor).clamp(0.0, 1.0) * 255.0).round() as u32;
-            frame.pixels[y as usize * frame.width + x as usize] =
-                (channel(base[0]) << 16) | (channel(base[1]) << 8) | channel(base[2]);
+            frame.pixels[y as usize * frame.width + x as usize] = (channel(base[0]) << 16) | (channel(base[1]) << 8) | channel(base[2]);
         }
     }
 }

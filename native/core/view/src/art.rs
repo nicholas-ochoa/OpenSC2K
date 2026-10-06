@@ -64,10 +64,7 @@ impl CityArt {
                 _ => continue,
             };
 
-            views[view].insert(
-                sprite.id as u64 * 2,
-                index_sprite(sprite.width, sprite.height, &sprite.pixels),
-            );
+            views[view].insert(sprite.id as u64 * 2, index_sprite(sprite.width, sprite.height, &sprite.pixels));
         }
 
         Self {

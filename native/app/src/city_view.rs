@@ -50,14 +50,7 @@ impl CityView {
         let mut camera = Camera::new(city.edge);
         let edge = city.edge;
         let (x, y) = (center.0.clamp(0, edge - 1), center.1.clamp(0, edge - 1));
-        camera.center = sc2k_view::geometry::tile_center(
-            edge,
-            x,
-            y,
-            city.altitude
-                .get((x * edge + y) as usize)
-                .map_or(0, |a| a & 31),
-        );
+        camera.center = sc2k_view::geometry::tile_center(edge, x, y, city.altitude.get((x * edge + y) as usize).map_or(0, |a| a & 31));
 
         Self {
             camera,
@@ -165,12 +158,7 @@ impl CityView {
         }
 
         if !self.options.underground {
-            let key = (
-                self.revision,
-                self.animation_phase,
-                view,
-                self.show_vehicles,
-            );
+            let key = (self.revision, self.animation_phase, view, self.show_vehicles);
 
             if key != self.moving_key {
                 let regions = self.regions.as_mut().expect("regions exist");
@@ -222,14 +210,7 @@ impl CityView {
         frame.pixels.fill(BACKGROUND);
 
         if let Some((_, _, mesh)) = &self.data_mesh {
-            data_view::draw(
-                frame,
-                &self.camera,
-                mesh,
-                &self.data_values,
-                self.edge() as usize,
-                mode,
-            );
+            data_view::draw(frame, &self.camera, mesh, &self.data_values, self.edge() as usize, mode);
         }
 
         for tile in &self.highlight {

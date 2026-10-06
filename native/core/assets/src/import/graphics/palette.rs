@@ -3,9 +3,7 @@
 //! cycling colors at run time, so the stored palette has filler there.
 
 use crate::bytes::read_u16_be;
-use crate::palette::{
-    COLOR_COUNT, FAST_CYCLE_COUNT, FAST_CYCLE_START, SLOW_CYCLE_COUNT, SLOW_CYCLE_START,
-};
+use crate::palette::{COLOR_COUNT, FAST_CYCLE_COUNT, FAST_CYCLE_START, SLOW_CYCLE_COUNT, SLOW_CYCLE_START};
 
 pub type Rgb = [u8; 3];
 
@@ -42,9 +40,7 @@ pub fn mac_palette(bytes: &[u8]) -> Option<Vec<Rgb>> {
 /// The Network Edition ships SC2K.PAL with CR LF line ends and reads it in text mode.
 pub fn text_mode_bytes(bytes: &[u8]) -> Vec<u8> {
     (0..bytes.len())
-        .filter(|&index| {
-            bytes[index] != CARRIAGE_RETURN || bytes.get(index + 1) != Some(&LINE_FEED)
-        })
+        .filter(|&index| bytes[index] != CARRIAGE_RETURN || bytes.get(index + 1) != Some(&LINE_FEED))
         .map(|index| bytes[index])
         .collect()
 }
@@ -67,10 +63,7 @@ pub fn mac_color_table(bytes: &[u8]) -> Vec<Rgb> {
 }
 
 pub fn rgb_colors(bytes: &[u8]) -> Vec<Rgb> {
-    bytes
-        .chunks_exact(3)
-        .map(|rgb| [rgb[0], rgb[1], rgb[2]])
-        .collect()
+    bytes.chunks_exact(3).map(|rgb| [rgb[0], rgb[1], rgb[2]]).collect()
 }
 
 /// The slow cycle keeps its index. The Windows tiles draw other filler indices black.

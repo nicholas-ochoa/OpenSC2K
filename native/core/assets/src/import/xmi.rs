@@ -78,12 +78,7 @@ impl Decoder {
             }
 
             let tag = &data[cursor..cursor + 4];
-            let length = u32::from_be_bytes([
-                data[cursor + 4],
-                data[cursor + 5],
-                data[cursor + 6],
-                data[cursor + 7],
-            ]) as usize;
+            let length = u32::from_be_bytes([data[cursor + 4], data[cursor + 5], data[cursor + 6], data[cursor + 7]]) as usize;
             let body = cursor + 8;
 
             if length > end - body {
@@ -214,10 +209,7 @@ impl Decoder {
 
                 // a different song would play; refuse the record instead
                 if command == CONTROL_CHANGE && DRIVER_CONTROLLERS.contains(&event[1]) {
-                    return Err(format!(
-                        "XMIDI uses unsupported driver controller {}.",
-                        event[1]
-                    ));
+                    return Err(format!("XMIDI uses unsupported driver controller {}.", event[1]));
                 }
 
                 let (key, velocity) = (event[1], event.get(2).copied().unwrap_or(0));
@@ -279,10 +271,7 @@ pub fn convert(data: &[u8]) -> Result<Vec<u8>, String> {
     }
 
     if decoder.streams.len() != 1 {
-        return Err(format!(
-            "Expected one XMIDI sequence; found {}.",
-            decoder.streams.len()
-        ));
+        return Err(format!("Expected one XMIDI sequence; found {}.", decoder.streams.len()));
     }
 
     let stream = decoder.streams.remove(0);
@@ -318,10 +307,7 @@ mod tests {
             convert(&xmidi(&[0xb0, 115, 1, 0xff, 0x2f, 0])).unwrap_err(),
             "XMIDI uses unsupported driver controller 115."
         );
-        assert_eq!(
-            convert(b"RIFF\0\0\0\0").unwrap_err(),
-            "Missing XMIDI FORM or CAT container."
-        );
+        assert_eq!(convert(b"RIFF\0\0\0\0").unwrap_err(), "Missing XMIDI FORM or CAT container.");
     }
 
     /// The tick and status of each channel event of a one-track file.

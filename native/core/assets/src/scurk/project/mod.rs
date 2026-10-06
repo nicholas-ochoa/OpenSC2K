@@ -25,12 +25,7 @@ pub const MAX_HEIGHT: i64 = 256;
 pub fn integer_in(value: Option<&Node>, minimum: i64, maximum: i64) -> bool {
     match value {
         Some(Node::Int(value)) => (minimum..=maximum).contains(value),
-        Some(Node::Float(value)) => {
-            value.is_finite()
-                && value.fract() == 0.0
-                && *value >= minimum as f64
-                && *value <= maximum as f64
-        }
+        Some(Node::Float(value)) => value.is_finite() && value.fract() == 0.0 && *value >= minimum as f64 && *value <= maximum as f64,
         _ => false,
     }
 }

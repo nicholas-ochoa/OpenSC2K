@@ -30,11 +30,7 @@ impl Settings {
 
         let path = PathBuf::from(&value);
 
-        Some(if path.is_absolute() {
-            path
-        } else {
-            self.root.join(path)
-        })
+        Some(if path.is_absolute() { path } else { self.root.join(path) })
     }
 
     /// The graphics pack folder that the game uses.

@@ -23,8 +23,7 @@ impl Sink for Folder {
             return Err(format!("Cannot create graphics pack file: {relative}"));
         }
 
-        let mut file = fs::File::create(&path)
-            .map_err(|_| format!("Cannot write graphics pack file: {relative}"))?;
+        let mut file = fs::File::create(&path).map_err(|_| format!("Cannot write graphics pack file: {relative}"))?;
 
         file.write_all(bytes)
             .and_then(|_| file.flush())

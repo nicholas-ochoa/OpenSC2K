@@ -35,8 +35,7 @@ pub struct Manifest {
 /// digits, ".", "_" and "-".
 pub fn is_valid_id(id: &str) -> bool {
     let bytes = id.as_bytes();
-    let allowed =
-        |byte: &u8| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b"._-".contains(byte);
+    let allowed = |byte: &u8| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b"._-".contains(byte);
 
     !bytes.is_empty()
         && bytes.len() <= MAX_ID_LENGTH
@@ -73,12 +72,7 @@ fn is_absolute_path(path: &str) -> bool {
 impl Manifest {
     /// Read the manifest of the folder `folder_name`. `text` is the info.json
     /// text, or `None` for a missing file; `main_exists` checks a script path.
-    pub fn read(
-        folder_name: &str,
-        source: Option<&str>,
-        current_game_version: &str,
-        main_exists: impl Fn(&str) -> bool,
-    ) -> Self {
+    pub fn read(folder_name: &str, source: Option<&str>, current_game_version: &str, main_exists: impl Fn(&str) -> bool) -> Self {
         let mut manifest = Self {
             id: folder_name.to_lowercase(),
             name: folder_name.to_string(),
@@ -99,10 +93,7 @@ impl Manifest {
                 return manifest;
             }
             Err(error) => {
-                manifest.error = format!(
-                    "{FILE_NAME} is not valid JSON: {} on line {}.",
-                    error.message, error.line
-                );
+                manifest.error = format!("{FILE_NAME} is not valid JSON: {} on line {}.", error.message, error.line);
 
                 return manifest;
             }
@@ -147,21 +138,14 @@ impl Manifest {
         }
 
         if self.version.is_empty() {
-            return Err(format!(
-                "{FILE_NAME} needs a \"version\", such as \"1.0.0\"."
-            ));
+            return Err(format!("{FILE_NAME} needs a \"version\", such as \"1.0.0\"."));
         }
 
         self.check_main(main_exists)?;
         self.apply_dependencies(data.get("dependencies"))?;
 
-        if !self.game_version.is_empty()
-            && versions::compare(current_game_version, &self.game_version) < 0
-        {
-            return Err(format!(
-                "The mod needs OpenSC2K {} or newer.",
-                self.game_version
-            ));
+        if !self.game_version.is_empty() && versions::compare(current_game_version, &self.game_version) < 0 {
+            return Err(format!("The mod needs OpenSC2K {} or newer.", self.game_version));
         }
 
         Ok(())
@@ -191,21 +175,15 @@ impl Manifest {
         let main = &self.main;
 
         if main.is_empty() {
-            return Err(format!(
-                "{FILE_NAME} needs a \"main\" script, such as \"main.js\"."
-            ));
+            return Err(format!("{FILE_NAME} needs a \"main\" script, such as \"main.js\"."));
         }
 
         if is_absolute_path(main) || main.replace('\\', "/").split('/').any(|part| part == "..") {
-            return Err(format!(
-                "The main script must be a path in the mod folder, not {main}."
-            ));
+            return Err(format!("The main script must be a path in the mod folder, not {main}."));
         }
 
         if !SCRIPT_EXTENSIONS.contains(&extension(main).to_lowercase().as_str()) {
-            return Err(format!(
-                "The main script must be a .js or .mjs file, not {main}."
-            ));
+            return Err(format!("The main script must be a .js or .mjs file, not {main}."));
         }
 
         if !main_exists(main) {
@@ -226,10 +204,7 @@ impl Manifest {
             let dependency = display(item).to_lowercase();
 
             if !matches!(item, Value::String(_)) || dependency == self.id {
-                return Err(format!(
-                    "\"dependencies\" has a wrong mod id: {}.",
-                    display(item)
-                ));
+                return Err(format!("\"dependencies\" has a wrong mod id: {}.", display(item)));
             }
 
             if !self.dependencies.contains(&dependency) {
@@ -257,11 +232,7 @@ mod tests {
         );
         assert_eq!(manifest.error, "");
         assert_eq!(
-            (
-                manifest.id.as_str(),
-                manifest.name.as_str(),
-                manifest.version.as_str()
-            ),
+            (manifest.id.as_str(), manifest.name.as_str(), manifest.version.as_str()),
             ("llama.mod", "Llamas", "2")
         );
         assert_eq!(
@@ -278,16 +249,8 @@ mod tests {
             "The folder has no info.json file."
         );
         assert_eq!(read("[]").error, "info.json must hold a JSON object.");
-        assert!(
-            read(r#"{"id": "game"}"#)
-                .error
-                .starts_with("The id \"game\" is not valid.")
-        );
-        assert_eq!(
-            read(r#"{"id": "a"}"#).name,
-            "My Mod",
-            "a missing name keeps the folder name"
-        );
+        assert!(read(r#"{"id": "game"}"#).error.starts_with("The id \"game\" is not valid."));
+        assert_eq!(read(r#"{"id": "a"}"#).name, "My Mod", "a missing name keeps the folder name");
         assert_eq!(
             read(r#"{"id": "a", "name": "A", "version": "1", "main": "../x.js"}"#).error,
             "The main script must be a path in the mod folder, not ../x.js."
@@ -300,7 +263,13 @@ mod tests {
             read(r#"{"id": "a", "name": "A", "version": "1", "main": "x.js"}"#).error,
             "The main script x.js is missing."
         );
-        assert_eq!(read(r#"{"id": "a", "name": "A", "version": "1", "main": "main.js", "dependencies": [1]}"#).error, "\"dependencies\" has a wrong mod id: 1.0.");
-        assert_eq!(read(r#"{"id": "a", "name": "A", "version": "1", "main": "main.js", "gameVersion": "0.6"}"#).error, "The mod needs OpenSC2K 0.6 or newer.");
+        assert_eq!(
+            read(r#"{"id": "a", "name": "A", "version": "1", "main": "main.js", "dependencies": [1]}"#).error,
+            "\"dependencies\" has a wrong mod id: 1.0."
+        );
+        assert_eq!(
+            read(r#"{"id": "a", "name": "A", "version": "1", "main": "main.js", "gameVersion": "0.6"}"#).error,
+            "The mod needs OpenSC2K 0.6 or newer."
+        );
     }
 }

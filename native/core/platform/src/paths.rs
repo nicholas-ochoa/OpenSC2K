@@ -21,11 +21,7 @@ pub struct Root {
 pub fn select(executable_folder: &str, allow_portable: bool, user_root: &str) -> Root {
     let portable_root = simplify(&join(executable_folder, PORTABLE_FOLDER));
     let portable = allow_portable && Path::new(&portable_root).is_dir();
-    let root = if portable {
-        portable_root
-    } else {
-        simplify(user_root)
-    };
+    let root = if portable { portable_root } else { simplify(user_root) };
     let error = if portable && !writable(&root) {
         format!(
             "Cannot write to the portable data folder:\n{root}\n\nMove OpenSC2K to a folder that you can write to, or remove the data folder."
@@ -34,11 +30,7 @@ pub fn select(executable_folder: &str, allow_portable: bool, user_root: &str) ->
         String::new()
     };
 
-    Root {
-        root,
-        portable,
-        error,
-    }
+    Root { root, portable, error }
 }
 
 /// A path for a settings file. Paths in the portable folder are relative, thus
@@ -95,8 +87,7 @@ pub fn join(folder: &str, name: &str) -> String {
 
 /// Godot's `is_absolute_path`.
 pub fn is_absolute(path: &str) -> bool {
-    path.starts_with(['/', '\\'])
-        || (path.len() > 1 && (path.contains(":/") || path.contains(":\\")))
+    path.starts_with(['/', '\\']) || (path.len() > 1 && (path.contains(":/") || path.contains(":\\")))
 }
 
 /// Godot's `simplify_path`: it keeps the drive or protocol, removes "." and
@@ -180,24 +171,15 @@ mod tests {
     fn portable_paths_are_relative() {
         let root = "/apps/OpenSC2K/data";
         assert_eq!(stored_path(root, root, true, false), ".");
-        assert_eq!(
-            stored_path("/apps/OpenSC2K/data/packs/sound/", root, true, false),
-            "packs/sound"
-        );
+        assert_eq!(stored_path("/apps/OpenSC2K/data/packs/sound/", root, true, false), "packs/sound");
         assert_eq!(
             stored_path("/apps/OpenSC2K/data-old/packs", root, true, false),
             "/apps/OpenSC2K/data-old/packs"
         );
         assert_eq!(stored_path("/APPS/OpenSC2K/DATA/x", root, true, true), "x");
-        assert_eq!(
-            stored_path("/apps/OpenSC2K/data/x", root, false, false),
-            "/apps/OpenSC2K/data/x"
-        );
+        assert_eq!(stored_path("/apps/OpenSC2K/data/x", root, false, false), "/apps/OpenSC2K/data/x");
         assert_eq!(loaded_path(".", root, true), root);
-        assert_eq!(
-            loaded_path("packs/../cities", root, true),
-            "/apps/OpenSC2K/data/cities"
-        );
+        assert_eq!(loaded_path("packs/../cities", root, true), "/apps/OpenSC2K/data/cities");
         assert_eq!(loaded_path("/games/OST", root, true), "/games/OST");
         assert_eq!(loaded_path("packs", root, false), "packs");
     }

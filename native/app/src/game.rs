@@ -65,8 +65,7 @@ impl Game {
             session.city.misc_u32(misc::CITY_CENTER_X) as i32,
             session.city.misc_u32(misc::CITY_CENTER_Y) as i32,
         );
-        let (mut publisher, first) =
-            Publisher::new(&session.city, session.revision, session.map_revision);
+        let (mut publisher, first) = Publisher::new(&session.city, session.revision, session.map_revision);
         let view = CityView::new(&first, center);
         let status = status_of(&session);
         let music = status.music_enabled;
@@ -119,9 +118,7 @@ impl Game {
 
     pub fn refresh_data_values(&mut self) {
         if let Some(mode) = self.view.data_mode {
-            self.view.data_values = self
-                .runner
-                .call(move |session| sc2k_view::data_view::values(&session.city, mode));
+            self.view.data_values = self.runner.call(move |session| sc2k_view::data_view::values(&session.city, mode));
             self.data_revision = self.view.map_revision;
         }
     }
@@ -146,19 +143,16 @@ impl Game {
                 "annual_budget" => {
                     let values = sc2k_game::values::ints(request, "funding_values");
                     let automatic = sc2k_game::values::boolean(request, "auto_budget");
-                    self.runner.call(move |session| {
-                        session.with_speed(|speed| speed.resolve_annual_budget(&values, automatic))
-                    });
+                    self.runner
+                        .call(move |session| session.with_speed(|speed| speed.resolve_annual_budget(&values, automatic)));
                 }
                 "military_proposal" => {
-                    self.runner.call(|session| {
-                        session.with_speed(|speed| speed.resolve_military_proposal(false))
-                    });
+                    self.runner
+                        .call(|session| session.with_speed(|speed| speed.resolve_military_proposal(false)));
                 }
                 "military_notice" => {
-                    self.runner.call(|session| {
-                        session.with_speed(|speed| speed.resolve_military_notice())
-                    });
+                    self.runner
+                        .call(|session| session.with_speed(|speed| speed.resolve_military_notice()));
                 }
                 _ => {}
             }

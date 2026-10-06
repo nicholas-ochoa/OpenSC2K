@@ -6,9 +6,7 @@ use std::collections::HashMap;
 
 /// The decoded payload of a chunk, or an empty one.
 fn chunk(city: &City, id: &str) -> Vec<u8> {
-    city.chunk(id)
-        .map(|chunk| chunk.data.clone())
-        .unwrap_or_default()
+    city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default()
 }
 
 /// The painter city. `visible` is the number of altitude levels that show, 32 for all.
@@ -22,21 +20,13 @@ pub fn painter_city(city: &City, visible: i32) -> PainterCity {
     let traffic = chunk(city, "XTRF");
     let traffic_size = city.decoded_size("XTRF");
     let resized = |data: Vec<u8>| {
-        if data.len() == cells {
-            data
-        } else {
-            vec![0; cells]
-        }
+        if data.len() == cells { data } else { vec![0; cells] }
     };
     let mut painter = PainterCity {
         edge,
         visible,
         rotation: city.compass_rotation() as usize,
-        altitude: if altitude.len() == cells {
-            altitude
-        } else {
-            vec![0; cells]
-        },
+        altitude: if altitude.len() == cells { altitude } else { vec![0; cells] },
         terrain: resized(chunk(city, "XTER")),
         buildings: resized(chunk(city, "XBLD")),
         zones: resized(chunk(city, "XZON")),

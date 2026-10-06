@@ -25,10 +25,7 @@ pub fn load_ids(data: &[u8], index: &[u8], ids: &[i64]) -> Result<Vec<(i64, Stri
             return Err(format!("text resource {id} has an invalid offset"));
         }
 
-        if records
-            .last()
-            .is_some_and(|&(_, previous)| start < previous)
-        {
+        if records.last().is_some_and(|&(_, previous)| start < previous) {
             return Err("text resource offsets are not ordered".into());
         }
 
@@ -52,15 +49,9 @@ pub fn load_ids(data: &[u8], index: &[u8], ids: &[i64]) -> Result<Vec<(i64, Stri
             continue;
         }
 
-        let end = records
-            .get(position + 1)
-            .map_or(data.len(), |&(_, next)| next);
+        let end = records.get(position + 1).map_or(data.len(), |&(_, next)| next);
         let bytes = &data[start..end];
-        let text = if is_johab {
-            johab::decode_text(bytes)
-        } else {
-            latin1(bytes)
-        };
+        let text = if is_johab { johab::decode_text(bytes) } else { latin1(bytes) };
 
         match result.iter_mut().find(|(known, _)| *known == id) {
             Some(entry) => entry.1 = text,
@@ -89,19 +80,8 @@ mod tests {
             index.extend_from_slice(&start.to_le_bytes());
         }
 
-        assert_eq!(
-            load_ids(data, &index, &[3001]),
-            Ok(vec![(3001, "World".to_string())])
-        );
-        assert!(
-            load_ids(data, &index, &[9])
-                .unwrap_err()
-                .contains("missing")
-        );
-        assert!(
-            load_ids(data, &index[..7], &[3000])
-                .unwrap_err()
-                .contains("partial")
-        );
+        assert_eq!(load_ids(data, &index, &[3001]), Ok(vec![(3001, "World".to_string())]));
+        assert!(load_ids(data, &index, &[9]).unwrap_err().contains("missing"));
+        assert!(load_ids(data, &index[..7], &[3000]).unwrap_err().contains("partial"));
     }
 }

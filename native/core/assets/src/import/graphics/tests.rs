@@ -1,7 +1,5 @@
 use super::dos_ui::{self, HEADER_SIZE, STRIP_WIDTH};
-use super::palette::{
-    mac_color_table, mac_palette, text_mode_bytes, windows_layout_index, windows_layout_palette,
-};
+use super::palette::{mac_color_table, mac_palette, text_mode_bytes, windows_layout_index, windows_layout_palette};
 use super::{Resource, export};
 use sc2k_formats::png;
 
@@ -38,26 +36,14 @@ fn shifted_palettes_move_to_the_windows_layout() {
     assert_eq!(windows_layout_index(0), 16);
     assert_eq!(windows_layout_index(203), 219);
     assert_eq!(windows_layout_index(204), 0);
-    assert_eq!(
-        (windows_layout_index(224), windows_layout_index(239)),
-        (224, 239)
-    );
-    assert_eq!(
-        (windows_layout_index(240), windows_layout_index(255)),
-        (0, 0)
-    );
+    assert_eq!((windows_layout_index(224), windows_layout_index(239)), (224, 239));
+    assert_eq!((windows_layout_index(240), windows_layout_index(255)), (0, 0));
 
     // without cycle colors, the filler entries stay at their moved indices
     let source: Vec<[u8; 3]> = (0..=255).map(|index| [index, 0, 0]).collect();
     let moved = windows_layout_palette(&source, &[], &[]);
-    assert_eq!(
-        (moved[0], moved[15], moved[16], moved[170]),
-        ([0; 3], [0; 3], [0; 3], [154, 0, 0])
-    );
-    assert_eq!(
-        (moved[219], moved[224], moved[255]),
-        ([203, 0, 0], [224, 0, 0], [0; 3])
-    );
+    assert_eq!((moved[0], moved[15], moved[16], moved[170]), ([0; 3], [0; 3], [0; 3], [154, 0, 0]));
+    assert_eq!((moved[219], moved[224], moved[255]), ([203, 0, 0], [224, 0, 0], [0; 3]));
 }
 
 fn dos_toolbar() -> Vec<u8> {
@@ -103,12 +89,7 @@ fn dos_sources_make_a_partial_pack() {
     let outcome = export(&resources, "DOS", "Test", &mut files);
     assert!(outcome.error.is_empty(), "{}", outcome.error);
     assert_eq!(outcome.count, 3);
-    assert!(
-        !outcome
-            .warnings
-            .iter()
-            .any(|warning| warning.contains("cycle colors"))
-    );
+    assert!(!outcome.warnings.iter().any(|warning| warning.contains("cycle colors")));
 
     let names: Vec<&str> = files.iter().map(|(name, _)| name.as_str()).collect();
     assert_eq!(
@@ -125,24 +106,13 @@ fn dos_sources_make_a_partial_pack() {
     assert_eq!(sprite.pixels, [-1, 23, 25, -1, -1, -1, -1, -1]);
     assert_eq!(&sprite.palette[25 * 3..26 * 3], [9, 246, 4]);
     let manifest = String::from_utf8(files[4].1.clone()).unwrap();
-    assert!(
-        manifest.contains("\"import_revision\": 3")
-            && manifest.contains("\"source_platform\": \"DOS\"")
-    );
+    assert!(manifest.contains("\"import_revision\": 3") && manifest.contains("\"source_platform\": \"DOS\""));
 }
 
 #[test]
 fn sources_without_a_palette_fail() {
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
-    let outcome = export(
-        &[file("README.TXT", vec![1])],
-        "Windows",
-        "Test",
-        &mut files,
-    );
-    assert_eq!(
-        outcome.error,
-        "No readable city palette or interface bitmap was found."
-    );
+    let outcome = export(&[file("README.TXT", vec![1])], "Windows", "Test", &mut files);
+    assert_eq!(outcome.error, "No readable city palette or interface bitmap was found.");
     assert!(files.is_empty());
 }

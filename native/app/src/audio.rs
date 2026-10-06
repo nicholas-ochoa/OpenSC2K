@@ -59,20 +59,13 @@ pub struct Audio {
 /// The files of a media pack folder, by resource ID.
 fn pack_files(folder: &Path, kind: &str) -> HashMap<i64, PathBuf> {
     let folder = folder.to_string_lossy();
-    let root = folder
-        .strip_suffix("/pack.json")
-        .unwrap_or(&folder)
-        .to_string();
+    let root = folder.strip_suffix("/pack.json").unwrap_or(&folder).to_string();
     let Ok(text) = std::fs::read_to_string(Path::new(&root).join("pack.json")) else {
         return HashMap::new();
     };
     let manifest = media::read(&text, kind, &root, |path| Path::new(path).is_file());
 
-    manifest
-        .files
-        .into_iter()
-        .map(|(id, path)| (id, PathBuf::from(path)))
-        .collect()
+    manifest.files.into_iter().map(|(id, path)| (id, PathBuf::from(path))).collect()
 }
 
 fn open_stream(mixer: Arc<Mutex<Mixer>>) -> Option<cpal::Stream> {
@@ -133,10 +126,7 @@ fn midi_events(sequence: &smf::Sequence) -> Vec<Event> {
 
 impl Audio {
     pub fn new(settings: &AudioSettings) -> Self {
-        let mixer = Arc::new(Mutex::new(Mixer::new(
-            settings.music_volume,
-            settings.effects_volume,
-        )));
+        let mixer = Arc::new(Mutex::new(Mixer::new(settings.music_volume, settings.effects_volume)));
         let stream = open_stream(mixer.clone());
         let mut sounds = HashMap::new();
 
@@ -179,11 +169,7 @@ impl Audio {
             _stream: stream,
             sounds,
             music_files,
-            soundfonts: soundfont::candidates(
-                &settings.soundfont_choice,
-                &settings.soundfont_path,
-                &system,
-            ),
+            soundfonts: soundfont::candidates(&settings.soundfont_choice, &settings.soundfont_path, &system),
             gate: WaveGate::default(),
             shuffle: Shuffle::new(seed),
             shuffle_music: settings.shuffle,
@@ -200,9 +186,7 @@ impl Audio {
     }
 
     fn mixer(&self) -> std::sync::MutexGuard<'_, Mixer> {
-        self.mixer
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        self.mixer.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     #[allow(dead_code)]
@@ -253,9 +237,7 @@ impl Audio {
             if from_thing {
                 let kind = int(event, "thing_type", -1);
 
-                if !(0..THING_MINIMUM_VIEW.len() as i64).contains(&kind)
-                    || view < THING_MINIMUM_VIEW[kind as usize]
-                {
+                if !(0..THING_MINIMUM_VIEW.len() as i64).contains(&kind) || view < THING_MINIMUM_VIEW[kind as usize] {
                     continue;
                 }
             }
@@ -274,10 +256,7 @@ impl Audio {
 
     /// Start track `id`, or queue it while the gap between tracks runs.
     pub fn play_music_track(&mut self, mut id: i64, choose_shuffle: bool) -> bool {
-        if !self.music_enabled
-            || !self.focused
-            || !(FIRST_TRACK..FIRST_TRACK + TRACK_COUNT).contains(&id)
-        {
+        if !self.music_enabled || !self.focused || !(FIRST_TRACK..FIRST_TRACK + TRACK_COUNT).contains(&id) {
             return false;
         }
 
@@ -333,9 +312,7 @@ impl Audio {
         }
 
         if extension != "mid" && extension != "midi" {
-            return Err(format!(
-                "{extension} music needs a decoder that this build does not have"
-            ));
+            return Err(format!("{extension} music needs a decoder that this build does not have"));
         }
 
         let sequence = smf::parse(&bytes);
@@ -356,11 +333,7 @@ impl Audio {
         }
 
         loaded?;
-        let sequencer = Sequencer::new(
-            midi_events(&sequence),
-            sequence.duration_seconds,
-            MUSIC_RATE,
-        );
+        let sequencer = Sequencer::new(midi_events(&sequence), sequence.duration_seconds, MUSIC_RATE);
 
         Ok(Music::Midi {
             sequencer,

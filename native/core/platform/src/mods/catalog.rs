@@ -19,9 +19,7 @@ pub fn catalog(mut found: Vec<Found>) -> Vec<Found> {
         let id = item.manifest.id.clone();
 
         match first.iter().find(|(known, _)| *known == id) {
-            Some((_, folder)) => {
-                item.manifest.error = format!("The mod in {folder} already has the id {id}.")
-            }
+            Some((_, folder)) => item.manifest.error = format!("The mod in {folder} already has the id {id}."),
             None if item.manifest.error.is_empty() => first.push((id, item.folder.clone())),
             None => {}
         }
@@ -53,19 +51,10 @@ pub fn load_order(mut mods: Vec<Found>) -> Vec<Found> {
 
     let mut slots: Vec<Option<Found>> = mods.into_iter().map(Some).collect();
 
-    order
-        .into_iter()
-        .filter_map(|index| slots[index].take())
-        .collect()
+    order.into_iter().filter_map(|index| slots[index].take()).collect()
 }
 
-fn visit(
-    index: usize,
-    mods: &mut [Found],
-    by_id: &[(String, usize)],
-    marks: &mut [u8],
-    order: &mut Vec<usize>,
-) -> bool {
+fn visit(index: usize, mods: &mut [Found], by_id: &[(String, usize)], marks: &mut [u8], order: &mut Vec<usize>) -> bool {
     match marks[index] {
         2 => return true,
         1 => return false,
@@ -88,10 +77,7 @@ fn visit(
     let manifest = &mut mods[index].manifest;
 
     if !acyclic && manifest.error.is_empty() {
-        manifest.error = format!(
-            "The dependencies of the mod make a cycle: {}.",
-            manifest.dependencies.join(", ")
-        );
+        manifest.error = format!("The dependencies of the mod make a cycle: {}.", manifest.dependencies.join(", "));
     }
 
     marks[index] = 2;
@@ -129,19 +115,10 @@ mod tests {
             .collect();
         assert_eq!(
             ids,
-            vec![
-                ("c", ""),
-                ("a", ""),
-                ("d", "The mod in a already has the id a."),
-                ("b", "")
-            ]
+            vec![("c", ""), ("a", ""), ("d", "The mod in a already has the id a."), ("b", "")]
         );
 
         let cycle = load_order(vec![found("x", "x", &["y"]), found("y", "y", &["x"])]);
-        assert!(
-            cycle
-                .iter()
-                .all(|item| item.manifest.error.contains("make a cycle"))
-        );
+        assert!(cycle.iter().all(|item| item.manifest.error.contains("make a cycle")));
     }
 }

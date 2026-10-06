@@ -33,11 +33,7 @@ pub fn put_u32(data: &mut [u8], at: usize, value: usize) {
 
 /// A PCM WAVE file of `samples`. An odd sample chunk gets its pad byte.
 pub fn pcm_wave(samples: &[u8], rate: i64, channels: i64, bits: i64) -> Result<Vec<u8>, String> {
-    if !(MIN_RATE..=MAX_RATE).contains(&rate)
-        || !(1..=2).contains(&channels)
-        || ![8, 16].contains(&bits)
-        || samples.is_empty()
-    {
+    if !(MIN_RATE..=MAX_RATE).contains(&rate) || !(1..=2).contains(&channels) || ![8, 16].contains(&bits) || samples.is_empty() {
         return Err("Invalid PCM sample format.".into());
     }
 
@@ -110,10 +106,7 @@ pub fn mac_sound(data: &[u8]) -> Result<Vec<u8>, String> {
         }
 
         if data[header + 20] != 0 {
-            return Err(
-                "This Macintosh sound uses an unsupported extended or compressed sample format."
-                    .into(),
-            );
+            return Err("This Macintosh sound uses an unsupported extended or compressed sample format.".into());
         }
 
         let length = u32_be(data, header + 4);
@@ -188,10 +181,7 @@ mod tests {
     #[test]
     fn pcm_waves_pad_odd_samples() {
         let wave = pcm_wave(&[1, 2, 3], 11025, 1, 8).unwrap();
-        assert_eq!(
-            (wave.len(), &wave[..4], wave[wave.len() - 1]),
-            (48, b"RIFF".as_slice(), 0)
-        );
+        assert_eq!((wave.len(), &wave[..4], wave[wave.len() - 1]), (48, b"RIFF".as_slice(), 0));
         assert!(pcm_wave(&[1], 999, 1, 8).is_err() && pcm_wave(&[1], 8000, 1, 16).is_err());
         assert_eq!(riff_wave(&wave).unwrap(), wave);
     }

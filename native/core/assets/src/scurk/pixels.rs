@@ -32,27 +32,15 @@ fn fits(pixels: &[i32], width: i64, height: i64) -> bool {
 }
 
 /// The pixels of the rectangle from `start` to `finish`, clamped to the image.
-pub fn copy_region(
-    pixels: &[i32],
-    width: i64,
-    height: i64,
-    start: (i64, i64),
-    finish: (i64, i64),
-) -> Region {
+pub fn copy_region(pixels: &[i32], width: i64, height: i64, start: (i64, i64), finish: (i64, i64)) -> Region {
     if !fits(pixels, width, height) {
         return Region::default();
     }
 
     let low = |a: i64, b: i64, limit: i64| a.min(b).clamp(0, limit - 1);
     let high = |a: i64, b: i64, limit: i64| a.max(b).clamp(0, limit - 1);
-    let (x0, y0) = (
-        low(start.0, finish.0, width),
-        low(start.1, finish.1, height),
-    );
-    let (x1, y1) = (
-        high(start.0, finish.0, width),
-        high(start.1, finish.1, height),
-    );
+    let (x0, y0) = (low(start.0, finish.0, width), low(start.1, finish.1, height));
+    let (x1, y1) = (high(start.0, finish.0, width), high(start.1, finish.1, height));
     let (copied_width, copied_height) = ((x1 - x0 + 1) as usize, (y1 - y0 + 1) as usize);
     let mut copied = Vec::with_capacity(copied_width * copied_height);
 
@@ -95,8 +83,7 @@ pub fn paste_region(
             let x = at.0 + source_x;
 
             if (0..target_width).contains(&x) {
-                result[(y * target_width + x) as usize] =
-                    source[(source_y * source_width + source_x) as usize];
+                result[(y * target_width + x) as usize] = source[(source_y * source_width + source_x) as usize];
             }
         }
     }
@@ -126,10 +113,7 @@ pub fn flip_horizontal(pixels: &[i32], width: i64, height: i64) -> Vec<i32> {
         return Vec::new();
     }
 
-    pixels
-        .chunks(width as usize)
-        .flat_map(|row| row.iter().rev().copied())
-        .collect()
+    pixels.chunks(width as usize).flat_map(|row| row.iter().rev().copied()).collect()
 }
 
 pub fn flip_vertical(pixels: &[i32], width: i64, height: i64) -> Vec<i32> {
@@ -137,12 +121,7 @@ pub fn flip_vertical(pixels: &[i32], width: i64, height: i64) -> Vec<i32> {
         return Vec::new();
     }
 
-    pixels
-        .chunks(width as usize)
-        .rev()
-        .flatten()
-        .copied()
-        .collect()
+    pixels.chunks(width as usize).rev().flatten().copied().collect()
 }
 
 /// The color that a texture pixel gives: the selected color, transparency, or itself.
@@ -157,19 +136,12 @@ pub fn resolve_texture_value(source: i32, selected_color: i32) -> i32 {
 }
 
 /// The color of `point` under a repeating texture.
-pub fn texture_color(
-    point: (i64, i64),
-    selected_color: i32,
-    pattern: &[i32],
-    pattern_width: i64,
-    pattern_height: i64,
-) -> i32 {
+pub fn texture_color(point: (i64, i64), selected_color: i32, pattern: &[i32], pattern_width: i64, pattern_height: i64) -> i32 {
     if !fits(pattern, pattern_width, pattern_height) {
         return selected_color;
     }
 
-    let source = pattern[(point.1.rem_euclid(pattern_height) * pattern_width
-        + point.0.rem_euclid(pattern_width)) as usize];
+    let source = pattern[(point.1.rem_euclid(pattern_height) * pattern_width + point.0.rem_euclid(pattern_width)) as usize];
 
     resolve_texture_value(source, selected_color)
 }
@@ -200,8 +172,7 @@ pub fn flood_fill_texture(
     pattern_height: i64,
 ) -> Vec<i32> {
     let mut result = pixels.to_vec();
-    let inside =
-        |point: (i64, i64)| (0..width).contains(&point.0) && (0..height).contains(&point.1);
+    let inside = |point: (i64, i64)| (0..width).contains(&point.0) && (0..height).contains(&point.1);
 
     if !fits(&result, width, height)
         || !inside(start)
@@ -223,13 +194,7 @@ pub fn flood_fill_texture(
         }
 
         visited[index] = true;
-        result[index] = texture_color(
-            point,
-            selected_color,
-            pattern,
-            pattern_width,
-            pattern_height,
-        );
+        result[index] = texture_color(point, selected_color, pattern, pattern_width, pattern_height);
 
         for neighbor in [
             (point.0 - 1, point.1),
@@ -309,20 +274,11 @@ mod tests {
     #[test]
     fn regions_turn_and_flip() {
         let pixels = [1, 2, 3, 4, 5, 6];
-        assert_eq!(
-            rotate_counterclockwise(&pixels, 3, 2),
-            vec![3, 6, 2, 5, 1, 4]
-        );
+        assert_eq!(rotate_counterclockwise(&pixels, 3, 2), vec![3, 6, 2, 5, 1, 4]);
         assert_eq!(flip_horizontal(&pixels, 3, 2), vec![3, 2, 1, 6, 5, 4]);
         assert_eq!(flip_vertical(&pixels, 3, 2), vec![4, 5, 6, 1, 2, 3]);
-        assert_eq!(
-            copy_region(&pixels, 3, 2, (5, 0), (1, 9)).pixels,
-            vec![2, 3, 5, 6]
-        );
-        assert_eq!(
-            paste_region(&pixels, 3, 2, (2, 1), &[9, 9], 2, 1),
-            vec![1, 2, 3, 4, 5, 9]
-        );
+        assert_eq!(copy_region(&pixels, 3, 2, (5, 0), (1, 9)).pixels, vec![2, 3, 5, 6]);
+        assert_eq!(paste_region(&pixels, 3, 2, (2, 1), &[9, 9], 2, 1), vec![1, 2, 3, 4, 5, 9]);
     }
 
     #[test]
@@ -330,13 +286,7 @@ mod tests {
         let pattern = pattern_pixels(&TEXTURE_ROWS[1]);
         let filled = flood_fill_texture(&[-1; 4], 2, 2, (0, 0), 7, &pattern, 8, 8);
         assert_eq!(filled, vec![7, -1, -1, 7]);
-        assert_eq!(
-            line_points((0, 0), (3, 1)),
-            vec![(0, 0), (1, 0), (2, 1), (3, 1)]
-        );
-        assert_eq!(
-            pixel_perfect_path(&[(0, 0), (1, 0), (1, 1), (2, 1)]),
-            vec![(0, 0), (1, 1), (2, 1)]
-        );
+        assert_eq!(line_points((0, 0), (3, 1)), vec![(0, 0), (1, 0), (2, 1), (3, 1)]);
+        assert_eq!(pixel_perfect_path(&[(0, 0), (1, 0), (1, 1), (2, 1)]), vec![(0, 0), (1, 1), (2, 1)]);
     }
 }

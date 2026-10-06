@@ -9,8 +9,7 @@ mod sink;
 mod tests;
 
 use self::palette::{
-    Rgb, mac_color_table, mac_palette, rgb_bytes, rgb_colors, text_mode_bytes,
-    windows_layout_index, windows_layout_palette,
+    Rgb, mac_color_table, mac_palette, rgb_bytes, rgb_colors, text_mode_bytes, windows_layout_index, windows_layout_palette,
 };
 use super::sprites::{self, SpriteSet};
 use crate::packs::revision;
@@ -45,15 +44,8 @@ pub const UI_FIELDS: [&str; 5] = [
     "forest_protest_image",
 ];
 /// Bitmap resources of the interface images: the field and the resource ID of type 2.
-const UI_BITMAPS: [(&str, i64); 3] = [
-    ("toolbar_art", 2),
-    ("industry_icons", 178),
-    ("city_map_icons", 247),
-];
-const UI_FILES: [(&str, &str); 2] = [
-    ("simnation_sprites", "NEIGHBOR.BMP"),
-    ("forest_protest_image", "403.BMP"),
-];
+const UI_BITMAPS: [(&str, i64); 3] = [("toolbar_art", 2), ("industry_icons", 178), ("city_map_icons", 247)];
+const UI_FILES: [(&str, &str); 2] = [("simnation_sprites", "NEIGHBOR.BMP"), ("forest_protest_image", "403.BMP")];
 /// Desktop sprite archives: the file name and the Macintosh `SPRT` resource ID.
 const DESKTOP_ARCHIVES: [(&str, i64); 3] = [("LARGE", 129), ("SMALLMED", 128), ("SPECIAL", 130)];
 const DOS_ARCHIVES: [&str; 3] = ["LARGE", "SMALL", "OTHER"];
@@ -110,14 +102,9 @@ impl Entry {
                 bytes,
                 offset,
                 allow_unpadded_odd_runs,
-            } => sprite::decode(
-                bytes,
-                self.width as i32,
-                self.height as i32,
-                *allow_unpadded_odd_runs,
-            )
-            .map(|decoded| decoded.pixels)
-            .map_err(|error| format!("sprite {} at 0x{offset:x}: {error}", self.sprite_id)),
+            } => sprite::decode(bytes, self.width as i32, self.height as i32, *allow_unpadded_odd_runs)
+                .map(|decoded| decoded.pixels)
+                .map_err(|error| format!("sprite {} at 0x{offset:x}: {error}", self.sprite_id)),
         }
     }
 }
@@ -192,11 +179,7 @@ impl Importer {
                     self.files.push((name, index));
                 }
             } else {
-                let source_file = resource
-                    .source
-                    .rsplit(['/', '\\'])
-                    .next()
-                    .unwrap_or_default();
+                let source_file = resource.source.rsplit(['/', '\\']).next().unwrap_or_default();
 
                 if source_file.to_uppercase().contains("SCURK") {
                     continue;
@@ -250,10 +233,7 @@ impl Importer {
 
         if self.palette.is_none() {
             self.outcome.error = "No readable city palette or interface bitmap was found.".into();
-        } else if self.large.entries.is_empty()
-            && self.small.entries.is_empty()
-            && self.ui.is_empty()
-        {
+        } else if self.large.entries.is_empty() && self.small.entries.is_empty() && self.ui.is_empty() {
             self.outcome.error = "No convertible graphics were found.".into();
         }
     }
@@ -278,9 +258,7 @@ impl Importer {
         }
 
         if self.palette.is_none()
-            && let Some(colors) = self
-                .typed("pltt/0")
-                .and_then(|resource| mac_palette(&resource.bytes))
+            && let Some(colors) = self.typed("pltt/0").and_then(|resource| mac_palette(&resource.bytes))
         {
             self.palette = Some(colors);
             let fast = self
@@ -302,12 +280,7 @@ impl Importer {
             }
 
             if bytes.len() == WINDOWS_PALETTE_SIZE {
-                self.palette = Some(
-                    bytes
-                        .chunks_exact(4)
-                        .map(|bgr| [bgr[2], bgr[1], bgr[0]])
-                        .collect(),
-                );
+                self.palette = Some(bytes.chunks_exact(4).map(|bgr| [bgr[2], bgr[1], bgr[0]]).collect());
             }
         }
     }
@@ -327,25 +300,16 @@ impl Importer {
         }
 
         for name in DOS_ARCHIVES {
-            let (Some(data), Some(header)) = (
-                self.file(&format!("{name}.DAT")),
-                self.file(&format!("{name}.HED")),
-            ) else {
+            let (Some(data), Some(header)) = (self.file(&format!("{name}.DAT")), self.file(&format!("{name}.HED"))) else {
                 continue;
             };
             let decoded = sprites::dos(&header.bytes, &data.bytes);
-            self.outcome
-                .warnings
-                .extend(decoded.warnings.iter().cloned());
+            self.outcome.warnings.extend(decoded.warnings.iter().cloned());
 
             if !decoded.error.is_empty() {
                 self.warn(format!("{name}: {}", decoded.error));
             } else {
-                let group = if name == "LARGE" {
-                    &mut self.large
-                } else {
-                    &mut self.small
-                };
+                let group = if name == "LARGE" { &mut self.large } else { &mut self.small };
                 append(group, &decoded);
             }
         }
@@ -381,20 +345,13 @@ impl Importer {
                 continue;
             }
 
-            if large {
-                &mut self.large
-            } else {
-                &mut self.small
-            }
-            .push(entry);
+            if large { &mut self.large } else { &mut self.small }.push(entry);
         }
     }
 
     fn use_windows_layout(&mut self, fast: &[Rgb], slow: &[Rgb]) {
         if fast.len() != FAST_CYCLE_COUNT || slow.len() != SLOW_CYCLE_COUNT {
-            self.warn(
-                "The source has no complete palette cycle colors. Animated colors can look wrong.",
-            );
+            self.warn("The source has no complete palette cycle colors. Animated colors can look wrong.");
         }
 
         let source = self.palette.take().unwrap_or_default();
@@ -406,20 +363,15 @@ impl Importer {
         let bytes = &self.file(name)?.bytes;
 
         if bytes.len() < BMP_MIN_SIZE
-            || u16::from_le_bytes([bytes[BMP_BITS_OFFSET], bytes[BMP_BITS_OFFSET + 1]])
-                != INDEXED_BITS
+            || u16::from_le_bytes([bytes[BMP_BITS_OFFSET], bytes[BMP_BITS_OFFSET + 1]]) != INDEXED_BITS
             || ![0, COLOR_COUNT as u32].contains(&u32::from_le_bytes(
-                bytes[BMP_COLORS_OFFSET..BMP_COLORS_OFFSET + 4]
-                    .try_into()
-                    .unwrap(),
+                bytes[BMP_COLORS_OFFSET..BMP_COLORS_OFFSET + 4].try_into().unwrap(),
             ))
         {
             return None;
         }
 
-        bmp::decode_indexed(bytes, true)
-            .ok()
-            .map(|decoded| rgb_colors(&decoded.palette))
+        bmp::decode_indexed(bytes, true).ok().map(|decoded| rgb_colors(&decoded.palette))
     }
 
     fn set_ui(&mut self, field: &str, image: UiImage) {
@@ -452,10 +404,7 @@ impl Importer {
 
         for record in entries {
             if record.width > MAX_SPRITE_DIMENSION || record.height > MAX_SPRITE_DIMENSION {
-                self.warn(format!(
-                    "Sprite {} has excessive dimensions.",
-                    record.sprite_id
-                ));
+                self.warn(format!("Sprite {} has excessive dimensions.", record.sprite_id));
                 continue;
             }
 
@@ -475,12 +424,7 @@ impl Importer {
                 continue;
             }
 
-            if large {
-                &mut self.large
-            } else {
-                &mut self.small
-            }
-            .push(entry);
+            if large { &mut self.large } else { &mut self.small }.push(entry);
         }
     }
 
@@ -492,20 +436,10 @@ impl Importer {
         manifest.insert("source_platform", Value::String(platform.into()));
         manifest.insert("partial", Value::Bool(true));
         manifest.insert("palette", Value::String("palette.png".into()));
-        manifest.insert(
-            "import_revision",
-            Value::Int(revision::current("graphics", platform)),
-        );
+        manifest.insert("import_revision", Value::Int(revision::current("graphics", platform)));
         let indices: Vec<i32> = (0..COLOR_COUNT as i32).collect();
         let palette = rgb_bytes(self.palette.as_deref().unwrap_or_default());
-        self.png(
-            sink,
-            "palette.png",
-            PALETTE_IMAGE_SIZE,
-            PALETTE_IMAGE_SIZE,
-            &indices,
-            &palette,
-        );
+        self.png(sink, "palette.png", PALETTE_IMAGE_SIZE, PALETTE_IMAGE_SIZE, &indices, &palette);
 
         if let Some(scenario) = &self.scenario_palette {
             let scenario = rgb_bytes(scenario);
@@ -517,18 +451,11 @@ impl Importer {
                 &indices,
                 &scenario,
             );
-            manifest.insert(
-                "scenario_palette",
-                Value::String("scenario-palette.png".into()),
-            );
+            manifest.insert("scenario_palette", Value::String("scenario-palette.png".into()));
         }
 
         for (field, large) in [("large_sprites", true), ("small_medium_sprites", false)] {
-            let entries = std::mem::take(if large {
-                &mut self.large.entries
-            } else {
-                &mut self.small.entries
-            });
+            let entries = std::mem::take(if large { &mut self.large.entries } else { &mut self.small.entries });
             let mut records = Vec::new();
 
             for (index, entry) in entries.iter().enumerate() {
@@ -546,14 +473,7 @@ impl Importer {
                 }
 
                 let relative = format!("{field}/{index:04}-{}.png", entry.sprite_id);
-                self.png(
-                    sink,
-                    &relative,
-                    entry.width,
-                    entry.height,
-                    &pixels,
-                    &palette,
-                );
+                self.png(sink, &relative, entry.width, entry.height, &pixels, &palette);
                 let mut record = Object::new();
                 record.insert("id", Value::Int(entry.sprite_id));
                 record.insert("png", Value::String(relative));
@@ -561,12 +481,7 @@ impl Importer {
                 self.outcome.count += 1;
             }
 
-            if large {
-                &mut self.large.entries
-            } else {
-                &mut self.small.entries
-            }
-            .extend(entries);
+            if large { &mut self.large.entries } else { &mut self.small.entries }.extend(entries);
             manifest.insert(field, Value::Array(records));
         }
 
@@ -574,14 +489,7 @@ impl Importer {
 
         for (field, image) in std::mem::take(&mut self.ui) {
             let relative = format!("ui/{field}.png");
-            self.png(
-                sink,
-                &relative,
-                image.width,
-                image.height,
-                &image.pixels,
-                &image.palette,
-            );
+            self.png(sink, &relative, image.width, image.height, &image.pixels, &image.palette);
             ui.insert(&field, Value::String(relative));
             self.outcome.count += 1;
             self.ui.push((field, image));
@@ -589,23 +497,19 @@ impl Importer {
 
         manifest.insert("ui", Value::Object(ui));
         self.warn_missing();
-        self.write(
-            sink,
-            "pack.json",
-            json::stringify(&Value::Object(manifest), "\t", true).as_bytes(),
-        );
+        self.write(sink, "pack.json", json::stringify(&Value::Object(manifest), "\t", true).as_bytes());
     }
 
     fn warn_missing(&mut self) {
         if self.large.entries.is_empty() || self.small.entries.is_empty() {
             self.warn("Graphics are missing a city sprite size group. The pack needs a compatible base set for that group.");
         } else {
-            let missing = LARGE_SPRITE_IDS
-                .filter(|id| !self.large.ids.contains(id))
-                .count();
+            let missing = LARGE_SPRITE_IDS.filter(|id| !self.large.ids.contains(id)).count();
 
             if missing > 0 {
-                self.warn(format!("Graphics are missing {missing} standard large sprite IDs. This can occur in demos or incomplete copies."));
+                self.warn(format!(
+                    "Graphics are missing {missing} standard large sprite IDs. This can occur in demos or incomplete copies."
+                ));
             }
         }
 
@@ -618,15 +522,7 @@ impl Importer {
         }
     }
 
-    fn png(
-        &mut self,
-        sink: &mut dyn Sink,
-        path: &str,
-        width: i64,
-        height: i64,
-        pixels: &[i32],
-        palette: &[u8],
-    ) {
+    fn png(&mut self, sink: &mut dyn Sink, path: &str, width: i64, height: i64, pixels: &[i32], palette: &[u8]) {
         if !self.outcome.error.is_empty() {
             return;
         }

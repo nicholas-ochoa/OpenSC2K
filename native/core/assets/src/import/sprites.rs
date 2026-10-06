@@ -104,9 +104,8 @@ pub fn mac_tile_set(data: &[u8]) -> SpriteSet {
 
     for index in 0..count {
         if !has_range(data, cursor, 8) || latin1(&data[cursor..cursor + 4]) != "SHAP" {
-            set.warnings.push(format!(
-                "The Macintosh tile set ends before shape {index}. Kept preceding shapes."
-            ));
+            set.warnings
+                .push(format!("The Macintosh tile set ends before shape {index}. Kept preceding shapes."));
             break;
         }
 
@@ -114,9 +113,8 @@ pub fn mac_tile_set(data: &[u8]) -> SpriteSet {
         cursor += 8;
 
         if !has_range(data, cursor, length) {
-            set.warnings.push(format!(
-                "Macintosh shape {index} extends past the tile set. Kept preceding shapes."
-            ));
+            set.warnings
+                .push(format!("Macintosh shape {index} extends past the tile set. Kept preceding shapes."));
             break;
         }
 
@@ -128,27 +126,17 @@ pub fn mac_tile_set(data: &[u8]) -> SpriteSet {
             continue;
         }
 
-        if length < MAC_SHAPE_HEADER_SIZE
-            || u32_be(data, start + 6) != length - MAC_SHAPE_HEADER_SIZE
-        {
-            set.warnings.push(format!(
-                "Macintosh shape {index} has an invalid pixel length."
-            ));
+        if length < MAC_SHAPE_HEADER_SIZE || u32_be(data, start + 6) != length - MAC_SHAPE_HEADER_SIZE {
+            set.warnings.push(format!("Macintosh shape {index} has an invalid pixel length."));
             continue;
         }
 
         let sprite_id = u16_be(data, start) as i64;
         let (width, height) = (u16_be(data, start + 2), u16_be(data, start + 4));
 
-        if width < 1
-            || height < 1
-            || width > MAX_DIMENSION
-            || height > MAX_DIMENSION
-            || total_pixels + width * height > MAX_TOTAL_PIXELS
-        {
-            set.warnings.push(format!(
-                "Macintosh shape {sprite_id} exceeds the decoded image limits."
-            ));
+        if width < 1 || height < 1 || width > MAX_DIMENSION || height > MAX_DIMENSION || total_pixels + width * height > MAX_TOTAL_PIXELS {
+            set.warnings
+                .push(format!("Macintosh shape {sprite_id} exceeds the decoded image limits."));
             continue;
         }
 
@@ -227,9 +215,8 @@ pub fn tiles_database(data: &[u8]) -> SpriteSet {
         let width = u16_le(data, metadata + 8);
 
         if !has_range(data, cursor, length) {
-            set.warnings.push(format!(
-                "Tile database ends before sprite {sprite_id}. Kept preceding sprites."
-            ));
+            set.warnings
+                .push(format!("Tile database ends before sprite {sprite_id}. Kept preceding sprites."));
             break;
         }
 
@@ -238,17 +225,16 @@ pub fn tiles_database(data: &[u8]) -> SpriteSet {
         let allow_unpadded_odd_runs = encoded != raw;
         cursor += length;
 
-        if let Some(rows) =
-            sprite_rows(&encoded).filter(|&rows| rows > height && rows <= MAX_DIMENSION)
-        {
-            set.warnings.push(format!("Tile database sprite {sprite_id} stores {rows} rows but declares {height}. Recovered all rows."));
+        if let Some(rows) = sprite_rows(&encoded).filter(|&rows| rows > height && rows <= MAX_DIMENSION) {
+            set.warnings.push(format!(
+                "Tile database sprite {sprite_id} stores {rows} rows but declares {height}. Recovered all rows."
+            ));
             height = rows;
         }
 
         if width < 1 || height < 1 || width > MAX_DIMENSION || height > MAX_DIMENSION {
-            set.warnings.push(format!(
-                "Tile database sprite {sprite_id} has invalid dimensions."
-            ));
+            set.warnings
+                .push(format!("Tile database sprite {sprite_id} has invalid dimensions."));
             continue;
         }
 
@@ -272,10 +258,7 @@ pub fn tiles_database(data: &[u8]) -> SpriteSet {
 
 /// The DOS sprites of a directory of offsets and sizes and their data file.
 pub fn dos(header: &[u8], data: &[u8]) -> SpriteSet {
-    if header.is_empty()
-        || !header.len().is_multiple_of(DOS_RECORD_SIZE)
-        || header.len() / DOS_RECORD_SIZE > DOS_MAX_RECORDS
-    {
+    if header.is_empty() || !header.len().is_multiple_of(DOS_RECORD_SIZE) || header.len() / DOS_RECORD_SIZE > DOS_MAX_RECORDS {
         return SpriteSet::failed("Invalid DOS sprite directory.");
     }
 
@@ -310,9 +293,7 @@ pub fn dos(header: &[u8], data: &[u8]) -> SpriteSet {
         let width = usize::from(header[id * DOS_RECORD_SIZE + 5]);
 
         let Some(end) = end_of(offset).filter(|_| width != 0 && height != 0) else {
-            set.warnings.push(format!(
-                "DOS sprite {id} has an invalid offset or dimension."
-            ));
+            set.warnings.push(format!("DOS sprite {id} has an invalid offset or dimension."));
             continue;
         };
 
@@ -344,22 +325,9 @@ mod tests {
         data.extend_from_slice(&sprite);
         let set = tiles_database(&data);
         assert_eq!(set.error, "");
-        assert_eq!(
-            (
-                set.sprites[0].sprite_id,
-                set.sprites[0].width,
-                set.sprites[0].height
-            ),
-            (7, 1, 1)
-        );
-        assert_eq!(
-            tiles_database(&[0, 0]).error,
-            "Invalid tile database directory."
-        );
+        assert_eq!((set.sprites[0].sprite_id, set.sprites[0].width, set.sprites[0].height), (7, 1, 1));
+        assert_eq!(tiles_database(&[0, 0]).error, "Invalid tile database directory.");
         assert_eq!(dos(&[], &[]).error, "Invalid DOS sprite directory.");
-        assert_eq!(
-            mac_tile_set(b"MIFF").error,
-            "Invalid Macintosh tile-set header."
-        );
+        assert_eq!(mac_tile_set(b"MIFF").error, "Invalid Macintosh tile-set header.");
     }
 }
