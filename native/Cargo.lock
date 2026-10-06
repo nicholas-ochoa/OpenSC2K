@@ -1258,6 +1258,7 @@ dependencies = [
  "sc2k_platform",
  "sc2k_render",
  "sc2k_sim",
+ "sc2k_ui",
  "sc2k_view",
  "softbuffer",
  "winit",
@@ -1593,6 +1594,13 @@ version = "0.1.0"
 dependencies = [
  "sc2k_assets",
  "sc2k_formats",
+]
+
+[[package]]
+name = "sc2k_ui"
+version = "0.1.0"
+dependencies = [
+ "sc2k_platform",
 ]
 
 [[package]]

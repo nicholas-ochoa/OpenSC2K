@@ -1,0 +1,10 @@
+[package]
+name = "sc2k_ui"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "The interface of OpenSC2K without engine types: controls, widgets, layout, and screens on CPU pixels"
+
+[dependencies]
+sc2k_platform = { path = "../platform" }

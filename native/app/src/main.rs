@@ -4,6 +4,7 @@
 mod audio;
 mod city_view;
 mod cli;
+mod controls;
 mod game;
 mod settings;
 
@@ -11,7 +12,9 @@ use game::Game;
 use sc2k_game::edits::{self, Selection};
 use sc2k_sim::sim::geom::Vec2i;
 use sc2k_sim::sim::tools::ids::group;
+use sc2k_ui::controls::{Bindings, Input};
 use sc2k_view::Frame;
+use sc2k_view::camera::Motion;
 use sc2k_view::camera::Viewport;
 use sc2k_view::data_view::{MODES, TITLES};
 use std::num::NonZeroU32;
@@ -21,10 +24,7 @@ use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
-
-const KEY_PAN_PIXELS: f64 = 64.0;
 
 struct App {
     game: Game,
@@ -34,11 +34,28 @@ struct App {
     started: Instant,
     cursor: (f64, f64),
     dragging: Option<(f64, f64)>,
+    drag_start: (f64, f64),
     /// The selected tool group and subtool.
     tool: (i64, i64),
     /// The tiles of a left-button drag, from the first.
     selection: Vec<(i32, i32)>,
     status: String,
+    bindings: Bindings,
+    motion: Motion,
+    modifiers: winit::keyboard::ModifiersState,
+    /// The speed that resumes after a pause.
+    resume_speed: i64,
+}
+
+/// The screen direction of a camera action.
+fn camera_direction(action: &str) -> Option<(f64, f64)> {
+    Some(match action {
+        "camera_up" => (0.0, -1.0),
+        "camera_left" => (-1.0, 0.0),
+        "camera_down" => (0.0, 1.0),
+        "camera_right" => (1.0, 0.0),
+        _ => return None,
+    })
 }
 
 impl App {
@@ -57,6 +74,21 @@ impl App {
         game.audio.advance(delta);
         game.view.advance_palette(delta);
         game.view.animation_phase = elapsed / 100;
+        let fast = if self
+            .bindings
+            .for_action("camera_fast")
+            .iter()
+            .any(|binding| binding.code == "Shift")
+            && self.modifiers.shift_key()
+        {
+            3.0
+        } else {
+            1.0
+        };
+        let (dx, dy) = self.motion.step(delta / 1000.0, fast);
+        game.view
+            .camera
+            .pan_screen(dx * game.view.camera.map_pixel_ratio, dy * game.view.camera.map_pixel_ratio);
         let size = window.inner_size();
         let (width, height) = (size.width.max(1), size.height.max(1));
         let _ = surface.resize(NonZeroU32::new(width).unwrap(), NonZeroU32::new(height).unwrap());
@@ -87,64 +119,127 @@ impl App {
         window.request_redraw();
     }
 
-    fn key(&mut self, key: Key) {
+    /// Run a key or button through the bindings: held camera keys move the
+    /// camera, and press actions run.
+    fn input(&mut self, input: &Input, hold_id: i64) {
+        use sc2k_ui::controls::{Kind, Scope};
+
+        const SCOPES: [Scope; 3] = [Scope::Map, Scope::Global, Scope::Anywhere];
+
+        if let Some(action) = self.bindings.action_for(input, &[Kind::Hold], &SCOPES)
+            && let Some(direction) = camera_direction(action)
+        {
+            if input.pressed() {
+                self.motion.press(hold_id, direction);
+            } else {
+                self.motion.release(hold_id);
+            }
+
+            return;
+        }
+
+        if !input.pressed() {
+            self.motion.release(hold_id);
+
+            return;
+        }
+
+        if let Some(action) = self.bindings.action_for(input, &[Kind::Press], &SCOPES) {
+            self.run(action);
+        }
+    }
+
+    /// Run one action of the control map. Returns false for an action that
+    /// this shell does not have yet.
+    fn run(&mut self, action: &str) -> bool {
+        use sc2k_ui::controls::{DATA_VIEW_IDS, SPEED_IDS, TOOL_IDS};
+
         let game = &mut self.game;
         let view = &mut game.view;
 
-        match key {
-            Key::Named(NamedKey::ArrowLeft) => view.camera.pan_screen(-KEY_PAN_PIXELS, 0.0),
-            Key::Named(NamedKey::ArrowRight) => view.camera.pan_screen(KEY_PAN_PIXELS, 0.0),
-            Key::Named(NamedKey::ArrowUp) => view.camera.pan_screen(0.0, -KEY_PAN_PIXELS),
-            Key::Named(NamedKey::ArrowDown) => view.camera.pan_screen(0.0, KEY_PAN_PIXELS),
-            Key::Character(text) => match text.as_str() {
-                "+" | "=" => {
-                    view.camera.change_zoom(1, None);
-                }
-                "-" => {
-                    view.camera.change_zoom(-1, None);
-                }
-                "0" => view.camera.reset_zoom(),
-                "u" => view.options.underground = !view.options.underground,
-                "p" => view.options.pipes = !view.options.pipes,
-                "v" => {
-                    let next = match view.data_mode {
-                        None => Some(0),
-                        Some(mode) => MODES
-                            .iter()
-                            .position(|known| *known == mode)
-                            .map(|index| index + 1)
-                            .filter(|index| *index < MODES.len()),
-                    };
+        if let Some(group) = TOOL_IDS.iter().position(|id| *id == action) {
+            self.tool = (group as i64, 0);
+            self.status = sc2k_sim::sim::tools::catalog::tool(self.tool.0, 0).map_or_else(String::new, |tool| tool.name.to_string());
 
-                    view.data_mode = next.map(|index| MODES[index]);
-                    self.status = next.map_or_else(|| "City".into(), |index| TITLES[index].into());
-                    game.refresh_data_values();
-                }
-                "[" | "]" => self.rotate(text.as_str() == "["),
-                "b" => self.tool = (group::BULLDOZER, 0),
-                "x" => self.tool = (group::ROADS, 0),
-                "w" => self.tool = (group::POWER, 0),
-                "z" => self.tool = (group::RESIDENTIAL, 0),
-                "c" => self.tool = (group::COMMERCIAL, 0),
-                "i" => self.tool = (group::INDUSTRIAL, 0),
-                "t" => self.tool = (group::LANDSCAPE, 0),
-                "k" => self.tool = (group::POWER, 2),
-                "q" => self.tool = (group::QUERY, 0),
-                "y" => {
-                    let undone = game.runner.call(|session| session.undo.take().map(|undo| undo.apply(session)));
-
-                    if let Some(result) = undone {
-                        self.status = result.map_or_else(|error| error, |()| "Undid the last edit.".into());
-                    }
-                }
-                digit @ ("1" | "2" | "3" | "4" | "5") => {
-                    let speed: i64 = digit.parse().unwrap_or(1);
-                    game.runner.call(move |session| session.set_speed(speed));
-                }
-                _ => {}
-            },
-            _ => {}
+            return true;
         }
+
+        if let Some(index) = DATA_VIEW_IDS.iter().position(|id| *id == action) {
+            view.data_mode = Some(MODES[index]);
+            view.options.underground = false;
+            self.status = TITLES[index].into();
+            game.refresh_data_values();
+
+            return true;
+        }
+
+        if let Some(index) = SPEED_IDS.iter().position(|id| *id == action) {
+            self.set_speed(index as i64 + 1);
+
+            return true;
+        }
+
+        match action {
+            "zoom_in" => {
+                view.camera.change_zoom(1, Some(self.cursor));
+            }
+            "zoom_out" => {
+                view.camera.change_zoom(-1, Some(self.cursor));
+            }
+            "zoom_reset" => view.camera.reset_zoom(),
+            "rotate_clockwise" => self.rotate(false),
+            "rotate_counter_clockwise" => self.rotate(true),
+            "speed_toggle_pause" => {
+                let speed = if game.status.speed == 1 { self.resume_speed } else { 1 };
+                self.set_speed(speed);
+            }
+            "speed_faster" | "speed_slower" => {
+                let step = if action == "speed_faster" { 1 } else { -1 };
+                let speed = (game.status.speed + step).clamp(1, 5);
+                self.set_speed(speed);
+            }
+            "tool_next_subtool" | "tool_previous_subtool" => {
+                let count = sc2k_sim::sim::tools::catalog::GROUPS
+                    .get(self.tool.0 as usize)
+                    .map_or(1, |group| group.tools.len() as i64);
+                let step = if action == "tool_next_subtool" { 1 } else { -1 };
+                self.tool.1 = (self.tool.1 + step).rem_euclid(count.max(1));
+                self.status =
+                    sc2k_sim::sim::tools::catalog::tool(self.tool.0, self.tool.1).map_or_else(String::new, |tool| tool.name.to_string());
+            }
+            "view_city" => {
+                view.data_mode = None;
+                view.options.underground = false;
+                self.status = "City".into();
+            }
+            "view_toggle_underground" => {
+                view.data_mode = None;
+                view.options.underground = !view.options.underground;
+            }
+            "view_show_vehicles" => view.show_vehicles = !view.show_vehicles,
+            "view_show_pipes" => view.options.pipes = !view.options.pipes,
+            "view_show_subways" => view.options.subways = !view.options.subways,
+            "view_show_water_mains" => view.options.water_mains = !view.options.water_mains,
+            "view_show_tunnels" => view.options.tunnels = !view.options.tunnels,
+            "undo" => {
+                let undone = game.runner.call(|session| session.undo.take().map(|undo| undo.apply(session)));
+
+                if let Some(result) = undone {
+                    self.status = result.map_or_else(|error| error, |()| "Undid the last edit.".into());
+                }
+            }
+            _ => return false,
+        }
+
+        true
+    }
+
+    fn set_speed(&mut self, speed: i64) {
+        if speed > 1 {
+            self.resume_speed = speed;
+        }
+
+        self.game.runner.call(move |session| session.set_speed(speed));
     }
 
     fn rotate(&mut self, counter_clockwise: bool) {
@@ -225,7 +320,12 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Focused(focused) => self.game.audio.set_focus(focused),
             WindowEvent::RedrawRequested => self.redraw(),
-            WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => self.key(event.logical_key),
+            WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
+            WindowEvent::KeyboardInput { event, .. } => {
+                if let Some(input) = controls::key_input(&event, self.modifiers) {
+                    self.input(&input, controls::key_id(&event));
+                }
+            }
             WindowEvent::CursorMoved { position, .. } => {
                 let point = (position.x, position.y);
                 let tile = self.game.view.tile_at(point);
@@ -263,10 +363,31 @@ impl ApplicationHandler for App {
             }
             WindowEvent::MouseInput {
                 state,
-                button: MouseButton::Right | MouseButton::Middle,
+                button: button @ (MouseButton::Right | MouseButton::Middle),
                 ..
             } => {
-                self.dragging = (state == ElementState::Pressed).then_some(self.cursor);
+                if state == ElementState::Pressed {
+                    self.dragging = Some(self.cursor);
+                    self.drag_start = self.cursor;
+                } else {
+                    self.dragging = None;
+                    let moved = (self.cursor.0 - self.drag_start.0).abs() + (self.cursor.1 - self.drag_start.1).abs();
+                    let center = button == MouseButton::Middle && self.bindings.has_mouse_button("map_center_on_tile", "Middle");
+
+                    // a click without movement centers the map on its tile
+                    if moved < 4.0
+                        && center
+                        && let Some((x, y)) = self.game.view.tile_at(self.cursor)
+                    {
+                        let edge = self.game.view.edge();
+                        self.game.view.camera.center_on(sc2k_view::geometry::tile_center(edge, x, y, 0));
+                    }
+                }
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                if let Some(input) = controls::mouse_input(button, state == ElementState::Pressed, self.modifiers) {
+                    self.input(&input, -20);
+                }
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 let steps = match delta {
@@ -275,7 +396,7 @@ impl ApplicationHandler for App {
                 };
 
                 if steps.abs() >= 1.0 {
-                    self.game.view.camera.change_zoom(steps.signum() as i32, Some(self.cursor));
+                    self.input(&controls::wheel_input(steps > 0.0, self.modifiers), -10);
                 }
             }
             _ => {}
@@ -336,9 +457,14 @@ fn main() {
                 started: Instant::now(),
                 cursor: (0.0, 0.0),
                 dragging: None,
+                drag_start: (0.0, 0.0),
                 tool: (group::BULLDOZER, 0),
                 selection: Vec::new(),
                 status: String::new(),
+                bindings: Bindings::load(&settings::Settings::load().config),
+                motion: Motion::default(),
+                modifiers: winit::keyboard::ModifiersState::default(),
+                resume_speed: 3,
             };
 
             event_loop.run_app(&mut app).expect("the event loop");

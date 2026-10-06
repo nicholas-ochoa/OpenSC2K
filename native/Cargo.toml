@@ -16,6 +16,7 @@ members = [
     "core/assets",
     "core/platform",
     "core/view",
+    "core/ui",
     "app",
     "xtask",
 ]

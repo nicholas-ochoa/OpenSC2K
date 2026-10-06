@@ -259,3 +259,59 @@ mod tests {
         assert!(camera.zoom_levels()[0] < 0.1);
     }
 }
+
+/// Held camera keys, with acceleration and braking, as CityCameraMotion.
+#[derive(Clone, Debug, Default)]
+pub struct Motion {
+    pub velocity: (f64, f64),
+    /// The direction of each held key or button, by an id that the front end picks.
+    pub held: std::collections::HashMap<i64, (f64, f64)>,
+}
+
+impl Motion {
+    pub const SPEED: f64 = 650.0;
+    const ACCELERATION: f64 = 5200.0;
+    const BRAKING: f64 = 6500.0;
+    const LONGEST_STEP: f64 = 0.05;
+
+    pub fn press(&mut self, id: i64, direction: (f64, f64)) {
+        self.held.insert(id, direction);
+    }
+
+    pub fn release(&mut self, id: i64) {
+        self.held.remove(&id);
+    }
+
+    pub fn held_direction(&self) -> (f64, f64) {
+        let (x, y) = self.held.values().fold((0.0, 0.0), |sum, d| (sum.0 + d.0, sum.1 + d.1));
+        let length = (x * x + y * y).sqrt();
+
+        if length > 1.0 { (x / length, y / length) } else { (x, y) }
+    }
+
+    /// The screen pixels to pan in `delta` seconds toward the held direction.
+    pub fn step(&mut self, delta: f64, speed_scale: f64) -> (f64, f64) {
+        let duration = delta.clamp(0.0, Self::LONGEST_STEP);
+        let direction = self.held_direction();
+        let target = (direction.0 * Self::SPEED * speed_scale, direction.1 * Self::SPEED * speed_scale);
+        let rate = if direction == (0.0, 0.0) {
+            Self::BRAKING
+        } else {
+            Self::ACCELERATION
+        } * speed_scale
+            * duration;
+        let difference = (target.0 - self.velocity.0, target.1 - self.velocity.1);
+        let distance = (difference.0 * difference.0 + difference.1 * difference.1).sqrt();
+
+        self.velocity = if distance <= rate || distance == 0.0 {
+            target
+        } else {
+            (
+                self.velocity.0 + difference.0 / distance * rate,
+                self.velocity.1 + difference.1 / distance * rate,
+            )
+        };
+
+        (self.velocity.0 * duration, self.velocity.1 * duration)
+    }
+}

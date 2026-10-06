@@ -13,6 +13,8 @@ pub enum Value {
     Array(Vec<Value>),
     /// A typed array, such as `Array[int]([1, 2])`: the element type and the items.
     Typed(String, Vec<Value>),
+    /// A packed array, such as `PackedStringArray("a", "b")`: the type and the items.
+    Packed(String, Vec<Value>),
     /// A literal of another type, such as `Vector2i(1, 2)`, kept as text.
     Raw(String),
 }
@@ -40,6 +42,16 @@ impl Value {
         }
     }
 
+    /// The strings of a string array or packed string array.
+    pub fn strings(&self) -> Option<Vec<String>> {
+        match self {
+            Value::Array(items) | Value::Typed(_, items) | Value::Packed(_, items) => {
+                Some(items.iter().filter_map(|item| item.as_str().map(str::to_string)).collect())
+            }
+            _ => None,
+        }
+    }
+
     pub fn as_i64(&self) -> Option<i64> {
         match self {
             Value::Int(value) => Some(*value),
@@ -55,17 +67,11 @@ impl Value {
             Value::Int(value) => value.to_string(),
             Value::Float(value) => float_literal(*value),
             Value::Str(text) => format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\"")),
-            Value::Array(items) => format!(
-                "[{}]",
-                items
-                    .iter()
-                    .map(Value::literal)
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+            Value::Array(items) => format!("[{}]", items.iter().map(Value::literal).collect::<Vec<_>>().join(", ")),
             Value::Typed(kind, items) => {
                 format!("Array[{kind}]({})", Value::Array(items.clone()).literal())
             }
+            Value::Packed(kind, items) => format!("{kind}({})", items.iter().map(Value::literal).collect::<Vec<_>>().join(", ")),
             Value::Raw(text) => text.clone(),
         }
     }
@@ -95,28 +101,19 @@ impl Config {
     }
 
     pub fn string(&self, section: &str, key: &str, default: &str) -> String {
-        self.get(section, key)
-            .and_then(Value::as_str)
-            .unwrap_or(default)
-            .to_string()
+        self.get(section, key).and_then(Value::as_str).unwrap_or(default).to_string()
     }
 
     pub fn bool(&self, section: &str, key: &str, default: bool) -> bool {
-        self.get(section, key)
-            .and_then(Value::as_bool)
-            .unwrap_or(default)
+        self.get(section, key).and_then(Value::as_bool).unwrap_or(default)
     }
 
     pub fn float(&self, section: &str, key: &str, default: f64) -> f64 {
-        self.get(section, key)
-            .and_then(Value::as_f64)
-            .unwrap_or(default)
+        self.get(section, key).and_then(Value::as_f64).unwrap_or(default)
     }
 
     pub fn int(&self, section: &str, key: &str, default: i64) -> i64 {
-        self.get(section, key)
-            .and_then(Value::as_i64)
-            .unwrap_or(default)
+        self.get(section, key).and_then(Value::as_i64).unwrap_or(default)
     }
 
     /// Set a value. A new section or key comes last.
@@ -148,10 +145,7 @@ impl Config {
                 continue;
             }
 
-            if let Some(name) = line
-                .strip_prefix('[')
-                .and_then(|rest| rest.strip_suffix(']'))
-            {
+            if let Some(name) = line.strip_prefix('[').and_then(|rest| rest.strip_suffix(']')) {
                 section = name.to_string();
 
                 if !config.sections.iter().any(|(known, _)| *known == section) {
@@ -238,10 +232,7 @@ fn parse_value(literal: &str) -> Value {
         _ => {}
     }
 
-    if let Some(inner) = literal
-        .strip_prefix('"')
-        .and_then(|rest| rest.strip_suffix('"'))
-    {
+    if let Some(inner) = literal.strip_prefix('"').and_then(|rest| rest.strip_suffix('"')) {
         return Value::Str(unescape(inner));
     }
 
@@ -255,24 +246,21 @@ fn parse_value(literal: &str) -> Value {
         return Value::Float(value);
     }
 
-    if let Some((kind, rest)) = literal
-        .strip_prefix("Array[")
-        .and_then(|rest| rest.split_once("]("))
+    if let Some((kind, rest)) = literal.strip_prefix("Array[").and_then(|rest| rest.split_once("]("))
         && let Some(Value::Array(items)) = rest.strip_suffix(')').map(parse_value)
     {
         return Value::Typed(kind.to_string(), items);
     }
 
-    if let Some(inner) = literal
-        .strip_prefix('[')
-        .and_then(|rest| rest.strip_suffix(']'))
+    if literal.starts_with("Packed")
+        && let Some((kind, rest)) = literal.split_once('(')
+        && let Some(inner) = rest.strip_suffix(')')
     {
-        return Value::Array(
-            split_items(inner)
-                .iter()
-                .map(|item| parse_value(item))
-                .collect(),
-        );
+        return Value::Packed(kind.to_string(), split_items(inner).iter().map(|item| parse_value(item)).collect());
+    }
+
+    if let Some(inner) = literal.strip_prefix('[').and_then(|rest| rest.strip_suffix(']')) {
+        return Value::Array(split_items(inner).iter().map(|item| parse_value(item)).collect());
     }
 
     Value::Raw(literal.to_string())
@@ -347,7 +335,7 @@ fn split_items(inner: &str) -> Vec<String> {
 mod tests {
     use super::{Config, Value};
 
-    const TEXT: &str = "[graphics]\n\nhd_effects=0\nsource=\"folder\"\nzoom_graphics=Array[int]([1, 2, 2])\n\n[audio]\n\nmusic_volume=0.18\nshuffle=true\nwindow=Vector2i(3, 4)\n";
+    const TEXT: &str = "[controls]\n\nbinding/camera_up=PackedStringArray(\"key:W\", \"key:Up\")\n\n[graphics]\n\nhd_effects=0\nsource=\"folder\"\nzoom_graphics=Array[int]([1, 2, 2])\n\n[audio]\n\nmusic_volume=0.18\nshuffle=true\nwindow=Vector2i(3, 4)\n";
 
     #[test]
     fn settings_keep_their_values_and_order() {
@@ -355,24 +343,18 @@ mod tests {
         assert_eq!(config.string("graphics", "source", ""), "folder");
         assert_eq!(
             config.get("graphics", "zoom_graphics"),
-            Some(&Value::Typed(
-                "int".into(),
-                vec![Value::Int(1), Value::Int(2), Value::Int(2)]
-            ))
+            Some(&Value::Typed("int".into(), vec![Value::Int(1), Value::Int(2), Value::Int(2)]))
         );
-        assert!(
-            config
-                .to_text()
-                .contains("zoom_graphics=Array[int]([1, 2, 2])")
-        );
+        assert!(config.to_text().contains("zoom_graphics=Array[int]([1, 2, 2])"));
         assert_eq!(config.float("audio", "music_volume", 0.0), 0.18);
         assert!(config.bool("audio", "shuffle", false));
-        assert_eq!(
-            config.get("audio", "window"),
-            Some(&Value::Raw("Vector2i(3, 4)".into()))
-        );
+        assert_eq!(config.get("audio", "window"), Some(&Value::Raw("Vector2i(3, 4)".into())));
         let again = Config::parse(&config.to_text());
-        assert_eq!(again.sections.len(), 2);
+        assert_eq!(again.sections.len(), 3);
+        assert_eq!(
+            config.get("controls", "binding/camera_up").and_then(Value::strings),
+            Some(vec!["key:W".into(), "key:Up".into()])
+        );
         assert_eq!(again.get("audio", "window"), config.get("audio", "window"));
     }
 
@@ -380,9 +362,6 @@ mod tests {
     fn strings_escape_quotes() {
         let mut config = Config::default();
         config.set("general", "name", Value::Str("a \"b\" \\ c".into()));
-        assert_eq!(
-            Config::parse(&config.to_text()).string("general", "name", ""),
-            "a \"b\" \\ c"
-        );
+        assert_eq!(Config::parse(&config.to_text()).string("general", "name", ""), "a \"b\" \\ c");
     }
 }
