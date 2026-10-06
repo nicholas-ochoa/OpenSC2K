@@ -14,12 +14,14 @@ varying flat float emission_draw;
 varying flat float indexed_emission_draw;
 varying flat float transparent_shadow_draw;
 varying flat float fullbright_draw;
+varying flat float toxic_draw;
 varying vec2 cloud_ground_grid;
 void vertex() {
 	emission_draw = float(COLOR.rgb == vec3(0.0, 1.0, 1.0));
 	indexed_emission_draw = float(COLOR.rgb == vec3(0.0, 1.0, 0.0));
 	transparent_shadow_draw = float(COLOR.rgb == vec3(1.0, 0.0, 1.0));
 	fullbright_draw = float(COLOR.rgb == vec3(1.0, 1.0, 0.0));
+	toxic_draw = float(COLOR.rgb == vec3(1.0, 0.0, 0.0));
 	cloud_ground_grid = cloud_grid_at((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy);
 }
 
@@ -48,6 +50,12 @@ void fragment() {
 		COLOR = vec4(light, base_color.a * environment_night * float(environment_enabled));
 	} else if (emission_draw > 0.5) {
 		COLOR = vec4(base_color.rgb, base_color.a * environment_night * float(environment_enabled));
+	} else if (toxic_draw > 0.5) {
+		// Preserve original cloud shading and coverage while making the hazard green.
+		float shade = dot(COLOR.rgb, vec3(0.2126, 0.7152, 0.0722));
+		vec3 gas = mix(vec3(0.08, 0.28, 0.015), vec3(0.55, 1.0, 0.12), shade);
+		vec3 ambient = environment_color(cloud_shadow(gas, cloud_ground_grid), UV);
+		COLOR.rgb = mix(ambient, gas, float(environment_enabled) * clamp(environment_night, 0.0, 1.0));
 	} else if (dark_underground) {
 		COLOR.rgb = texture(dark_underground_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
 	} else if (fullbright_draw < 0.5) {

@@ -7,7 +7,7 @@ var rect: ColorRect
 var material: ShaderMaterial
 
 
-func update(map: CityMapControl, amount: float) -> void:
+func update(map: CityMapControl, amount: float, direction := Vector2(1.0, 0.3)) -> void:
 	if canvas == null and amount <= 0.0:
 		return
 	if canvas == null:
@@ -27,3 +27,4 @@ func update(map: CityMapControl, amount: float) -> void:
 	canvas.visible = amount > 0.0
 	rect.size = map.size
 	material.set_shader_parameter("amount", clampf(amount, 0.0, 1.0))
+	material.set_shader_parameter("shake_direction", direction.normalized() if direction.length_squared() > 0.001 else Vector2.RIGHT)

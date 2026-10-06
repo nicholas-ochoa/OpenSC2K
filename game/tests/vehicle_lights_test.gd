@@ -153,6 +153,15 @@ func _check_moving_masks() -> void:
 		var beam_lights := app.map_view.dynamic_sprites.filter(func(v: CityDynamicVisual) -> bool:
 			return v.emission_texture is ImageTexture and (v.emission_texture as ImageTexture).get_format() == Image.FORMAT_LA8)
 		assert(beam_lights.size() == 1, "Active original plasma beam must receive exactly one indexed mask")
+		assert(beam_lights[0].beam_glow)
+	app.map_view.layers.environment_parameters["environment_night"] = 1.0
+	app.moving_sprites.beam_glow.process()
+	var glow := app.moving_sprites.beam_glow
+	assert(glow.entries.size() == 1 and glow.entries[0].output.visible, "Night glow must reach the active original beam")
+	app.map_view.layers.environment_parameters["environment_night"] = 0.0
+	glow.process()
+	assert(not glow.entries[0].output.visible and glow.entries[0].buffers[0].render_target_update_mode == SubViewport.UPDATE_DISABLED,
+		"Daylight must hide the glow and stop its render buffers")
 	assert(DocumentState.capture(city.document) == monster_before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	app.queue_free()

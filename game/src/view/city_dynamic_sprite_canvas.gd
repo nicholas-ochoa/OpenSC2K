@@ -24,7 +24,7 @@ func _draw() -> void:
 			texture,
 			Rect2(source_position, source_size),
 			false,
-			Color(1, 0, 1) if visual.transparent_shadow else (Color(1, 1, 0) if visual.fullbright else Color.WHITE),
+			Color(1, 0, 1) if visual.transparent_shadow else (Color(1, 0, 0) if visual.toxic_cloud else (Color(1, 1, 0) if visual.fullbright else Color.WHITE)),
 		)
 
 		if visual.emission_texture != null:
@@ -80,6 +80,7 @@ static func batch_special_visuals(
 				or merged.get_area() * int(visual.texture_factor) * int(visual.texture_factor) > MAX_SPECIAL_BATCH_AREA
 				or int(visual.texture_factor) != int(pending[0].texture_factor)
 				or visual.fullbright != pending[0].fullbright
+				or visual.toxic_cloud != pending[0].toxic_cloud
 			)
 		):
 			_append_special_batch(result, pending, batch_cache)
@@ -147,6 +148,7 @@ static func _append_special_batch(
 	batch.image = image
 	batch.special_batch = true
 	batch.fullbright = pending[0].fullbright
+	batch.toxic_cloud = pending[0].toxic_cloud
 	result.append(batch)
 
 	if not cache_key.is_empty():

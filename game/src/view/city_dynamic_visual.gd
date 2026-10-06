@@ -17,6 +17,8 @@ var depth_order: int = -1
 var shadow: bool = false
 var transparent_shadow: bool = false
 var fullbright: bool = false
+var toxic_cloud: bool = false
+var beam_glow: bool = false
 var special_batch: bool = false
 var hidden: bool = false
 # true when the pixels come from the static image, as a shadow does, and not only from its silhouettes
@@ -47,6 +49,8 @@ func copy() -> CityDynamicVisual:
 	result.shadow = shadow
 	result.transparent_shadow = transparent_shadow
 	result.fullbright = fullbright
+	result.toxic_cloud = toxic_cloud
+	result.beam_glow = beam_glow
 	result.special_batch = special_batch
 	result.hidden = hidden
 	result.samples_static = samples_static
@@ -71,6 +75,8 @@ func matches(other: CityDynamicVisual) -> bool:
 		and shadow == other.shadow
 		and transparent_shadow == other.transparent_shadow
 		and fullbright == other.fullbright
+		and toxic_cloud == other.toxic_cloud
+		and beam_glow == other.beam_glow
 		and special_batch == other.special_batch
 		and hidden == other.hidden
 	)
@@ -79,7 +85,7 @@ func matches(other: CityDynamicVisual) -> bool:
 # cache stamps compare fields by value while retaining resource identity
 func value_signature() -> Array:
 	return [texture, water_reflection, emission_texture, index_texture, palette_lookup_all, texture_factor, position, size,
-		image, special_overlay, batch_cache_key, depth_order, shadow, transparent_shadow, fullbright, special_batch, hidden]
+		image, special_overlay, batch_cache_key, depth_order, shadow, transparent_shadow, fullbright, toxic_cloud, beam_glow, special_batch, hidden]
 
 
 static func build_grid(visuals: Array[CityDynamicVisual]) -> NativeRectIndex:

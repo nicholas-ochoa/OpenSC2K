@@ -64,6 +64,23 @@ func _run() -> void:
 		effects.process(0.2)
 	assert(effects.pulses.is_empty())
 	assert(dust.sprite_id == 1392 and dust.frame == 0, "Presentation must not mutate source events")
+	for side in [2, 3, 4]:
+		var structure_events: Array[EffectEvent] = []
+		for x in side:
+			for y in side:
+				var event := EffectEvent.new(tile + Vector2i(x, -y), 1392)
+				event.depth_point = tile
+				structure_events.append(event)
+		var original := EffectEvent.copy_all(structure_events)
+		assert(effects.consume_effects(structure_events, false).is_empty())
+		assert(effects.pulses.size() == 1, "A whole building shares one retained dust cloud")
+		var cloud := effects.pulses[0]
+		assert(cloud.sprite.scale.x == side and cloud.sprite.scale.y > 1.0)
+		assert((cloud.mask_signature[0] as Rect2i).size == Vector2i(Vector2(CityDisasterEffects.EXTENT) * cloud.sprite.scale), "Expanded dust needs matching foreground coverage")
+		assert(EffectEvent.same_arrays(structure_events, original), "Dust grouping must preserve completed source events")
+		for i in 9:
+			effects.process(0.2)
+		assert(effects.pulses.is_empty())
 	app.preferences.visual_enhancements.pause_freezes = false
 	effects.shake_view()
 	for i in 4:

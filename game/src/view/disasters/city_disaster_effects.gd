@@ -83,7 +83,7 @@ func process(delta: float) -> void:
 			var fade := shake_envelope(age)
 			app.map_view.presentation.shake_offset = Vector2(sin(age * 95.0), sin(age * 71.0) * 0.3) \
 				* 4.0 * options.disaster_shake * fade * maxf(1.0, app.map_view.zoom_factor) * app.map_view.map_pixel_ratio
-			earthquake_blur.update(app.map_view, fade * options.disaster_shake)
+			earthquake_blur.update(app.map_view, fade * options.disaster_shake, Vector2(cos(age * 95.0), cos(age * 71.0) * 0.3))
 			app.map_view.layers._sync_base_layer()
 			app.map_view.queue_redraw()
 	# User-triggered demolition still settles when the game is paused.
@@ -376,7 +376,7 @@ func _update_material(visual: Visual) -> void:
 		var track: CityTrafficMotion.Track = app.moving_sprites.traffic_motion.tracks.get(visual.record)
 		var offset := Vector2.ZERO if track == null else Vector2(track.current.x - track.target.x, track.current.y - track.target.y)
 		visual.sprite.position = (ground_point(app.document_state.city, visual.tile) - ANCHOR + offset + visual.anchor_offset).round()
-	material.set_shader_parameter("world_origin", visual.sprite.position + ANCHOR)
+	material.set_shader_parameter("world_origin", visual.sprite.position + ANCHOR * visual.sprite.scale)
 	material.set_shader_parameter("effect_kind", visual.kind)
 	material.set_shader_parameter("effect_time", clock)
 	material.set_shader_parameter("effect_strength", app.preferences.visual_enhancements.disaster_strength)
@@ -385,10 +385,11 @@ func _update_material(visual: Visual) -> void:
 	app.map_view.layers._apply_environment(material)
 	if visual.kind == HURRICANE:
 		return
-	var bounds := Rect2i(Vector2i(visual.sprite.position), EXTENT)
+	var visual_extent := Vector2(EXTENT) * visual.sprite.scale
+	var bounds := Rect2i(Vector2i(visual.sprite.position), Vector2i(visual_extent))
 	if visual.record >= 0:
 		bounds = Rect2i(Vector2i(ground_point(app.document_state.city, visual.tile) - ANCHOR) - Vector2i(48, 48), EXTENT + Vector2i(96, 96))
-	material.set_shader_parameter("foreground_scale", Vector2(EXTENT) / Vector2(bounds.size))
+	material.set_shader_parameter("foreground_scale", visual_extent / Vector2(bounds.size))
 	material.set_shader_parameter("foreground_offset", (visual.sprite.position - Vector2(bounds.position)) / Vector2(bounds.size))
 	var signature := [bounds, visual.tile, app.static_render_state.epoch, app.static_render.city_view_size()]
 	if signature != visual.mask_signature:
@@ -408,10 +409,13 @@ func invalidate_occlusion(changes: Array[Rect2i]) -> void:
 		pulse.mask_signature.clear()
 
 
-func _pulse(kind: int, tile: Vector2i, location: Vector2, duration: float, delay := 0.0, user_action := false) -> bool:
+func _pulse(kind: int, tile: Vector2i, location: Vector2, duration: float, delay := 0.0, user_action := false, size_scale := Vector2.ONE) -> bool:
 	if not active() or pulses.size() >= MAX_PULSES or not _visible(tile, location):
 		return false
 	var visual := _create(kind, tile, location)
+	visual.sprite.scale = size_scale
+	visual.sprite.position = (location - ANCHOR * size_scale).round()
+	_update_material(visual)
 	visual.duration = duration
 	visual.age = -delay
 	visual.user_action = user_action
@@ -425,17 +429,34 @@ func consume_effects(events: Array[EffectEvent], simulation: bool) -> Array[Effe
 	if not active() or not app.preferences.visual_enhancements.disaster_dust:
 		return events
 	var result: Array[EffectEvent] = []
-	var handled: Dictionary[Vector2i, bool] = {}
+	var groups: Dictionary[Vector2i, Array] = {}
 	for event in events:
 		if not is_dust(event):
 			result.append(event)
 			continue
-		if not handled.has(event.point):
-			var depth := event.depth_point if event.depth_point.x >= 0 else event.point
-			handled[event.point] = _pulse(DUST, depth, ground_point(app.document_state.city, event.point, event.altitude),
-				1.05, maxf(0.0, event.frame * 0.1), not simulation)
-		if not handled[event.point]:
-			result.append(event)
+		var depth := event.depth_point if event.depth_point.x >= 0 else event.point
+		if not groups.has(depth):
+			groups[depth] = []
+		groups[depth].append(event)
+	for depth in groups:
+		var group: Array = groups[depth]
+		var sites: Dictionary[Vector2i, bool] = {}
+		var location := Vector2.ZERO
+		var first_frame := 2147483647
+		for event: EffectEvent in group:
+			first_frame = mini(first_frame, event.frame)
+			if not sites.has(event.point):
+				sites[event.point] = true
+				location += ground_point(app.document_state.city, event.point, event.altitude)
+		location /= sites.size()
+		# Completed structure events already carry their common drawing anchor.
+		# Derive cosmetic footprint size from those events, never from changed city tiles.
+		var side := clampf(sqrt(float(sites.size())), 1.0, 4.0)
+		var size_scale := Vector2(side, 1.0 + (side - 1.0) * 0.75)
+		if not _pulse(DUST, depth, location, 1.05 + (side - 1.0) * 0.12,
+				maxf(0.0, first_frame * 0.1), not simulation, size_scale):
+			for event: EffectEvent in group:
+				result.append(event)
 	return result
 
 

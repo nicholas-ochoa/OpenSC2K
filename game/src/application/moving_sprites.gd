@@ -12,15 +12,18 @@ var caches: RenderCaches
 var traffic_motion := CityTrafficMotion.new()
 var moving_lights := CityMovingLights.new()
 var tornado_renderer: CityTornadoRenderer
+var beam_glow: CityDisasterBeamGlow
 
 
 func _init(application: CityApplication) -> void:
 	app = application
 	caches = application.render_caches
 	tornado_renderer = CityTornadoRenderer.new(application)
+	beam_glow = CityDisasterBeamGlow.new(application)
 
 
 func process(delta: float) -> void:
+	beam_glow.process()
 	if not _traffic_active():
 		traffic_motion.reset()
 		return
@@ -105,7 +108,8 @@ func refresh_moving_things(view_size := -1) -> void:
 			if tornado_resource != null:
 				tornado_renderer.draw(command, source_command, tornado_resource, display_position, divisor)
 				continue
-		var visual_cache_key := var_to_str([view_size, factor, sprite_archive.visual_revision, transparent_shadow, position, command.value_signature()])
+		var toxic_cloud: bool = command.overlay == 0xfb and app.disaster_effects.active()
+		var visual_cache_key := var_to_str([view_size, factor, sprite_archive.visual_revision, transparent_shadow, toxic_cloud, position, command.value_signature()])
 		# Include fully hidden shadows: a static change can make them visible.
 		caches.dynamic_active_keys[visual_cache_key] = true
 
@@ -190,6 +194,8 @@ func refresh_moving_things(view_size := -1) -> void:
 			visual.water_reflection = WaterReflectionSprite.create(resource.image, lights, position, int(command.floating_altitude), app.asset_state.palette)
 		visual.special_overlay = command.overlay >= 0
 		visual.fullbright = command.overlay == 0xff
+		visual.toxic_cloud = toxic_cloud
+		visual.beam_glow = not command.shadow and command.sprite_id in [385, 885, 1385]
 		visual.batch_cache_key = visual_cache_key
 		visual.depth_order = int(command.depth_order)
 		visual.shadow = bool(command.shadow)

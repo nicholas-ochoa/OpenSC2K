@@ -135,12 +135,11 @@ void fragment() {
 	}
 	ink.rgb = mix(environment_color(ink.rgb, UV), ink.rgb, clamp(emission, 0.0, 1.0));
 	if (progress >= 0.0 && effect_kind != 5) { ink.a *= 1.0 - smoothstep(0.65, 1.0, progress); }
-	if (has_foreground) { ink.a *= 1.0 - texture(foreground, UV * foreground_scale + foreground_offset).a; }
-	// A tactical tile edge stays readable even when a tall building hides the crowd.
-	// Cosmetic neighbours never receive this treatment target.
+	// Only real treatment tiles receive an edge; foreground covers it like the crowd.
 	if (effect_kind == 3 && !sparse_crowd && diamond > 0.82 && diamond < 1.0) {
 		ink = over(ink, vec3(0.92, 0.64, 0.24), 0.58);
 	}
+	if (has_foreground) { ink.a *= 1.0 - texture(foreground, UV * foreground_scale + foreground_offset).a; }
 	// Replacement artwork remains identifiable; strength controls surrounding atmosphere.
 	COLOR = vec4(ink.rgb, clamp(ink.a, 0.0, 1.0));
 }

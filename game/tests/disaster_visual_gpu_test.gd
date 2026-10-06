@@ -55,7 +55,7 @@ func _run() -> void:
 	assert(viewport.get_texture().get_image().is_invisible(), "Foreground silhouettes must fully hide effects")
 	material.set_shader_parameter("effect_kind", CityDisasterEffects.RIOT)
 	await RenderingServer.frame_post_draw
-	assert(not viewport.get_texture().get_image().is_invisible(), "The real riot tile edge remains readable behind tall buildings")
+	assert(viewport.get_texture().get_image().is_invisible(), "Foreground must hide riot tile edges and people together")
 	material.set_shader_parameter("sparse_crowd", true)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().is_invisible(), "Cosmetic crowds must not add false treatment markers")
@@ -70,6 +70,7 @@ func _run() -> void:
 	await _check_fullbright()
 	await _check_tornado_mask()
 	await _check_quake_blur()
+	await _check_beam_glow()
 	await process_frame
 	print("PASS: GPU disaster effects, tile boundaries, transparent surroundings, foreground occlusion and dust lifetime")
 	quit()
@@ -77,7 +78,7 @@ func _run() -> void:
 
 func _check_fullbright() -> void:
 	var viewport := SubViewport.new()
-	viewport.size = Vector2i(24, 8)
+	viewport.size = Vector2i(32, 8)
 	viewport.transparent_bg = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
@@ -89,14 +90,15 @@ func _check_fullbright() -> void:
 	indexed.set_pixel(0, 0, Color.TRANSPARENT)
 	var texture := ImageTexture.create_from_image(indexed)
 	var visuals: Array[CityDynamicVisual] = []
-	for i in 3:
+	for i in 4:
 		var visual := CityDynamicVisual.new(texture, Vector2(i * 8, 0))
 		visual.image = indexed
 		visual.special_overlay = true
 		visual.fullbright = i < 2
+		visual.toxic_cloud = i == 3
 		visuals.append(visual)
 	var batched := CityDynamicSpriteCanvas.batch_special_visuals(visuals)
-	assert(batched.size() == 2 and batched[0].fullbright and not batched[1].fullbright)
+	assert(batched.size() == 3 and batched[0].fullbright and not batched[1].fullbright and batched[2].toxic_cloud)
 	var canvas := CityDynamicSpriteCanvas.new()
 	var material := ShaderMaterial.new()
 	material.shader = load("res://src/view/map/palette_cycle.gdshader")
@@ -104,6 +106,7 @@ func _check_fullbright() -> void:
 	material.set_shader_parameter("palette_lookup_all", true)
 	material.set_shader_parameter("palette_cycle_enabled", true)
 	material.set_shader_parameter("environment_enabled", true)
+	material.set_shader_parameter("environment_night", 1.0)
 	material.set_shader_parameter("environment_tint", Vector3(0.1, 0.1, 0.2))
 	canvas.material = material
 	viewport.add_child(canvas)
@@ -112,6 +115,9 @@ func _check_fullbright() -> void:
 	var frame := viewport.get_texture().get_image()
 	assert(frame.get_pixel(2, 2).r > 0.98 and frame.get_pixel(18, 2).r < 0.2, "Fire remains fullbright while its surroundings darken")
 	assert(frame.get_pixel(0, 0).a == 0.0)
+	var gas := frame.get_pixel(26, 2)
+	assert(gas.g > 0.5 and gas.g > gas.r * 1.5 and gas.g > gas.b * 2.0, "The original toxic cloud must glow green at night")
+	assert(frame.get_pixel(24, 0).a == 0.0, "Toxic recoloring preserves original transparent pixels")
 	palette.fill(Color.GREEN)
 	palette_texture.update(palette)
 	await RenderingServer.frame_post_draw
@@ -180,10 +186,54 @@ func _check_quake_blur() -> void:
 	material.set_shader_parameter("amount", 1.0)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_pixel(15, 8).r > original.get_pixel(15, 8).r + 0.05)
+	assert(viewport.get_texture().get_image().get_pixel(10, 8).r > original.get_pixel(10, 8).r + 0.02, "Camera smear extends beyond the old small cross blur")
 	material.set_shader_parameter("amount", 0.0)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == original.get_data(), "Earthquake blur must return to exact original pixels")
 	viewport.queue_free()
+	await process_frame
+
+
+func _check_beam_glow() -> void:
+	var buffers: Array[SubViewport] = []
+	var palette := Image.create(256, 1, false, Image.FORMAT_RGBA8)
+	palette.fill(Color.RED)
+	var palette_texture := ImageTexture.create_from_image(palette)
+	var source := Image.create(32, 32, false, Image.FORMAT_LA8)
+	source.fill_rect(Rect2i(14, 14, 4, 4), Color8(195, 195, 195, 255))
+	for i in 3:
+		var buffer := SubViewport.new()
+		buffer.size = Vector2i(32, 32)
+		buffer.transparent_bg = true
+		buffer.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		root.add_child(buffer)
+		buffers.append(buffer)
+		var rect := TextureRect.new()
+		rect.texture = ImageTexture.create_from_image(source) if i == 0 else buffers[i - 1].get_texture()
+		rect.size = Vector2(32, 32)
+		rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		var material := ShaderMaterial.new()
+		rect.material = material
+		material.shader = CityDisasterBeamGlow.EMISSION if i == 0 else CityDisasterBeamGlow.BLUR
+		if i == 0:
+			material.set_shader_parameter("indexed", true)
+			material.set_shader_parameter("animated_palette", palette_texture)
+		else:
+			material.set_shader_parameter("radius", 1.5)
+			material.set_shader_parameter("direction", Vector2.RIGHT if i == 1 else Vector2.DOWN)
+		buffer.add_child(rect)
+	for i in 4:
+		await RenderingServer.frame_post_draw
+	var glow: Image = buffers.back().get_texture().get_image()
+	assert(glow.get_pixel(12, 16).r > 0.01 and glow.get_pixel(12, 16).g < 0.01, "Beam glow extends beyond the silhouette in resolved palette color")
+	palette.fill(Color.GREEN)
+	palette_texture.update(palette)
+	for i in 4:
+		await RenderingServer.frame_post_draw
+	glow = buffers.back().get_texture().get_image()
+	assert(glow.get_pixel(12, 16).g > 0.01 and glow.get_pixel(12, 16).r < 0.01, "Glow follows palette cycling without blurring palette addresses")
+	for buffer in buffers:
+		buffer.queue_free()
 	await process_frame
 
 
