@@ -120,6 +120,23 @@ def write_fluidsynth_source(package, work):
     return package
 
 
+def has_diskutil_image():
+    """True on macOS 26 and later, where `diskutil image` replaces `hdiutil create`."""
+    probe = subprocess.run(['diskutil', 'image', 'create', 'from', '--help'], capture_output=True)
+    return probe.returncode == 0
+
+
+def make_disk_image(folder, volume, image):
+    """A compressed read-only disk image of `folder`. Older macOS versions use hdiutil."""
+    if has_diskutil_image():
+        subprocess.run(['diskutil', 'image', 'create', 'from', '--format', 'UDZO', '--volumeName', volume,
+                        str(folder), str(image)], check=True)
+    else:
+        subprocess.run(['hdiutil', 'create', '-volname', volume, '-srcfolder', str(folder),
+                        '-format', 'UDZO', str(image)], check=True)
+    subprocess.run(['hdiutil', 'verify', str(image)], check=True)
+
+
 def build(output, label, godot, native):
     if sys.platform != 'darwin':
         raise ValueError('Desktop packaging requires macOS to create and sign the app and DMG')
@@ -182,9 +199,7 @@ def build(output, label, godot, native):
                 subprocess.run(['codesign', '--verify', '--deep', '--strict', str(folder / binary)], check=True)
                 (folder / 'Applications').symlink_to('/Applications')
                 package = output / (name + '.dmg')
-                subprocess.run(['hdiutil', 'create', '-volname', f'OpenSC2K {label}',
-                                '-srcfolder', str(folder), '-format', 'UDZO', str(package)], check=True)
-                subprocess.run(['hdiutil', 'verify', str(package)], check=True)
+                make_disk_image(folder, f'OpenSC2K {label}', package)
             packages.append(package)
         packages.append(write_fluidsynth_source(output / f'OpenSC2K-{label}-fluidsynth-source.zip', work))
     hashes = {path.name: sha256(path) for path in packages}

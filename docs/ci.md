@@ -97,7 +97,9 @@ python3 tools/build_desktop_release.py --output local/packages --label 0.1.0
 
 Use a new output directory. The tool exports the committed tree at `HEAD`.
 It includes install notes, licenses, source and engine versions, and package hashes.
-The macOS app is ad-hoc signed and is not notarized. Windows packages are unsigned.
+The macOS app is ad-hoc signed and is not notarized. The disk image is made with
+`diskutil image create from` on macOS 26 and later, and with `hdiutil create` on older macOS
+versions, such as the CI runner. Windows packages are unsigned.
 
 ## Manual stable releases
 
