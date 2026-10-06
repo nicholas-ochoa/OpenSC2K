@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""Paint the OpenSC2K app icon and write the icon files in assets/icons.
+"""Build the OpenSC2K app icon files from the Icon Composer document in assets/icons.
 
-The icon follows the box art of SimCity 2000. tools/icon_art.py paints its
-layers as SVG; each layer also has a dusk version for the dark appearance.
+The art is in OpenSC2K.icon: an aerial view of a city on a bay, after the box
+art of SimCity 2000. Its layers are plain SVG files, to edit by hand:
+
+  Assets/land.svg       the sky, mountains, streets, cars, far skyline and bay
+  Assets/city.svg       everything that stands, from the back to the front, and the bridge
+  Assets/*-dusk.svg     the same layers for the dark appearance, with lit windows
+
+Each object is its own named group, with its gradients inside it. icon.json
+holds the sky gradient of each appearance and the order of the layers.
 
 macOS 26 and later show an app icon in its own shape only when it comes from
 an Icon Composer document. Other icons get a grey frame. So this script writes:
 
-  OpenSC2K.icon  the Icon Composer document: the sky fill and the land and city layers
   Assets.car     the document compiled by actool, for the app bundle
   OpenSC2K.icns  the icon of earlier macOS versions, as ictool renders the document
   OpenSC2K.png   the window icon, the same render
@@ -19,7 +25,6 @@ It needs Xcode 26 or later, for actool and the ictool of Icon Composer.
   python3 tools/make_icon.py --preview out.png   # render the icon only
 """
 import argparse
-import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -28,55 +33,14 @@ import tempfile
 
 from PIL import Image
 
-from icon_art import PAINTERS, SIZE, SKY_DAY, SKY_DUSK, hex_rgb
-
 ROOT = Path(__file__).resolve().parents[1]
 ICONS = ROOT / 'assets/icons'
 NAME = 'OpenSC2K'
 ICTOOL = Path('/Applications/Xcode.app/Contents/Applications/Icon Composer.app/Contents/Executables/ictool')
-# the rounded square of a classic macOS icon on the canvas of an Icon Composer document
+# the canvas of an Icon Composer document, and the rounded square of a
+# classic macOS icon on the same canvas
+SIZE = 1024
 PLATE = 824
-
-# the layers from the front to the back: (name, Liquid Glass, shadow)
-LAYERS = (('city', False, 'neutral'), ('land', False, 'none'))
-
-
-def icon_color(value):
-    r, g, b = hex_rgb(value)
-    return f'srgb:{r / 255:.5f},{g / 255:.5f},{b / 255:.5f},1.00000'
-
-
-def group(name, glass, shadow):
-    """A group of one layer, with its dusk image in the dark appearance."""
-    images = [{'value': f'{name}.svg'}, {'appearance': 'dark', 'value': f'{name}-dusk.svg'}]
-    return {
-        'layers': [{'name': name, 'glass': glass, 'image-name-specializations': images}],
-        'shadow': {'kind': shadow, 'opacity': 0.5},
-        'translucency': {'enabled': False, 'value': 0.5},
-        'specular': glass,
-    }
-
-
-def write_document(folder):
-    """The Icon Composer document. Its first group is in front."""
-    if folder.exists():
-        shutil.rmtree(folder)
-
-    (folder / 'Assets').mkdir(parents=True)
-
-    for name, paint in PAINTERS.items():
-        (folder / f'Assets/{name}.svg').write_text(paint())
-        (folder / f'Assets/{name}-dusk.svg').write_text(paint(dusk=True))
-
-    document = {
-        'fill-specializations': [
-            {'value': {'linear-gradient': [icon_color(c) for c in SKY_DAY]}},
-            {'appearance': 'dark', 'value': {'linear-gradient': [icon_color(c) for c in SKY_DUSK]}},
-        ],
-        'groups': [group(*layer) for layer in LAYERS],
-        'supported-platforms': {'squares': ['macOS']},
-    }
-    (folder / 'icon.json').write_text(json.dumps(document, indent=2) + '\n')
 
 
 def render(document, size):
@@ -124,7 +88,6 @@ def write_icns(icon, path):
 
 def write_icons():
     document = ICONS / f'{NAME}.icon'
-    write_document(document)
     compile_document(document, ICONS)
     icon = classic_icon(document)
     icon.save(ICONS / f'{NAME}.png')
@@ -142,10 +105,7 @@ def main():
         return 1
 
     if args.preview:
-        with tempfile.TemporaryDirectory() as work:
-            document = Path(work) / f'{NAME}.icon'
-            write_document(document)
-            classic_icon(document).save(args.preview)
+        classic_icon(ICONS / f'{NAME}.icon').save(args.preview)
     else:
         write_icons()
 
