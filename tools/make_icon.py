@@ -1,14 +1,26 @@
 #!/usr/bin/env python3
-"""Draw the OpenSC2K app icon and write assets/icons/OpenSC2K.png, .icns and .ico.
+"""Draw the OpenSC2K app icon and write the icon files in assets/icons.
 
 The icon is pixel art on a 2:1 isometric grid, in the style of the game: a
 city block on a slab of land at the edge of a bay, drawn at a small logical
-size and scaled up with nearest sampling, on a rounded square of night sky.
+size and scaled up with nearest sampling, in front of a night sky.
 
-  python3 tools/make_icon.py            # write the icon files
-  python3 tools/make_icon.py --preview out.png
+macOS 26 and later show an app icon in its own shape only when it comes from
+an Icon Composer document. Other icons get a grey frame. So this script writes:
+
+  OpenSC2K.icon  the Icon Composer document: the sky fill, the city and the stars
+  Assets.car     the document compiled by actool, for the app bundle
+  OpenSC2K.icns  the icon of earlier macOS versions, as ictool renders the document
+  OpenSC2K.png   the window icon, the same render
+  OpenSC2K.ico   the Windows icon, the same render
+
+It needs Xcode 26 or later, for actool and the ictool of Icon Composer.
+
+  python3 tools/make_icon.py                     # write the icon files
+  python3 tools/make_icon.py --preview out.png   # render the icon only
 """
 import argparse
+import json
 from pathlib import Path
 import random
 import shutil
@@ -16,31 +28,35 @@ import subprocess
 import sys
 import tempfile
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 ICONS = ROOT / 'assets/icons'
+NAME = 'OpenSC2K'
+ICTOOL = Path('/Applications/Xcode.app/Contents/Applications/Icon Composer.app/Contents/Executables/ictool')
+# the canvas of an Icon Composer document, and the rounded square of a
+# classic macOS icon on the same canvas
 SIZE = 1024
-# the macOS icon grid: the rounded square and its corner radius
 PLATE = 824
-PLATE_RADIUS = 186
-# the pixel art: its logical size and the scale of one logical pixel
+# the pixel art: its logical size and the scale of one logical pixel on the canvas
 ART = 80
-PIXEL = 10
+PIXEL = 11
 # one tile of the isometric grid: half its width and half its height
 HALF_W, HALF_H = 8, 4
+# the stars: how many, their half size, and the part of the sky that has them
+STARS, STAR_SIZES = 40, (2, 3, 4)
+STAR_AREA = (130, 90, 894, 560)
+STAR_CLEARANCE = 12
 
-SKY_TOP, SKY_BOTTOM = (18, 28, 61), (52, 92, 140)
+# the sky, from the top to the bottom, as Icon Composer colors
+SKY = ('srgb:0.07059,0.10980,0.23922,1.00000', 'srgb:0.20392,0.36078,0.54902,1.00000')
 GRASS, GRASS_DARK = (88, 152, 64), (64, 120, 48)
 DIRT_LEFT, DIRT_RIGHT = (122, 84, 52), (92, 62, 40)
 WATER, WATER_LIGHT, WATER_SIDE = (40, 92, 196), (88, 140, 228), (28, 64, 140)
 ROAD, ROAD_LINE = (78, 78, 84), (232, 200, 72)
 TREE, TREE_DARK, TRUNK = (46, 112, 46), (30, 82, 34), (96, 66, 40)
 LIT, DARK = (255, 214, 102), (34, 40, 58)
-
-
-def shade(color, factor):
-    return tuple(max(0, min(255, round(channel * factor))) for channel in color)
+STAR = (255, 255, 240)
 
 
 class Art:
@@ -157,88 +173,136 @@ def draw_art():
     return art.image
 
 
-def plate_mask(size, inset, radius):
-    mask = Image.new('L', (size, size), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([inset, inset, size - inset - 1, size - inset - 1], radius=radius, fill=255)
-    return mask
-
-
-def draw_icon():
-    scale = 4  # draw the smooth parts larger, then reduce them for soft edges
-    big = SIZE * scale
-    inset = (SIZE - PLATE) // 2 * scale
-    sky = Image.new('RGBA', (big, big))
-    pixels = sky.load()
-
-    for y in range(big):
-        t = y / big
-        color = tuple(round(a + (b - a) * t) for a, b in zip(SKY_TOP, SKY_BOTTOM))
-        for x in range(big):
-            pixels[x, y] = (*color, 255)
-
-    mask = plate_mask(big, inset, PLATE_RADIUS * scale)
-    plate = Image.new('RGBA', (big, big), (0, 0, 0, 0))
-    plate.paste(sky, (0, 0), mask)
-
-    # stars in the night sky
-    rng = random.Random(7)
-    stars = ImageDraw.Draw(plate)
-    for _ in range(40):
-        x, y = rng.randrange(inset + 120, big - inset - 120), rng.randrange(inset + 120, big // 2)
-        radius = rng.choice([6, 8, 10])
-        stars.ellipse([x - radius, y - radius, x + radius, y + radius], fill=(255, 255, 240, rng.randrange(90, 200)))
-
-    plate = plate.resize((SIZE, SIZE), Image.LANCZOS)
-
-    # a soft shadow under the plate, as macOS icons have
-    shadow = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-    shadow.paste((0, 0, 0, 110), (0, 12), plate_mask(SIZE, (SIZE - PLATE) // 2, PLATE_RADIUS))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(14))
-    icon = Image.alpha_composite(shadow, plate)
-
-    # the pixel art, scaled up with nearest sampling and centered on the plate
-    art = draw_art().resize((ART * PIXEL, ART * PIXEL), Image.NEAREST)
-    offset = ((SIZE - art.width) // 2, (SIZE - art.height) // 2 + 30)
+def city_layer():
+    """The pixel art scaled to the canvas, centered on its own bounds."""
+    art = draw_art()
+    left, top, right, bottom = art.getbbox()
+    art = art.resize((ART * PIXEL, ART * PIXEL), Image.NEAREST)
+    x = SIZE // 2 - (left + right) * PIXEL // 2
+    y = SIZE // 2 - (top + bottom) * PIXEL // 2
     layer = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-    layer.paste(art, offset, art)
-    clipped = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-    clipped.paste(layer, (0, 0), plate_mask(SIZE, (SIZE - PLATE) // 2, PLATE_RADIUS))
-
-    # a thin light edge at the top of the plate
-    edge = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-    ImageDraw.Draw(edge).rounded_rectangle(
-        [(SIZE - PLATE) // 2, (SIZE - PLATE) // 2, (SIZE + PLATE) // 2 - 1, (SIZE + PLATE) // 2 - 1],
-        radius=PLATE_RADIUS, outline=(255, 255, 255, 40), width=3)
-
-    return Image.alpha_composite(Image.alpha_composite(icon, clipped), edge)
+    layer.paste(art, (x, y), art)
+    return layer
 
 
-def write_icons(icon):
-    icon.save(ICONS / 'OpenSC2K.png')
-    icon.save(ICONS / 'OpenSC2K.ico', sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+def star_layer(city):
+    """Square stars in the sky, clear of the city."""
+    rng = random.Random(7)
+    layer = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    alpha = city.getchannel('A')
+    placed = 0
 
-    if shutil.which('iconutil'):
-        with tempfile.TemporaryDirectory() as work:
-            iconset = Path(work) / 'OpenSC2K.iconset'
-            iconset.mkdir()
-            for size in (16, 32, 128, 256, 512):
-                icon.resize((size, size), Image.LANCZOS).save(iconset / f'icon_{size}x{size}.png')
-                icon.resize((size * 2, size * 2), Image.LANCZOS).save(iconset / f'icon_{size}x{size}@2x.png')
-            subprocess.run(['iconutil', '-c', 'icns', str(iconset), '-o', str(ICONS / 'OpenSC2K.icns')], check=True)
-    else:
-        print('iconutil is missing: OpenSC2K.icns stays as it is.', file=sys.stderr)
+    while placed < STARS:
+        x, y = rng.randrange(STAR_AREA[0], STAR_AREA[2]), rng.randrange(STAR_AREA[1], STAR_AREA[3])
+        reach = (x - STAR_CLEARANCE, y - STAR_CLEARANCE, x + STAR_CLEARANCE, y + STAR_CLEARANCE)
+
+        if alpha.crop(reach).getbbox():
+            continue
+
+        size = rng.choice(STAR_SIZES)
+        draw.rectangle([x - size, y - size, x + size, y + size], fill=(*STAR, rng.randrange(120, 230)))
+        placed += 1
+
+    return layer
+
+
+def group(image, shadow):
+    """A group of one flat layer: pixel art has no glass and no highlights."""
+    return {
+        'layers': [{'image-name': image, 'name': Path(image).stem, 'glass': False}],
+        'shadow': {'kind': shadow, 'opacity': 0.5},
+        'translucency': {'enabled': False, 'value': 0.5},
+        'specular': False,
+    }
+
+
+def write_document(folder):
+    """The Icon Composer document. Its first group is in front."""
+    if folder.exists():
+        shutil.rmtree(folder)
+
+    (folder / 'Assets').mkdir(parents=True)
+    city = city_layer()
+    city.save(folder / 'Assets/city.png')
+    star_layer(city).save(folder / 'Assets/stars.png')
+    document = {
+        'fill': {'linear-gradient': list(SKY)},
+        'groups': [group('city.png', 'neutral'), group('stars.png', 'none')],
+        'supported-platforms': {'squares': ['macOS']},
+    }
+    (folder / 'icon.json').write_text(json.dumps(document, indent=2) + '\n')
+
+
+def render(document, size):
+    """The icon as macOS draws it, `size` pixels square, from ictool."""
+    with tempfile.TemporaryDirectory() as work:
+        output = Path(work) / 'icon.png'
+        subprocess.run([str(ICTOOL), str(document), '--export-image', '--output-file', str(output),
+                        '--platform', 'macOS', '--rendition', 'Default',
+                        '--width', str(size), '--height', str(size), '--scale', '1'],
+                       check=True, stdout=subprocess.DEVNULL)
+        return Image.open(output).convert('RGBA')
+
+
+def classic_icon(document):
+    """The render on the grid of a classic macOS icon: the rounded square with space around it."""
+    icon = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
+    plate = render(document, PLATE)
+    icon.alpha_composite(plate, ((SIZE - PLATE) // 2, (SIZE - PLATE) // 2))
+    return icon
+
+
+def compile_document(document, folder):
+    """Assets.car from actool. actool also writes a small .icns, which this script makes itself."""
+    with tempfile.TemporaryDirectory() as work:
+        work = Path(work)
+        subprocess.run(['xcrun', 'actool', str(document), '--compile', str(work),
+                        '--output-format', 'human-readable-text', '--errors', '--warnings',
+                        '--platform', 'macosx', '--target-device', 'mac', '--minimum-deployment-target', '11.0',
+                        '--app-icon', NAME, '--output-partial-info-plist', str(work / 'partial.plist')],
+                       check=True, stdout=subprocess.DEVNULL)
+        shutil.copy2(work / 'Assets.car', folder / 'Assets.car')
+
+
+def write_icns(icon, path):
+    with tempfile.TemporaryDirectory() as work:
+        iconset = Path(work) / f'{NAME}.iconset'
+        iconset.mkdir()
+
+        for size in (16, 32, 128, 256, 512):
+            icon.resize((size, size), Image.LANCZOS).save(iconset / f'icon_{size}x{size}.png')
+            icon.resize((size * 2, size * 2), Image.LANCZOS).save(iconset / f'icon_{size}x{size}@2x.png')
+
+        subprocess.run(['iconutil', '-c', 'icns', str(iconset), '-o', str(path)], check=True)
+
+
+def write_icons():
+    document = ICONS / f'{NAME}.icon'
+    write_document(document)
+    compile_document(document, ICONS)
+    icon = classic_icon(document)
+    icon.save(ICONS / f'{NAME}.png')
+    icon.save(ICONS / f'{NAME}.ico', sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    write_icns(icon, ICONS / f'{NAME}.icns')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--preview', type=Path, help='Write only a preview PNG to this path')
+    parser.add_argument('--preview', type=Path, help='Write only a render of the icon to this path')
     args = parser.parse_args()
-    icon = draw_icon()
+
+    if sys.platform != 'darwin' or not ICTOOL.exists():
+        print(f'This script needs macOS and Xcode 26 or later, for {ICTOOL.name} and actool.', file=sys.stderr)
+        return 1
 
     if args.preview:
-        icon.save(args.preview)
+        with tempfile.TemporaryDirectory() as work:
+            document = Path(work) / f'{NAME}.icon'
+            write_document(document)
+            classic_icon(document).save(args.preview)
     else:
-        write_icons(icon)
+        write_icons()
 
     return 0
 
