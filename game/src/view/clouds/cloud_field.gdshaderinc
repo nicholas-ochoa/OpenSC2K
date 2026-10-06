@@ -22,6 +22,17 @@ float cloud_hash(vec2 cell) {
 	return fract(19.19 * (p.x + 0.37) * (p.y + 0.71));
 }
 
+float cloud_size(vec2 id) {
+	float variation = cloud_hash(id + vec2(7.0, 11.0));
+	float group = cloud_hash(id + vec2(37.0, 32.0));
+	if (group < 0.2) { return mix(0.45, 0.65, variation); }
+	if (group < 0.4) { return mix(0.68, 0.82, variation); }
+	if (group < 0.8) { return mix(0.86, 1.06, variation); }
+	// Keep the largest silhouette inside the existing nine-cell search even
+	// with maximum position jitter and any camera rotation (limit: 1.38).
+	return mix(1.12, 1.35, variation);
+}
+
 vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 	// Compute the footprint before cell selection diverges between neighboring
 	// fragments. Implicit texture derivatives inside that search can select
@@ -60,7 +71,7 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 			}
 			vec2 delta = point - center;
 			vec2 sky = delta.x * cloud_projection.xy + delta.y * cloud_projection.zw;
-			float size_factor = mix(0.86, 1.06, cloud_hash(id + vec2(7.0, 11.0)));
+			float size_factor = cloud_size(id);
 			// Weather changes grow/shrink the authored silhouette rather than
 			// fading its solid core or switching an entire cloud in one frame.
 			if (cloud_formation > 0.0) {
