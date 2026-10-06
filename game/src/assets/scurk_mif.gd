@@ -1,19 +1,15 @@
 class_name ScurkMif
 extends RefCounted
+## A SCURK MIF tile set: SHAP artwork and NAME pieces. The native formats
+## library reads, encodes, and writes the bytes; see
+## native/core/assets/src/scurk/mif.rs. This keeps the objects that the
+## editor changes.
 
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const INFO_LENGTH := 0x72
-const FILE_HEADER_LENGTH := 12
 # sc2kfix marks the tile sets that use its DOS colours with this INFO revision
 const SC2KFIX_REVISION := "00W_"
-# Macintosh SCURK writes a 4-byte INFO chunk and a TILE length of 2, the size of
-# the piece count
-const MAC_TILE_LENGTH := 2
 
-# Decoded shape states by shape data. The state depends only on the key fields.
-# Each parse or edit otherwise decodes every shape again.
-static var _shape_cache: Dictionary = {}
-static var _shape_cache_mutex := Mutex.new()
 
 var info_payload := PackedByteArray()
 var shapes: Array[Sc2SpriteArchive.SpriteEntry] = []
@@ -77,73 +73,36 @@ static func from_archives(archives: Array[Sc2SpriteArchive]) -> ScurkMif:
 
 func parse(bytes: PackedByteArray) -> bool:
 	_clear()
+	var parsed := NativeScurkMif.parse(bytes)
+	info_payload = parsed.info
+	piece_count = parsed.piece_count
 
-	if bytes.size() < FILE_HEADER_LENGTH:
-		return _fail("file is shorter than the MIFF header")
+	for fields: Dictionary in parsed.pieces:
+		var entry: Sc2SpriteArchive.SpriteEntry = null
 
-	if _tag(bytes, 0) != "MIFF" or _tag(bytes, 8) != "SC2K":
-		return _fail("file does not have a MIFF/SC2K header")
+		if fields.has_shape:
+			entry = Sc2SpriteArchive.SpriteEntry.new()
+			entry.sprite_id = fields.sprite_id
+			entry.width = fields.width
+			entry.height = fields.height
+			entry.offset = fields.offset
+			entry.duplicate_index = fields.duplicate_index
+			entry.encoded_pixels = fields.encoded
+			entry.allow_unpadded_odd_runs = true
+			shapes.append(entry)
+			archive.entries.append(entry)
+			archive.entries_by_id[entry.sprite_id] = entry
 
-	if BinaryData.read_u32_be(bytes, 4) != bytes.size() - 8:
-		return _fail("MIFF length does not match the file size")
+			if fields.opaque:
+				overrides.entries.append(entry)
+				overrides.entries_by_id[entry.sprite_id] = entry
+		elif fields.tag == "NAME":
+			names[fields.sprite_id] = fields.name
 
-	var position := FILE_HEADER_LENGTH
+		piece_records.append(Piece.new(fields.tag, fields.sprite_id, fields.raw, entry))
 
-	if position + 8 > bytes.size() or _tag(bytes, position) != "INFO":
-		return _fail("INFO chunk is missing")
-
-	var info_length := BinaryData.read_u32_be(bytes, position + 4)
-	position += 8
-
-	if position + info_length > bytes.size():
-		return _fail("INFO chunk extends past the file")
-
-	info_payload = bytes.slice(position, position + info_length)
-	position += info_length
-
-	if position + 10 > bytes.size() or _tag(bytes, position) != "TILE":
-		return _fail("TILE chunk is missing")
-
-	var tile_length := BinaryData.read_u32_be(bytes, position + 4)
-	position += 8
-	var tile_end := position + tile_length
-
-	if tile_length == MAC_TILE_LENGTH and tile_end < bytes.size():
-		tile_end = bytes.size()
-
-	if tile_end != bytes.size():
-		return _fail("TILE chunk length does not match the file size")
-
-	piece_count = BinaryData.read_u16_be(bytes, position)
-	position += 2
-
-	var duplicate_counts: Dictionary[int, int] = {}
-
-	for piece_index in piece_count:
-		if position + 8 > tile_end:
-			return _fail("piece %d header extends past the TILE chunk" % piece_index)
-
-		var piece_tag := _tag(bytes, position)
-		var piece_length := BinaryData.read_u32_be(bytes, position + 4)
-		var payload_start := position + 8
-		var payload_end := payload_start + piece_length
-
-		if payload_end > tile_end:
-			return _fail("piece %d extends past the TILE chunk" % piece_index)
-
-		if piece_tag == "SHAP":
-			if not _parse_shape(bytes, payload_start, payload_end, duplicate_counts):
-				return false
-		elif piece_tag == "NAME":
-			if not _parse_name(bytes, payload_start, payload_end):
-				return false
-		else:
-			return _fail("piece %d has unknown tag %s" % [piece_index, piece_tag])
-
-		position = payload_end
-
-	if position != tile_end:
-		return _fail("TILE chunk has data after its declared pieces")
+	if not str(parsed.error).is_empty():
+		return _fail(parsed.error)
 
 	return true
 
@@ -166,45 +125,14 @@ func to_bytes() -> AssetBytesResult:
 	if not is_valid():
 		return AssetBytesResult.failure(parse_error)
 
-	# a Macintosh tile set saves with the Windows INFO length
-	var info := info_payload.duplicate()
-	info.resize(INFO_LENGTH)
-
-	if piece_records.size() > 0xffff:
-		return AssetBytesResult.failure("TILE piece count is too large")
-
-	var tile_payload := PackedByteArray()
-	_append_u16_be(tile_payload, piece_records.size())
+	var tags := PackedStringArray()
+	var payloads := []
 
 	for piece in piece_records:
-		var tag := str(piece.tag)
-		var payload: PackedByteArray = piece.raw_payload
+		tags.append(str(piece.tag))
+		payloads.append(piece.raw_payload)
 
-		if tag.length() != 4:
-			return AssetBytesResult.failure("TILE piece has an invalid tag")
-
-		tile_payload.append_array(tag.to_ascii_buffer())
-		_append_u32_be(tile_payload, payload.size())
-		tile_payload.append_array(payload)
-
-	var bytes := PackedByteArray()
-	bytes.append_array("MIFF".to_ascii_buffer())
-	_append_u32_be(bytes, 0)
-	bytes.append_array("SC2K".to_ascii_buffer())
-	bytes.append_array("INFO".to_ascii_buffer())
-	_append_u32_be(bytes, info.size())
-	bytes.append_array(info)
-	bytes.append_array("TILE".to_ascii_buffer())
-	_append_u32_be(bytes, tile_payload.size())
-	bytes.append_array(tile_payload)
-	BinaryData.write_u32_be(bytes, 4, bytes.size() - 8)
-
-	var result := AssetBytesResult.new()
-	result.ok = true
-	result.bytes = bytes
-	result.error = ""
-
-	return result
+	return AssetBytesResult.from_native(NativeScurkMif.to_bytes(info_payload, tags, payloads))
 
 
 func save_path(path: String) -> Result:
@@ -233,19 +161,12 @@ func save_path(path: String) -> Result:
 
 
 func set_name(sprite_id: int, value: String) -> Result:
-	if sprite_id < 0 or sprite_id > 0xffff:
-		return Result.failure("NAME sprite ID is outside the 16-bit range")
+	var encoded := NativeScurkMif.name_payload(sprite_id, value)
 
-	var name_bytes := value.to_ascii_buffer()
+	if not encoded.ok:
+		return Result.failure(encoded.error)
 
-	if name_bytes.size() + 1 > 0xffff:
-		return Result.failure("NAME text is too long")
-
-	name_bytes.append(0)
-	var payload := PackedByteArray()
-	_append_u16_be(payload, sprite_id)
-	_append_u16_be(payload, name_bytes.size())
-	payload.append_array(name_bytes)
+	var payload: PackedByteArray = encoded.payload
 	var record_index := _last_piece_index("NAME", sprite_id)
 
 	if record_index < 0:
@@ -298,31 +219,12 @@ func set_shape_indices(
 func _set_shape_indices(
 	sprite_id: int, width: int, height: int, pixels: PackedInt32Array, rebuild_archives: bool
 ) -> Result:
-	if sprite_id < 0 or sprite_id > 0xffff:
-		return Result.failure("SHAP sprite ID is outside the 16-bit range")
+	var encoded := NativeScurkMif.shape_payload(sprite_id, width, height, pixels)
 
-	if width <= 0 or height <= 0 or width > 255 or height > 0xffff:
-		return Result.failure("SHAP dimensions are invalid")
+	if not encoded.ok:
+		return Result.failure(encoded.error)
 
-	if pixels.size() != width * height:
-		return Result.failure("SHAP pixel count does not match its dimensions")
-
-	for pixel in pixels:
-		if pixel < -1 or pixel > 0xff:
-			return Result.failure("SHAP palette index is invalid")
-
-	var pixel_data := _encode_pixels(width, height, pixels)
-
-	if pixel_data.is_empty():
-		return Result.failure("SHAP pixels cannot be encoded")
-
-	var payload := PackedByteArray()
-	_append_u16_be(payload, sprite_id)
-	_append_u16_be(payload, width)
-	_append_u16_be(payload, height)
-	_append_u32_be(payload, pixel_data.size())
-	payload.append_array(pixel_data)
-
+	var payload: PackedByteArray = encoded.payload
 	var record_index := _last_piece_index("SHAP", sprite_id)
 	var entry: Sc2SpriteArchive.SpriteEntry
 
@@ -345,7 +247,7 @@ func _set_shape_indices(
 
 	entry.width = width
 	entry.height = height
-	entry.encoded_pixels = _normalize_pixel_end(pixel_data)
+	entry.encoded_pixels = encoded.encoded
 	entry.allow_unpadded_odd_runs = true
 	entry._index_image = null
 
@@ -359,77 +261,6 @@ func _set_shape_indices(
 	result.error = ""
 
 	return result
-
-
-func _parse_shape(
-	bytes: PackedByteArray,
-	payload_start: int,
-	payload_end: int,
-	duplicate_counts: Dictionary[int, int]
-) -> bool:
-	if payload_end - payload_start < 10:
-		return _fail("SHAP payload is shorter than its header")
-
-	var entry := Sc2SpriteArchive.SpriteEntry.new()
-	entry.sprite_id = BinaryData.read_u16_be(bytes, payload_start)
-	entry.width = BinaryData.read_u16_be(bytes, payload_start + 2)
-	entry.height = BinaryData.read_u16_be(bytes, payload_start + 4)
-	var pixel_length := BinaryData.read_u32_be(bytes, payload_start + 6)
-
-	if payload_start + 10 + pixel_length != payload_end:
-		return _fail("SHAP sprite %d has an invalid pixel length" % entry.sprite_id)
-
-	# sc2kfix writes an empty shape for each sprite that a tile set keeps. The
-	# record stays for a save; the sprite keeps its original artwork
-	if entry.width <= 0 or entry.height <= 0:
-		piece_records.append(Piece.new("SHAP", entry.sprite_id, bytes.slice(payload_start, payload_end)))
-
-		return true
-
-	entry.offset = payload_start + 10
-	entry.duplicate_index = int(duplicate_counts.get(entry.sprite_id, 0))
-	duplicate_counts[entry.sprite_id] = entry.duplicate_index + 1
-	entry.encoded_pixels = _normalize_pixel_end(
-		bytes.slice(payload_start + 10, payload_end)
-	)
-	entry.allow_unpadded_odd_runs = true
-	var state := _shape_state(entry)
-
-	if state < 0:
-		return _fail(entry.decode_indices().error)
-
-	shapes.append(entry)
-	archive.entries.append(entry)
-	archive.entries_by_id[entry.sprite_id] = entry
-
-	if state == 1:
-		overrides.entries.append(entry)
-		overrides.entries_by_id[entry.sprite_id] = entry
-
-	piece_records.append(Piece.new("SHAP", entry.sprite_id, bytes.slice(payload_start, payload_end), entry))
-
-	return true
-
-
-func _parse_name(bytes: PackedByteArray, payload_start: int, payload_end: int) -> bool:
-	if payload_end - payload_start < 4:
-		return _fail("NAME payload is shorter than its header")
-
-	var sprite_id := BinaryData.read_u16_be(bytes, payload_start)
-	var name_length := BinaryData.read_u16_be(bytes, payload_start + 2)
-
-	if payload_start + 4 + name_length != payload_end:
-		return _fail("NAME %d has an invalid text length" % sprite_id)
-
-	var name_bytes := bytes.slice(payload_start + 4, payload_end)
-
-	while not name_bytes.is_empty() and name_bytes[name_bytes.size() - 1] == 0:
-		name_bytes.resize(name_bytes.size() - 1)
-
-	names[sprite_id] = name_bytes.get_string_from_ascii()
-	piece_records.append(Piece.new("NAME", sprite_id, bytes.slice(payload_start, payload_end)))
-
-	return true
 
 
 func _clear() -> void:
@@ -449,27 +280,6 @@ func _fail(message: String) -> bool:
 	overrides.parse_error = message
 
 	return false
-
-
-static func _normalize_pixel_end(bytes: PackedByteArray) -> PackedByteArray:
-	if (
-		bytes.size() >= 4
-		and bytes[bytes.size() - 4] == 2
-		and bytes[bytes.size() - 3] == 1
-		and bytes[bytes.size() - 2] == 2
-		and bytes[bytes.size() - 1] == 2
-	):
-		var normalized := bytes.slice(0, bytes.size() - 4)
-		normalized.append(0)
-		normalized.append(2)
-
-		return normalized
-
-	return bytes
-
-
-static func _tag(bytes: PackedByteArray, offset: int) -> String:
-	return bytes.slice(offset, offset + 4).get_string_from_ascii()
 
 
 func _last_piece_index(tag: String, sprite_id: int) -> int:
@@ -495,100 +305,21 @@ func _rebuild_archives() -> void:
 			overrides.entries_by_id[entry.sprite_id] = entry
 
 
-# Return 1 for a shape with an opaque pixel, 0 for a blank shape, or -1 if it does not decode.
-# Only successful results are cached. An error message names its sprite and offset.
+# the pixels with the game's sprite end in place of the SCURK end
+static func normalize_pixel_end(bytes: PackedByteArray) -> PackedByteArray:
+	return NativeScurkMif.normalize_pixel_end(bytes)
+
+
+# 1 for a shape with an opaque pixel, 0 for a blank shape, or -1 if it does not decode
 static func _shape_state(entry: Sc2SpriteArchive.SpriteEntry) -> int:
 	if not entry._direct_indices.is_empty():
-		return _decode_shape_state(entry)
+		for pixel in entry._direct_indices:
+			if pixel >= 0:
+				return 1
 
-	var key := [entry.width, entry.height, entry.allow_unpadded_odd_runs, entry.encoded_pixels]
-	_shape_cache_mutex.lock()
-	var cached: Variant = _shape_cache.get(key)
-	_shape_cache_mutex.unlock()
+		return 0
 
-	if cached != null:
-		return cached
-
-	var state := _decode_shape_state(entry)
-
-	if state >= 0:
-		_shape_cache_mutex.lock()
-
-		if _shape_cache.size() >= 16384:
-			_shape_cache.clear()
-
-		_shape_cache[key] = state
-		_shape_cache_mutex.unlock()
-
-	return state
-
-
-static func _decode_shape_state(entry: Sc2SpriteArchive.SpriteEntry) -> int:
-	var decoded := entry.decode_indices()
-
-	if not decoded.ok:
-		return -1
-
-	for pixel in decoded.pixels:
-		if pixel >= 0:
-			return 1
-
-	return 0
-
-
-static func _encode_pixels(
-	width: int, height: int, pixels: PackedInt32Array
-) -> PackedByteArray:
-	var encoded := PackedByteArray()
-
-	for y in height:
-		var row := PackedByteArray()
-		var x := 0
-
-		while x < width:
-			var transparent := pixels[y * width + x] < 0
-			var run_start := x
-
-			while x < width and (pixels[y * width + x] < 0) == transparent and x - run_start < 255:
-				x += 1
-
-			var count := x - run_start
-
-			if transparent:
-				row.append(count)
-				row.append(3)
-			else:
-				row.append(count)
-				row.append(4)
-
-				for pixel_x in range(run_start, x):
-					row.append(pixels[y * width + pixel_x])
-
-				if count % 2 == 1:
-					row.append(0)
-
-		if row.size() > 255:
-			return PackedByteArray()
-
-		encoded.append(row.size())
-		encoded.append(1)
-		encoded.append_array(row)
-
-	encoded.append_array(PackedByteArray([2, 1, 2, 2]))
-
-	return encoded
-
-
-static func _append_u16_be(bytes: PackedByteArray, value: int) -> void:
-	bytes.append((value >> 8) & 0xff)
-	bytes.append(value & 0xff)
-
-
-static func _append_u32_be(bytes: PackedByteArray, value: int) -> void:
-	bytes.append((value >> 24) & 0xff)
-	bytes.append((value >> 16) & 0xff)
-	bytes.append((value >> 8) & 0xff)
-	bytes.append(value & 0xff)
+	return NativeScurkMif.shape_state(entry.width, entry.height, entry.encoded_pixels, entry.allow_unpadded_odd_runs)
 
 
 class Result extends RefCounted:

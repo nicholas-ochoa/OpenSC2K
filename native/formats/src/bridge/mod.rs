@@ -11,6 +11,7 @@ mod johab;
 mod palette;
 mod pe;
 mod png;
+mod scurk_mif;
 mod sprite;
 mod zip;
 

@@ -68,7 +68,7 @@ static func mac_tile_set(data: PackedByteArray) -> Sc2ImportSprites:
 			continue
 
 		total_pixels += entry.width * entry.height
-		entry.encoded_pixels = ScurkMif._normalize_pixel_end(data.slice(start + 10, cursor))
+		entry.encoded_pixels = ScurkMif.normalize_pixel_end(data.slice(start + 10, cursor))
 		entry.allow_unpadded_odd_runs = true
 		var decoded := entry.decode_indices()
 
@@ -116,7 +116,7 @@ static func tiles_database(data: PackedByteArray) -> Sc2ImportSprites:
 			break
 
 		var encoded := data.slice(cursor, cursor + length)
-		entry.encoded_pixels = ScurkMif._normalize_pixel_end(encoded)
+		entry.encoded_pixels = ScurkMif.normalize_pixel_end(encoded)
 		entry.allow_unpadded_odd_runs = entry.encoded_pixels != encoded
 		cursor += length
 		var rows := _sprite_rows(entry.encoded_pixels)
