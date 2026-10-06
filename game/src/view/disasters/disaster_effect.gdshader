@@ -1,6 +1,5 @@
 shader_type canvas_item;
 render_mode unshaded;
-
 #include "res://src/view/environment/environment_color.gdshaderinc"
 
 uniform int effect_kind = 0;
@@ -9,121 +8,150 @@ uniform float effect_seed = 0.0;
 uniform float effect_strength = 0.7;
 uniform float light_strength = 0.4;
 uniform float progress = -1.0;
+uniform float impact_phase = 0.0;
+uniform vec2 world_origin = vec2(0.0);
 uniform vec4 flood_edges = vec4(1.0);
 uniform sampler2D foreground : filter_nearest, repeat_disable;
 uniform bool has_foreground = false;
 uniform sampler2D people : source_color, filter_nearest, repeat_disable;
 
-float puff(vec2 p, vec2 center, vec2 radius) {
-	return 1.0 - smoothstep(0.25, 1.0, length((p - center) / radius));
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p), f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0)), f.x), f.y);
+}
+float puff(vec2 p, vec2 center, vec2 radius) { return 1.0 - smoothstep(0.5, 1.0, length((p - center) / radius)); }
+vec4 over(vec4 base, vec3 color, float alpha) {
+	float a = clamp(alpha, 0.0, 1.0);
+	float total = a + base.a * (1.0 - a);
+	return vec4((color * a + base.rgb * base.a * (1.0 - a)) / max(total, 0.001), total);
 }
 
 void fragment() {
-	// Work in original large-view pixels, even at fractional display zoom.
-	vec2 p = floor(UV * vec2(64.0, 96.0)) + vec2(0.5);
+	// Native pixels keep contours stable at every map zoom. q=0 is the tile centre.
+	vec2 q = floor(UV * vec2(96.0, 144.0)) + vec2(0.5) - vec2(48.0, 128.0);
 	float t = effect_time + effect_seed;
-	vec3 color = vec3(0.48, 0.47, 0.43);
-	float alpha = 0.0;
+	float diamond = abs(q.x) / 16.0 + abs(q.y) / 8.0;
 	float emission = 0.0;
-	float diamond = abs(p.x - 32.0) / 16.0 + abs(p.y - 80.0) / 8.0;
-	if (effect_kind == 0 || effect_kind == 4 || effect_kind == 7 || effect_kind == 8 || effect_kind == 12) {
-		// Broken smoke, windblown ash, or dust around a moving disaster.
-		for (int i = 0; i < 5; i++) {
-			float f = fract(t * 0.19 + float(i) * 0.2);
-			float rise = f * (effect_kind == 7 ? 65.0 : 40.0);
-			float sway = sin(t * 1.3 + float(i) * 2.4) * (effect_kind == 4 ? 9.0 : 3.0);
-			vec2 at = vec2(32.0 + sway + f * 8.0, 75.0 - rise);
-			alpha += puff(p, at, vec2(4.0 + f * 7.0, 5.0 + f * 5.0)) * sin(f * 3.14159) * 0.10;
+	vec4 ink = vec4(0.0);
+	float strength = mix(0.55, 1.0, effect_strength);
+	if (effect_kind == 0 || effect_kind == 7 || effect_kind == 12) {
+		// Separate expanding billows leave gaps through the plume.
+		float plume_height = effect_kind == 7 ? 108.0 : (effect_kind == 12 ? 36.0 : 64.0);
+		for (int i = 0; i < 8; i++) {
+			float f = fract(t * 0.17 + float(i) * 0.125);
+			vec2 at = vec2(f * 15.0 + sin(t * 0.7 + float(i) * 2.4) * 3.0, -8.0 - f * plume_height);
+			vec2 r = vec2(5.0 + f * 9.0, 6.0 + f * 7.0);
+			float shade = floor((noise(q * 0.35 + vec2(0.0, t * 0.9)) * 0.12 + (q.x - at.x) / r.x * 0.06 + 0.40) * 12.0) / 12.0;
+			ink = over(ink, vec3(shade, shade * 0.98, shade * 0.94), puff(q, at, r) * sin(f * 3.14159) * 0.82 * strength);
 		}
-		if (effect_kind == 4 || effect_kind == 8) {
-			color = vec3(0.62, 0.57, 0.45);
-			float a = atan((p.y - 80.0) * 2.0, p.x - 32.0);
-			alpha *= 0.75;
-			alpha += puff(p, vec2(32.0 + sin(t * 2.0) * 10.0, 80.0 + cos(t * 2.0) * 3.0), vec2(5.0, 3.0)) * 0.20;
-			alpha += (1.0 - smoothstep(0.05, 0.22, abs(diamond - 0.7))) * max(0.0, sin(a * 3.0 - t * 5.0)) * 0.09;
-		} else if (effect_kind != 12) {
-			float glow = puff(p, vec2(32.0, 79.0), vec2(22.0, 10.0)) * light_strength;
-			color = mix(color, vec3(1.0, 0.39, 0.07), glow);
-			alpha += glow * 0.22;
-			emission = glow;
-			for (int i = 0; i < 3; i++) {
-				float f = fract(t * 0.4 + float(i) * 0.31);
-				vec2 at = vec2(32.0 + sin(float(i) * 3.0 + t) * 7.0, 74.0 - f * 30.0);
-				float spark = puff(p, at, vec2(1.2)) * (1.0 - f);
-				color = mix(color, vec3(1.0, 0.67, 0.12), spark);
-				alpha += spark * 0.65;
+		if (effect_kind == 0) {
+			ink = over(ink, vec3(1.0, 0.39, 0.055), puff(q, vec2(0.0, -1.0), vec2(21.0, 9.0)) * light_strength * 0.65);
+			// Staggered flame tongues replace the original repeated fire bitmap.
+			for (int i = 0; i < 6; i++) {
+				float id = float(i), base = -12.0 + id * 4.8;
+				float height = 15.0 + sin(t * 4.1 + id * 2.7) * 4.0 + hash(vec2(id, effect_seed)) * 10.0;
+				float y = (2.0 - abs(base) * 0.19 - q.y) / height;
+				float axis = base + sin(y * 5.0 - t * 4.5 + id) * y * 3.5;
+				float width = (1.0 - y) * 4.3;
+				float body = step(abs(q.x - axis), width) * step(0.0, y) * step(y, 1.0);
+				float inner = step(abs(q.x - axis + 0.7), width * 0.55) * step(y, 0.67);
+				vec3 flame = y > 0.6 ? vec3(0.96, 0.25, 0.025) : vec3(1.0, 0.49, 0.045);
+				flame = mix(flame, y < 0.28 ? vec3(1.0, 0.92, 0.48) : vec3(1.0, 0.73, 0.14), inner);
+				ink = over(ink, flame, body * 0.97);
+				emission = max(emission, body * 0.85);
+			}
+		}
+		if (effect_kind != 12) {
+			for (int i = 0; i < 7; i++) {
+				float f = fract(t * 0.31 + float(i) * 0.143);
+				vec2 at = vec2(sin(float(i) * 3.0 + t) * 11.0 + f * 12.0, -12.0 - f * plume_height);
+				float spark = step(length(q - at), 0.85) * (1.0 - f);
+				ink = over(ink, vec3(1.0, 0.72, 0.23), spark);
 				emission = max(emission, spark);
 			}
 		}
 	} else if (effect_kind == 1) {
-		// Flood stays inside its actual tile; foam only on exposed boundaries.
 		if (diamond < 1.0) {
-			float wave = sin(p.x * 0.65 + p.y * 0.9 - t * 3.0);
-			color = mix(vec3(0.13, 0.36, 0.55), vec3(0.39, 0.65, 0.77), wave * 0.5 + 0.5);
-			alpha = 0.53;
-			vec2 q = vec2((p.x - 32.0) / 16.0, (p.y - 80.0) / 8.0);
+			// World-aligned, broken horizontal ripples join across flooded tiles.
+			vec2 w = q + world_origin;
+			float n = noise(w * vec2(0.15, 0.32) + vec2(effect_time * 0.4, 0.0));
+			float ripple = noise(w * vec2(0.24, 0.9) - vec2(effect_time, effect_time * 0.5));
+			vec3 water = mix(vec3(0.16, 0.40, 0.54), vec3(0.30, 0.59, 0.68), floor(n * 4.0) / 3.0);
+			water = mix(water, vec3(0.58, 0.77, 0.80), step(0.77, ripple) * 0.65);
 			float edge = q.x > 0.0 ? (q.y > 0.0 ? flood_edges.x : flood_edges.y) : (q.y > 0.0 ? flood_edges.z : flood_edges.w);
-			if (diamond > 0.82 && edge > 0.5 && wave > -0.1) {
-				color = vec3(0.72, 0.86, 0.87);
-				alpha = 0.68;
-			}
+			float foam = step(0.80 + n * 0.09, diamond) * edge;
+			ink = vec4(mix(water, vec3(0.78, 0.87, 0.83), foam), mix(0.78, 0.92, foam));
 		}
 	} else if (effect_kind == 2 || effect_kind == 9) {
-		color = effect_kind == 9 ? vec3(0.69, 0.61, 0.27) : vec3(0.49, 0.60, 0.20);
-		alpha = diamond < 1.0 ? 0.20 : 0.0;
-		if (effect_kind == 2 && diamond > 0.82 && diamond < 1.0) {
-			color = vec3(0.69, 0.68, 0.26);
-			alpha = 0.50;
+		vec3 gas = effect_kind == 9 ? vec3(0.64, 0.55, 0.25) : vec3(0.55, 0.62, 0.23);
+		if (diamond < 1.0) {
+			float n = noise((q + world_origin) * 0.21 + vec2(t * 0.3, 0.0));
+			ink = vec4(mix(gas * 0.60, gas, n), 0.55);
+			if (diamond > 0.88) { ink = over(ink, gas * 1.3, 0.48); }
 		}
-		for (int i = 0; i < 4; i++) {
-			float f = fract(t * 0.15 + float(i) * 0.25);
-			vec2 at = vec2(32.0 + sin(t + float(i) * 2.0) * 7.0, 79.0 - f * 11.0);
-			alpha += puff(p, at, vec2(7.0, 4.0)) * sin(f * 3.14159) * 0.10;
+		for (int i = 0; i < 5; i++) {
+			float f = fract(t * 0.16 + float(i) * 0.2);
+			vec2 at = vec2(sin(float(i) * 2.6 + t * 0.5) * 9.0, -3.0 - f * 15.0);
+			ink = over(ink, gas * (0.95 + f * 0.30), puff(q, at, vec2(8.0, 5.0)) * sin(f * 3.14159) * 0.44 * strength);
 		}
 	} else if (effect_kind == 3) {
-		vec2 uv = vec2((UV.x + mod(floor(t * 5.0), 2.0)) * 0.5, UV.y);
-		vec4 person = texture(people, uv);
-		color = person.rgb;
-		alpha = person.a;
-	} else if (effect_kind == 5) {
-		// Demolition is pale settling dust, without flames or an impact flash.
-		float f = clamp(progress, 0.0, 1.0);
-		color = vec3(0.73, 0.68, 0.56);
-		for (int i = 0; i < 6; i++) {
-			float angle = float(i) * 1.0472 + effect_seed;
-			vec2 at = vec2(32.0, 78.0 - f * 12.0) + vec2(cos(angle) * (4.0 + f * 11.0), sin(angle) * (2.0 + f * 4.0));
-			alpha += puff(p, at, vec2(5.0 + f * 5.0, 4.0 + f * 4.0)) * 0.17 * (1.0 - f);
+		ink = texture(people, vec2((UV.x + mod(floor(t * 6.0), 8.0)) / 8.0, UV.y));
+	} else if (effect_kind == 4) {
+		float h = clamp(-q.y / 102.0, 0.0, 1.0);
+		float axis = sin(h * 4.8 + t * 1.5) * h * 7.0;
+		float radius = 2.5 + pow(h, 0.8) * 23.0;
+		float radial = (q.x - axis) / radius;
+		float band = sin(q.y * 0.65 + radial * 2.5 - t * 7.0);
+		float contour = 1.0 - smoothstep(0.80, 1.04, abs(radial) + band * 0.035);
+		float ends = step(-103.0, q.y) * step(q.y, 1.0);
+		float shade = floor((0.57 - radial * 0.15 + band * 0.08 + noise(q * 0.3 + t) * 0.08) * 12.0) / 12.0;
+		ink = vec4(vec3(shade * 0.96, shade, shade * 1.02), contour * ends * 0.96);
+		for (int i = 0; i < 9; i++) {
+			float a = t * (2.0 + float(i) * 0.13) + float(i) * 2.4;
+			float r = 12.0 + mod(float(i) * 7.0, 19.0);
+			vec2 at = vec2(cos(a) * r, -4.0 - mod(float(i) * 11.0, 40.0) + sin(a) * 5.0);
+			ink = over(ink, vec3(0.36, 0.30, 0.22), step(length((q - at) / vec2(1.7, 1.0)), 1.0) * 0.85);
+		}
+		ink = over(ink, vec3(0.62, 0.56, 0.43), puff(q, vec2(sin(t * 3.0) * 8.0, -1.0), vec2(17.0, 5.0)) * 0.36);
+	} else if (effect_kind == 5 || effect_kind == 8) {
+		float f = effect_kind == 5 ? clamp(progress, 0.0, 1.0) : fract(t * 0.65);
+		float fade = effect_kind == 5 ? (1.0 - smoothstep(0.25, 1.0, f)) : sin(f * 3.14159) * 0.7;
+		for (int i = 0; i < 7; i++) {
+			float a = float(i) * 2.4 + effect_seed;
+			vec2 at = vec2(cos(a) * (4.0 + f * 13.0), -3.0 - f * 14.0 + sin(a) * (2.0 + f * 4.0));
+			vec2 r = vec2(5.0 + f * 7.0, 4.0 + f * 6.0);
+			float shade = floor((0.72 + (at.y - q.y) / r.y * 0.10 + noise(q * 0.4) * 0.1) * 12.0) / 12.0;
+			ink = over(ink, vec3(shade, shade * 0.94, shade * 0.81), puff(q, at, r) * fade * 0.66 * strength);
+			vec2 chip = vec2(cos(a) * f * 23.0, -sin(f * 3.14159) * (7.0 + float(i)) + sin(a) * f * 6.0);
+			ink = over(ink, vec3(0.41, 0.37, 0.28), step(length(q - chip), 1.0) * fade * 0.65);
 		}
 	} else if (effect_kind == 6) {
-		float beam = 1.0 - smoothstep(0.5, 2.0, abs(p.x - 32.0));
-		alpha = p.y < 80.0 ? beam * 0.50 : 0.0;
-		alpha += puff(p, vec2(32.0, 79.0), vec2(7.0, 4.0)) * 0.65;
-		color = vec3(0.71, 0.85, 1.0);
-		emission = light_strength;
+		float beam = 1.0 - smoothstep(0.5, 2.5, abs(q.x));
+		ink = vec4(vec3(0.75, 0.87, 1.0), q.y < 0.0 ? beam * 0.8 : 0.0);
+		ink = over(ink, vec3(0.87, 0.95, 1.0), puff(q, vec2(0.0, -1.0), vec2(9.0, 4.0)) * 0.9);
+		emission = 0.85;
 	} else if (effect_kind == 10) {
-		// Sparse directional rain. The canvas remains clear for dispatch tools.
-		float lane = fract(UV.x * 73.0 + UV.y * 28.0);
-		float drop = fract(UV.y * 35.0 - effect_time * 4.0 + floor(UV.x * 73.0) * 0.37);
-		alpha = lane > 0.96 && drop > 0.65 ? 0.16 : 0.025;
-		color = lane > 0.96 && drop > 0.65 ? vec3(0.67, 0.75, 0.81) : vec3(0.17, 0.22, 0.28);
+		float lane = fract(UV.x * 149.0 + UV.y * 48.0);
+		float drop = fract(UV.y * 42.0 - effect_time * 3.0 + floor(UV.x * 149.0 + UV.y * 48.0) * 0.37);
+		bool rain = lane > 0.94 && drop > 0.66;
+		ink = rain ? vec4(0.68, 0.77, 0.84, 0.40) : vec4(0.13, 0.20, 0.29, 0.14);
+		ink.a *= strength;
 	} else if (effect_kind == 11) {
-		float f = fract(t * 0.7);
-		alpha = puff(p, vec2(32.0, 75.0), vec2(9.0, 7.0)) * (0.35 + 0.20 * f);
-		color = vec3(1.0, 0.48 + f * 0.24, 0.09);
-		emission = light_strength;
+		float n = noise(q * 0.3 + vec2(0.0, -t * 4.0));
+		float r = length((q - vec2(0.0, -8.0 - impact_phase * 6.0)) / (vec2(12.0, 15.0) + impact_phase * 6.0)) + n * 0.3;
+		float body = 1.0 - smoothstep(0.8, 1.15, r);
+		vec3 color = r < 0.47 ? vec3(1.0, 0.94, 0.64) : (r < 0.72 ? vec3(1.0, 0.67, 0.11) : vec3(0.91, 0.29, 0.04));
+		ink = vec4(color, body * 0.96);
+		if (impact_phase > 0.5) {
+			ink = over(ink, vec3(0.40, 0.38, 0.34), puff(q, vec2(4.0, -26.0), vec2(15.0, 11.0)) * 0.7);
+		}
+		emission = 0.85 * body;
 	}
-	vec3 shaded = environment_color(color, UV);
-	color = mix(shaded, color, clamp(emission, 0.0, 1.0));
-	if (progress >= 0.0 && effect_kind != 5) {
-		alpha *= 1.0 - smoothstep(0.65, 1.0, progress);
-	}
-	if (has_foreground) {
-		alpha *= 1.0 - texture(foreground, UV).a;
-	}
-	// Keep confirmed hazard tiles readable even at a low cosmetic strength.
-	float opacity = effect_kind == 3 ? 1.0 : effect_strength;
-	if (effect_kind == 1 || effect_kind == 2) {
-		opacity = mix(0.7, 1.0, effect_strength);
-	}
-	COLOR = vec4(color, clamp(alpha, 0.0, effect_kind == 3 ? 1.0 : 0.72) * opacity);
+	ink.rgb = mix(environment_color(ink.rgb, UV), ink.rgb, clamp(emission, 0.0, 1.0));
+	if (progress >= 0.0 && effect_kind != 5) { ink.a *= 1.0 - smoothstep(0.65, 1.0, progress); }
+	if (has_foreground) { ink.a *= 1.0 - texture(foreground, UV).a; }
+	// Replacement artwork remains identifiable; strength controls surrounding atmosphere.
+	COLOR = vec4(ink.rgb, clamp(ink.a, 0.0, 1.0));
 }

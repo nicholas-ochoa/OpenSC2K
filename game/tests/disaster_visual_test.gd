@@ -38,7 +38,7 @@ func _run() -> void:
 		command.depth_order = (tile.x + tile.y) * 128 + tile.y
 		command.overlay = marker
 		var replaced := effects.observe_command(command)
-		assert(replaced == (marker != 0xff), "Fire retains original flames; water, gas and people replace their markers")
+		assert(replaced, "Enhanced fire, water, gas and people must replace the classic markers")
 		effects.end_commands()
 		assert(effects.markers.size() == 1)
 		var visual: CityDisasterEffects.Visual = effects.markers.values()[0]
@@ -80,10 +80,42 @@ func _run() -> void:
 	assert(not effects.observe_command(CityDynamicCommand.new()))
 	assert(DocumentState.capture(city.document) == before, "Visual effects wrote city data")
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before, "Visual effects advanced simulation RNG")
+	await _check_object_replacements(app)
 	app.queue_free()
 	await process_frame
 	print("PASS: disaster marker replacement, dispatch layering, retained nodes, event deduplication, pause, fallback and unchanged city/RNG")
 	quit()
+
+
+func _check_object_replacements(app: CityApplication) -> void:
+	app.preferences.visual_enhancements.disaster_enabled = true
+	var city := app.document_state.city
+	var effects := app.disaster_effects
+	var support := load("res://tests/traffic_motion_test.gd")
+	for kind in [15, 6, 5]:
+		support.write_thing(city, 1, {"type": kind, "x": 64, "y": 64, "z": 0})
+		var before := DocumentState.capture(city.document)
+		var command := CityDynamicCommand.new()
+		command.record = 1
+		command.depth_order = 128 * 128 + 64
+		effects.begin_commands()
+		assert(effects.observe_command(command) == (kind != 5), "Replace the tornado and explosion, preserve the monster artwork")
+		effects.end_commands()
+		assert(effects.markers.size() == (2 if kind == 5 else 1))
+		assert(DocumentState.capture(city.document) == before)
+		app.preferences.visual_enhancements.disaster_enabled = false
+		assert(not effects.observe_command(command), "The classic object must return when enhancements are disabled")
+		app.preferences.visual_enhancements.disaster_enabled = true
+	# A hovering monster has no contact dust.
+	support.write_thing(city, 1, {"z": 15})
+	var hovering := CityDynamicCommand.new()
+	hovering.record = 1
+	hovering.depth_order = 128 * 128 + 64
+	effects.begin_commands()
+	assert(not effects.observe_command(hovering))
+	effects.end_commands()
+	assert(effects.markers.is_empty())
+	await process_frame
 
 
 func _check_special_motion() -> void:

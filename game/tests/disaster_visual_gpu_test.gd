@@ -11,7 +11,7 @@ func _run() -> void:
 	viewport.transparent_bg = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
-	var pixels := Image.create(64, 96, false, Image.FORMAT_RGBA8)
+	var pixels := Image.create(CityDisasterEffects.EXTENT.x, CityDisasterEffects.EXTENT.y, false, Image.FORMAT_RGBA8)
 	pixels.fill(Color.WHITE)
 	var sprite := Sprite2D.new()
 	sprite.centered = false
@@ -31,16 +31,21 @@ func _run() -> void:
 		assert(not image.is_invisible(), "Effect %d did not render" % kind)
 		if kind != CityDisasterEffects.HURRICANE:
 			assert(image.get_pixel(0, 0).a < 0.01, "An effect obscured unrelated city space")
+		if kind in [CityDisasterEffects.FIRE, CityDisasterEffects.TORNADO, CityDisasterEffects.RIOT]:
+			material.set_shader_parameter("effect_time", 1.3)
+			await RenderingServer.frame_post_draw
+			assert(viewport.get_texture().get_image().get_data() != image.get_data(), "Replacement artwork must animate")
+			material.set_shader_parameter("effect_time", 0.7)
 	material.set_shader_parameter("effect_kind", CityDisasterEffects.FLOOD)
 	material.set_shader_parameter("progress", -1.0)
 	await RenderingServer.frame_post_draw
 	var flood := viewport.get_texture().get_image()
-	assert(flood.get_pixel(32, 80).a > 0.1 and flood.get_pixel(49, 80).a < 0.01, "Flood must stay inside the affected tile")
+	assert(flood.get_pixel(48, 128).a > 0.1 and flood.get_pixel(65, 128).a < 0.01, "Flood must stay inside the affected tile")
 	material.set_shader_parameter("effect_strength", 0.05)
 	for kind in [CityDisasterEffects.FLOOD, CityDisasterEffects.TOXIC]:
 		material.set_shader_parameter("effect_kind", kind)
 		await RenderingServer.frame_post_draw
-		assert(viewport.get_texture().get_image().get_pixel(32, 80).a > 0.1,
+		assert(viewport.get_texture().get_image().get_pixel(48, 128).a > 0.1,
 			"Confirmed hazard tiles must remain readable at low cosmetic strength")
 	material.set_shader_parameter("foreground", ImageTexture.create_from_image(pixels))
 	material.set_shader_parameter("has_foreground", true)

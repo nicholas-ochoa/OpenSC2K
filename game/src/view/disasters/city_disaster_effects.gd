@@ -6,8 +6,8 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const SHADER := preload("res://src/view/disasters/disaster_effect.gdshader")
-const EXTENT := Vector2i(64, 96)
-const ANCHOR := Vector2(32, 80)
+const EXTENT := Vector2i(96, 144)
+const ANCHOR := Vector2(48, 128)
 const MAX_MARKERS := 512
 const MAX_PULSES := 96
 const FRAME_SECONDS := 1.0 / 15.0
@@ -149,13 +149,18 @@ func _ensure_canvas() -> void:
 
 
 static func crowd_atlas() -> Image:
-	var image := Image.create(EXTENT.x * 2, EXTENT.y, false, Image.FORMAT_RGBA8)
+	var image := Image.create(EXTENT.x * 8, EXTENT.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
-	# Reuse the real two-frame 3x6 city-life artwork, at its original scale.
-	for phase in 2:
-		for i in 7:
-			var person := CityLifeSprites._person(i, i % 4, phase + i)
-			var offset := Vector2i(phase * EXTENT.x + 22 + (i % 3) * 8 + (i / 3) * 2, 69 + (i / 3) * 4)
+	# Reuse actual city-life people. Independent short loops break the marching grid.
+	var positions: Array[Vector2i] = [Vector2i(-9, -3), Vector2i(-4, -7), Vector2i(3, -6), Vector2i(9, -2),
+		Vector2i(-3, 0), Vector2i(4, 2), Vector2i(-8, 3), Vector2i(1, 5)]
+	for phase in 8:
+		for i in positions.size():
+			var step_phase := (phase + i * 3) % 8
+			var direction := (i + step_phase / 4) % 4
+			var person := CityLifeSprites._person(i, direction, step_phase)
+			var movement := Vector2i(roundi(sin(step_phase * TAU / 8.0) * 2.0), roundi(cos(step_phase * TAU / 8.0)))
+			var offset := Vector2i(phase * EXTENT.x, -5) + Vector2i(ANCHOR) + positions[i] + movement
 			image.blend_rect(person, Rect2i(Vector2i.ZERO, person.get_size()), offset)
 	return image
 
@@ -185,7 +190,7 @@ func observe_command(command: CityDynamicCommand) -> bool:
 		var visual := _marker("tile:%d:%d" % [tile.x, tile.y], kind, tile, ground_point(city, tile))
 		if visual != null and kind == FLOOD:
 			visual.material.set_shader_parameter("flood_edges", flood_edges(city, tile))
-		return visual != null and kind in [FLOOD, TOXIC, RIOT]
+		return visual != null
 	if command.record < 0:
 		return false
 	var thing := city.thing(command.record)
@@ -203,10 +208,20 @@ func observe_command(command: CityDynamicCommand) -> bool:
 				kind = TRAIL
 				location += Vector2(thing.px - thing.py, (thing.px + thing.py) * 0.5 - thing.z * 8.0)
 	if kind >= 0:
-		_marker("thing:%d" % command.record, kind, tile, location)
+		if kind == MONSTER:
+			# Ground contact only: floating monster poses must not kick up dust.
+			if thing.z == 0:
+				for side in [-1, 1]:
+					var foot_offset := Vector2(side * 42, 8)
+					_marker("thing:%d:foot:%d" % [command.record, side], MONSTER, tile, location + foot_offset, command.record, foot_offset)
+			return false
+		var visual := _marker("thing:%d" % command.record, kind, tile, location, command.record if kind == TORNADO else -1)
+		if visual != null and kind == EXPLOSION:
+			visual.material.set_shader_parameter("impact_phase", clampf(thing.direction / 2.0, 0.0, 1.0))
 		if kind == TRAIL and _trails.get(command.record, Vector2.INF).distance_to(location) > 5.0:
 			_trails[command.record] = location
 			_pulse(TRAIL, tile, location, 1.0)
+		return visual != null and kind in [TORNADO, EXPLOSION]
 	return false
 
 
@@ -220,7 +235,7 @@ func end_commands() -> void:
 			_trails.erase(record)
 
 
-func _marker(key: String, kind: int, tile: Vector2i, location: Vector2) -> Visual:
+func _marker(key: String, kind: int, tile: Vector2i, location: Vector2, record := -1, anchor_offset := Vector2.ZERO) -> Visual:
 	if not _visible(tile, location):
 		return null
 	_seen[key] = true
@@ -232,6 +247,8 @@ func _marker(key: String, kind: int, tile: Vector2i, location: Vector2) -> Visua
 		markers[key] = visual
 	visual.kind = kind
 	visual.tile = tile
+	visual.record = record
+	visual.anchor_offset = anchor_offset
 	visual.sprite.position = (location - ANCHOR).round()
 	_update_material(visual)
 	return visual
@@ -263,6 +280,11 @@ func _visible(tile: Vector2i, location: Vector2) -> bool:
 
 func _update_material(visual: Visual) -> void:
 	var material := visual.material
+	if visual.record >= 0:
+		var track: CityTrafficMotion.Track = app.moving_sprites.traffic_motion.tracks.get(visual.record)
+		var offset := Vector2.ZERO if track == null else Vector2(track.current.x - track.target.x, track.current.y - track.target.y)
+		visual.sprite.position = (ground_point(app.document_state.city, visual.tile) - ANCHOR + offset + visual.anchor_offset).round()
+	material.set_shader_parameter("world_origin", visual.sprite.position + ANCHOR)
 	material.set_shader_parameter("effect_kind", visual.kind)
 	material.set_shader_parameter("effect_time", clock)
 	material.set_shader_parameter("effect_strength", app.preferences.visual_enhancements.disaster_strength)
@@ -387,6 +409,8 @@ class Visual extends RefCounted:
 	var material: ShaderMaterial
 	var tile := Vector2i.ZERO
 	var kind := 0
+	var record := -1
+	var anchor_offset := Vector2.ZERO
 	var age := 0.0
 	var duration := 0.0
 	var user_action := false
