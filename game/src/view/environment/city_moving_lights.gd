@@ -12,6 +12,8 @@ func mask(archive: Sc2SpriteArchive, sprite_id: int) -> Image:
 		return archive.visual_emission[sprite_id]
 	var record: Dictionary = SOURCES.get(str(sprite_id), {})
 	if record.is_empty():
+		record = CityMonsterLightSources.DATA.get(str(sprite_id), {})
+	if record.is_empty():
 		return null
 	var key := "%d:%d:%d" % [archive.get_instance_id(), archive.visual_revision, sprite_id]
 	if masks.has(key):

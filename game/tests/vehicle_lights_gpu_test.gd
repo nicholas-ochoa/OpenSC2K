@@ -6,6 +6,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	await _check_monster_panels()
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(96, 96)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -101,3 +102,55 @@ func _run() -> void:
 	await process_frame
 	print("PASS: GPU red/yellow lamps in all vehicle orientations, warm additive road light and exact Off output")
 	quit()
+
+
+func _check_monster_panels() -> void:
+	var graphics := GraphicsPack.load_root(ProjectSettings.globalize_path("res://../ext/graphics"))
+	assert(graphics.error.is_empty())
+	var lights := CityMovingLights.new()
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(96, 96)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas := CityDynamicSpriteCanvas.new()
+	canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	viewport.add_child(canvas)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://src/view/map/palette_cycle.gdshader")
+	material.set_shader_parameter("environment_enabled", true)
+	material.set_shader_parameter("environment_tint", Vector3(0.28, 0.34, 0.52))
+	canvas.material = material
+	for id in [1490, 1491, 990, 991, 490, 491]:
+		var archive := graphics.large_sprites if id >= 1000 else graphics.small_medium_sprites
+		var source: Image = archive.find_sprite(id).create_image(graphics.palette).image
+		var mask := lights.mask(archive, id)
+		for flip in [false, true]:
+			var image := source.duplicate() as Image
+			if flip:
+				image.flip_x()
+			var emission := CityBrightmaps.transform_mask(mask, image, flip)
+			var visual := CityDynamicVisual.new(ImageTexture.create_from_image(image))
+			canvas.set_visuals([visual], 1.0, Vector2.ZERO)
+			await process_frame
+			await RenderingServer.frame_post_draw
+			var unlit := viewport.get_texture().get_image()
+			visual.emission_texture = ImageTexture.create_from_image(emission)
+			canvas.set_visuals([visual], 1.0, Vector2.ZERO)
+			for strength in [0.0, 0.5, 1.0]:
+				material.set_shader_parameter("environment_night", strength)
+				await process_frame
+				await RenderingServer.frame_post_draw
+				var rendered := viewport.get_texture().get_image()
+				if strength == 0.0:
+					assert(rendered.get_data() == unlit.get_data(), "Disabled monster brightmaps changed original artwork")
+				for y in image.get_height():
+					for x in image.get_width():
+						var lamp := emission.get_pixel(x, y)
+						var pixel := rendered.get_pixel(x, y)
+						assert(is_equal_approx(pixel.a, image.get_pixel(x, y).a))
+						var expected := unlit.get_pixel(x, y).lerp(lamp, lamp.a * strength)
+						assert(absf(pixel.r - expected.r) < 0.015 and absf(pixel.g - expected.g) < 0.015 and absf(pixel.b - expected.b) < 0.015,
+							"Monster panel emission changed hue, alignment or strength")
+	viewport.queue_free()
+	await process_frame

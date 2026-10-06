@@ -57,7 +57,9 @@ func _check_moving_masks() -> void:
 	app.set_process(false)
 	app.main_menu.city_background.set_process(false)
 	var lights := CityMovingLights.new()
-	for key: String in CityMovingLightSources.DATA:
+	var records := CityMovingLightSources.DATA.duplicate()
+	records.merge(CityMonsterLightSources.DATA)
+	for key: String in records:
 		var id := int(key)
 		var archive: Sc2SpriteArchive = app.asset_state.large_sprites if id >= 1000 else app.asset_state.small_medium_sprites
 		var mask := lights.mask(archive, id)
@@ -85,7 +87,18 @@ func _check_moving_masks() -> void:
 	authored.set_pixel(4, 4, Color.BLUE)
 	wrong.visual_emission[1359] = authored
 	assert(lights.mask(wrong, 1359) == authored, "A custom brightmap lost precedence")
-	assert(lights.mask(wrong, 1490) == null, "Monster art received traffic lights")
+	assert(lights.mask(wrong, 1490) == null, "Missing monster artwork received lights")
+	for id in [1490, 1491, 990, 991, 490, 491]:
+		var source_archive: Sc2SpriteArchive = app.asset_state.large_sprites if id >= 1000 else app.asset_state.small_medium_sprites
+		var source_entry := source_archive.find_sprite(id)
+		var modified := source_entry.decode_indices().pixels.duplicate()
+		modified[0] = 1 if modified[0] != 1 else 2
+		wrong.entries_by_id[id] = Sc2SpriteArchive.entry_from_indices(id, source_entry.width, source_entry.height, modified)
+		assert(lights.mask(wrong, id) == null, "Standard monster lights attached to changed artwork")
+		wrong.visual_emission[id] = authored
+		assert(lights.mask(wrong, id) == authored, "Custom monster brightmap lost precedence")
+	for id in range(1478, 1490):
+		assert(lights.mask(app.asset_state.large_sprites, id) == null, "Metal monster limb emitted light")
 	var traffic_test := load("res://tests/traffic_motion_test.gd") as GDScript
 	var city: CityState = traffic_test.fixture(3)
 	assert(app.city_session.activate_document(city.document))
@@ -111,6 +124,15 @@ func _check_moving_masks() -> void:
 			assert(bodies[0].water_reflection != null and bodies[0].water_reflection.emission != null,
 				"Ship brightmap did not reach the reflection source")
 		assert(DocumentState.capture(city.document) == before)
+	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	traffic_test.write_thing(city, 1, {"type": 5, "z": 0, "dx": 0, "dy": 0})
+	var monster_before := DocumentState.capture(city.document)
+	for view_size in [CityIsometricRenderer.VIEW_SMALL, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_LARGE]:
+		app.moving_sprites.refresh_moving_things(view_size)
+		var head_lights := app.map_view.dynamic_sprites.filter(func(v: CityDynamicVisual) -> bool: return v.emission_texture != null)
+		assert(head_lights.size() == 2, "Both original monster head halves need aligned lights at every size")
+		assert(app.map_view.dynamic_sprites.all(func(v: CityDynamicVisual) -> bool: return not v.shadow or v.emission_texture == null))
+	assert(DocumentState.capture(city.document) == monster_before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	app.queue_free()
 	await process_frame
