@@ -15,6 +15,7 @@ mod png;
 mod scurk_mif;
 mod scurk_pixels;
 mod scurk_print;
+mod scurk_project;
 mod sprite;
 mod sprite_fixes;
 mod sprite_import;
