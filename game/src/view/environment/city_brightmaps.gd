@@ -2,6 +2,8 @@ class_name CityBrightmaps
 extends RefCounted
 ## Authored RGBA emission is separate from the original palette and sprite data.
 
+const DEFAULT_FOLDER := "res://assets/brightmaps/standard"
+
 static func fingerprint(entry: Sc2SpriteArchive.SpriteEntry) -> String:
 	var hash_context := HashingContext.new()
 	hash_context.start(HashingContext.HASH_SHA256)
@@ -11,9 +13,7 @@ static func fingerprint(entry: Sc2SpriteArchive.SpriteEntry) -> String:
 
 static func load_archive(archive: Sc2SpriteArchive, folder: String, group: String) -> void:
 	archive.visual_emission.clear()
-	folder = resolve_folder(folder)
-	if folder.is_empty():
-		return
+	folder = DEFAULT_FOLDER if folder.is_empty() else resolve_folder(folder)
 	var path := folder.path_join("catalog.json")
 	if not FileAccess.file_exists(path):
 		return
@@ -24,11 +24,18 @@ static func load_archive(archive: Sc2SpriteArchive, folder: String, group: Strin
 		var entry := archive.find_sprite(id)
 		var record: Variant = catalog.sprites.get("%s/%d" % [group, id])
 		var filename := folder.path_join("brightmaps/%s/%d.png" % [group, id])
-		if not record is Dictionary or not FileAccess.file_exists(filename):
+		if not record is Dictionary:
 			continue
 		if record.get("indices_sha256", "") != fingerprint(entry):
 			continue
-		var image := Image.load_from_file(filename)
+		var image: Image
+		if filename.begins_with("res://"):
+			if ResourceLoader.exists(filename, "Texture2D"):
+				var texture := load(filename) as Texture2D
+				if texture != null:
+					image = texture.get_image()
+		elif FileAccess.file_exists(filename):
+			image = Image.load_from_file(filename)
 		if image == null or image.get_size() != Vector2i(entry.width, entry.height):
 			continue
 		image.convert(Image.FORMAT_RGBA8)

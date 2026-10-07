@@ -38,6 +38,7 @@ func _run() -> void:
 		assert(CityVisualWeather.from_game(pair[0], false) == pair[1])
 	assert(CityVisualWeather.from_game(7, true) == 2)
 	_check_brightmaps()
+	_check_standard_brightmaps()
 	var main := (load("res://main.tscn") as PackedScene).instantiate() as CityApplication
 	root.add_child(main)
 	await process_frame
@@ -586,3 +587,23 @@ func _check_portable_brightmaps(assets: OriginalGameAssets, mask: Image, externa
 	CityBrightmaps.load_archive(assets.large_sprites, external, "large")
 	assert(assets.large_sprites.visual_emission[1006].get_data() == mask.get_data())
 	AppPaths.use_executable_folder(previous_root.get_base_dir(), previous_portable)
+
+
+func _check_standard_brightmaps() -> void:
+	var pack := FixtureGraphics.pack()
+	for pair in [[pack.large_sprites, "large", 103], [pack.small_medium_sprites, "small-medium", 205]]:
+		var archive: Sc2SpriteArchive = pair[0]
+		CityBrightmaps.load_archive(archive, "", pair[1])
+		assert(archive.visual_emission.size() == pair[2], "Default masks must load for matching standard artwork")
+		for id: int in archive.visual_emission:
+			var mask: Image = archive.visual_emission[id]
+			var entry := archive.find_sprite(id)
+			assert(mask.get_size() == Vector2i(entry.width, entry.height) and not mask.is_invisible())
+		CityBrightmaps.load_archive(archive, "user://missing-custom-masks", pair[1])
+		assert(archive.visual_emission.is_empty(), "An explicit custom folder replaces the built-in set")
+	var custom := Sc2SpriteArchive.new()
+	var different := Sc2SpriteArchive.entry_from_indices(1112, 2, 1, PackedInt32Array([20, 30]))
+	custom.entries.append(different)
+	custom.entries_by_id[1112] = different
+	CityBrightmaps.load_archive(custom, "", "large")
+	assert(custom.visual_emission.is_empty(), "Default masks must not attach to changed custom artwork")

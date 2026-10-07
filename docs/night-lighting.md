@@ -46,3 +46,13 @@ the street-light strength to zero hides fixtures, signals and light pools.
 
 All controls persist in local preferences. City documents, simulation state,
 power rules, disasters and simulation random state remain unchanged.
+
+
+### Included standard masks
+
+The application includes 308 authored light masks for the standard Windows artwork
+in `game/assets/brightmaps/standard`. An empty custom brightmap folder uses this set.
+An explicit custom folder replaces it. The catalog checks decoded source-index
+hashes before applying a mask, so other artwork cannot receive misplaced lights.
+Original sprites and palettes are not included. The PNG masks are imported as
+textures and the catalog is included in every export preset.

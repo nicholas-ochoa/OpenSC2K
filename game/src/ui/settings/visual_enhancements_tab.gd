@@ -34,7 +34,7 @@ const LABELS := {
 	"disaster_crowds": "Animated riot crowds", "disaster_lights": "Fire and impact lighting",
 	"disaster_shake": "Earthquake camera shake",
 	"pause_freezes": "Pause environment cycles with the game",
-	"day_mode": "Time source", "day_hour": "Fixed hour (0–24)", "day_seconds": "Day cycle duration",
+	"day_mode": "Time source", "day_hour": "Fixed hour (0â€“24)", "day_seconds": "Day cycle duration",
 	"day_lut_strength": "Time-of-day color strength", "night_strength": "Night darkness",
 	"brightmaps": "Building and vehicle lights", "night_light_strength": "Light brightness",
 	"season_seconds": "Year cycle duration", "season_transition": "Season blend duration", "season_lut_strength": "Season color strength",
@@ -69,11 +69,11 @@ const HINTS := {
 	"weather_lut_strength": "Strength of weather color filters. 0% disables these filters.",
 	"season_water_strength": "Strength of the seasonal water tint. Enable Seasons to use this setting.",
 	"cloud_density": "Amount of decorative cloud coverage.",
-	"cloud_speed": "Multiplier for cloud movement. 1× is the standard speed; 0× stops movement.",
-	"life_car_amount": "Decorative car density. 1× is the standard amount; does not change simulated traffic.",
-	"life_people_amount": "Decorative pedestrian density. 1× is the standard amount; does not change population.",
+	"cloud_speed": "Multiplier for cloud movement. 1Ã— is the standard speed; 0Ã— stops movement.",
+	"life_car_amount": "Decorative car density. 1Ã— is the standard amount; does not change simulated traffic.",
+	"life_people_amount": "Decorative pedestrian density. 1Ã— is the standard amount; does not change population.",
 	"night_light_strength": "Brightness of building and vehicle lights. 100% uses the original brightness; 0% turns the lights off without changing night colors.",
-	"brightmap_folder": "Relative to the data folder, for example brightmaps-standard. Absolute paths are also supported. Requires active lighting.",
+	"brightmap_folder": "Leave empty for the included standard light masks. Custom folders replace the standard set. Relative to the data folder, for example brightmaps-standard. Absolute paths are also supported. Requires active lighting.",
 	"lut_path": "Optional PNG lookup table (LUT) for custom color grading. Leave empty for standard colors.",
 }
 
@@ -211,12 +211,12 @@ func _add_field(page: VBoxContainer, field: Array) -> void:
 			elif key.ends_with("_seconds") or key == "weather_transition":
 				spin.suffix = "s"
 			elif key in ["cloud_speed", "life_car_amount", "life_people_amount"]:
-				spin.suffix = "×"
+				spin.suffix = "Ã—"
 			spin.value_changed.connect(func(_v: float) -> void: _changed())
 			control = spin
 		"path":
 			var edit := LineEdit.new()
-			edit.placeholder_text = "Optional — leave empty for standard effects"
+			edit.placeholder_text = "Optional â€” leave empty for standard effects"
 			edit.text_submitted.connect(func(_v: String) -> void: _changed())
 			edit.focus_exited.connect(_changed)
 			control = edit
