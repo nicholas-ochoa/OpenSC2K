@@ -4,6 +4,8 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const DIRECTIONS := [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+const DIAGONAL_FORWARD := [Vector2(1, -1) * 0.7071067811865476, Vector2(1, 1) * 0.7071067811865476,
+	Vector2(-1, 1) * 0.7071067811865476, Vector2(-1, -1) * 0.7071067811865476]
 const ROAD_PORTS := [5, 10, 5, 10, 5, 10, 3, 6, 12, 9, 11, 7, 14, 13, 15]
 const EDGE_CORNERS := [[0, 1], [1, 2], [2, 3], [3, 0]]
 
@@ -109,6 +111,38 @@ static func can_turn(city: CityState, tile: Vector2i, enter: int, exit: int) -> 
 	return true
 
 
+static func diagonal(city: CityState, tile: Vector2i) -> bool:
+	var id := city.building_id(tile.x, tile.y)
+	return (id >= Tiles.ROAD_CURVE_1 and id <= Tiles.ROAD_CURVE_4) \
+		or (id >= Tiles.HIGHWAY_CURVE_1 and id <= Tiles.HIGHWAY_CURVE_4)
+
+
+static func paired_exit(city: CityState, tile: Vector2i, enter: int) -> int:
+	var mask := ports(city, tile)
+	for exit in 4:
+		if exit != enter and mask & (1 << exit) and can_turn(city, tile, enter, exit):
+			return exit
+	return (enter + 2) % 4
+
+
+# Heading numbers 0..3 retain the original artwork; 4..7 face screen E/S/W/N.
+static func heading(enter: int, exit: int, progress: float, is_diagonal: bool) -> int:
+	if is_diagonal and enter % 2 != exit % 2:
+		var forward: Vector2i = DIRECTIONS[exit] - DIRECTIONS[enter]
+		return (4 if forward.y < 0 else 5) if forward.x > 0 else (6 if forward.y > 0 else 7)
+	return (enter + 2) % 4 if progress < 0.5 else exit
+
+
+static func forward(heading_value: int) -> Vector2:
+	if heading_value < 4:
+		return Vector2(DIRECTIONS[heading_value])
+	return DIAGONAL_FORWARD[heading_value - 4]
+
+
+static func opposite(heading_value: int) -> int:
+	return (heading_value + 2) % 4 if heading_value < 4 else 4 + (heading_value - 2) % 4
+
+
 static func connected(city: CityState, tile: Vector2i, direction: int, walking := false) -> bool:
 	var next: Vector2i = tile + DIRECTIONS[direction]
 	if not (ports(city, tile) & (1 << direction)) or not (ports(city, next) & (1 << ((direction + 2) % 4))):
@@ -149,7 +183,7 @@ static func point(city: CityState, tile: Vector2i, enter: int, exit: int, progre
 	var b := outgoing * 0.5 + Vector2(-outgoing.y, outgoing.x) * lane
 	var t := clampf(progress, 0.0, 1.0)
 	var offset: Vector2
-	if exit == (enter + 2) % 4:
+	if exit == (enter + 2) % 4 or diagonal(city, tile):
 		offset = a.lerp(b, t)
 	elif walking:
 		var corner := Vector2(a.x, b.y) if is_zero_approx(incoming.x) else Vector2(b.x, a.y)
@@ -185,7 +219,7 @@ class Segment extends RefCounted:
 
 	func _init(city: CityState, tile: Vector2i, enter: int, exit: int, is_walking: bool) -> void:
 		walking = is_walking
-		straight = exit == (enter + 2) % 4
+		straight = exit == (enter + 2) % 4 or CityLifePaths.diagonal(city, tile)
 		var incoming := -Vector2(DIRECTIONS[enter])
 		var outgoing := Vector2(DIRECTIONS[exit])
 		var lane := 0.39 if walking else 0.13

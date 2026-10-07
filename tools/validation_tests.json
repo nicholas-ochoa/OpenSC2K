@@ -1,5 +1,12 @@
 [
   {
+    "id": "diagonal_network_test",
+    "script": "tests/diagonal_network_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": ["ext/graphics/pack.json"]
+  },
+  {
     "id": "disaster_visual_test",
     "script": "tests/disaster_visual_test.gd",
     "domain": "rendering",

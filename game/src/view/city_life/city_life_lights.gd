@@ -28,7 +28,7 @@ func sync_geometry(city: CityState) -> Dictionary[Vector2i, bool]:
 	if changed.is_empty():
 		return changed
 	for tile in changed:
-		for axis in 2:
+		for axis in 4:
 			var key := Vector3i(tile.x, tile.y, axis)
 			roads.erase(key)
 			visible_roads.erase(key)
@@ -61,7 +61,7 @@ func lamp_mask(sprite: Image, kind: int, direction: int) -> Image:
 
 
 func surface(city: CityState, tile: Vector2i, enter: int, direction: int, lookup := Callable()) -> Dictionary:
-	var key := Vector4i(tile.x, tile.y, enter % 2, direction)
+	var key := Vector4i(tile.x, tile.y, road_key(city, tile, enter).z, direction)
 	if surfaces.has(key):
 		var cached := surfaces[key]
 		# Dictionary order tracks recent use. Evict one old surface, not the
@@ -78,10 +78,16 @@ func surface(city: CityState, tile: Vector2i, enter: int, direction: int, lookup
 		occlusion_keys.append(Vector3i(tile.x, tile.y, enter % 2))
 		for road: Dictionary in _visible_road_patches(city, tile, enter, lookup):
 			image.blit_rect_mask(road.image, road.image, Rect2i(Vector2i.ZERO, road.image.get_size()), road.origin - bounds.position)
-		if not CityLifePaths.connected(city, tile, direction):
+		var exit := direction
+		if CityLifePaths.diagonal(city, tile):
+			exit = CityLifePaths.paired_exit(city, tile, enter)
+		elif direction >= 4:
+			# Continue toward the same heading after a diagonal meets a junction.
+			exit = (enter + 2) % 4
+		if not CityLifePaths.connected(city, tile, exit):
 			break
-		tile += CityLifePaths.DIRECTIONS[direction]
-		enter = (direction + 2) % 4
+		tile += CityLifePaths.DIRECTIONS[exit]
+		enter = (exit + 2) % 4
 	var result := {"image": image, "texture": ImageTexture.create_from_image(image), "origin": bounds.position,
 		"occlusion_keys": occlusion_keys}
 	if surfaces.size() >= SURFACE_LIMIT:
@@ -91,7 +97,7 @@ func surface(city: CityState, tile: Vector2i, enter: int, direction: int, lookup
 
 
 func _visible_road_patches(city: CityState, tile: Vector2i, enter: int, lookup: Callable) -> Array:
-	var key := Vector3i(tile.x, tile.y, enter % 2)
+	var key := road_key(city, tile, enter)
 	if visible_roads.has(key):
 		return visible_roads[key]
 	var occluders: Array = lookup.call(tile, enter) if lookup.is_valid() else []
@@ -119,10 +125,14 @@ static func vehicle_world(city: CityState, figure: CityLifeController.Figure) ->
 
 
 func _road_patches(city: CityState, tile: Vector2i, enter: int) -> Array:
-	var key := Vector3i(tile.x, tile.y, enter % 2)
+	var key := road_key(city, tile, enter)
 	if roads.has(key):
 		return roads[key]
 	var patches: Array = []
+	if CityLifePaths.diagonal(city, tile):
+		patches = _diagonal_patch(city, tile, enter)
+		roads[key] = patches
+		return patches
 	var ports := CityLifePaths.ports(city, tile)
 	var exit := (enter + 2) % 4
 	if not ports & (1 << exit):
@@ -157,6 +167,40 @@ func _road_patches(city: CityState, tile: Vector2i, enter: int) -> Array:
 		patches.append({"origin": raster.position, "image": pixels})
 	roads[key] = patches
 	return patches
+
+
+static func road_key(city: CityState, tile: Vector2i, enter: int) -> Vector3i:
+	# The central highway curve has two separate carriageways, even on one axis.
+	return Vector3i(tile.x, tile.y, enter if CityLifePaths.diagonal(city, tile) else enter % 2)
+
+
+static func _diagonal_patch(city: CityState, tile: Vector2i, enter: int) -> Array:
+	var exit := CityLifePaths.paired_exit(city, tile, enter)
+	var a := Vector2(CityLifePaths.DIRECTIONS[enter]) * 0.5
+	var b := Vector2(CityLifePaths.DIRECTIONS[exit]) * 0.5
+	var along := b - a
+	var side := Vector2(-along.y, along.x).normalized() * 0.5
+	var start := _project(city, tile, a, CityLifePaths.edge_height(city, tile, enter))
+	var end := _project(city, tile, b, CityLifePaths.edge_height(city, tile, exit))
+	var across := Vector2((side.x - side.y) * 16, (side.x + side.y) * 8)
+	var transform := Transform2D(end - start, across, start - across * 0.5)
+	if absf(transform.determinant()) < 0.01:
+		return []
+	var bounds := Rect2(transform * Vector2(-1, 0), Vector2.ZERO)
+	for uv in [Vector2(2, 0), Vector2(2, 1), Vector2(-1, 1)]:
+		bounds = bounds.expand(transform * uv)
+	var raster := Rect2i(bounds.grow(1.0))
+	var inverse := transform.affine_inverse()
+	var pixels := Image.create(raster.size.x, raster.size.y, false, Image.FORMAT_RGBAF)
+	for y in range(raster.position.y, raster.end.y):
+		for x in range(raster.position.x, raster.end.x):
+			var uv: Vector2 = inverse * Vector2(x + 0.5, y + 0.5)
+			var local := a + along * uv.x + side * (uv.y - 0.5)
+			if uv.y >= 0.0 and uv.y <= 1.0 \
+					and absf(local.x) <= 0.5 and absf(local.y) <= 0.5:
+				var world := Vector2(tile) + local
+				pixels.set_pixel(x - raster.position.x, y - raster.position.y, Color(world.x, world.y, 0, 1))
+	return [{"origin": raster.position, "image": pixels}]
 
 
 static func _project(city: CityState, tile: Vector2i, offset: Vector2, altitude: float) -> Vector2:

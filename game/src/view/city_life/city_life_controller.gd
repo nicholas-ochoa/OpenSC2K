@@ -11,7 +11,6 @@ const FADE_OUT_SECONDS := 0.9
 const BUS_RADIUS := 8
 const TRUCK_SHARE := 0.06
 const BUS_SHARE := 0.03
-const PROJECTED_DIRECTIONS := [Vector2(16, -8), Vector2(16, 8), Vector2(-16, 8), Vector2(-16, -8)]
 const EMPTY_BUCKET: Array = []
 var app: CityApplication
 var random := RandomNumberGenerator.new()
@@ -178,7 +177,8 @@ func _spawn(city: CityState, options: Dictionary) -> void:
 			figure.variant = random.randi_range(0, 17)
 			figure.lifetime = random.randf_range(25.0, 55.0)
 			figure.position = CityLifePaths.point(city, tile, figure.enter, figure.exit, figure.progress, walking)
-			figure.direction = (figure.enter + 2) % 4 if figure.progress < 0.5 else figure.exit
+			figure.diagonal = CityLifePaths.diagonal(city, tile)
+			figure.direction = figure.heading()
 			if _crowded(figure, figure.position):
 				continue
 			_serial += 1
@@ -286,8 +286,8 @@ func _advance(city: CityState, elapsed: float) -> void:
 		if old_bucket != _bucket(position):
 			_buckets[old_bucket].erase(figure)
 			_bucket_add(figure)
-		figure.direction = figure.enter + 2 if progress < 0.5 else figure.exit
-		figure.direction %= 4
+		figure.diagonal = CityLifePaths.diagonal(city, figure.tile)
+		figure.direction = figure.heading()
 		if progress < 1.0:
 			continue
 		var next: Vector2i = figure.tile + CityLifePaths.DIRECTIONS[figure.exit]
@@ -298,6 +298,9 @@ func _advance(city: CityState, elapsed: float) -> void:
 		figure.tile = next
 		figure.exit = _exit(city, figure)
 		figure.progress = 0.0
+		figure.diagonal = CityLifePaths.diagonal(city, figure.tile)
+		if figure.exit >= 0:
+			figure.direction = figure.heading()
 		if figure.exit < 0:
 			figure.retiring = true
 		elif figure.walking and random.randf() < 0.08:
@@ -306,8 +309,9 @@ func _advance(city: CityState, elapsed: float) -> void:
 
 func _crowded(figure: Figure, position: Vector2, spawning: bool = true) -> bool:
 	var center := _bucket(position)
-	var direction := (figure.enter + 2) % 4 if figure.progress < 0.5 else figure.exit
-	var forward: Vector2 = PROJECTED_DIRECTIONS[direction]
+	var direction := figure.heading()
+	var world := CityLifePaths.forward(direction)
+	var forward := Vector2((world.x - world.y) * 16, (world.x + world.y) * 8)
 	for x in range(-1, 2):
 		for y in range(-1, 2):
 			for other: Figure in _buckets.get(center + Vector2i(x, y), EMPTY_BUCKET):
@@ -316,8 +320,8 @@ func _crowded(figure: Figure, position: Vector2, spawning: bool = true) -> bool:
 				var separation := other.position - position
 				if not spawning:
 					# Opposite lanes pass independently; following cars yield ahead.
-					var other_direction := (other.enter + 2) % 4 if other.progress < 0.5 else other.exit
-					if (direction + 2) % 4 == other_direction:
+					var other_direction := other.heading()
+					if CityLifePaths.opposite(direction) == other_direction:
 						continue
 					if direction == other_direction and separation.dot(forward) <= 0.0:
 						continue
@@ -356,6 +360,7 @@ class Figure extends RefCounted:
 	var enter := 0
 	var exit := 0
 	var direction := 0
+	var diagonal := false
 	var progress := 0.0
 	var distance := 0.0
 	var speed := 1.0
@@ -366,6 +371,10 @@ class Figure extends RefCounted:
 	var wait := 0.0
 	var retiring := false
 	var visibility := 0.0
+
+
+	func heading() -> int:
+		return CityLifePaths.heading(enter, exit, progress, diagonal)
 
 
 	func opacity() -> float:

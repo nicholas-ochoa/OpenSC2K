@@ -223,7 +223,7 @@ func invalidate_regions(changes: Array[Rect2i]) -> void:
 
 
 func _forget_helpers(tile: Vector2i) -> void:
-	for axis in 2:
+	for axis in 4:
 		var key := Vector3i(tile.x, tile.y, axis)
 		roads.roads.erase(key)
 		masker._occluders.erase(key)
@@ -247,7 +247,8 @@ func sources(city: CityState, tile: Vector2i) -> Array[Dictionary]:
 	for fixture in CityNightFixtures.street_layout(city, tile, int(profiles.street.spacing)):
 		var street: Dictionary = profiles.street.duplicate()
 		street.enter = fixture.enter
-		street.offset = Vector2(fixture.offset) * 0.65
+		var center: Vector2 = fixture.get("center", Vector2.ZERO)
+		street.offset = center + (Vector2(fixture.offset) - center) * 0.65
 		street.position = Vector2(tile) + street.offset
 		result.append(street)
 	# Only short, street-facing approaches for the explicitly listed shops.

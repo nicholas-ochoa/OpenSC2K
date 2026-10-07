@@ -145,6 +145,10 @@ func _candidates(app: CityApplication, tile: Vector2i, enter: int = 0) -> Array:
 		command_tile = Vector2i(int(command.depth_order / city.map_size) - command_tile.x, command_tile.x)
 		var own := own_structure and (command_tile == tile or (id >= BuildingTileIds.HIGHWAY_SLOPE_1 \
 			and command.sprite_id % 500 == id and CityLifePaths.section_origin(city, command_tile) == section))
+		# A diagonal highway is an open deck on pillars. Its multi-tile sprite
+		# can sort after the car's supporting tile, but remains beneath it.
+		if own and CityLifePaths.diagonal(city, tile):
+			continue
 		if command.depth_order <= depth and not own:
 			continue
 		var resource := app.moving_sprites.dynamic_sprite_resource(archive, command.sprite_id, command.flip, divisor)
@@ -196,6 +200,7 @@ func invalidate_occlusion(changes: Array[Rect2i]) -> void:
 		_occluder_bounds.erase(key)
 		_light_occluders.erase(key)
 		lights.visible_roads.erase(key)
+		lights.visible_roads.erase(key + Vector3i(0, 0, 2))
 	for key in lights.surfaces.keys():
 		for dependency in lights.surfaces[key].occlusion_keys:
 			if invalidated.has(dependency):

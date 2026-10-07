@@ -26,7 +26,7 @@ func _run() -> void:
 	var sprites := CityLifeSprites.new()
 	var lights := CityLifeLights.new()
 	for kind in 3:
-		for direction in 4:
+		for direction in 8:
 			var sprite := sprites.sprite(false, 0, direction, 0, kind)
 			var mask := lights.lamp_mask(sprite, kind, direction)
 			artwork.texture = ImageTexture.create_from_image(sprite)
@@ -39,7 +39,7 @@ func _run() -> void:
 					if mask.get_pixel(x, y).a > 0.0:
 						var pixel := rendered.get_pixel(x, y)
 						assert(pixel.r > 0.9)
-						assert(pixel.g > 0.8 if direction in [1, 2] else pixel.g < 0.3, "Lamp color was ambient-graded")
+						assert(pixel.g > 0.8 if direction in [1, 2, 4, 5] else pixel.g < 0.3, "Lamp color was ambient-graded")
 	material.set_shader_parameter("environment_night", 0.0)
 	await RenderingServer.frame_post_draw
 	var off := viewport.get_texture().get_image()

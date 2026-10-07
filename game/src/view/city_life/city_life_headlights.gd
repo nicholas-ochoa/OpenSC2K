@@ -63,7 +63,7 @@ func render(city: CityState, figures: Array, lights: CityLifeLights, offset: Vec
 		buffers[group][at + 7] = point.y
 		parameters[group][layer * 4] = world.x
 		parameters[group][layer * 4 + 1] = world.y
-		parameters[group][layer * 4 + 2] = figure.direction + figure.vehicle_kind * 4
+		parameters[group][layer * 4 + 2] = figure.direction + figure.vehicle_kind * 8
 		parameters[group][layer * 4 + 3] = figure.opacity()
 	for index in groups.size():
 		groups[index].multimesh.buffer = buffers[index]

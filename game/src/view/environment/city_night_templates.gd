@@ -15,7 +15,7 @@ func clear() -> void:
 
 func receiver(city: CityState, tile: Vector2i, origin: Vector2i, lights: Array[Dictionary], roads: CityLifeLights) -> Array:
 	var height := CityLifePaths.edge_height(city, tile, 0)
-	var key: Array = [CityLifePaths.ports(city, tile),
+	var key: Array = [CityLifePaths.ports(city, tile), CityLifePaths.diagonal(city, tile),
 		CityLifeLights._project(city, tile, Vector2.ZERO, height) - Vector2(origin)]
 	for enter in 4:
 		key.append(CityLifePaths.edge_height(city, tile, enter) - height)

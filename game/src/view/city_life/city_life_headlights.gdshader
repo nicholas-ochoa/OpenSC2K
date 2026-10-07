@@ -15,10 +15,14 @@ void vertex() {
 	vec4 data = texelFetch(headlight_data, ivec2(INSTANCE_ID, 0), 0);
 	vehicle_world = data.xy;
 	int packed = int(data.z);
-	int direction = packed % 4;
+	int direction = packed % 8;
 	forward = vec2(direction == 1 ? 1.0 : (direction == 3 ? -1.0 : 0.0),
 		direction == 2 ? 1.0 : (direction == 0 ? -1.0 : 0.0));
-	front = float(3 + packed / 4);
+	if (direction >= 4) {
+		forward = vec2(direction < 6 ? 1.0 : -1.0,
+			(direction == 5 || direction == 6) ? 1.0 : -1.0) * 0.7071067811865476;
+	}
+	front = float(3 + packed / 8);
 	opacity = data.w;
 }
 

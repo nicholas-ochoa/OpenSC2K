@@ -77,9 +77,9 @@ func _check_sparse_artwork(hdr: bool) -> void:
 	var pixels := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
 	var emission := pixels.duplicate() as Image
 	for i in 100:
-		var sprite := sprites.sprite(i % 4 == 3, i % 12, i % 4, i % 2, i % 3)
+		var sprite := sprites.sprite(i % 4 == 3, i % 12, i % 8, i % 2, i % 3)
 		var origin := bounds.position + Vector2i((i * 17) % 330 - 5, (i * 3) % 200 - 4)
-		var lamps := lights.lamp_mask(sprite, i % 3, i % 4)
+		var lamps := lights.lamp_mask(sprite, i % 3, i % 8)
 		var opacity: float = [0.0, 0.31, 1.0][i % 3]
 		entries.append({"sprite": sprite, "origin": origin, "lamps": lamps, "opacity": opacity, "occluders": []})
 		CityLifeCanvas.stamp(pixels, bounds.position, sprite, origin, [], opacity, emission, lamps)
@@ -129,9 +129,14 @@ func _check_headlight_batches(hdr: bool) -> void:
 		figure.id = i
 		@warning_ignore("integer_division")
 		figure.tile = Vector2i(58 + i % 13, 58 + i / 13)
-		figure.direction = i % 4
+		figure.direction = i % 8
 		figure.enter = (figure.direction + 2) % 4
 		figure.exit = figure.direction
+		if figure.direction >= 4:
+			var rotation := (figure.direction - 1) % 4
+			figure.enter = rotation
+			figure.exit = (rotation + 1) % 4
+			city.set_building_id(figure.tile.x, figure.tile.y, BuildingTileIds.ROAD_CURVE_1 + rotation)
 		figure.vehicle_kind = i % 3
 		figure.progress = 0.2 + (i % 3) * 0.3
 		figure.visibility = 0.2 + (i % 3) * 0.3
@@ -175,7 +180,7 @@ func _check_headlight_batches(hdr: bool) -> void:
 			shader.shader = preload("res://src/view/city_life/city_life_road_light.gdshader")
 			shader.set_shader_parameter("night", 0.65)
 			shader.set_shader_parameter("vehicle_world", CityLifeLights.vehicle_world(city, figure))
-			shader.set_shader_parameter("forward", CityLifeLights.FORWARD[figure.direction])
+			shader.set_shader_parameter("forward", CityLifePaths.forward(figure.direction))
 			shader.set_shader_parameter("front", float([3, 4, 5][figure.vehicle_kind]))
 			shader.set_shader_parameter("opacity", figure.opacity())
 			sprite.material = shader
