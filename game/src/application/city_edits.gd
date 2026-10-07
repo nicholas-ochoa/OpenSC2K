@@ -608,6 +608,12 @@ func _finish_simple_edit(
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = str(edit.message)
 
+	# the notice takes the mouse and ends the stroke, as in the original.
+	# the stroke ends after the input event that placed the edit
+	if command is DemolishEditResult and (command as DemolishEditResult).easter_events > 0:
+		app.reports.show_forest_protest()
+		app.map_view.end_held_selection.call_deferred()
+
 
 func undo_last_edit() -> void:
 	if app.document_state.city == null or app.tool_state.last_edit_command == null:

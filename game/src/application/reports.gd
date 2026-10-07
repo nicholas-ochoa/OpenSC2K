@@ -376,6 +376,14 @@ func show_building_objection() -> void:
 	app.city_dialogs.building_objection_dialog.show_message(BuildingConstants.NUISANCE_OBJECTION, true)
 
 
+# the original shows the forest protest with the picture of the objection notice
+func show_forest_protest() -> void:
+	if app.city_dialogs.building_objection_dialog == null:
+		return
+
+	app.city_dialogs.building_objection_dialog.show_message(DemolishConstants.FOREST_PROTEST, true)
+
+
 func on_building_objection_closed() -> void:
 	if app.tool_state.pending_building_objection_group < 0:
 		return

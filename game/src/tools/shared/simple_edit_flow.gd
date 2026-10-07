@@ -186,12 +186,6 @@ static func _success_message(
 					% demolition.skipped_specialized
 				)
 
-			if demolition.easter_events > 0:
-				message += " A forest protest kept %d %s." % [
-					demolition.easter_events,
-					"tree" if demolition.easter_events == 1 else "trees",
-				]
-
 			return message
 		"terrain":
 			var terrain := command as TerrainEditResult

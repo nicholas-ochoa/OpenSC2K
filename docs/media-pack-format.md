@@ -218,7 +218,7 @@ The five `ui` images are:
 | `industry_icons` | City Industry window icons |
 | `city_map_icons` | City map window icons |
 | `simnation_sprites` | SimNation window sprite sheet |
-| `forest_protest_image` | Picture for the citizen objection notice |
+| `forest_protest_image` | Picture for the citizen objection and forest protest notices |
 
 When an image is not in the pack, the game uses its built-in controls where
 they are available.

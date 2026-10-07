@@ -128,7 +128,6 @@ pub fn apply(
             }
 
             news_items.push(NewsEvent::new(NEWS_FOREST_PROTEST, 0));
-            sound_events.push(SOUND_FOREST_PROTEST);
         }
 
         let offset = parallel_effect_offset(point, action_count - 1, random_before);
@@ -160,6 +159,11 @@ pub fn apply(
     }
 
     city.set_funds(funds - total_cost);
+
+    // One sound plays at a time, so the protest sound goes after the demolition sound.
+    if easter_events > 0 {
+        sound_events.push(SOUND_FOREST_PROTEST);
+    }
 
     // SCURK keeps the ground: terrain, heights, zone types, and water.
     if let Some((terrain, altitude, zones, flags)) = original {

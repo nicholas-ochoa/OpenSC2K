@@ -48,14 +48,9 @@ pub fn success(kind: &str, tool: &str, result: &Value) -> String {
         "demolish" => {
             let mut message = format!("Applied {} demolition actions for ${cost}.", int(result, "action_count", 0));
             let skipped = int(result, "skipped_specialized", 0);
-            let trees = int(result, "easter_events", 0);
 
             if skipped > 0 {
                 message += &format!(" {skipped} specialized structures were not changed.");
-            }
-
-            if trees > 0 {
-                message += &format!(" A forest protest kept {trees} {}.", if trees == 1 { "tree" } else { "trees" });
             }
 
             message

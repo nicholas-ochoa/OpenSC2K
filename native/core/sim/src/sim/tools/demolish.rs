@@ -333,14 +333,8 @@ pub fn demolish_point(
     }
 
     if tile < tiles::SMALL_PARK {
-        if !scurk_mode && tile >= tiles::TREE_FIRST && random.next_u15() % 20 == 0 {
-            return PointResult {
-                changed: true,
-                easter_event: true,
-                ..Default::default()
-            };
-        }
-
+        // A forest protest (0x00443270). The original keeps the tree; the port demolishes it.
+        let forest_protest = !scurk_mode && tile >= tiles::TREE_FIRST && random.next_u15() % 20 == 0;
         let mut network_effects = Vec::new();
 
         if tile >= tiles::TREE_FIRST && emit_effects {
@@ -377,6 +371,7 @@ pub fn demolish_point(
 
         return PointResult {
             changed: true,
+            easter_event: forest_protest,
             indices: vec![index],
             effect_events: network_effects,
             ..Default::default()

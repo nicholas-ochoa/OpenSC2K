@@ -302,6 +302,11 @@ func cancel_active_selection() -> bool:
 	return selection.cancel_active_selection()
 
 
+# ends a held stroke as a release does. its edits stay
+func end_held_selection() -> void:
+	selection._end_held_placement()
+
+
 func center_on_tile(point: Vector2i) -> bool:
 	return camera.center_on_tile(point)
 
