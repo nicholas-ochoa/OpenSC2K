@@ -314,7 +314,6 @@ impl Engine<'_> {
 
         self.state.disaster_map_counter = result.map_counter;
         self.state.disaster_hurricane_counter = result.hurricane_counter;
-        self.state.disaster_fire_active = result.active_markers.get("fire").copied().unwrap_or(false);
         let changes = result.connection_count_changes.clone();
         self.apply_connection_changes(&changes);
 
@@ -326,7 +325,6 @@ impl Engine<'_> {
             self.state.active_disaster_type = 0;
             self.state.disaster_map_counter = 0;
             self.state.disaster_hurricane_counter = 0;
-            self.state.disaster_fire_active = false;
 
             let finished = disaster_end::finish(self.city, ended_type);
 
@@ -466,7 +464,6 @@ impl Engine<'_> {
                 self.state.disaster_map_counter,
                 self.state.disaster_hurricane_counter,
             ) = previous;
-            self.state.disaster_fire_active = self.state.disaster_fire_active && self.state.active_disaster_type != 0;
 
             return DisasterStartResult::failed("cannot store active disaster mode").to_value();
         }

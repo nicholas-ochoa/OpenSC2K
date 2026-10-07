@@ -7,14 +7,14 @@ const ENGINE_FIELDS := [
 	"pending_interaction", "pending_day_schedule", "terminal_state", "bus_passengers",
 	"rail_passengers", "subway_passengers", "mayor_approval", "pending_disaster_type",
 	"pending_disaster_point", "active_disaster_type", "unsupported_disaster_type",
-	"disaster_map_counter", "disaster_hurricane_counter", "disaster_fire_active", "dispatch_capacity", "dispatch_epoch",
+	"disaster_map_counter", "disaster_hurricane_counter", "dispatch_capacity", "dispatch_epoch",
 	"midi_playback_active",
 	"vehicle_crashes_enabled",
 	"pending_military_site", "pending_military_base_type", "forced_military_base_type",
 	"stage_arcology_launch", "arcology_launch_active", "arcology_launch_sites", "arcology_launch_wait",
 ]
 const CONTROLLER_FIELDS := [
-	"speed", "accumulator_msec", "fire_elapsed_msec", "launch_elapsed_msec", "subtick_counter",
+	"speed", "accumulator_msec", "skip_next_disaster_tick", "launch_elapsed_msec", "subtick_counter",
 	"simulation_ready", "interaction_blocked", "terminal_blocked", "pause_at_day",
 ]
 

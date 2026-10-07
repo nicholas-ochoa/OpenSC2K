@@ -15,24 +15,19 @@ pub const AFRICAN_SWALLOW: i64 = 5;
 
 pub const BASE_TICK_MSEC: f64 = 200.0;
 
-/// A disaster scan waits this long while a fire burns, for every city format.
-/// The original redraws the whole map after each scan, so its pace depends on the PC.
-pub const FIRE_TICK_MSEC: f64 = 1000.0;
-
 /// A staged arcology launch ignites one arcology and launches one in each step.
 pub const LAUNCH_STEP_MSEC: f64 = 50.0;
 
 /// The most launch steps that one call runs after a slow frame.
 pub const LAUNCH_MAX_STEPS: i64 = 4;
 
-/// Disaster types that keep the fire pace from their start: fire and firestorm.
-const FIRE_DISASTERS: [i64; 2] = [1, 12];
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct SpeedState {
     pub speed: i64,
     pub accumulator_msec: f64,
-    pub fire_elapsed_msec: f64,
+    /// True when disaster mode drops the next due tick. SIMCITY.EXE 0x0040c100
+    /// drops every other due tick of a disaster, except at African Swallow.
+    pub skip_next_disaster_tick: bool,
     pub launch_elapsed_msec: f64,
     pub subtick_counter: i64,
     pub simulation_ready: bool,
@@ -47,7 +42,7 @@ impl Default for SpeedState {
         Self {
             speed: PAUSED,
             accumulator_msec: 0.0,
-            fire_elapsed_msec: 0.0,
+            skip_next_disaster_tick: false,
             launch_elapsed_msec: 0.0,
             subtick_counter: 0,
             simulation_ready: false,
@@ -113,14 +108,7 @@ impl Speed<'_, '_> {
             result.base_ticks += 1;
             self.state.subtick_counter = (self.state.subtick_counter + 1) & 7;
             self.state.simulation_ready = self.state.simulation_ready || self.is_day_due(self.state.subtick_counter);
-
-            if self.running(suspended) {
-                self.state.fire_elapsed_msec = if self.fire_paced() {
-                    FIRE_TICK_MSEC.min(self.state.fire_elapsed_msec + BASE_TICK_MSEC)
-                } else {
-                    0.0
-                };
-            }
+            self.drop_alternate_disaster_tick();
 
             let pulse_time = current_time_msec - self.state.accumulator_msec as i64;
 
@@ -275,6 +263,23 @@ impl Speed<'_, '_> {
         self.state.accumulator_msec + delta_msec >= BASE_TICK_MSEC && self.is_day_due((self.state.subtick_counter + 1) & 7)
     }
 
+    /// The timer of SIMCITY.EXE (0x0040c100) runs this check on each base tick,
+    /// also while the game is paused. In disaster mode it drops every other
+    /// due tick, so disaster scans run at half the day pace. African Swallow
+    /// keeps every due tick.
+    fn drop_alternate_disaster_tick(&mut self) {
+        if !self.state.simulation_ready || self.engine.state.active_disaster_type == 0 || self.state.speed == AFRICAN_SWALLOW {
+            return;
+        }
+
+        let skip = self.state.skip_next_disaster_tick;
+        self.state.skip_next_disaster_tick = !skip;
+
+        if skip {
+            self.state.simulation_ready = false;
+        }
+    }
+
     fn is_day_due(&self, counter: i64) -> bool {
         match self.state.speed {
             PAUSED => counter == 0,
@@ -326,14 +331,6 @@ impl Speed<'_, '_> {
         }
 
         if self.engine.state.active_disaster_type != 0 {
-            if self.fire_paced() {
-                if self.state.fire_elapsed_msec < FIRE_TICK_MSEC {
-                    return Ok(());
-                }
-
-                self.state.fire_elapsed_msec = 0.0;
-            }
-
             let disaster = self.engine.advance_disaster_tick();
 
             if !disaster.base.ok {
@@ -366,12 +363,6 @@ impl Speed<'_, '_> {
     /// (0x00406a50). True when the speed changed.
     pub fn slow_for_disaster(&mut self) -> bool {
         self.state.speed == AFRICAN_SWALLOW && self.set_speed(CHEETAH)
-    }
-
-    /// Fire and firestorm scans keep the fire pace from the start. Other
-    /// disasters use it after a scan finds fire.
-    fn fire_paced(&self) -> bool {
-        FIRE_DISASTERS.contains(&self.engine.state.active_disaster_type) || self.engine.state.disaster_fire_active
     }
 
     fn consume_day_result(&mut self, result: &mut TickResult, day: DayResult) {
@@ -535,47 +526,75 @@ mod tests {
         }
     }
 
+    /// SIMCITY.EXE drops every other due tick in disaster mode. Cheetah has
+    /// five due ticks each second, so it scans 3 and then 2 times.
     #[test]
-    fn fire_scans_once_per_second_in_each_city_format() {
+    fn every_disaster_scans_on_every_other_due_tick() {
         for edge in [128, 256] {
-            for disaster_type in [1, FIRESTORM] {
-                let mut fire = Disaster::new(edge, disaster_type, FIRE_OVERLAY, CHEETAH);
-                assert_eq!(fire.scans(1000.0, 1), 1, "type {disaster_type} on a {edge} map");
+            for (disaster_type, marker) in [
+                (1, FIRE_OVERLAY),
+                (FIRESTORM, FIRE_OVERLAY),
+                (RIOT, FIRE_OVERLAY),
+                (TOXIC_SPILL, TOXIC_OVERLAY),
+            ] {
+                let mut disaster = Disaster::new(edge, disaster_type, marker, CHEETAH);
+                let scans = [disaster.scans(1000.0, 1), disaster.scans(1000.0, 1)];
+                assert_eq!(scans, [3, 2], "type {disaster_type} on a {edge} map");
             }
         }
     }
 
     #[test]
-    fn a_disaster_without_fire_scans_on_each_day_tick() {
-        let mut toxic = Disaster::new(128, TOXIC_SPILL, TOXIC_OVERLAY, CHEETAH);
-        assert_eq!(toxic.scans(1000.0, 1), 5);
-    }
+    fn slower_speeds_scan_at_half_their_day_pace() {
+        // Llama has a due tick on each second base tick: 5 in 2 seconds.
+        let mut llama = Disaster::new(128, 1, FIRE_OVERLAY, LLAMA);
+        assert_eq!(llama.scans(2000.0, 1), 3);
 
-    #[test]
-    fn fire_from_any_disaster_uses_the_fire_pace() {
-        let mut riot = Disaster::new(128, RIOT, FIRE_OVERLAY, CHEETAH);
-        assert_eq!(riot.scans(1000.0, 1), 1);
-        assert!(riot.engine.disaster_fire_active, "the first scan finds fire");
-        assert_eq!(riot.scans(1000.0, 1), 1, "the next scan waits for the fire timer");
+        // Turtle has a due tick on each fourth base tick: 5 in 4 seconds.
+        let mut turtle = Disaster::new(128, TOXIC_SPILL, TOXIC_OVERLAY, TURTLE);
+        assert_eq!(turtle.scans(4000.0, 1), 3);
     }
 
     #[test]
     fn african_swallow_scans_once_per_base_tick() {
-        let mut toxic = Disaster::new(128, TOXIC_SPILL, TOXIC_OVERLAY, AFRICAN_SWALLOW);
-        assert_eq!(toxic.scans(20.0, 50), 5, "not once per frame");
+        for (disaster_type, marker) in [(TOXIC_SPILL, TOXIC_OVERLAY), (1, FIRE_OVERLAY)] {
+            let mut disaster = Disaster::new(128, disaster_type, marker, AFRICAN_SWALLOW);
+            assert_eq!(
+                disaster.scans(20.0, 50),
+                5,
+                "type {disaster_type} scans once per base tick, not once per frame"
+            );
+            assert!(!disaster.speed.skip_next_disaster_tick, "African Swallow keeps every due tick");
+        }
+    }
 
-        let mut fire = Disaster::new(128, 1, FIRE_OVERLAY, AFRICAN_SWALLOW);
-        assert_eq!(fire.scans(20.0, 50), 1);
+    /// The timer alternates while the game is paused, as the original timer does.
+    #[test]
+    fn a_paused_disaster_waits() {
+        let mut fire = Disaster::new(128, 1, FIRE_OVERLAY, PAUSED);
+        assert_eq!(fire.scans(5000.0, 1), 0);
+
+        fire.speed.speed = CHEETAH;
+        assert_eq!(fire.scans(1000.0, 1) + fire.scans(1000.0, 1), 5);
     }
 
     #[test]
-    fn a_paused_fire_waits() {
-        let mut fire = Disaster::new(128, 1, FIRE_OVERLAY, AFRICAN_SWALLOW);
-        let first = fire.scans(1000.0 / 120.0, 120);
-        assert!(first <= 1, "120 frames of one second scan at most once");
-        assert_eq!(first + fire.scans(1000.0, 1), 2);
-
-        fire.speed.speed = PAUSED;
-        assert_eq!(fire.scans(5000.0, 1), 0);
+    fn a_day_without_a_disaster_keeps_every_due_tick() {
+        let mut quiet = Disaster::new(128, 1, FIRE_OVERLAY, CHEETAH);
+        quiet.engine.active_disaster_type = 0;
+        let mut engine = Engine {
+            city: &mut quiet.city,
+            randoms: &mut quiet.randoms,
+            state: &mut quiet.engine,
+            detailed: false,
+        };
+        let mut controller = Speed {
+            engine: &mut engine,
+            state: &mut quiet.speed,
+        };
+        let result = controller.advance_time(1000.0, 1000, false);
+        assert!(result.ok, "{}", result.error);
+        assert_eq!(result.day_results.len(), 5);
+        assert!(!quiet.speed.skip_next_disaster_tick);
     }
 }

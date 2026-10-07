@@ -75,10 +75,14 @@ const PHASE_INTEGER_KEYS: [&str; 16] = [
     "city_status_resource_id",
 ];
 
-/// Optional phase_state key: milliseconds of the fire timer, 0 through 1000.
-/// Files without it resume with a new timer.
-pub const FIRE_TIMER_KEY: &str = "fire_elapsed_msec";
-const FIRE_TIMER_MAX: i64 = 1000;
+/// Optional phase_state key: true when disaster mode drops the next due tick.
+/// SIMCITY.EXE drops every other due tick of a disaster. Files without it keep
+/// the next due tick.
+pub const DISASTER_SKIP_KEY: &str = "skip_next_disaster_tick";
+
+/// The fire timer of older files. Fires now follow the disaster pace of the
+/// original, so a load ignores this key and a save removes it.
+pub const LEGACY_FIRE_TIMER_KEY: &str = "fire_elapsed_msec";
 
 /// Optional phase_state key: true while a staged arcology launch has batches
 /// left. Files without it have no launch in progress.
@@ -429,16 +433,10 @@ pub fn phase_state_error(state: &Object) -> Result<(), String> {
         }
     }
 
-    if let Some(timer) = state.get(FIRE_TIMER_KEY)
-        && (!timer.is_integral() || !(0..=FIRE_TIMER_MAX).contains(&timer.to_int()))
-    {
-        return Err(format!(
-            "metadata.json phase_state.{FIRE_TIMER_KEY} is not 0 through {FIRE_TIMER_MAX}"
-        ));
-    }
-
-    if state.get(LAUNCH_ACTIVE_KEY).is_some_and(|value| value.as_bool().is_none()) {
-        return Err(format!("metadata.json phase_state.{LAUNCH_ACTIVE_KEY} is not true or false"));
+    for key in [DISASTER_SKIP_KEY, LAUNCH_ACTIVE_KEY] {
+        if state.get(key).is_some_and(|value| value.as_bool().is_none()) {
+            return Err(format!("metadata.json phase_state.{key} is not true or false"));
+        }
     }
 
     Ok(())

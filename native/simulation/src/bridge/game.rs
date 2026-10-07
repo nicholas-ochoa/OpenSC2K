@@ -75,7 +75,6 @@ fn state_from(args: &VarDictionary) -> EngineState {
         unsupported_disaster_type: convert::int(&fields, "unsupported_disaster_type", 0),
         disaster_map_counter: convert::int(&fields, "disaster_map_counter", 0),
         disaster_hurricane_counter: convert::int(&fields, "disaster_hurricane_counter", 0),
-        disaster_fire_active: convert::boolean(&fields, "disaster_fire_active", false),
         dispatch_capacity: match capacity.as_slice() {
             [police, fire, military] => [i64::from(*police), i64::from(*fire), i64::from(*military)],
             _ => sc2k_sim::sim::tools::commands::dispatch::NO_CAPACITY,
@@ -104,7 +103,6 @@ fn state_value(state: &EngineState) -> Value {
     add("unsupported_disaster_type", Value::Int(state.unsupported_disaster_type));
     add("disaster_map_counter", Value::Int(state.disaster_map_counter));
     add("disaster_hurricane_counter", Value::Int(state.disaster_hurricane_counter));
-    add("disaster_fire_active", Value::Bool(state.disaster_fire_active));
     add(
         "dispatch_capacity",
         Ints32(state.dispatch_capacity.iter().map(|count| *count as i32).collect()).to_value(),
@@ -125,7 +123,7 @@ fn speed_from(args: &VarDictionary) -> SpeedState {
     SpeedState {
         speed: convert::int(&fields, "speed", sc2k_game::speed::PAUSED),
         accumulator_msec: float("accumulator_msec"),
-        fire_elapsed_msec: float("fire_elapsed_msec"),
+        skip_next_disaster_tick: convert::boolean(&fields, "skip_next_disaster_tick", false),
         launch_elapsed_msec: float("launch_elapsed_msec"),
         subtick_counter: convert::int(&fields, "subtick_counter", 0),
         simulation_ready: convert::boolean(&fields, "simulation_ready", false),
@@ -139,7 +137,7 @@ fn speed_value(state: &SpeedState) -> Value {
     let fields = [
         ("speed", Value::Int(state.speed)),
         ("accumulator_msec", Value::Float(state.accumulator_msec)),
-        ("fire_elapsed_msec", Value::Float(state.fire_elapsed_msec)),
+        ("skip_next_disaster_tick", Value::Bool(state.skip_next_disaster_tick)),
         ("launch_elapsed_msec", Value::Float(state.launch_elapsed_msec)),
         ("subtick_counter", Value::Int(state.subtick_counter)),
         ("simulation_ready", Value::Bool(state.simulation_ready)),

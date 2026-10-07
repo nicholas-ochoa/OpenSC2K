@@ -283,9 +283,11 @@ military decision waits for the player, the save reports what to finish first.
 `pending_disaster_point`, `active_disaster_type`, `unsupported_disaster_type`,
 `disaster_map_counter`, `disaster_hurricane_counter`, `terminal_state`, `subtick_counter`,
 `simulation_ready`, and the load-scan results `developed_tiles`, `power_usage_percent`,
-`water_usage_percent`, and `city_status_resource_id`. The optional `fire_elapsed_msec`
-(0 to 1000) is the fire timer between two fire or firestorm disaster ticks; without it the
-timer starts at 0.
+`water_usage_percent`, and `city_status_resource_id`. The optional `skip_next_disaster_tick`
+(true or false) tells whether disaster mode drops the next due tick: as in SIMCITY.EXE, a
+disaster scans on every other due tick, except at African Swallow. Without it the next due
+tick runs. Older files can hold a `fire_elapsed_msec` fire timer; a load ignores it and a
+save removes it.
 
 A file with this state loads without a new power and water scan, so the next days run as
 they would have without the save. The frame timing accumulators, the traffic news deadline

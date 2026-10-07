@@ -20,9 +20,12 @@ const PHASE_KEYS: PackedStringArray = [
 	"subtick_counter", "simulation_ready",
 	"developed_tiles", "power_usage_percent", "water_usage_percent", "city_status_resource_id",
 ]
-# optional phase_state key: milliseconds of the fire timer, 0 through 1000.
-# Files without it resume with a new timer.
-const FIRE_TIMER_KEY := "fire_elapsed_msec"
+# optional phase_state key: true when disaster mode drops the next due tick.
+# SIMCITY.EXE drops every other due tick of a disaster. Files without it keep
+# the next due tick.
+const DISASTER_SKIP_KEY := "skip_next_disaster_tick"
+# the fire timer of older files. a load ignores it and a save removes it
+const LEGACY_FIRE_TIMER_KEY := "fire_elapsed_msec"
 # optional phase_state key: true while a staged arcology launch has batches
 # left. Files without it have no launch in progress.
 const LAUNCH_ACTIVE_KEY := "arcology_launch_active"

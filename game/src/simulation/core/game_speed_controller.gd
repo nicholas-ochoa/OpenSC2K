@@ -17,9 +17,6 @@ const SPEED_NAMES: Dictionary[int, String] = {
 	Speed.CHEETAH: "Cheetah",
 	Speed.AFRICAN_SWALLOW: "African Swallow",
 }
-# a disaster scan waits this long while a fire burns, for every city format.
-# the original redraws the whole map after each scan, so its pace depends on the PC
-const FIRE_TICK_MSEC := 1000.0
 # a staged arcology launch ignites one arcology and launches one in each step
 const LAUNCH_STEP_MSEC := 50.0
 # the most launch steps that one call runs after a slow frame
@@ -28,7 +25,9 @@ const LAUNCH_MAX_STEPS := 4
 var engine: SimulationEngine
 var speed := Speed.PAUSED
 var accumulator_msec := 0.0
-var fire_elapsed_msec := 0.0
+# true when disaster mode drops the next due tick. SIMCITY.EXE drops every
+# other due tick of a disaster, except at African Swallow
+var skip_next_disaster_tick := false
 var launch_elapsed_msec := 0.0
 var subtick_counter := 0
 var simulation_ready := false
@@ -164,7 +163,7 @@ func acknowledge_game_over() -> void:
 # The controller fields that the native speed controller reads and writes.
 func state() -> Dictionary:
 	return {
-		"speed": speed, "accumulator_msec": accumulator_msec, "fire_elapsed_msec": fire_elapsed_msec,
+		"speed": speed, "accumulator_msec": accumulator_msec, "skip_next_disaster_tick": skip_next_disaster_tick,
 		"launch_elapsed_msec": launch_elapsed_msec, "subtick_counter": subtick_counter,
 		"simulation_ready": simulation_ready, "interaction_blocked": interaction_blocked,
 		"terminal_blocked": terminal_blocked, "pause_at_day": pause_at_day,
@@ -174,7 +173,7 @@ func state() -> Dictionary:
 func apply_state(fields: Dictionary) -> void:
 	speed = fields.speed as Speed
 	accumulator_msec = fields.accumulator_msec
-	fire_elapsed_msec = fields.fire_elapsed_msec
+	skip_next_disaster_tick = fields.skip_next_disaster_tick
 	launch_elapsed_msec = fields.launch_elapsed_msec
 	subtick_counter = fields.subtick_counter
 	simulation_ready = fields.simulation_ready

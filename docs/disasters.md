@@ -48,6 +48,16 @@ Riots (13, center), Major Flood (14, random tile) and Toxic Spill
 All menu items stay enabled during a disaster. A new disaster then starts
 on the next disaster tick and replaces the active type.
 
+## Pace
+
+The timer of SIMCITY.EXE (`0x0040c100`) marks a due tick at the pace of the
+game speed: each base tick of 200 ms at Cheetah, each second tick at Llama
+and each fourth tick at Turtle. In disaster mode it drops every other due
+tick, except at African Swallow. A disaster therefore scans 2.5 times a
+second at Cheetah, 1.25 times at Llama and 0.625 times at Turtle. Every
+disaster, fires included, uses this pace (`native/core/game/src/speed.rs`).
+A save keeps whether the next due tick is dropped.
+
 ## Each disaster
 
 | Disaster | Start | Result |
@@ -129,5 +139,7 @@ These differences are intentional:
 - The Debug window starts any disaster at the view center.
 - Larger maps scale the random places and searches by the map size.
   Layered text overlays keep markers, facilities and moving objects apart.
+- At African Swallow the original scans a disaster on each pass of its main
+  loop. OpenSC2K scans once per base tick, five times a second.
 - The original redraws and waits during some starts (volcano, mass floods,
   earthquake). The port does not block the simulation.

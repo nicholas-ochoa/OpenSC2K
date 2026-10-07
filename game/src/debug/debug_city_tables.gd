@@ -41,7 +41,6 @@ const ENGINE_FIELDS := {
 		+ "value is 0 when there is no such disaster."),
 	"disaster_map_counter": "Countdown for the active disaster. Each disaster tick decreases it by one.",
 	"disaster_hurricane_counter": "Countdown for the hurricane wind and floods. Each disaster tick decreases it by one.",
-	"disaster_fire_active": "True when the last disaster tick found fire. A disaster tick then waits for the fire timer.",
 	"midi_playback_active": "True when music plays. The monthly music choice uses a random number only when this value is false.",
 	"vehicle_crashes_enabled": ("False when the player hides the vehicle layer. Airplanes and helicopters then leave the "
 		+ "map and do not crash."),
@@ -54,7 +53,8 @@ const CONTROLLER_FIELDS := {
 	"simulation_ready": "True when the next base tick runs a day.",
 	"interaction_blocked": "True when a player prompt stops the simulation.",
 	"terminal_blocked": "True when the game ended. The simulation then stops.",
-	"fire_elapsed_msec": "Time in ms since the last fire disaster tick. While a fire burns, a disaster tick waits for 1000 ms.",
+	"skip_next_disaster_tick": ("True when disaster mode drops the next due tick. As in the original, a disaster scans "
+		+ "on every other due tick, except at African Swallow."),
 }
 # the scenario goals in the order of ScenarioState.evaluate_goals. a limit goal fails above its value
 const SCENARIO_GOALS := [

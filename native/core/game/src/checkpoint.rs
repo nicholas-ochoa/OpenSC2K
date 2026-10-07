@@ -4,14 +4,14 @@
 //! completed day: a day that waits for the player cannot be saved.
 //!
 //! Saved: the three random states and the `phase_state` keys, including the
-//! results of the load scan, the fire timer, and a staged arcology launch. Not
+//! results of the load scan, the dropped disaster tick, and a staged arcology launch. Not
 //! saved: frame timing, the traffic news deadline, music playback, the vehicle
 //! layer switch, and pause targets.
 
 use crate::speed::SpeedState;
 use crate::state::EngineState;
 use sc2k_formats::json::{Object, Value};
-use sc2k_sim::formats::sc2x::metadata::{FIRE_TIMER_KEY, LAUNCH_ACTIVE_KEY, phase_state_error};
+use sc2k_sim::formats::sc2x::metadata::{DISASTER_SKIP_KEY, LAUNCH_ACTIVE_KEY, LEGACY_FIRE_TIMER_KEY, phase_state_error};
 use sc2k_sim::sim::geom::Vec2i;
 use sc2k_sim::sim::random::Randoms;
 
@@ -40,7 +40,8 @@ fn point(value: Vec2i) -> Value {
     Value::Array(vec![Value::Int(value.x), Value::Int(value.y)])
 }
 
-/// The random states and the phase state of a save. Unknown phase state keys stay.
+/// The random states and the phase state of a save. Unknown phase state keys
+/// stay. The fire timer of an older file goes.
 pub fn capture(state: &EngineState, speed: &SpeedState, randoms: &Randoms, phase_state: &Object) -> (SavedRandoms, Object) {
     let saved = SavedRandoms {
         process: randoms.random.state & RANDOM_MASK,
@@ -50,6 +51,7 @@ pub fn capture(state: &EngineState, speed: &SpeedState, randoms: &Randoms, phase
     };
     let day = &state.day;
     let mut result = phase_state.clone();
+    result.entries.retain(|(key, _)| key != LEGACY_FIRE_TIMER_KEY);
     let fields = [
         ("ship_home", point(day.ship_home)),
         ("commerce_connections", Value::Int(day.commerce_connections)),
@@ -71,8 +73,7 @@ pub fn capture(state: &EngineState, speed: &SpeedState, randoms: &Randoms, phase
         ("power_usage_percent", Value::Int(day.power_usage_percent)),
         ("water_usage_percent", Value::Int(day.water_usage_percent)),
         ("city_status_resource_id", Value::Int(day.city_status_resource_id)),
-        // the fire timer advances in whole base ticks while a fire burns
-        (FIRE_TIMER_KEY, Value::Int(speed.fire_elapsed_msec.round() as i64)),
+        (DISASTER_SKIP_KEY, Value::Bool(speed.skip_next_disaster_tick)),
         (LAUNCH_ACTIVE_KEY, Value::Bool(state.arcology_launch_active)),
     ];
 
@@ -135,7 +136,7 @@ pub fn restore(
     speed.subtick_counter = int("subtick_counter") & SUBTICK_MASK;
     speed.simulation_ready = flag("simulation_ready");
     speed.terminal_blocked = state.day.terminal_state;
-    speed.fire_elapsed_msec = phase_state.get(FIRE_TIMER_KEY).map_or(0.0, |timer| timer.to_int() as f64);
+    speed.skip_next_disaster_tick = flag(DISASTER_SKIP_KEY);
 
     Ok(())
 }
@@ -153,11 +154,12 @@ mod tests {
         state.arcology_launch_active = true;
         let speed = SpeedState {
             subtick_counter: 3,
-            fire_elapsed_msec: 399.6,
+            skip_next_disaster_tick: true,
             ..SpeedState::default()
         };
         let mut unknown = Object::new();
         unknown.insert("future_key", Value::Int(9));
+        unknown.insert(LEGACY_FIRE_TIMER_KEY, Value::Int(400));
         let (saved, phase_state) = capture(&state, &speed, &Randoms::new(11, 0, 13), &unknown);
         assert_eq!(
             saved,
@@ -169,7 +171,8 @@ mod tests {
             "a zero LFSR saves as 1"
         );
         assert_eq!(phase_state.get("future_key"), Some(&Value::Int(9)));
-        assert_eq!(phase_state.get(FIRE_TIMER_KEY), Some(&Value::Int(400)));
+        assert_eq!(phase_state.get(DISASTER_SKIP_KEY), Some(&Value::Bool(true)));
+        assert!(!phase_state.contains(LEGACY_FIRE_TIMER_KEY), "a save removes the old fire timer");
 
         let mut restored = EngineState::default();
         let mut restored_speed = SpeedState::default();
@@ -180,7 +183,7 @@ mod tests {
             (Vec2i::new(4, 5), 61, 2)
         );
         assert!(restored.arcology_launch_active);
-        assert_eq!((restored_speed.subtick_counter, restored_speed.fire_elapsed_msec), (3, 400.0));
+        assert_eq!((restored_speed.subtick_counter, restored_speed.skip_next_disaster_tick), (3, true));
         assert_eq!((randoms.random.state, randoms.game.state), (11, 13));
     }
 

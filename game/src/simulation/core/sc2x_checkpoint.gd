@@ -6,8 +6,8 @@ extends RefCounted
 ## that waits for the player, such as the annual budget, cannot be saved.
 ##
 ## Saved: the three random states, the `phase_state` keys of
-## Sc2xMetadata.PHASE_KEYS, including the results of the load scan, the fire
-## timer, and whether a staged arcology launch is in progress. A city with
+## Sc2xMetadata.PHASE_KEYS, including the results of the load scan, the dropped
+## disaster tick, and whether a staged arcology launch is in progress. A city with
 ## saved phase state resumes without a new load scan, so the scan does not
 ## draw from the random states again. A file without phase state still
 ## restores its random states before the load scan.

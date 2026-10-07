@@ -37,9 +37,6 @@ var dispatch_epoch := 0
 var unsupported_disaster_type := 0
 var disaster_map_counter := 0
 var disaster_hurricane_counter := 0
-# true when the last disaster scan found a fire marker. riots, crashes, and
-# earthquakes also start fires, so the fire pace does not use the disaster type
-var disaster_fire_active := false
 var midi_playback_active := false
 # runtime only; never saved. false while the player hides the vehicle layer:
 # airplanes and helicopters then leave instead of crashing, as with no disasters
@@ -98,7 +95,7 @@ const STATE_FIELDS := [
 	"mayor_approval", "midi_playback_active", "pending_disaster_type", "pending_disaster_point", "terminal_state",
 	"traffic_news_deadline_msec", "stage_arcology_launch", "pending_interaction", "pending_military_site",
 	"pending_military_base_type", "forced_military_base_type", "active_disaster_type", "unsupported_disaster_type",
-	"disaster_map_counter", "disaster_hurricane_counter", "disaster_fire_active", "dispatch_epoch",
+	"disaster_map_counter", "disaster_hurricane_counter", "dispatch_epoch",
 	"vehicle_crashes_enabled", "arcology_launch_active", "arcology_launch_sites", "arcology_launch_wait",
 ]
 

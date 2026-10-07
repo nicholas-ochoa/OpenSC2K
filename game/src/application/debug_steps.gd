@@ -56,12 +56,7 @@ func step_day() -> String:
 	if open_day != null:
 		return finish_open_day()
 
-	var controller := app.simulation_state.speed_controller
-
-	# a paused fire has no elapsed fire time. a step runs its tick now
-	controller.fire_elapsed_msec = GameSpeedController.FIRE_TICK_MSEC
-
-	return _record("Day", controller.run_day)
+	return _record("Day", app.simulation_state.speed_controller.run_day)
 
 
 func step_phase() -> String:

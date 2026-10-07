@@ -29,8 +29,6 @@ pub struct EngineState {
     pub unsupported_disaster_type: i64,
     pub disaster_map_counter: i64,
     pub disaster_hurricane_counter: i64,
-    /// True when the last disaster scan found a fire marker.
-    pub disaster_fire_active: bool,
     /// The police, fire, and military counts that the last disaster start fixed.
     pub dispatch_capacity: [i64; 3],
     pub dispatch_epoch: i64,
@@ -67,7 +65,6 @@ impl Default for EngineState {
             unsupported_disaster_type: 0,
             disaster_map_counter: 0,
             disaster_hurricane_counter: 0,
-            disaster_fire_active: false,
             dispatch_capacity: NO_CAPACITY,
             dispatch_epoch: 0,
             vehicle_crashes_enabled: true,
