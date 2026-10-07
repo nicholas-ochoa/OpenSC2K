@@ -114,7 +114,7 @@ pub fn start(
     lfsr: Option<&mut SimLfsrRandom>,
     scenario: bool,
 ) -> DisasterStartResult {
-    match disaster_type {
+    let mut started = match disaster_type {
         DISASTER_NONE => result(disaster_type, point, false, true, 0),
         DISASTER_FIRE => start_fire(city, random, lfsr),
         DISASTER_FLOOD => match lfsr {
@@ -140,7 +140,14 @@ pub fn start(
         DISASTER_PLANE_CRASH => start_plane_crash(city, lfsr),
         DISASTER_TORNADO | DISASTER_MONSTER => start_moving_disaster(city, disaster_type, point, random, scenario),
         _ => result(disaster_type, point, false, false, 0),
+    };
+
+    // Each start routine moves the view only when Auto-Goto is on.
+    if !city.auto_goto_enabled() {
+        started.base.view_center_requests.clear();
     }
+
+    started
 }
 
 /// The tornado and monster part of DisasterStartPhase.start (0x0045f090,
@@ -1764,6 +1771,7 @@ mod rule_tests {
     fn scenario_monsters_have_no_goal() {
         for (scenario, goal, next) in [(true, 0, 0), (false, 2, 9)] {
             let mut city = empty_city(128);
+            city.set_misc_u32(misc_layout::AUTO_GOTO, 1);
             let mut random = sequence_random(&[5, 6, 0, 1, 9]);
             let result = start(&mut city, DISASTER_MONSTER, Vec2i::new(20, 20), Some(&mut random), None, scenario);
             assert!(result.started);
@@ -1774,23 +1782,28 @@ mod rule_tests {
     }
 
     /// A pollution disaster moves the disaster point to its last seed, where
-    /// a Maxis Man goes, and centers the view on the requested point.
+    /// a Maxis Man goes. It centers the view on the requested point only when
+    /// Auto-Goto is on, as each start routine does (`0x004ca5d8`).
     #[test]
     fn pollution_reports_its_last_seed() {
-        let mut city = empty_city(128);
         let point = Vec2i::new(40, 40);
-        let result = start(
-            &mut city,
-            DISASTER_POLLUTION,
-            point,
-            Some(&mut sequence_random(&[5, 6, 1, 2])),
-            None,
-            false,
-        );
-        assert!(result.started);
-        // five attempts at a zero population; the last uses 5 and 6
-        assert_eq!(result.point, point + Vec2i::new(1, 2));
-        assert_eq!(result.base.view_center_requests, vec![point]);
+
+        for (auto_goto, view_centers) in [(0, Vec::new()), (1, vec![point])] {
+            let mut city = empty_city(128);
+            city.set_misc_u32(misc_layout::AUTO_GOTO, auto_goto);
+            let result = start(
+                &mut city,
+                DISASTER_POLLUTION,
+                point,
+                Some(&mut sequence_random(&[5, 6, 1, 2])),
+                None,
+                false,
+            );
+            assert!(result.started);
+            // five attempts at a zero population; the last uses 5 and 6
+            assert_eq!(result.point, point + Vec2i::new(1, 2));
+            assert_eq!(result.base.view_center_requests, view_centers);
+        }
     }
 
     /// A firestorm counts only new fires. Rubble on a reserved marker is no

@@ -145,6 +145,11 @@ A save keeps whether the next due tick is dropped.
   real plant area.
 - **Meltdown.** The original burns the plant and leaves the fire on its
   center. The port put out that fire and left rubble.
+- **Auto-Goto.** Each start routine and the hurricane damage in
+  `0x0045f760` move the view only when Auto-Goto (`0x004ca5d8`) is on.
+  The port always moved the view. A military base, a Maxis Man arrival
+  and a bridge or road collapse move the view in either case, as in the
+  original.
 - **Firestorm** counts only new fires toward its 65 tiles, and moves the
   disaster point to the last fire. **Pollution** moves the disaster point
   to its last seed. A Maxis Man goes to this point.

@@ -213,6 +213,7 @@ pub fn run_all(
     let mut toxic_active = false;
     let mut riot_active = false;
     let mut view_center_requests = Vec::new();
+    let auto_goto = city.auto_goto_enabled();
     let mut maps = city.disaster_maps();
     let layered = overlay::is_layered(maps.maps.text_overlays);
 
@@ -288,7 +289,10 @@ pub fn run_all(
                 }
 
                 append_damage_events(Some(&mut events), &damage);
-                view_center_requests.push(hurricane_point);
+
+                if auto_goto {
+                    view_center_requests.push(hurricane_point);
+                }
             }
         }
 
@@ -1045,6 +1049,7 @@ fn riot_supports(buildings: &[u8], point: Vec2i, map_edge: i64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sim::ids::sc2misc_layout as misc_layout;
     use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
     use crate::sim::tools::terrain::set_land_altitude;
 
@@ -1150,6 +1155,27 @@ mod tests {
             ));
             assert_eq!(overlay::read(&city.xtxt.data, tile), 0);
             assert_eq!(city.xbld.data[tile as usize] != tiles::LOWER_CLASS_HOMES_1X1_1 as u8, demolished);
+        }
+    }
+
+    /// Hurricane damage during a disaster tick centers the view only when
+    /// Auto-Goto is on (`0x0045f760` reads `0x004ca5d8`).
+    #[test]
+    fn hurricane_damage_centers_the_view_only_with_auto_goto() {
+        let edge = 128i64;
+        let point = Vec2i::new(20, 21);
+        let tile = (point.x * edge + point.y) as usize;
+
+        for (auto_goto, view_centers) in [(0, Vec::new()), (1, vec![point])] {
+            let mut city = empty_city(edge);
+            city.set_misc_u32(misc_layout::AUTO_GOTO, auto_goto);
+            city.xbld.data[tile] = tiles::LOWER_CLASS_HOMES_1X1_2 as u8;
+            let mut random = sequence_random(&[0]);
+            let mut lfsr = sequence_lfsr(&[0, point.x, point.y]);
+            let result = run_all(&mut city, Some(&mut random), Some(&mut lfsr), 60, 50);
+            assert_eq!(result.hurricane_counter, 49);
+            assert_ne!(city.xbld.data[tile], tiles::LOWER_CLASS_HOMES_1X1_2 as u8);
+            assert_eq!(result.base.view_center_requests, view_centers);
         }
     }
 }
