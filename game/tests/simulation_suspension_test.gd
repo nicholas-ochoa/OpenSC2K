@@ -29,7 +29,7 @@ func _run() -> void:
 	_check_current_classification()
 	_check_scenario_goals()
 	await _check_notices()
-	_check_scheduled_newspaper()
+	await _check_scheduled_newspaper()
 	_check_new_windows()
 	await _check_military_result()
 	await _check_game_over()
@@ -195,6 +195,36 @@ func _check_scheduled_newspaper() -> void:
 	assert(main.frame._simulation_suspended(), "A scheduled newspaper suspends the simulation")
 	main.city_dialogs.newspaper_dialog.hide()
 	assert(not main.newspaper_state.scheduled_pending and not main.frame._simulation_suspended())
+
+	# the original polls the mayor approval before it shows a paper. a rise to
+	# 80 percent shows the parade notice, and the paper follows it
+	var engine: SimulationEngine = main.simulation_state.simulation_engine
+	var document: Sc2File = main.document_state.city.document
+	var contented := {
+		Sc2MiscLayout.NORMAL_POPULATION: 1000, Sc2MiscLayout.WORKFORCE_EDUCATION: 100,
+		Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY: 70, Sc2MiscLayout.BUDGETS + 4: 0,
+	}
+
+	for offset: int in contented:
+		assert(document.set_misc_u32(offset, contented[offset]))
+
+	engine.mayor_approval = 79
+	var random_before: int = engine.random.state
+	main.reports.open_scheduled_newspaper()
+	assert(engine.random.state != random_before and engine.mayor_approval >= 80, "A paper runs the approval poll")
+	assert(main.reports.notice_visible() and not main.city_dialogs.newspaper_dialog.visible,
+		"The parade notice comes before the paper")
+	assert(main.frame._simulation_suspended())
+
+	for notice: Window in [main.city_dialogs.notice_dialog, main.city_dialogs.picture_notice_dialog]:
+		notice.hide()
+
+	await process_frame
+	assert(main.city_dialogs.newspaper_dialog.visible and main.newspaper_state.scheduled_pending,
+		"The paper follows the parade notice")
+	main.city_dialogs.newspaper_dialog.hide()
+	assert(not main.newspaper_state.scheduled_pending and not main.frame._simulation_suspended())
+	assert(document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 0))
 
 
 func _check_new_windows() -> void:

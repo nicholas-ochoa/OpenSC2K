@@ -30,6 +30,8 @@ var document: Sc2File
 var newspaper_data: DataUsaResource
 var news_names: Dictionary = {}
 var session_seed := 0
+# the top complaint of the approval poll that opened the paper, or -1
+var opinion_subject := -1
 var selected_newspaper := 0
 var published_articles := PackedStringArray()
 var page := NewspaperContent.new()
@@ -80,12 +82,14 @@ func open_reports(
 	news_name_values: Dictionary,
 	session_seed_value: int,
 	paper_index: int = 0,
+	opinion_subject_value := -1,
 ) -> void:
 	city = city_value
 	document = document_value
 	newspaper_data = data_value
 	news_names = news_name_values
 	session_seed = session_seed_value
+	opinion_subject = opinion_subject_value
 	var count := NewsQueue.available_paper_count(city.city_status())
 
 	if count == 0:
@@ -140,14 +144,18 @@ func _populate_page() -> void:
 
 	if paper == null:
 		paper = NewsQueue.PaperRecord.new()
-	var weights := MayorApprovalPhase.complaint_weights(city)
-	var subject := 0
+	# the original polls the mayor approval when the paper opens and reports
+	# the top complaint. a paper without a poll uses the largest weight
+	var subject := opinion_subject
 
-	for index in weights.size():
-		if weights[index] > weights[subject]:
-			subject = index
+	if subject < 0:
+		var weights := MayorApprovalPhase.complaint_weights(city)
+		subject = 0
 
-	# use current survey weights without running a poll or changing simulation rng/xmic
+		for index in weights.size():
+			if weights[index] > weights[subject]:
+				subject = index
+
 	NewsQueue.prepare_opinion_report(misc, int(paper.opinion), subject)
 	var teams := _team_names()
 	var headlines := PackedStringArray()

@@ -31,6 +31,10 @@ var text_resources: OriginalTextResources
 # the string IDs of the notices that wait for the notice dialog
 var pending_notices := PackedInt32Array()
 var military_notice_pending := false
+# a newspaper that waits until the player closes the parade notice: the paper
+# and the top complaint of its poll. -1 when no paper waits
+var deferred_newspaper := -1
+var deferred_opinion_subject := -1
 var pending_game_over_events: Array[GameOverEvent] = []
 var game_over_terminal := false
 
@@ -259,6 +263,23 @@ func on_newspaper_menu(id: int) -> void:
 
 		return
 
+	# SIMCITY.EXE (0x00477880) polls the mayor approval before it shows a
+	# paper. a rise to 80 percent shows the parade notice first
+	var subject := _poll_mayor_approval()
+
+	if notice_visible() or not pending_notices.is_empty():
+		deferred_newspaper = id
+		deferred_opinion_subject = subject
+
+		return
+
+	_open_newspaper(id, subject)
+
+
+func _open_newspaper(id: int, opinion_subject: int) -> void:
+	if app.document_state.city == null or document_state.current_document == null:
+		return
+
 	if app.document_state.city.music_enabled() and app.simulation_state.simulation_engine != null:
 		app.effects_audio.play_music_track(Music.newspaper_track(app.simulation_state.simulation_engine.lfsr_random))
 
@@ -269,7 +290,27 @@ func on_newspaper_menu(id: int) -> void:
 		CityStatusBar.NEWS_NAMES,
 		app.newspaper_state.session_seed,
 		id,
+		opinion_subject,
 	)
+
+
+# the approval poll of a paper. returns its top complaint, or -1 without a poll
+func _poll_mayor_approval() -> int:
+	var engine := app.simulation_state.simulation_engine
+
+	if engine == null:
+		return -1
+
+	var approval := engine.recalculate_mayor_house()
+
+	if not approval.ok:
+		app.interface.show_error(tr("Cannot calculate mayor approval: %s") % approval.error)
+
+		return -1
+
+	show_mayor_approval(approval)
+
+	return approval.ranking[0] if not approval.ranking.is_empty() else -1
 
 
 # the original toggles each saved option and changes nothing else
@@ -320,7 +361,7 @@ func open_scheduled_newspaper(paper := -1) -> void:
 		paper = city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE)
 
 	on_newspaper_menu(clampi(paper, 0, paper_count - 1))
-	app.newspaper_state.scheduled_pending = app.city_dialogs.newspaper_dialog.visible
+	app.newspaper_state.scheduled_pending = app.city_dialogs.newspaper_dialog.visible or deferred_newspaper >= 0
 
 
 func on_scheduled_newspaper_visibility_changed() -> void:
@@ -419,6 +460,8 @@ func show_mayor_approval(approval: MayorApprovalPhase.Result) -> void:
 func reset_notices() -> void:
 	military_notice_pending = false
 	pending_notices.clear()
+	deferred_newspaper = -1
+	deferred_opinion_subject = -1
 
 	for dialog: Window in _notice_dialogs():
 		if dialog.visible:
@@ -443,6 +486,10 @@ func _show_next_notice() -> void:
 		if military_notice_pending:
 			military_notice_pending = false
 			app.budget.resolve_military_notice()
+		elif deferred_newspaper >= 0:
+			var paper := deferred_newspaper
+			deferred_newspaper = -1
+			_open_newspaper(paper, deferred_opinion_subject)
 
 		return
 
