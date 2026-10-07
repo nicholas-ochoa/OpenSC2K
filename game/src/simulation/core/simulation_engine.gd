@@ -196,6 +196,14 @@ func initialize_loaded_city() -> bool:
 	return run("engine.initialize")
 
 
+# the original checks the city status when a city opens, a new city starts, or
+# a disaster ends. this check skips the random disaster of that routine and
+# changes neither the city nor the random state
+func refresh_city_status() -> void:
+	if city != null and city.is_valid():
+		run("engine.refresh_city_status")
+
+
 # Run an engine operation of the native simulation library with the engine
 # state, and keep the state that it returns. See sc2k_game::engine.
 func run(operation: String, args := {}, controller: GameSpeedController = null) -> Variant:

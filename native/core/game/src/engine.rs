@@ -347,6 +347,9 @@ impl Engine<'_> {
             if !self.city.set_misc_u32(misc::CITY_MODE, NORMAL_MODE) {
                 return DisasterMapResult::failed("cannot restore city mode after the disaster");
             }
+
+            // normal mode checks the city status again (0x0045cf10 calls 0x00406a50)
+            self.refresh_city_status();
         }
 
         if let Err(error) = news::persist(self.city, &mut result.base) {
@@ -554,6 +557,12 @@ impl Engine<'_> {
 
     /// The original loads a city file, then scans power and water and counts
     /// the developed tiles. The power scan uses the process random state.
+    /// The status check of the original when a city opens, a new city starts,
+    /// or a disaster ends. See `day::refresh_city_status`.
+    pub fn refresh_city_status(&mut self) {
+        day::refresh_city_status(self.city, &self.randoms.random, &mut self.state.day);
+    }
+
     pub fn initialize_loaded_city(&mut self) -> bool {
         let Some(scan) = load::initialize_loaded_city(self.city, &mut self.randoms.random) else {
             return false;
@@ -890,6 +899,7 @@ mod tests {
         assert!(burning.active && burning.base.sound_events.contains(&fire_loop));
 
         city.xtxt.replace(empty_text);
+        assert_eq!(state.day.city_status_resource_id, -1);
         let ended = fire_scan(&mut city, &mut state);
         assert_eq!(ended.ended_type, disaster_start::DISASTER_FIRE);
         assert_eq!(
@@ -897,6 +907,32 @@ mod tests {
             vec![SoundEvent::stop_loop()],
             "the end stops the fire loop"
         );
+        assert_eq!(
+            state.day.city_status_resource_id, POWER_PLANT_NEEDED,
+            "the end checks the city status"
+        );
+    }
+
+    /// An empty city has no power plant, the first need in the original order.
+    const POWER_PLANT_NEEDED: i64 = 265;
+
+    #[test]
+    fn the_city_status_check_changes_no_city_or_random_state() {
+        let mut city = city_of(&template::empty_city(128));
+        let misc = city.misc.data.clone();
+        let mut randoms = Randoms::new(SEED, 1, 1);
+        let random_state = randoms.random.state;
+        let mut state = EngineState::for_city(&city);
+        let mut engine = Engine {
+            city: &mut city,
+            randoms: &mut randoms,
+            state: &mut state,
+            detailed: false,
+        };
+        engine.refresh_city_status();
+
+        assert_eq!(state.day.city_status_resource_id, POWER_PLANT_NEEDED);
+        assert_eq!((city.misc.data, randoms.random.state), (misc, random_state));
     }
 
     #[test]

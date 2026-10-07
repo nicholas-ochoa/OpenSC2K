@@ -27,9 +27,6 @@ func _run() -> void:
 		var result := speed.advance_time(200.0, pulse * 200)
 		assert(result.ok, str(result))
 		status.set_city_status(engine, false)
-		status.update_report_rotation(0.2)
-		if not result.news_items.is_empty():
-			status.prepend_news_items(result.news_items)
 		for item in result.news_items:
 			if int(item.type) == 50:
 				shortage_day = city.age_in_days()
@@ -41,10 +38,7 @@ func _run() -> void:
 	assert(shortage_day == 24, "Babar shortage was not reported on day 24")
 	assert(city.age_in_days() == 25)
 	assert(engine.water_usage_percent == 100)
-	assert(status.recent_reports.has(CityStatusMessages.NEEDS[4]))
-	var before := document.serialize().data as PackedByteArray
-	status.update_report_rotation(CityStatusBar.REPORT_ROTATION_SECONDS)
-	assert(document.serialize().data == before, "Rotating reports changed saved data")
+	assert(status.reports_label.text == CityStatusMessages.NEEDS[4])
 	assert(FileAccess.get_file_as_bytes(path) == source_bytes)
 	_check_status_cases(status, engine)
 	_check_worker_state(speed)
@@ -63,10 +57,10 @@ func _check_status_cases(status: CityStatusBar, engine: SimulationEngine) -> voi
 		status.set_city_status(engine, false)
 		var expected := CityStatusMessages.NEEDS[need]
 		assert(status.reports_label.text == expected)
-		assert(CityStatusBar.report_name(46 + need) == expected)
-		status.prepend_reports(PackedStringArray(["Unrelated report"]))
-		status.update_report_rotation(8.0)
-		assert(status.reports_label.text == expected, "Rotating reports lost an active need")
+		assert(NewspaperDialog.STORY_NAMES[46 + need] == expected)
+		status.show_music_notice("Playing: Test")
+		status.update_music_notice(5.1)
+		assert(status.reports_label.text == expected, "A music notice lost an active need")
 
 	for weather in CityStatusMessages.WEATHER_COUNT:
 		var label := CityStatusMessages.text(33200 + weather)
@@ -87,7 +81,7 @@ func _check_status_cases(status: CityStatusBar, engine: SimulationEngine) -> voi
 		assert(status.reports_label.text == CityStatusMessages.PAUSED_TEXT)
 		status.show_music_notice("Playing: Test")
 		assert(status.reports_label.text == CityStatusMessages.PAUSED_TEXT)
-		status.update_report_rotation(5.1)
+		status.update_music_notice(5.1)
 
 	engine.active_disaster_type = 0
 	engine.city_status_resource_id = 269
@@ -96,8 +90,10 @@ func _check_status_cases(status: CityStatusBar, engine: SimulationEngine) -> voi
 	engine.city_status_resource_id = CityStatusMessages.monthly_resource(WeatherDisasterPhase.STATUS_NONE, 0)
 	status.set_city_status(engine, false)
 	assert(status.reports_label.text.is_empty(), "Cleared need restored an old report")
+	engine.city_status_resource_id = -1
+	status.set_city_status(engine, false)
+	assert(status.reports_label.text.is_empty(), "A city without a status check showed a report")
 	status.set_city_status(null, false)
-	status.set_reports(PackedStringArray())
 	assert(CityStatusMessages.text(CityStatusMessages.BROWNOUT) == CityStatusMessages.BROWNOUTS)
 	assert(CityStatusMessages.text(0).is_empty())
 	assert(CityStatusMessages.monthly_resource(WeatherDisasterPhase.STATUS_WEATHER, 255) == 0)
@@ -241,6 +237,10 @@ func _check_main_ui() -> void:
 	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
 	main.set_process(false)
 	main.city_status_bar.music_notice_seconds = 0
+	main.frame.select_speed(GameSpeedController.Speed.TURTLE)
+	# a new city checks its status at once. an empty city needs a power plant first
+	assert(main.simulation_state.simulation_engine.city_status_resource_id == CityStatusMessages.NEED_FIRST)
+	assert(main.city_status_bar.reports_label.text == CityStatusMessages.NEEDS[0])
 	main.simulation_state.simulation_engine.city_status_resource_id = 269
 	main.frame.select_speed(GameSpeedController.Speed.TURTLE)
 	assert(main.city_status_bar.reports_label.text == CityStatusMessages.NEEDS[4])

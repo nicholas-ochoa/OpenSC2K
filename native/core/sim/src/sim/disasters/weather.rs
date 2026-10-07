@@ -134,7 +134,9 @@ pub fn run(
     result
 }
 
-fn status_index(
+/// The city status of 0x00471bc0: the first need in the original order,
+/// STATUS_WEATHER, or STATUS_NONE. The recreation need draws one random value.
+pub fn status_index(
     misc: &[u8],
     random: &mut SimRandom,
     power_usage_percent: i64,

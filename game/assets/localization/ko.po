@@ -1370,9 +1370,6 @@ msgstr "수명 제한 없음"
 msgid "No city loaded"
 msgstr "열린 도시 없음"
 
-msgid "No reports."
-msgstr "소식이 없습니다."
-
 msgid "Nominal output: %d MW"
 msgstr "정격 출력: %d MW"
 
@@ -1663,9 +1660,6 @@ msgstr "비율"
 
 msgid "Ready."
 msgstr "준비되었습니다."
-
-msgid "Recent city reports. These are the newest saved newspaper records.\n%s"
-msgstr "최근 도시 소식입니다. 최근 저장된 신문 기록을 표시합니다.\n%s"
 
 msgid "Recorded months use saved costs and rates. Projected months use the proposed budget."
 msgstr "기록된 월은 저장된 비용과 비율을, 예상 월은 제안된 예산을 사용합니다."

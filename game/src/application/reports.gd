@@ -134,7 +134,7 @@ func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 	app.effects_audio.show_effect_events(
 		result.effect_events, result.sound_events
 	)
-	show_news_items(result.news_items)
+	app.interface.refresh_status_summary()
 	show_notices(result.notice_ids)
 	var first_update := result.first_update
 
@@ -143,7 +143,7 @@ func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 			app.map_view.center_on_tile(requested_point)
 
 		app.effects_audio.show_effect_events(first_update.effect_events, first_update.sound_events)
-		show_news_items(first_update.news_items)
+		app.interface.refresh_status_summary()
 
 		if first_update.newspaper_requested:
 			open_scheduled_newspaper(first_update.newspaper_paper)
@@ -287,7 +287,7 @@ func _open_newspaper(id: int, opinion_subject: int) -> void:
 		app.document_state.city,
 		document_state.current_document,
 		text_resources.newspaper_data,
-		CityStatusBar.NEWS_NAMES,
+		NewspaperDialog.STORY_NAMES,
 		app.newspaper_state.session_seed,
 		id,
 		opinion_subject,
@@ -369,13 +369,6 @@ func on_scheduled_newspaper_visibility_changed() -> void:
 		app.newspaper_state.scheduled_pending = false
 
 
-func show_news_items(news_items: Array[NewsEvent]) -> void:
-	if app.city_status_bar != null:
-		app.city_status_bar.prepend_news_items(news_items)
-
-	app.interface.refresh_status_summary()
-
-
 func show_building_objection() -> void:
 	if app.city_dialogs.building_objection_dialog == null:
 		return
@@ -393,45 +386,6 @@ func on_building_objection_closed() -> void:
 	)
 	app.tool_state.pending_building_objection_group = -1
 	app.tool_state.pending_building_objection_subtool = -1
-
-
-func refresh_saved_news_summary() -> void:
-	if app.document_state.city == null or document_state.current_document == null:
-		if app.city_status_bar != null:
-			app.city_status_bar.set_reports(PackedStringArray())
-
-		app.interface.refresh_status_summary()
-
-		return
-
-	var misc_chunk := document_state.current_document.find_chunk("MISC")
-
-	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		if app.city_status_bar != null:
-			app.city_status_bar.set_reports(PackedStringArray(["Unavailable"]))
-
-		app.interface.refresh_status_summary()
-
-		return
-
-	var reports := PackedStringArray()
-
-	for slot in NewsQueue.QUEUE_COUNT:
-		var record := NewsQueue.story_record(misc_chunk.decoded_payload, slot)
-
-		if record == null or int(record.priority) <= 0:
-			continue
-
-		var story_type := int(record.type)
-		reports.append(CityStatusBar.report_name(story_type))
-
-		if reports.size() == 3:
-			break
-
-	if app.city_status_bar != null:
-		app.city_status_bar.set_reports(reports)
-
-	app.interface.refresh_status_summary()
 
 
 # queue each notice and show them one at a time. the notice dialogs suspend
@@ -453,7 +407,7 @@ func show_notices(notice_ids: PackedInt32Array) -> void:
 # the result of a mayor approval poll: the parade notice and its sound
 func show_mayor_approval(approval: MayorApprovalPhase.Result) -> void:
 	app.effects_audio.play_sound_events(approval.sound_events, true)
-	show_news_items(approval.news_items)
+	app.interface.refresh_status_summary()
 	show_notices(approval.notice_ids)
 
 

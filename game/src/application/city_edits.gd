@@ -600,10 +600,6 @@ func _finish_simple_edit(
 		var sound_ids: Array[int] = [ToolSounds.SOUND_TRACTOR]
 		app.effects_audio.play_sound_ids(sound_ids)
 
-	# keep the tree and news story, no modal protest notice
-	if edit.refresh_news_summary:
-		app.reports.refresh_saved_news_summary()
-
 	if command.command_type == "zone":
 		app.effects_audio.play_sound_ids(ToolSounds.zone_success_events((command as ZoneEditResult).zone_type))
 	elif edit.play_success_sound:
@@ -625,9 +621,6 @@ func undo_last_edit() -> void:
 
 		return
 
-	var undo_forest_protest := (
-		command is DemolishEditResult and (command as DemolishEditResult).easter_events > 0
-	)
 	var result: EditCommandResult
 
 	if command_type == "sign":
@@ -677,9 +670,6 @@ func undo_last_edit() -> void:
 	change_neighbor_connections(command, -1)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(command)
-
-	if undo_forest_protest:
-		app.reports.refresh_saved_news_summary()
 
 	app.status_label.theme_type_variation = ""
 

@@ -120,9 +120,6 @@ static func _result(
 	result.record_command = kind != "hydro"
 	result.refresh_details = kind != "subway_to_rail"
 	result.show_effects = kind == "terrain" or (kind == "demolish" and not free_mode)
-	result.refresh_news_summary = (
-		command is DemolishEditResult and command.ok and (command as DemolishEditResult).easter_events > 0
-	)
 	result.play_success_sound = kind in [
 		"landscape", "hydro", "subway_to_rail", "onramp", "zone",
 	]
@@ -241,7 +238,6 @@ class Result extends RefCounted:
 	var record_command: bool = false
 	var refresh_details: bool = false
 	var show_effects: bool = false
-	var refresh_news_summary: bool = false
 	var play_success_sound: bool = false
 	var play_failure_sound: bool = false
 	var message: String = ""

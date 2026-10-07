@@ -135,6 +135,8 @@ func activate_document(
 		if not restore_error.is_empty():
 			status_text += " " + restore_error
 
+	app.simulation_state.simulation_engine.refresh_city_status()
+
 	if document_state.current_document.is_extended():
 		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)
 
@@ -142,7 +144,7 @@ func activate_document(
 	app.tool_state.tool_random = app.simulation_state.simulation_engine.random
 	app.simulation_state.nuisance_random = app.simulation_state.simulation_engine.game_random
 	app.simulation_state.simulation_map_dirty = false
-	app.reports.refresh_saved_news_summary()
+	app.interface.refresh_status_summary()
 	app.tool_state.last_edit_command = null
 	app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
 	app.tool_state.dispatch_epoch = -1

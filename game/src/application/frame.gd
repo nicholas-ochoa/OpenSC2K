@@ -29,7 +29,7 @@ func process(delta: float) -> void:
 	app.debug_tools.process(delta)
 
 	if app.city_status_bar != null:
-		app.city_status_bar.update_report_rotation(delta)
+		app.city_status_bar.update_music_notice(delta)
 
 	app.static_render.poll_static_render()
 	app.static_render.start_pending_static_render()
@@ -176,7 +176,7 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 			app.effects_audio.play_music_track(int(track_id))
 
 	if not result.news_items.is_empty():
-		app.reports.show_news_items(result.news_items)
+		app.interface.refresh_status_summary()
 
 	if not result.notice_ids.is_empty():
 		app.reports.show_notices(result.notice_ids)

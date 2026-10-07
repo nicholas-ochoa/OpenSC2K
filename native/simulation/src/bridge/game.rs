@@ -29,6 +29,7 @@ pub const OPERATIONS: &[&str] = &[
     "engine.advance_arcology_launch",
     "engine.menu_disaster_point",
     "engine.initialize",
+    "engine.refresh_city_status",
     "game.advance_time",
     "game.resolve_annual_budget",
     "game.resolve_military_proposal",
@@ -190,6 +191,10 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
             Value::Vec2i(engine.menu_disaster_point(convert::int(args, "disaster_type", 0), fallback))
         }
         "engine.initialize" => Value::Bool(engine.initialize_loaded_city()),
+        "engine.refresh_city_status" => {
+            engine.refresh_city_status();
+            Value::Nil
+        }
         _ => {
             let mut controller = Speed {
                 engine: &mut engine,

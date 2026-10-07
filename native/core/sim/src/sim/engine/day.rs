@@ -11,6 +11,7 @@ use crate::sim::engine::month;
 use crate::sim::events::Timing;
 use crate::sim::geom::Vec2i;
 use crate::sim::growth::{self, aftermath, demand};
+use crate::sim::ids::sc2misc_layout as misc_layout;
 use crate::sim::infrastructure::{power, traffic, water};
 use crate::sim::phase::{PhaseBase, PhaseResultLike, PlainPhaseResult, TimingSpan};
 use crate::sim::random::{Randoms, SimRandom};
@@ -452,32 +453,59 @@ fn run_budget(context: &mut Context) -> PhaseOutcome {
     }
 }
 
+fn measure_unknown_utilities(context: &mut Context) {
+    measure_utilities(context.city, &context.randoms.random, &mut context.state);
+}
+
 /// The original scans power and then water when it loads a city. After a load,
 /// the engine has no value until the first scheduled scan. Scan a copy here so
-/// that the annual update does not change the city or its random state.
-fn measure_unknown_utilities(context: &mut Context) {
-    if context.state.power_usage_percent >= 0 && context.state.water_usage_percent >= 0 {
+/// that the city and its random state do not change.
+fn measure_utilities(city: &City, random: &SimRandom, state: &mut EngineState) {
+    if state.power_usage_percent >= 0 && state.water_usage_percent >= 0 {
         return;
     }
 
-    let mut copy = context.city.clone();
+    let mut copy = city.clone();
 
-    if context.state.power_usage_percent < 0 {
-        let mut random = SimRandom::new(context.randoms.random.state);
+    if state.power_usage_percent < 0 {
+        let mut random = SimRandom::new(random.state);
         let power = power::run(&mut copy, &mut random);
 
         if power.base.ok {
-            context.state.power_usage_percent = power.usage_percent;
+            state.power_usage_percent = power.usage_percent;
         }
     }
 
-    if context.state.water_usage_percent < 0 {
+    if state.water_usage_percent < 0 {
         let water = water::run(&mut copy);
 
         if water.base.ok {
-            context.state.water_usage_percent = water.usage_percent;
+            state.water_usage_percent = water.usage_percent;
         }
     }
+}
+
+/// The status part of SIMCITY.EXE 0x00471bc0. The original also runs that
+/// routine when the city enters normal mode (0x00406a50): when a city opens,
+/// when a new city starts, and when a disaster ends. This check skips the
+/// random disaster, adds no newspaper story, and changes neither the city nor
+/// its random state.
+pub fn refresh_city_status(city: &City, random: &SimRandom, state: &mut EngineState) {
+    if !city.misc.present || city.misc.data.len() as i64 != misc_layout::SIZE {
+        return;
+    }
+
+    measure_utilities(city, random, state);
+    let status_index = weather::status_index(
+        &city.misc.data,
+        &mut SimRandom::new(random.state),
+        state.power_usage_percent.max(0),
+        state.water_usage_percent.max(0),
+        state.commerce_connections & 0xffff,
+        state.industry_connections & 0xffff,
+        city.map_size,
+    );
+    state.city_status_resource_id = monthly_resource(status_index, city.weather_type());
 }
 
 fn run_power(context: &mut Context) -> PhaseOutcome {

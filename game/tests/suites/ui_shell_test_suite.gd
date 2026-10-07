@@ -7,7 +7,6 @@ const SettingsStoreUi = preload("res://src/ui/settings/app_settings_store.gd")
 const CityAnalysisDialogUi = preload("res://src/ui/city_windows/city_analysis_dialog.tscn")
 const LibraryRuminateWindowsUi = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 const RouteConfirmationDialogUi = preload("res://src/ui/tools/route_confirmation_dialog.gd")
-const CityStatusBarUi = preload("res://src/ui/shell/city_status_bar.gd")
 const FileDialogsUi = preload("res://src/ui/shared/file_dialog_factory.gd")
 const CityMenuBarUi = preload("res://src/ui/shell/city_menu_bar.gd")
 const ScurkEditorDialogsUi = preload("res://src/ui/scurk/scurk_editor_dialogs.tscn")
@@ -89,28 +88,15 @@ func _test_main_menu() -> void:
 	status_bar._ready()
 	status_bar.set_environment(Vector3i(300, -200, 100), "Sunny")
 	status_bar.set_speed("Cheetah")
-	status_bar.set_reports(PackedStringArray(["First", "Second"]))
-	status_bar.update_report_rotation(CityStatusBarUi.REPORT_ROTATION_SECONDS)
 	_check(
 		status_bar.weather_label.text.contains("Sunny")
 		and status_bar.rci_graph.demand == Vector3i(300, -200, 100)
 		and status_bar.speed_label.text.contains("Cheetah")
-		and status_bar.reports_label.text == "Second",
-		"City status bar owns live values and report rotation",
+		and status_bar.reports_label.text.is_empty(),
+		"City status bar owns live values and shows no newspaper stories",
 	)
-	status_bar.prepend_reports(PackedStringArray(["Latest"]))
-	status_bar.prepend_news_items([
-		NewsEvent.new(0x29),
-		NewsEvent.new(-1),
-	])
 	status_bar.clear_environment()
-	_check(
-		status_bar.recent_reports.size() == 3
-		and status_bar.reports_label.text == CityStatusBarUi.report_name(-1)
-		and status_bar.recent_reports[1] == CityStatusBarUi.report_name(0x29)
-		and not status_bar.rci_graph.demand_available,
-		"City status bar maps news, replaces reports, and clears city values",
-	)
+	_check(not status_bar.rci_graph.demand_available, "City status bar clears city values")
 	status_bar.free()
 	var city_open_dialog := FileDialogsUi.city_open()
 	var city_save_dialog := FileDialogsUi.city_save()
