@@ -8,6 +8,7 @@ const FIELDS := [
 	["disaster_crowds", "Use city pedestrians for riots", "bool", true],
 	["disaster_dust", "Demolition and damage dust", "bool", true],
 	["disaster_motion", "Smooth tornado movement", "bool", true],
+	["disaster_blending", "Smooth effect transitions", "bool", true],
 	["disaster_lights", "Fire and impact light strength", "number", 0.4, 0.0, 1.0, 0.05],
 	["disaster_shake", "Earthquake shake strength", "number", 0.6, 0.0, 1.0, 0.05],
 	["water_reflections", "Water reflections", "choice", 1, ["Off", "Subtle"]],

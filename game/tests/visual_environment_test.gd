@@ -11,6 +11,8 @@ func _run() -> void:
 	assert(defaults.day_seconds == 600.0)
 	assert(defaults.night_light_strength == 100.0)
 	assert(not defaults.night_daytime_enabled)
+	assert(defaults.disaster_blending)
+	assert(VisualEnhancementOptions.normalize({"disaster_blending": "invalid"}).disaster_blending)
 	assert(VisualEnhancementOptions.normalize({"night_light_strength": NAN}).night_light_strength == 100.0)
 	assert(VisualEnhancementOptions.normalize({"night_light_strength": -10}).night_light_strength == 0.0)
 	assert(VisualEnhancementOptions.normalize({"night_light_strength": 150}).night_light_strength == 100.0)
@@ -23,6 +25,7 @@ func _run() -> void:
 	save.visual_enhancements.weather_lut_strength = 0.0
 	save.visual_enhancements.night_light_strength = 35.0
 	save.visual_enhancements.night_daytime_enabled = true
+	save.visual_enhancements.disaster_blending = false
 	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, save) == OK)
 	assert(AppSettingsStore.load_values(path).visual_enhancements == save.visual_enhancements)
 	assert(AppSettingsStore.save_values(0.4, 0.4, false, path) == OK)
@@ -80,6 +83,10 @@ func _run() -> void:
 	main.settings.open_settings_dialog()
 	var tab := main.main_overlays.settings_dialog.visual_tab
 	_check_menu_dependencies(tab)
+	(tab.controls.disaster_blending as CheckBox).button_pressed = false
+	assert(not main.preferences.visual_enhancements.disaster_blending)
+	(tab.controls.disaster_blending as CheckBox).button_pressed = true
+	assert(main.preferences.visual_enhancements.disaster_blending)
 	(tab.controls.weather_enabled as CheckBox).button_pressed = true
 	var weather_source := tab.controls.weather_mode as OptionButton
 	weather_source.select(2)

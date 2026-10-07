@@ -8,6 +8,8 @@ uniform float effect_seed = 0.0;
 uniform float effect_strength = 0.7;
 uniform float light_strength = 0.4;
 uniform float progress = -1.0;
+uniform bool frame_blending = false;
+uniform float lifecycle_opacity = 1.0;
 uniform float impact_phase = 0.0;
 uniform float smoke_density = 1.0;
 uniform bool sparse_crowd = false;
@@ -32,10 +34,10 @@ vec4 over(vec4 base, vec3 color, float alpha) {
 	return vec4((color * a + base.rgb * base.a * (1.0 - a)) / max(total, 0.001), total);
 }
 
-void fragment() {
+vec4 effect_frame(vec2 uv, float sample_time) {
 	// Native pixels keep contours stable at every map zoom. q=0 is the tile centre.
-	vec2 q = floor(UV * vec2(96.0, 144.0)) + vec2(0.5) - vec2(48.0, 128.0);
-	float t = effect_time + effect_seed;
+	vec2 q = floor(uv * vec2(96.0, 144.0)) + vec2(0.5) - vec2(48.0, 128.0);
+	float t = sample_time + effect_seed;
 	float diamond = abs(q.x) / 16.0 + abs(q.y) / 8.0;
 	float emission = 0.0;
 	vec4 ink = vec4(0.0);
@@ -63,8 +65,8 @@ void fragment() {
 		if (diamond < 1.0) {
 			// World-aligned, broken horizontal ripples join across flooded tiles.
 			vec2 w = q + world_origin;
-			float n = noise(w * vec2(0.15, 0.32) + vec2(effect_time * 0.4, 0.0));
-			float ripple = noise(w * vec2(0.24, 0.9) - vec2(effect_time, effect_time * 0.5));
+			float n = noise(w * vec2(0.15, 0.32) + vec2(sample_time * 0.4, 0.0));
+			float ripple = noise(w * vec2(0.24, 0.9) - vec2(sample_time, sample_time * 0.5));
 			vec3 water = mix(vec3(0.16, 0.40, 0.54), vec3(0.30, 0.59, 0.68), floor(n * 4.0) / 3.0);
 			water = mix(water, vec3(0.58, 0.77, 0.80), step(0.77, ripple) * 0.65);
 			float edge = q.x > 0.0 ? (q.y > 0.0 ? flood_edges.x : flood_edges.y) : (q.y > 0.0 ? flood_edges.z : flood_edges.w);
@@ -84,7 +86,7 @@ void fragment() {
 			ink = over(ink, gas * (0.95 + f * 0.30), puff(q, at, vec2(8.0, 5.0)) * sin(f * 3.14159) * 0.44 * strength);
 		}
 	} else if (effect_kind == 3) {
-		vec2 uv = vec2((UV.x + mod(floor(t * 6.0), 8.0)) / 8.0, (UV.y + (sparse_crowd ? 1.0 : 0.0)) * 0.5);
+		vec2 uv = vec2((uv.x + mod(floor(t * 6.0), 8.0)) / 8.0, (uv.y + (sparse_crowd ? 1.0 : 0.0)) * 0.5);
 		ink = texture(people, uv);
 	} else if (effect_kind == 4) {
 		for (int i = 0; i < 9; i++) {
@@ -114,8 +116,8 @@ void fragment() {
 		ink = over(ink, vec3(0.12, 0.56, 1.0), puff(q, vec2(0.0, -1.0), vec2(9.0, 4.0)) * 0.85);
 		emission = 1.0;
 	} else if (effect_kind == 10) {
-		float lane = fract(UV.x * 149.0 + UV.y * 48.0);
-		float drop = fract(UV.y * 42.0 - effect_time * 3.0 + floor(UV.x * 149.0 + UV.y * 48.0) * 0.37);
+		float lane = fract(uv.x * 149.0 + uv.y * 48.0);
+		float drop = fract(uv.y * 42.0 - sample_time * 3.0 + floor(uv.x * 149.0 + uv.y * 48.0) * 0.37);
 		bool rain = lane > 0.94 && drop > 0.66;
 		ink = rain ? vec4(0.68, 0.77, 0.84, 0.40) : vec4(0.13, 0.20, 0.29, 0.14);
 		ink.a *= strength;
@@ -133,13 +135,28 @@ void fragment() {
 			ink = over(ink, color, chip * (1.0 - smoothstep(0.60, 1.0, f)));
 		}
 	}
-	ink.rgb = mix(environment_color(ink.rgb, UV), ink.rgb, clamp(emission, 0.0, 1.0));
+	ink.rgb = mix(environment_color(ink.rgb, uv), ink.rgb, clamp(emission, 0.0, 1.0));
 	if (progress >= 0.0 && effect_kind != 5) { ink.a *= 1.0 - smoothstep(0.65, 1.0, progress); }
 	// Only real treatment tiles receive an edge; foreground covers it like the crowd.
 	if (effect_kind == 3 && !sparse_crowd && diamond > 0.82 && diamond < 1.0) {
 		ink = over(ink, vec3(0.92, 0.64, 0.24), 0.58);
 	}
-	if (has_foreground) { ink.a *= 1.0 - texture(foreground, UV * foreground_scale + foreground_offset).a; }
+	if (has_foreground) { ink.a *= 1.0 - texture(foreground, uv * foreground_scale + foreground_offset).a; }
 	// Replacement artwork remains identifiable; strength controls surrounding atmosphere.
-	COLOR = vec4(ink.rgb, clamp(ink.a, 0.0, 1.0));
+	return vec4(ink.rgb, clamp(ink.a, 0.0, 1.0));
+}
+
+void fragment() {
+	vec4 ink;
+	if (frame_blending && (effect_kind <= 2 || effect_kind == 4 || effect_kind == 5 || effect_kind == 7 || effect_kind >= 11)) {
+		float phase = effect_time * 15.0;
+		float first_time = floor(phase) / 15.0;
+		vec4 a = effect_frame(UV, first_time);
+		vec4 b = effect_frame(UV, first_time + 1.0 / 15.0);
+		float alpha = mix(a.a, b.a, fract(phase));
+		ink = vec4(mix(a.rgb * a.a, b.rgb * b.a, fract(phase)) / max(alpha, 0.00001), alpha);
+	} else {
+		ink = effect_frame(UV, effect_time);
+	}
+	COLOR = vec4(ink.rgb, ink.a * lifecycle_opacity);
 }

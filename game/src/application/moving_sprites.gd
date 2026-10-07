@@ -13,6 +13,7 @@ var traffic_motion := CityTrafficMotion.new()
 var moving_lights := CityMovingLights.new()
 var tornado_renderer: CityTornadoRenderer
 var beam_glow: CityDisasterBeamGlow
+var hazard_animation: CityHazardAnimation
 
 
 func _init(application: CityApplication) -> void:
@@ -20,9 +21,12 @@ func _init(application: CityApplication) -> void:
 	caches = application.render_caches
 	tornado_renderer = CityTornadoRenderer.new(application)
 	beam_glow = CityDisasterBeamGlow.new(application)
+	hazard_animation = CityHazardAnimation.new(application)
 
 
 func process(delta: float) -> void:
+	hazard_animation.process(delta)
+	tornado_renderer.process(delta)
 	beam_glow.process()
 	if not _traffic_active():
 		traffic_motion.reset()
@@ -43,6 +47,7 @@ func _traffic_active() -> bool:
 
 
 func refresh_moving_things(view_size := -1) -> void:
+	hazard_animation.begin()
 	tornado_renderer.begin()
 	app.disaster_effects.begin_commands()
 	caches.trim_moving()
@@ -102,6 +107,10 @@ func refresh_moving_things(view_size := -1) -> void:
 
 		var transparent_shadow: bool = command.shadow and app.preferences.visual_enhancements.traffic_shadows_enabled \
 			and command.record >= 0 and app.document_state.city.thing(command.record).type in [1, 2]
+		var hazard := hazard_animation.observe(command, sprite_archive, view_size)
+		if hazard != null:
+			visuals.append(hazard)
+			continue
 		if command.record >= 0 and app.document_state.city.thing(command.record).type == 15 \
 				and app.disaster_effects.active():
 			var tornado_resource := dynamic_sprite_resource(sprite_archive, command.sprite_id, command.flip, divisor, factor)
@@ -210,6 +219,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			caches.dynamic_visual_cache[visual_cache_key] = visual
 
 	app.disaster_effects.end_commands()
+	hazard_animation.finish(visuals)
 	tornado_renderer.finish()
 	if caches.dynamic_special_batch_cache.size() > 128:
 		caches.dynamic_special_batch_cache.clear()

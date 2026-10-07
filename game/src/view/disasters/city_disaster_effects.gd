@@ -63,7 +63,7 @@ func process(delta: float) -> void:
 	_sync_city()
 	app.moving_sprites.tornado_renderer.sync_transform()
 	var options := app.preferences.visual_enhancements
-	var settings := [enabled(), options.disaster_crowds, options.disaster_dust, options.disaster_motion]
+	var settings := [enabled(), options.disaster_crowds, options.disaster_dust, options.disaster_motion, options.disaster_blending]
 	if settings != _settings_signature:
 		_settings_signature = settings
 		if app.document_state.city != null and app.map_view != null:
@@ -96,12 +96,21 @@ func process(delta: float) -> void:
 			pulses[i].sprite.queue_free()
 			pulses.remove_at(i)
 	_elapsed += elapsed
-	if _elapsed >= FRAME_SECONDS:
+	var update_all := _elapsed >= FRAME_SECONDS
+	if update_all:
 		_elapsed = 0.0
-		for visual in markers.values():
+	for key in markers.keys():
+		var visual := markers[key]
+		if visual.retired >= 0.0 and (not options.disaster_blending or clock - visual.retired >= CityHazardAnimation.FADE_OUT):
+			visual.sprite.queue_free()
+			markers.erase(key)
+			continue
+		if update_all or options.disaster_blending:
 			_update_material(visual)
-		for pulse in pulses:
+	for pulse in pulses:
+		if update_all or options.disaster_blending:
 			_update_material(pulse)
+	if update_all:
 		_sync_storm()
 	if canvas != null:
 		var scale_value := app.map_view.camera._view_scale()
@@ -247,6 +256,8 @@ func observe_command(command: CityDynamicCommand) -> bool:
 		if kind == TORNADO:
 			_tornado_sites[tile] = city.building_id(tile.x, tile.y)
 		var visual := _marker("thing:%d" % command.record, kind, tile, location, command.record if kind == TORNADO else -1)
+		if visual != null:
+			visual.source_record = command.record
 		if visual != null and kind == EXPLOSION:
 			visual.material.set_shader_parameter("impact_phase", clampf(thing.direction / 2.0, 0.0, 1.0))
 		if kind == TRAIL and _trails.get(command.record, Vector2.INF).distance_to(location) > 5.0:
@@ -259,11 +270,41 @@ func observe_command(command: CityDynamicCommand) -> bool:
 func end_commands() -> void:
 	for key in markers.keys():
 		if not _seen.has(key):
-			markers[key].sprite.queue_free()
+			var visual := markers[key]
+			if _can_retire(visual):
+				if visual.retired < 0.0:
+					visual.retire_opacity = _opacity(visual)
+					visual.retired = clock
+				continue
+			visual.sprite.queue_free()
 			markers.erase(key)
 	for record in _trails.keys():
 		if not _seen.has("thing:%d" % record):
 			_trails.erase(record)
+
+
+func _can_retire(visual: Visual) -> bool:
+	if not active() or not app.preferences.visual_enhancements.disaster_blending \
+			or not _visible(visual.tile, visual.sprite.position + ANCHOR):
+		return false
+	if visual.kind == FIRE:
+		return app.document_state.city.marker_overlay_id(visual.tile.x, visual.tile.y) == 0
+	if visual.kind in [EXPLOSION, TRAIL] and visual.source_record >= 0:
+		var thing := app.document_state.city.thing(visual.source_record)
+		return thing == null or thing.type == 0
+	return false
+
+
+func _opacity(visual: Visual) -> float:
+	if not app.preferences.visual_enhancements.disaster_blending:
+		return 1.0
+	if visual.retired >= 0.0:
+		return visual.retire_opacity * (1.0 - smoothstep(0.0, CityHazardAnimation.FADE_OUT, clock - visual.retired))
+	if visual.kind == FIRE:
+		return lerpf(visual.start_opacity, 1.0, smoothstep(0.0, CityHazardAnimation.FADE_IN, clock - visual.born))
+	if visual.kind in [DUST, TRAIL]:
+		return smoothstep(0.0, 0.08, maxf(visual.age, 0.0) if visual.duration > 0.0 else clock - visual.born)
+	return 1.0
 
 
 func _riot_neighbours(city: CityState, tile: Vector2i) -> void:
@@ -317,9 +358,9 @@ func _sync_lighting(scale_value: float) -> void:
 		elif visual.kind == MONSTER:
 			# Red component of the original 1385/885/385 beam artwork.
 			tint = Color("ff0f11")
-		var fade := 1.0
+		var fade := _opacity(visual)
 		if visual.duration > 0.0:
-			fade = 1.0 - smoothstep(0.45, 1.0, visual.age / visual.duration)
+			fade *= 1.0 - smoothstep(0.45, 1.0, visual.age / visual.duration)
 		if visual.kind == EXPLOSION:
 			fade *= 1.0 - float(visual.material.get_shader_parameter("impact_phase")) * 0.55
 		sources.append({"position": visual.sprite.position + ANCHOR, "color": tint, "fade": fade,
@@ -337,6 +378,13 @@ func _marker(key: String, kind: int, tile: Vector2i, location: Vector2, record :
 			return null
 		visual = _create(kind, tile, location)
 		markers[key] = visual
+	if visual.kind != kind:
+		visual.born = clock
+		visual.start_opacity = 0.0
+	if visual.retired >= 0.0:
+		visual.start_opacity = _opacity(visual)
+		visual.born = clock
+		visual.retired = -1.0
 	visual.kind = kind
 	visual.tile = tile
 	visual.record = record
@@ -349,6 +397,7 @@ func _marker(key: String, kind: int, tile: Vector2i, location: Vector2, record :
 func _create(kind: int, tile: Vector2i, location: Vector2) -> Visual:
 	_ensure_canvas()
 	var visual := Visual.new()
+	visual.born = clock
 	visual.kind = kind
 	visual.tile = tile
 	visual.sprite = Sprite2D.new()
@@ -379,6 +428,8 @@ func _update_material(visual: Visual) -> void:
 	material.set_shader_parameter("world_origin", visual.sprite.position + ANCHOR * visual.sprite.scale)
 	material.set_shader_parameter("effect_kind", visual.kind)
 	material.set_shader_parameter("effect_time", clock)
+	material.set_shader_parameter("frame_blending", app.preferences.visual_enhancements.disaster_blending)
+	material.set_shader_parameter("lifecycle_opacity", _opacity(visual))
 	material.set_shader_parameter("effect_strength", app.preferences.visual_enhancements.disaster_strength)
 	material.set_shader_parameter("light_strength", app.preferences.visual_enhancements.disaster_lights)
 	material.set_shader_parameter("progress", clampf(visual.age / visual.duration, 0.0, 1.0) if visual.duration > 0.0 else -1.0)
@@ -527,6 +578,11 @@ static func flood_edges(city: CityState, tile: Vector2i) -> Vector4:
 
 
 class Visual extends RefCounted:
+	var source_record := -1
+	var born := 0.0
+	var retired := -1.0
+	var retire_opacity := 1.0
+	var start_opacity := 0.0
 	var sprite: Sprite2D
 	var material: ShaderMaterial
 	var tile := Vector2i.ZERO

@@ -68,12 +68,151 @@ func _run() -> void:
 	viewport.queue_free()
 	await _check_lighting()
 	await _check_fullbright()
+	await _check_hazard_blending()
+	await _check_procedural_blending()
 	await _check_tornado_mask()
 	await _check_quake_blur()
 	await _check_beam_glow()
 	await process_frame
 	print("PASS: GPU disaster effects, tile boundaries, transparent surroundings, foreground occlusion and dust lifetime")
 	quit()
+
+
+func _check_hazard_blending() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(8, 8)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var palette := Image.create(256, 1, false, Image.FORMAT_RGBA8)
+	palette.fill(Color.BLUE)
+	palette.set_pixel(20, 0, Color.RED)
+	palette.set_pixel(220, 0, Color.GREEN)
+	var atlas := Image.create(8, 64, false, Image.FORMAT_RGBA8)
+	for frame in 8:
+		atlas.fill_rect(Rect2i(0, frame * 8, 8, 8), Color8(20 if frame % 2 == 0 else 220, 0, 0))
+		atlas.set_pixel(0, frame * 8, Color.TRANSPARENT)
+	atlas.set_pixel(1, 0, Color.TRANSPARENT)
+	var visual := CityDynamicVisual.new(ImageTexture.create_from_image(atlas), Vector2.ZERO, Vector2(8, 8))
+	visual.hazard_animation = CitySpriteFrameBlend.new()
+	var canvas := CityDynamicSpriteCanvas.new()
+	canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var material := ShaderMaterial.new()
+	material.shader = load("res://src/view/map/palette_cycle.gdshader")
+	material.set_shader_parameter("animated_palette", ImageTexture.create_from_image(palette))
+	material.set_shader_parameter("palette_lookup_all", true)
+	material.set_shader_parameter("palette_cycle_enabled", true)
+	material.set_shader_parameter("environment_enabled", true)
+	material.set_shader_parameter("environment_night", 1.0)
+	material.set_shader_parameter("environment_tint", Vector3(0.1, 0.1, 0.2))
+	canvas.material = material
+	viewport.add_child(canvas)
+	canvas.set_visuals([visual], 1.0, Vector2.ZERO)
+	for phase in [0.0, 0.5, 1.0, 7.5]:
+		visual.hazard_animation.phase = phase
+		canvas.queue_redraw()
+		await RenderingServer.frame_post_draw
+		var image := viewport.get_texture().get_image()
+		var pixel := image.get_pixel(3, 3)
+		assert(pixel.b < 0.01, "Blend resolved palette colors, not their encoded indices")
+		assert(pixel.a > 0.98, "Overlapping opaque frames must not darken or lose coverage")
+		if phase == 0.0:
+			assert(pixel.r > 0.98 and pixel.g < 0.01)
+		elif phase == 1.0:
+			assert(pixel.g > 0.98 and pixel.r < 0.01)
+		else:
+			assert(absf(pixel.r - 0.5) < 0.02 and absf(pixel.g - 0.5) < 0.02)
+		assert(image.get_pixel(0, 0).a == 0.0)
+		if phase == 0.5:
+			var edge := image.get_pixel(1, 0)
+			# SubViewport readback already contains premultiplied RGB.
+			assert(absf(edge.a - 0.5) < 0.02 and absf(edge.g - 0.5) < 0.02 and edge.r < 0.01,
+				"Transparent frame edges must use premultiplied interpolation: %s" % edge)
+	visual.hazard_animation.opacity = 0.4
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	assert(absf(viewport.get_texture().get_image().get_pixel(3, 3).a - 0.4) < 0.02)
+	visual.hazard_animation.opacity = 0.0
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().is_invisible())
+	visual.hazard_animation.opacity = 1.0
+	visual.toxic_cloud = true
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	var gas := viewport.get_texture().get_image().get_pixel(3, 3)
+	assert(gas.g > gas.r * 1.5 and gas.g > gas.b * 2.0)
+	# The tornado uses a pair of observed frames and the same resolved-color rule.
+	var sprite := Sprite2D.new()
+	sprite.centered = false
+	sprite.texture = ImageTexture.create_from_image(atlas.get_region(Rect2i(0, 0, 8, 16)))
+	sprite.scale = Vector2(1.0, 0.5)
+	var tornado := ShaderMaterial.new()
+	tornado.shader = CityTornadoRenderer.SHADER
+	tornado.set_shader_parameter("animated_palette", ImageTexture.create_from_image(palette))
+	tornado.set_shader_parameter("frame_blending", true)
+	tornado.set_shader_parameter("frame_mix", 0.5)
+	tornado.set_shader_parameter("sprite_size", Vector2(8, 8))
+	sprite.material = tornado
+	canvas.hide()
+	viewport.add_child(sprite)
+	await RenderingServer.frame_post_draw
+	var mixed := viewport.get_texture().get_image().get_pixel(3, 3)
+	assert(absf(mixed.r - 0.5) < 0.02 and absf(mixed.g - 0.5) < 0.02 and mixed.b < 0.01)
+	var mask := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	mask.fill(Color.WHITE)
+	tornado.set_shader_parameter("foreground", ImageTexture.create_from_image(mask))
+	tornado.set_shader_parameter("has_foreground", true)
+	tornado.set_shader_parameter("mask_size", Vector2(8, 8))
+	tornado.set_shader_parameter("mask_offset", Vector2.ZERO)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().is_invisible(), "Foreground must cover both tornado frames")
+	viewport.queue_free()
+	await process_frame
+
+
+func _check_procedural_blending() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = CityDisasterEffects.EXTENT
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var rect := ColorRect.new()
+	rect.size = Vector2(viewport.size)
+	var material := ShaderMaterial.new()
+	material.shader = CityDisasterEffects.SHADER
+	rect.material = material
+	viewport.add_child(rect)
+	for kind in [CityDisasterEffects.FIRE, CityDisasterEffects.FLOOD, CityDisasterEffects.TOXIC,
+			CityDisasterEffects.TORNADO, CityDisasterEffects.DUST, CityDisasterEffects.EXPLOSION, CityDisasterEffects.TRAIL]:
+		material.set_shader_parameter("effect_kind", kind)
+		material.set_shader_parameter("progress", 0.2 if kind == CityDisasterEffects.DUST else -1.0)
+		material.set_shader_parameter("frame_blending", false)
+		material.set_shader_parameter("effect_time", 0.6)
+		await RenderingServer.frame_post_draw
+		var a := viewport.get_texture().get_image()
+		material.set_shader_parameter("effect_time", 0.6 + 1.0 / 15.0)
+		await RenderingServer.frame_post_draw
+		var b := viewport.get_texture().get_image()
+		material.set_shader_parameter("frame_blending", true)
+		material.set_shader_parameter("effect_time", 0.6 + 0.5 / 15.0)
+		await RenderingServer.frame_post_draw
+		var middle := viewport.get_texture().get_image()
+		assert(not middle.is_invisible())
+		for y in range(0, middle.get_height(), 3):
+			for x in range(0, middle.get_width(), 3):
+				var first := a.get_pixel(x, y)
+				var last := b.get_pixel(x, y)
+				var pixel := middle.get_pixel(x, y)
+				assert(absf(pixel.a - (first.a + last.a) * 0.5) < 0.015, "Intermediate effect coverage must interpolate")
+				for channel in 3:
+					assert(absf(pixel[channel] - (first[channel] + last[channel]) * 0.5) < 0.02,
+						"Procedural effect colors must interpolate after premultiplication")
+	material.set_shader_parameter("lifecycle_opacity", 0.0)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().is_invisible())
+	viewport.queue_free()
+	await process_frame
 
 
 func _check_fullbright() -> void:

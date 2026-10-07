@@ -56,7 +56,7 @@ func _run() -> void:
 	app.preferences.visual_enhancements.pause_freezes = true
 	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
 	# Avoid a settings refresh removing the synthetic marker used above.
-	effects._settings_signature = [true, true, true, true]
+	effects._settings_signature = [true, true, true, true, true]
 	effects.process(0.2)
 	assert(effects.clock == phase)
 	assert(effects.pulses[0].age > 0.0, "Player demolition must settle while paused")
@@ -110,10 +110,88 @@ func _run() -> void:
 	await _check_object_replacements(app)
 	_check_debris(app)
 	_check_tornado_retention(app)
+	_check_hazard_transitions(app)
 	app.queue_free()
 	await process_frame
 	print("PASS: disaster marker replacement, dispatch layering, retained nodes, event deduplication, pause, fallback and unchanged city/RNG")
 	quit()
+
+
+func _check_hazard_transitions(app: CityApplication) -> void:
+	var city := app.document_state.city
+	var options := app.preferences.visual_enhancements
+	options.disaster_blending = true
+	options.pause_freezes = false
+	var animation := app.moving_sprites.hazard_animation
+	var tile := Vector2i(63, 64)
+	var order := (tile.x + tile.y) * city.map_size + tile.y
+	city.set_text_overlay_id(tile.x, tile.y, 0xff)
+	app.moving_sprites.refresh_moving_things()
+	assert(animation.entries.has(order))
+	var entry := animation.entries[order]
+	assert(entry.animation.opacity == 0.0)
+	var smoke := app.disaster_effects.markers["tile:63:64"]
+	assert(app.disaster_effects._opacity(smoke) == 0.0)
+	var texture := entry.visual.texture
+	var before := DocumentState.capture(city.document)
+	var engine := app.simulation_state.simulation_engine
+	var random_before := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
+	animation.process(0.125)
+	app.disaster_effects.process(0.125)
+	assert(is_equal_approx(entry.animation.opacity, 0.5))
+	assert(is_equal_approx(app.disaster_effects._opacity(smoke), 0.5), "Fire smoke and lighting share the start envelope")
+	app.moving_sprites.refresh_moving_things()
+	assert(entry.visual.texture == texture, "Subframes reuse the indexed atlas and foreground mask")
+	options.pause_freezes = true
+	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+	var phase := entry.animation.phase
+	animation.process(0.1)
+	assert(entry.animation.phase == phase and is_equal_approx(entry.animation.opacity, 0.5))
+	options.pause_freezes = false
+	animation.process(0.125)
+	app.disaster_effects.process(0.125)
+	assert(entry.animation.opacity == 1.0)
+	assert(DocumentState.capture(city.document) == before)
+	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	city.set_text_overlay_id(tile.x, tile.y, 0)
+	app.moving_sprites.refresh_moving_things()
+	assert(entry.retired >= 0.0 and animation.entries.has(order))
+	before = DocumentState.capture(city.document)
+	animation.process(0.175)
+	app.disaster_effects.process(0.175)
+	assert(is_equal_approx(entry.animation.opacity, 0.5))
+	assert(is_equal_approx(app.disaster_effects._opacity(smoke), 0.5), "Fire smoke and light also fade after extinction")
+	assert(DocumentState.capture(city.document) == before, "The fading fire must not restore its treatment marker")
+	city.set_text_overlay_id(tile.x, tile.y, 0xff)
+	app.moving_sprites.refresh_moving_things()
+	assert(is_equal_approx(entry.animation.opacity, 0.5), "Reignition must reverse the visual fade without a jump")
+	animation.process(0.25)
+	city.set_text_overlay_id(tile.x, tile.y, 0)
+	app.moving_sprites.refresh_moving_things()
+	animation.process(0.2)
+	animation.process(0.2)
+	assert(not animation.entries.has(order), "Expired afterimages must release their resources")
+	city.set_text_overlay_id(tile.x, tile.y, 0xfb)
+	app.moving_sprites.refresh_moving_things()
+	assert(animation.entries[order].animation.opacity == 1.0)
+	options.disaster_blending = false
+	animation.process(0.0)
+	assert(animation.entries.is_empty(), "The shared switch must restore the original drawing path immediately")
+	options.disaster_blending = true
+	app.moving_sprites.refresh_moving_things()
+	assert(animation.entries.has(order))
+	options.disaster_strength = 0.0
+	options.disaster_enabled = false
+	animation.process(0.0)
+	assert(animation.entries.is_empty(), "The master switch also works at zero effect strength")
+	options.disaster_enabled = true
+	options.disaster_strength = 0.7
+	city.set_text_overlay_id(tile.x, tile.y, 0)
+	app.moving_sprites.refresh_moving_things()
+	var flash := CityDisasterEffects.Visual.new()
+	flash.kind = CityDisasterEffects.EXPLOSION
+	flash.born = app.disaster_effects.clock
+	assert(app.disaster_effects._opacity(flash) == 1.0, "The initial explosion flash must remain immediate")
 
 
 func _check_tornado_retention(app: CityApplication) -> void:

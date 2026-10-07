@@ -16,12 +16,18 @@ varying flat float transparent_shadow_draw;
 varying flat float fullbright_draw;
 varying flat float toxic_draw;
 varying vec2 cloud_ground_grid;
+varying flat float hazard_draw;
+varying flat float hazard_phase;
+varying flat float hazard_opacity;
 void vertex() {
+	hazard_draw = float(COLOR.b == 0.25 || COLOR.b == 0.5);
+	hazard_phase = COLOR.r * 8.0;
+	hazard_opacity = COLOR.g;
 	emission_draw = float(COLOR.rgb == vec3(0.0, 1.0, 1.0));
 	indexed_emission_draw = float(COLOR.rgb == vec3(0.0, 1.0, 0.0));
 	transparent_shadow_draw = float(COLOR.rgb == vec3(1.0, 0.0, 1.0));
-	fullbright_draw = float(COLOR.rgb == vec3(1.0, 1.0, 0.0));
-	toxic_draw = float(COLOR.rgb == vec3(1.0, 0.0, 0.0));
+	fullbright_draw = float(COLOR.rgb == vec3(1.0, 1.0, 0.0) || COLOR.b == 0.5);
+	toxic_draw = float(COLOR.rgb == vec3(1.0, 0.0, 0.0) || COLOR.b == 0.25);
 	cloud_ground_grid = cloud_grid_at((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy);
 }
 
@@ -41,6 +47,16 @@ void fragment() {
 		COLOR = vec4(cycle_color.rgb, base_color.a);
 	} else {
 		COLOR = base_color;
+	}
+	if (hazard_draw > 0.5) {
+		float frame = floor(hazard_phase);
+		vec4 first = texture(TEXTURE, vec2(UV.x, (UV.y + frame) / 8.0));
+		vec4 next = texture(TEXTURE, vec2(UV.x, (UV.y + mod(frame + 1.0, 8.0)) / 8.0));
+		vec3 a = texture(animated_palette, vec2((round(first.r * 255.0) + 0.5) / 256.0, 0.5)).rgb;
+		vec3 b = texture(animated_palette, vec2((round(next.r * 255.0) + 0.5) / 256.0, 0.5)).rgb;
+		float alpha = mix(first.a, next.a, fract(hazard_phase));
+		// Blend resolved colors in premultiplied form, never palette addresses.
+		COLOR = vec4(mix(a * first.a, b * next.a, fract(hazard_phase)) / max(alpha, 0.00001), alpha * hazard_opacity);
 	}
 	if (transparent_shadow_draw > 0.5) {
 		COLOR = vec4(vec3(0.0), base_color.a);

@@ -19,6 +19,12 @@ func _draw() -> void:
 
 		var source_position: Vector2 = visual.position
 		var source_size: Vector2 = visual.size
+		if visual.hazard_animation != null:
+			var animation := visual.hazard_animation
+			# Reserved blue values select the eight-frame indexed atlas in the palette shader.
+			draw_texture_rect(texture, Rect2(source_position, source_size), false,
+				Color(animation.phase / 8.0, animation.opacity, 0.25 if visual.toxic_cloud else 0.5))
+			continue
 
 		draw_texture_rect(
 			texture,

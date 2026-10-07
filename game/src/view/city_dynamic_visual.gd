@@ -21,6 +21,7 @@ var toxic_cloud: bool = false
 var beam_glow: bool = false
 var special_batch: bool = false
 var hidden: bool = false
+var hazard_animation: CitySpriteFrameBlend
 # true when the pixels come from the static image, as a shadow does, and not only from its silhouettes
 var samples_static: bool = false
 
@@ -53,6 +54,7 @@ func copy() -> CityDynamicVisual:
 	result.beam_glow = beam_glow
 	result.special_batch = special_batch
 	result.hidden = hidden
+	result.hazard_animation = hazard_animation
 	result.samples_static = samples_static
 
 	return result
@@ -79,13 +81,14 @@ func matches(other: CityDynamicVisual) -> bool:
 		and beam_glow == other.beam_glow
 		and special_batch == other.special_batch
 		and hidden == other.hidden
+		and hazard_animation == other.hazard_animation
 	)
 
 
 # cache stamps compare fields by value while retaining resource identity
 func value_signature() -> Array:
 	return [texture, water_reflection, emission_texture, index_texture, palette_lookup_all, texture_factor, position, size,
-		image, special_overlay, batch_cache_key, depth_order, shadow, transparent_shadow, fullbright, toxic_cloud, beam_glow, special_batch, hidden]
+		image, special_overlay, batch_cache_key, depth_order, shadow, transparent_shadow, fullbright, toxic_cloud, beam_glow, special_batch, hidden, hazard_animation]
 
 
 static func build_grid(visuals: Array[CityDynamicVisual]) -> NativeRectIndex:
