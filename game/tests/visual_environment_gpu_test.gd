@@ -78,6 +78,8 @@ func _run() -> void:
 	await _check_weather_layer()
 	await _check_night_glow(false)
 	await _check_night_glow(true)
+	await _check_city_life_glow(false)
+	await _check_city_life_glow(true)
 	await _check_street_fixtures(false)
 	await _check_street_fixtures(true)
 	print("PASS: GPU uniform morning/evening tint, colored graded brightmaps and original pixels when disabled")
@@ -220,6 +222,86 @@ func _check_night_glow(hdr: bool) -> void:
 	viewport.queue_free()
 	app.free()
 	await process_frame
+
+
+func _check_city_life_glow(hdr: bool) -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(800, 400)
+	viewport.transparent_bg = true
+	viewport.use_hdr_2d = hdr
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var app := CityApplication.new()
+	var map := CityMapControl.new()
+	map.size = Vector2(viewport.size)
+	map.city_source = CityMapSource.new(Vector2i(5000, 5000))
+	app.map_view = map
+	viewport.add_child(map)
+	var figures := CityLifeCanvas.new()
+	app.city_life.canvas = figures
+	var sprites := CityLifeSprites.new()
+	var lamps := CityLifeLights.new()
+	var lighting := app.visual_environment.night_lighting
+	var options := VisualEnhancementOptions.normalize({"night_ground": 0.0, "night_glow": 100.0})
+	for zoom in [0.5, 1.0]:
+		map.zoom_factor = zoom
+		for phase in 4:
+			# Pan the viewport and repack, grow, shrink, then hide the vehicle atlas.
+			var bounds := Rect2i(1234 + phase * 17, 2345 - phase * 11, 640, 256)
+			map.source_center = bounds.get_center()
+			var pixels := Image.create(640, 256, false, Image.FORMAT_RGBA8)
+			var emission := pixels.duplicate() as Image
+			var entries: Array[Dictionary] = []
+			var count: int = [3, 40, 2, 2][phase]
+			for i in count:
+				var sprite := sprites.sprite(false, i % 12, i % 4, 0, i % 3)
+				var mask := lamps.lamp_mask(sprite, i % 3, i % 4)
+				@warning_ignore("integer_division")
+				var origin := bounds.position + Vector2i((i % 10) * 64 + 61, (i / 10) * 64 + 25)
+				var opacity := 1.0 if i % 2 == 0 else 0.5
+				entries.append({"sprite": sprite, "origin": origin, "lamps": mask, "opacity": opacity, "occluders": []})
+				CityLifeCanvas.stamp(pixels, bounds.position, sprite, origin, [], opacity, emission, mask)
+			if phase == 0:
+				figures.atlas.compose(bounds, entries, true)
+			figures.visible = phase != 3
+			lighting.process(true, 1.0, options)
+			# Match ApplicationFrame: vehicle geometry updates after lighting.
+			figures.source_bounds = bounds
+			figures.atlas.compose(bounds, entries, true)
+			# Avoid nearest-sampling ties when comparing differently packed textures.
+			lighting.scene.position += Vector2(0.125, 0.125)
+			var reference := Sprite2D.new()
+			reference.centered = false
+			reference.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			reference.texture = ImageTexture.create_from_image(pixels)
+			reference.position = bounds.position
+			var material := ShaderMaterial.new()
+			material.shader = CityNightLighting.EMISSION
+			material.set_shader_parameter("has_emission", true)
+			material.set_shader_parameter("emission", ImageTexture.create_from_image(emission))
+			reference.material = material
+			lighting.scene.add_child(reference)
+			reference.visible = figures.visible
+			lighting.life.hide()
+			for frame in 4:
+				await RenderingServer.frame_post_draw
+			var expected := viewport.get_texture().get_image()
+			var expected_emission := lighting.buffers[0].get_texture().get_image()
+			reference.hide()
+			lighting.process(true, 1.0, options)
+			lighting.scene.position += Vector2(0.125, 0.125)
+			for frame in 4:
+				await RenderingServer.frame_post_draw
+			assert(lighting.buffers[0].get_texture().get_image().get_data() == expected_emission.get_data(),
+				"Vehicle glow emission left its world position: hdr=%s zoom=%s phase=%d" % [hdr, zoom, phase])
+			assert(viewport.get_texture().get_image().get_data() == expected.get_data(),
+				"Vehicle glow leaked onto empty terrain: hdr=%s zoom=%s phase=%d" % [hdr, zoom, phase])
+			reference.free()
+	figures.free()
+	viewport.queue_free()
+	app.free()
+	await process_frame
+	print("PASS: vehicle glow stays at world positions at 50/100 percent through atlas repacking, panning and hiding; HDR=", hdr)
 
 
 func _check_night_mesh_reuse(viewport: SubViewport, map: CityMapControl, lighting: CityNightLighting,

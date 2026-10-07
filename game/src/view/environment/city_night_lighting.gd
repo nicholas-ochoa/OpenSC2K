@@ -15,7 +15,7 @@ var source: CityMapSource
 var blur_rects: Array[TextureRect] = []
 var copies: Array[CanvasItem] = []
 var moving: CityDynamicSpriteCanvas
-var life: TextureRect
+var life: LifeEmission
 var moving_revision := -1
 
 
@@ -118,8 +118,7 @@ func _create() -> void:
 	moving_material.shader = preload("res://src/view/environment/night_moving_emission.gdshader")
 	moving.material = moving_material
 	scene.add_child(moving)
-	life = TextureRect.new()
-	life.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	life = LifeEmission.new()
 	life.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var life_material := ShaderMaterial.new()
 	life_material.shader = EMISSION
@@ -176,12 +175,10 @@ func _sync_moving() -> void:
 			return not visual.shadow and not visual.transparent_shadow)
 		moving.set_visuals(visible_art, 1.0, Vector2.ZERO)
 	var figures := app.city_life.canvas
+	life.figures = figures
 	life.visible = figures != null and figures.visible and figures.texture != null
 	if life.visible:
-		life.texture = figures.texture
-		life.position = figures.source_bounds.position
-		life.size = figures.source_bounds.size
-		(life.material as ShaderMaterial).set_shader_parameter("emission", figures.emission_texture)
+		life.queue_redraw()
 
 
 func _add_texture(texture: Texture2D, emission: Texture2D, position: Vector2, size: Vector2) -> void:
@@ -202,3 +199,22 @@ func _register(item: CanvasItem, emission: Texture2D) -> void:
 	item.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	scene.add_child(item)
 	copies.append(item)
+
+
+class LifeEmission extends Node2D:
+	var figures: CityLifeCanvas
+
+
+	func _draw() -> void:
+		if not is_instance_valid(figures) or not figures.visible or figures.texture == null:
+			return
+		var atlas := figures.atlas
+		# The atlas packs occupied squares; its texture coordinates are not
+		# world positions. Match the vehicle canvas before blurring its lamps.
+		# City life updates after lighting, so read the matching texture and
+		# rectangles together at draw time, including atlas growth and panning.
+		(material as ShaderMaterial).set_shader_parameter("emission", figures.emission_texture)
+		for index in atlas.destinations.size():
+			var destination := Rect2i(atlas.destinations[index])
+			destination.position += figures.source_bounds.position
+			draw_texture_rect_region(atlas.texture, destination, atlas.sources[index])
