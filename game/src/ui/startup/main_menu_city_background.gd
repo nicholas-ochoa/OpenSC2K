@@ -24,6 +24,24 @@ var city_name_label: Label
 var _discard_render := false
 var presentation: MainMenuPresentation
 var visual_options := VisualEnhancementOptions.normalize({})
+var launch_conditions: Dictionary
+
+
+func _init() -> void:
+	var random := RandomNumberGenerator.new()
+	random.randomize()
+	launch_conditions = random_conditions(random)
+
+
+static func random_conditions(random: RandomNumberGenerator) -> Dictionary:
+	var season := random.randi_range(0, 3)
+	var weather := [CityVisualWeather.Kind.SUNNY, CityVisualWeather.Kind.LIGHT_RAIN,
+		CityVisualWeather.Kind.HEAVY_RAIN, CityVisualWeather.Kind.RAIN_STORM, CityVisualWeather.Kind.DRY_STORM]
+	if season == 3:
+		weather.append_array([CityVisualWeather.Kind.LIGHT_SNOW, CityVisualWeather.Kind.HEAVY_SNOW])
+	return {"day_mode": 1, "day_hour": random.randf_range(0.0, 23.99),
+		"season_mode": 2, "season_fixed": season,
+		"weather_mode": 2, "weather_fixed": weather[random.randi_range(0, weather.size() - 1)]}
 
 
 func _ready() -> void:
@@ -242,6 +260,9 @@ func _refresh_animation() -> void:
 
 func set_visual_options(options: Dictionary) -> void:
 	visual_options = VisualEnhancementOptions.normalize(options)
+	# Keep one menu atmosphere for this launch, including menu re-entry and asset
+	# reloads. Only this private copy overrides the player's time/weather sources.
+	visual_options.merge(launch_conditions, true)
 	if presentation != null:
 		presentation.set_options(visual_options)
 

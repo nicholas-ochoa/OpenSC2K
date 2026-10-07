@@ -7,6 +7,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_check_random_conditions()
 	var sprites := FixtureGraphics.pack().large_sprites
 	var palette := FixtureGraphics.pack().palette
 	var folder := "user://menu-background-%d" % OS.get_process_id()
@@ -19,8 +20,10 @@ func _run() -> void:
 	file.close()
 
 	var background := MainMenuCityBackground.new()
+	var launch := background.launch_conditions.duplicate()
 	root.add_child(background)
 	background.configure(folder, palette, sprites)
+	_check_menu_conditions(background, launch)
 	assert(background.demo_city != null and background.source_path.ends_with("MENU.SC2"))
 	await _drain(background)
 	assert(background.static_image != null and background.demo_texture != null)
@@ -50,6 +53,7 @@ func _run() -> void:
 
 	background.configure(folder, palette, sprites)
 	background.show()
+	_check_menu_conditions(background, launch)
 	assert(background.demo_city != null and background.demo_sprites == sprites)
 	await _drain(background)
 	assert(background.static_image.get_data() == expected, "Reopened menu must draw a newly loaded city")
@@ -107,7 +111,14 @@ func _check_options(background: MainMenuCityBackground) -> void:
 		"season_enabled": false, "weather_enabled": false, "cloud_enabled": false,
 		"water_reflections": 0, "water_waves_enabled": false, "water_topography": false,
 		"life_cars_enabled": false, "life_people_enabled": false, "brightmaps": false})
+	var saved_options := options.duplicate()
 	background.set_visual_options(options)
+	assert(options == saved_options, "Menu randomness must not overwrite player preferences")
+	_check_menu_conditions(background, background.launch_conditions)
+	assert(not app.preferences.visual_enhancements.weather_enabled and not app.preferences.visual_enhancements.brightmaps)
+	# Exercise the shared renderer at known conditions independently of the menu's
+	# random launch selection, so the native pixel checks remain deterministic.
+	view.set_options(options)
 	var camera := background._camera()
 	view.advance(0.0, camera.offset, camera.scale)
 	assert(app.visual_environment.tint == Color.WHITE and app.visual_environment.night == 0.0)
@@ -117,7 +128,7 @@ func _check_options(background: MainMenuCityBackground) -> void:
 		await RenderingServer.frame_post_draw
 		day = root.get_texture().get_image()
 	options.day_hour = 0.0
-	background.set_visual_options(options)
+	view.set_options(options)
 	view.advance(0.0, camera.offset, camera.scale)
 	assert(app.visual_environment.tint.b > app.visual_environment.tint.r)
 	var dark: Image
@@ -128,7 +139,7 @@ func _check_options(background: MainMenuCityBackground) -> void:
 	options.brightmaps = true
 	options.night_glow = 0.0
 	options.night_ground = 0.0
-	background.set_visual_options(options)
+	view.set_options(options)
 	view.advance(0.0, camera.offset, camera.scale)
 	assert(app.visual_environment.night > 0.99 and view.map.city_source.emission != null)
 	if native:
@@ -144,7 +155,7 @@ func _check_options(background: MainMenuCityBackground) -> void:
 	options.season_enabled = true
 	options.season_mode = 2
 	options.season_fixed = 3
-	background.set_visual_options(options)
+	view.set_options(options)
 	view.advance(20.0, camera.offset, camera.scale)
 	assert(app.visual_environment.weather.rain > 0.99 and app.visual_environment.weather.layer.visible)
 	assert(app.visual_environment.clouds.parameters.cloud_enabled and view.map.layers.environment_parameters.water_enabled)
@@ -155,7 +166,7 @@ func _check_options(background: MainMenuCityBackground) -> void:
 	options.cloud_enabled = false
 	options.water_reflections = 0
 	options.water_waves_enabled = false
-	background.set_visual_options(options)
+	view.set_options(options)
 	view.advance(0.0, camera.offset, camera.scale)
 	assert(not view.map.layers.environment_parameters.environment_enabled)
 	assert(not app.visual_environment.weather.layer.visible and (app.visual_environment.clouds.layer == null or not app.visual_environment.clouds.layer.visible))
@@ -164,6 +175,34 @@ func _check_options(background: MainMenuCityBackground) -> void:
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	assert(FileAccess.get_file_as_bytes(background.source_path) == source)
 	background.set_visual_options(VisualEnhancementOptions.normalize({}))
+	_check_menu_conditions(background, background.launch_conditions)
+
+
+func _check_menu_conditions(background: MainMenuCityBackground, expected: Dictionary) -> void:
+	assert(background.launch_conditions == expected, "Menu re-entry must keep this launch's conditions")
+	for key: String in expected:
+		assert(background.visual_options[key] == expected[key])
+		assert(background.presentation.app.preferences.visual_enhancements[key] == expected[key])
+
+
+func _check_random_conditions() -> void:
+	var random := RandomNumberGenerator.new()
+	random.seed = 20261007
+	var hours := {}
+	var seasons := {}
+	var weather := {}
+	for sample in 256:
+		var conditions := MainMenuCityBackground.random_conditions(random)
+		assert(conditions.day_hour >= 0.0 and conditions.day_hour <= 23.99)
+		assert(conditions.season_fixed in [0, 1, 2, 3])
+		assert(conditions.weather_fixed >= CityVisualWeather.Kind.SUNNY and conditions.weather_fixed <= CityVisualWeather.Kind.HEAVY_SNOW)
+		if conditions.weather_fixed in [CityVisualWeather.Kind.LIGHT_SNOW, CityVisualWeather.Kind.HEAVY_SNOW]:
+			assert(conditions.season_fixed == 3, "Random menu snow must be seasonal")
+		hours[int(conditions.day_hour / 6.0)] = true
+		seasons[conditions.season_fixed] = true
+		weather[conditions.weather_fixed] = true
+	assert(hours.size() == 4 and seasons.size() == 4 and weather.size() == 7,
+		"Menu launches must be able to select every day period, season and weather kind")
 
 
 func _brighter_pixels(first: Image, second: Image) -> int:

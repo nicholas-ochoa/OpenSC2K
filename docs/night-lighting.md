@@ -63,6 +63,10 @@ The scrolling menu city uses the same visual options and rendering components as
 the player view: day/night, authored lights and glow, seasonal colors, weather,
 clouds, water and decorative traffic. Applying options or reloading custom assets
 updates the menu too. Cloud bodies keep the normal zoom-dependent visibility.
+Each launch selects a random hour, season and weather for the menu using a
+separate presentation RNG. Snow is selected only in winter. This atmosphere stays
+fixed when returning to the menu or applying options; effect toggles, strengths
+and custom assets still follow the options. Player settings are not overwritten.
 The existing private menu simulation and camera sequence are unchanged. Its
 render context has no active player document, save path, input or audio controller;
 all menu effect layers are released when gameplay starts.
