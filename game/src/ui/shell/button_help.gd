@@ -2,9 +2,10 @@ class_name ButtonHelp
 extends RefCounted
 ## The help that a Shift-click on a toolbar button or the status bar shows.
 ## The text comes from the Macintosh version 1.2, which shows it on a
-## Shift-click: TEXT resources 1100-1133, 1200-1222, and 1686.
+## Shift-click: TEXT resources 1100-1133, 1200-1222, and 1686. Sentences that
+## do not apply to this game are left out or changed.
 
-const STATUS_BAR := "Status Window"
+const STATUS_BAR := "Status Bar"
 const DEMAND_INDICATOR := "Zone Demand"
 # the topic of each toolbar group, in CityToolIds.Group order
 const GROUP_TOPICS: Array[String] = [
@@ -50,8 +51,7 @@ const TOPICS: Dictionary[String, Array] = {
 	],
 	"Power": [
 		"Power Lines - Build these from your power plants to your zoned areas so they can start to build. "
-			+ "These can cross roads and rails only at right angles. There is a slight transmission loss of power "
-			+ "through these lines, so try to minimize the distance they have to traverse.",
+			+ "These can cross roads and rails only at right angles.",
 		"Power Plants - This will bring up a list of the currently available power plants that you may build. "
 			+ "This list will grow as time passes and technology progresses.",
 	],
@@ -145,9 +145,9 @@ const TOPICS: Dictionary[String, Array] = {
 		"This tool is used to place signs (labels) in your city. To use it just click on the city location "
 			+ "where you want it placed and then enter the text for it. These can be used to name streets, "
 			+ "subdivisions, lakes, etc. Or you may use this for jotting down notes to yourself about future plans "
-			+ "for each area. \nThese signs can be toggled on and off with the layer control button near the bottom "
-			+ "of the City toolbar. To erase a sign, click on the base with the sign tool to open the record, then "
-			+ "hit the delete key.",
+			+ "for each area.",
+		"These signs can be toggled on and off with the Signs check box near the bottom of the City toolbar. "
+			+ "To erase a sign, click on it with the sign tool and clear its text.",
 	],
 	"Query Tool": [
 		"This tool will give you detailed information on anything in your city.  Most areas only tell you "
@@ -156,17 +156,15 @@ const TOPICS: Dictionary[String, Array] = {
 	],
 	"Center Display": [
 		"This is the centering tool. It is used to scroll around your city. When you click in the window the "
-			+ "scene will re-center on the place you clicked. If you click near the center of the window and hold "
-			+ "the mouse button down, you can then smoothly scroll around by moving the mouse to adjust direction "
-			+ "and speed.",
+			+ "scene will re-center on the place you clicked.",
 	],
 	"Zoom Out": [
-		"There are three scales your city can be viewed at.  This button allows you to increase the scale of "
-			+ "your display.  The tiles grow smaller and the area displayed grows.",
+		"This button allows you to increase the scale of your display.  The tiles grow smaller and the area "
+			+ "displayed grows.",
 	],
 	"Zoom In": [
-		"There are three scales your city can be viewed at.  This button allows you to decrease the scale of "
-			+ "your display.  The tiles grow larger and the area displayed shrinks.",
+		"This button allows you to decrease the scale of your display.  The tiles grow larger and the area "
+			+ "displayed shrinks.",
 	],
 	"Zone Demand": [
 		"These colored bars show you the current demand for each type of zone in your city. If the bar is up "
@@ -182,29 +180,30 @@ const TOPICS: Dictionary[String, Array] = {
 	"Building Layer": [
 		"This button will flatten your buildings, allowing you to examine your roads, wires and other "
 			+ "infrastructure.  You will recognize the building types by their color:  green - residential, blue - "
-			+ "commercial, yellow - industrial, orange - city structures, grey - port structures. In under-view, "
-			+ "the zone colors will be shown as outlines instead of colored-in squares.",
+			+ "commercial, yellow - industrial, orange - city structures, grey - port structures.",
 	],
 	"Sign Layer": [
-		"This will hide your city's names and labels.  See the 'PLACE SIGN' tool above.",
+		"This will hide your city's names and labels.  See the Place Sign tool.",
 	],
-	"Road/Tree Layer": [
-		"This will turn off the display of your roads, rail, wires, trees and other non-building structures.",
+	"Network Layer": [
+		"This will turn off the display of your roads, rail, wires and other non-building structures.",
+	],
+	"Tree Layer": [
+		"This will turn off the display of your trees.",
 	],
 	"Under-View Layer": [
 		"This will transform your city display to a stick-figure outline of the terrain. Pipes and subways "
-			+ "will become more visible, while all surface items will be hidden. The other layer buttons are still "
-			+ "available and allow you to further customize the view.",
+			+ "will become more visible, while all surface items will be hidden. The layer check boxes then show "
+			+ "the water mains, pipes, subways and tunnels.",
 	],
-	"Status Window": [
-		"The Status Window shows the currently selected tool and its cost.  It also has an iconic display for "
-			+ "the weather.  The second line of the window shows messages, warnings, and recommendations.\nIn the "
-			+ "Emergency Mode, the weather icon changes into a big red arrow.  By clicking here, you can cycle "
-			+ "through the disasters afflicting your city.",
+	"Status Bar": [
+		"The status bar shows the currently selected tool, the weather, the zone demand, messages, warnings, "
+			+ "and recommendations, the simulation speed, the compass, and the zoom level.",
+		"During a disaster, click the button next to the messages to center the view on the disaster.",
 	],
 	"Make New Map": [
-		"This button will generate a new map. The new map will be based on the settings of the two buttons "
-			+ "and three sliders above.",
+		"This button opens the new map settings again. The new map will be based on the Coast and River "
+			+ "settings and the Hills, Water, and Trees sliders.",
 	],
 	"Raise Terrain": [
 		"This tool will raise the altitude when you click on the terrain, thereby creating hills.",
@@ -235,12 +234,10 @@ const TOPICS: Dictionary[String, Array] = {
 			+ "that point.",
 	],
 	"Place Tree": [
-		"This tool adds trees to the terrain. Holding down the SHIFT key while using this tool will remove "
-			+ "trees.",
+		"This tool adds trees to the terrain.",
 	],
 	"Place Forest": [
-		"This tool will add a forested area to the terrain. Holding down the SHIFT key while using this tool "
-			+ "will remove trees.",
+		"This tool will add a forested area to the terrain.",
 	],
 	"Done": [
 		"When you are finished editing the terrain this button will bring you into the game. Make sure you "

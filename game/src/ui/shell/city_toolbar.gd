@@ -198,7 +198,7 @@ func _ready() -> void:
 		rotate_counter_clockwise_button: "Rotate Counter-Clockwise", rotate_clockwise_button: "Rotate Clockwise",
 		zoom_in_button: "Zoom In", zoom_out_button: "Zoom Out",
 		view_visibility_checks.buildings: "Building Layer", view_visibility_checks.signs: "Sign Layer",
-		view_visibility_checks.networks: "Road/Tree Layer", view_visibility_checks.trees: "Road/Tree Layer",
+		view_visibility_checks.networks: "Network Layer", view_visibility_checks.trees: "Tree Layer",
 		view_mode_buttons[CityViewMode.Mode.UNDERGROUND]: "Under-View Layer",
 		start_city_button: "Done", regenerate_button: "Make New Map",
 	}
