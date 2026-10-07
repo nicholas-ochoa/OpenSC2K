@@ -93,10 +93,19 @@ func _run() -> void:
 	shift.keycode = KEY_SHIFT
 	shift.pressed = true
 	map._input(shift)
-	assert(map.query_footprint_preview and map.selection._selection_source_polygons().size() == 16)
+	assert(map.selection._selection_source_polygons().size() == 16)
 	shift.pressed = false
 	map._input(shift)
 	assert(map.selection._selection_source_polygons().size() == 1)
+	# Shift marks the same footprint with another tool, also one that cannot build here
+	main.current_tool.call("select_tool_group", CityToolIds.Group.EDUCATION)
+	map.hover_tile = Vector2i(61, 61)
+	shift.pressed = true
+	map._input(shift)
+	assert(map.selection._selection_source_polygons().size() == 16, "Shift marks what Query marks")
+	shift.pressed = false
+	map._input(shift)
+	main.current_tool.call("select_tool_group", 16)
 	# Check city and random state after an invalid preview.
 	var before: PackedByteArray = city.document.serialize().data
 	assert(BuildingSites.preview_valid(city, 3, 2, Vector2i(75, 75)))

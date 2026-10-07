@@ -31,7 +31,7 @@ func _run() -> void:
 	_test_tool_modifiers()
 	_test_held_tools()
 	_test_shift_click_queries()
-	_test_button_help()
+	await _test_button_help()
 
 	main.queue_free()
 	await process_frame
@@ -346,20 +346,24 @@ func _test_shift_click_queries() -> void:
 	assert(queries.size() == 2 and completed[0] == 1, "A Shift-drag demolishes a box")
 
 
-# Shift-click on a toolbar button or the status bar shows its help
+# Shift-click on a toolbar button or the status bar shows its help. Each topic
+# fits in its dialog
 func _test_button_help() -> void:
 	var help := main.city_dialogs.help_dialog
 	var toolbar := main.city_toolbar
-
-	for group in ButtonHelp.GROUP_TOPICS.size():
-		assert(not ButtonHelp.text(ButtonHelp.group_topic(group), main.preferences.control_bindings).is_empty())
-
 	var topics: Array[String] = [ButtonHelp.STATUS_BAR, ButtonHelp.DEMAND_INDICATOR]
+	topics.append_array(ButtonHelp.GROUP_TOPICS)
 	topics.append_array(ButtonHelp.EDITOR_TOPICS.values())
 	topics.append_array(toolbar._help_topics.values())
+	var screen := Rect2i(Vector2i.ZERO, Vector2i(main.get_viewport().get_visible_rect().size))
 
 	for topic in topics:
-		assert(not ButtonHelp.text(topic, main.preferences.control_bindings).is_empty(), "Help for " + topic)
+		main.interface.show_button_help(topic)
+		await process_frame
+		assert(help.visible and help.topic == topic, "Help for " + topic)
+		assert(help.text_label.get_visible_line_count() == help.text_label.get_line_count(), "All text shows for " + topic)
+		assert(screen.encloses(Rect2i(help.position, help.size)), "The dialog fits the window for " + topic)
+		help.hide()
 
 	var bulldozer := toolbar.toolbar_buttons[CityToolIds.Group.BULLDOZER]
 	bulldozer.gui_input.emit(_mouse(MOUSE_BUTTON_LEFT, Vector2.ONE, true))
@@ -377,15 +381,6 @@ func _test_button_help() -> void:
 	status.gui_input.emit(_shift_click(Vector2.ONE, true))
 	assert(help.visible and help.topic == ButtonHelp.STATUS_BAR)
 	help.hide()
-
-	# the text names the bound keys and leaves out a paragraph for an unbound key
-	var bindings := main.preferences.control_bindings
-	var query_key := bindings.first_key("tool_query_modifier").full_text()
-	assert(ButtonHelp.text("Query", bindings).contains(query_key))
-	var unbound := bindings.duplicate_set()
-	unbound.bindings["tool_query_modifier"] = []
-	var shorter := ButtonHelp.text("Query", unbound)
-	assert(not shorter.contains("{") and shorter.length() < ButtonHelp.text("Query", bindings).length())
 
 
 func _shift_click(position: Vector2, pressed: bool) -> InputEventMouseButton:

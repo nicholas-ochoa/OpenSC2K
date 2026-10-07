@@ -328,7 +328,6 @@ func update_edit_state() -> void:
 			CityToolIds.Bulldozer.STRETCH])
 	app.map_view.highway_preview = (app.tool_state.selected_group == CityToolIds.Group.ROADS
 		and app.tool_state.selected_subtool == CityToolIds.Roads.HIGHWAY)
-	app.map_view.query_footprint_preview = app.tool_state.selected_group == CityToolIds.Group.QUERY
 
 	if app.tool_state.selected_group != CityToolIds.Group.QUERY or app.tool_state.selected_subtool != CityToolIds.Query.TRIP_REACH:
 		app.map_view.clear_trip_reach()

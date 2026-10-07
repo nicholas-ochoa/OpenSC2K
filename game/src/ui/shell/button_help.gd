@@ -1,18 +1,16 @@
 class_name ButtonHelp
 extends RefCounted
-## The help for the toolbar buttons and the status bar. The DOS and Macintosh
-## versions show it on a Shift-click. The text comes from the help file of the
-## Windows 95 version (SC2USA.HLP), without the sentences that do not apply.
-## A paragraph can name a bound key as {query}, {center}, {bulldoze}, or
-## {help}. The paragraph is left out when its action has no key.
+## The help that a Shift-click on a toolbar button or the status bar shows.
+## The text comes from the Macintosh version 1.2, which shows it on a
+## Shift-click: TEXT resources 1100-1133, 1200-1222, and 1686.
 
-const STATUS_BAR := "Status Bar"
-const DEMAND_INDICATOR := "Demand Indicator"
+const STATUS_BAR := "Status Window"
+const DEMAND_INDICATOR := "Zone Demand"
 # the topic of each toolbar group, in CityToolIds.Group order
 const GROUP_TOPICS: Array[String] = [
-	"Bulldozer", "Landscape Tool", "Emergency", "Power", "Water System", "Rewards",
-	"Roads", "Rails", "Ports", "Residential Zones", "Commercial Zones", "Industrial Zones",
-	"Education", "City Services", "Recreation", "Signs", "Query", "Center",
+	"Bulldozer", "Landscape", "Dispatch", "Power", "Water", "City Bonus",
+	"Roads", "Rail", "Ports", "Residential Zoning", "Commercial Zoning", "Industrial Zoning",
+	"Education Zones", "Health and Safety Zones", "Recreation Zones", "Place Sign", "Query Tool", "Center Display",
 ]
 # the landscape editor uses the Terrain toolbar topics
 const EDITOR_TOPICS: Dictionary[Vector2i, String] = {
@@ -27,368 +25,226 @@ const EDITOR_TOPICS: Dictionary[Vector2i, String] = {
 	Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.TREES): "Place Tree",
 	Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.FOREST): "Place Forest",
 }
-# the action of each key name in the text
-const KEY_ACTIONS: Dictionary[String, String] = {
-	"query": "tool_query_modifier", "center": "tool_center_modifier",
-	"bulldoze": "tool_bulldoze_modifier", "help": "button_help_modifier",
-}
 const TOPICS: Dictionary[String, Array] = {
 	"Bulldozer": [
-		"The bulldozer is a multi-function multi-level tool, with a default setting and a submenu to choose "
-			+ "between four additional actions. Click and hold on the Bulldozer button to open the submenu. When "
-			+ "the bulldozer is active, the cursor will appear as a bulldozer.",
-		"To operate the bulldozer, choose the function you want, then click or click and drag where you want "
-			+ "to do your 'dozin'.",
-		"Demolish/Clear (the default) destroys and removes trees, rubble, and man-made (Sim-made?) objects "
-			+ "without affecting the terrain or zoning status. Just click on anything to destroy it.",
-		"Cost: $1 per tile.",
-		"Level Terrain lets you choose an altitude level and slice off hills and mountains at your chosen "
-			+ "height. Level also clears, removing all trees, roads, power lines and buildings.",
-		"Cost: $25 per tile per altitude change.",
-		"Raise Terrain lets you make mountains out of molehills.",
-		"Cost: $25 per tile per altitude change.",
-		"Lower Terrain lets you lower mountains and dig canyons. (If you lower the terrain below sea level, "
-			+ "it will fill with water.)",
-		"Cost: $25 per tile per altitude change.",
-		"De-zone lets you change residential, commercial or industrial zones to unzoned land.",
-		"Cost: $1 per tile.",
-		"Raising, lowering and leveling terrain can be very expensive, so do it sparingly. If you want to "
-			+ "make a lot of changes to the landscape, do it in terrain-editing mode before you start your city, or "
-			+ "save up a lot of cash.",
-		"Hold down the {bulldoze} key to use Demolish/Clear with any tool.",
+		"Demolish/Clear - This will destroy buildings, roads, trees, and decorative water, and will remove "
+			+ "rubble.",
+		"Level Terrain - This tool will level terrain to the same altitude as the first location you click "
+			+ "on. It will also clear terrain by removing trees, roads, powerlines, and buildings.",
+		"Raise Terrain - This raises the terrain.",
+		"Lower Terrain- This lowers the terrain.",
+		"De-zone - This will remove the zone from an area.",
 	],
-	"Landscape Tool": [
-		"The Landscape Tool lets you add trees and water to your city. When active the cursor will appear as "
-			+ "a tree. Clicking and holding on it opens a submenu that allows you to choose between trees and "
-			+ "water.",
-		"The Tree tool lets you place trees onto the landscape. Each click will place either one or two "
-			+ "trees. You can click repeatedly on a single tile to create dense thickets, and click and drag across "
-			+ "many tiles to create forests.",
-		"Cost: $3 per click.",
-		"The Water tool lets you create lakes and streams by clicking where you want your water to appear.",
-		"Cost: $100 per tile.",
+	"Landscape": [
+		"Trees - This tool adds trees to the terrain.",
+		"Water - This will put down small streams and decorative ponds.  It can be used to create waterfalls "
+			+ "for the Hydro electric power plant.",
 	],
-	"Emergency": [
-		"The Emergency Tool lets you dispatch police and/or fire departments to the scene of a disaster. This "
-			+ "tool will be ghosted and unavailable unless a disaster is occurring. When active the cursor will "
-			+ "appear as an emergency beacon. Clicking and holding on it opens a submenu that allows you to choose "
-			+ "between dispatching police and fire.",
-		"Once you activate the tool and choose the department you want to dispatch, click on the area of the "
-			+ "city where you want your city's finest to go. An icon representing either your dispatched fire or "
-			+ "police troops will be placed where you click. You can place one icon for each station you have. "
-			+ "After you have placed them all, clicking again will move the first one you placed to the last place "
-			+ "you clicked, enabling you to block, surround and contain a fire or riot. There is no cost for "
-			+ "dispatching police or firesims.",
+	"Dispatch": [
+		"This tool is only available during emergencies.  It allows you to direct your police and "
+			+ "firefighters to suppress problems.",
+		"Dispatch Police - Police are useful for suppressing riots and resisting floods.",
+		"Dispatch Firefighters- Firefighters suppress fire and resist floods and toxic clouds.",
+		"Dispatch Military - Military units may be available to your city after the military has constructed "
+			+ "a base. Military units are highly trained and are effective against a variety of disasters.",
 	],
 	"Power": [
-		"Power is a multi-use tool. Clicking and holding on it opens a submenu that allows you to choose "
-			+ "between two functions: laying power lines and placing power plants. When this tool is active, the "
-			+ "cursor appears as a lightning bolt.",
-		"Power Lines (the default setting) lets you \"paint\" your power lines onto the land by clicking in the "
-			+ "place where you want the line to start, dragging the cursor to the place where you want the line to "
-			+ "stop, and releasing the mouse button.",
-		"Power lines blink warning lights to let you know if they're not hooked to a power source. Power "
-			+ "lines can only be run in straight lines and 90 degree angles. They can cross roads or rails, but not "
-			+ "on curved sections or straight sections that run at 45 degrees. Laying power lines across water is a "
-			+ "little more expensive. If you lay power lines across water, a dialog box will open and let you know "
-			+ "how much it will cost.",
-		"Cost: $2 per tile across land, $10 per tile across water.",
-		"Power Plant... lets you choose power sources for your city. Depending on the year and the technology "
-			+ "level of you city, there may be from three to nine types of power plants available. Click on the "
-			+ "power source you want, then click on the terrain where you want it to go. There is an info button "
-			+ "for each power plant that tells you the advantages, disadvantages and costs for each type of power "
-			+ "plant, as well as the approximate year it becomes available.",
+		"Power Lines - Build these from your power plants to your zoned areas so they can start to build. "
+			+ "These can cross roads and rails only at right angles. There is a slight transmission loss of power "
+			+ "through these lines, so try to minimize the distance they have to traverse.",
+		"Power Plants - This will bring up a list of the currently available power plants that you may build. "
+			+ "This list will grow as time passes and technology progresses.",
 	],
-	"Water System": [
-		"The Water System tool is a multi-use tool. Clicking and holding on it opens a submenu that allows "
-			+ "you to choose between five different water-related functions: laying water pipes, installing water "
-			+ "pumps, buying storage tanks, and building treatment and desalinization plants. When this tool is "
-			+ "active, the cursor appears as a water faucet.",
-		"Depending on the year and technology level in your city, you may only have access to pumps and water "
-			+ "towers. As time passes and inventions are invented, the other options become available. A city can "
-			+ "exist without a water system, but population density will be limited. When the Sims build, they "
-			+ "install the underground water pipes for their buildings. Your only responsibility is to hook the "
-			+ "buildings up to the water system.",
-		"Pipes (the default setting) lets you \"paint\" your water pipes onto the landscape by clicking in the "
-			+ "place where you want the pipe to start, dragging the cursor to the place you want the pipe to stop, "
-			+ "and releasing the mouse button. Water pipes are always laid underground. Activating Pipes "
-			+ "automatically turns on the underground view so you can see your pipes.",
-		"Cost: $3 per tile.",
-		"Water Pumps, when placed on land act as wells, a good source of water. Water pumps need to be hooked "
-			+ "to the power grid to function. When pumps are placed right next to a lake or river, they supply "
-			+ "twice as much water as a well. A pump placed next to a coastline (salt water) only produces as much "
-			+ "water as a well.",
-		"Cost: $100 per pump.",
-		"Water Towers lets you store precious water so you won't have summer shortages in arid climates.",
-		"Cost: $250 per tower.",
-		"Treatment plants clean and recycle your city's water, lessening seasonal shortages.",
-		"Cost: $500 per treatment plant.",
-		"Desalinization plants remove the salt from sea water. They are expensive, but sometimes necessary in "
-			+ "beach communities with little or no other source of water. Desalinization plants, which need power "
-			+ "to function, have internal pumps, and don't require extra water pumps. They produce approximately "
-			+ "twice as much water as two water pumps next to a river.",
-		"Cost: $1,000 per desalinization plant.",
+	"Water": [
+		"Pipes - These transmit water and carry away sewage.  You need powered water pumps to generate water.",
+		"Water Pump - Powered pumps will generate water for your city.  The amount they produce is increased "
+			+ "by placing them next to standing water.  It also has a seasonal variance depending on rainfall.",
+		"Water Tower - Water towers store water to combat seasonal variation.",
+		"Treatment - Adding a treatment plant reduces your city-wide pollution levels.",
+		"Desalinization - Water pumps will not pump sea water.  A desalinization plant will take sea water "
+			+ "and produce pure water for your city.",
 	],
-	"Rewards": [
-		"This button is like a surprise package. It will be ghosted and unavailable until you deserve a "
-			+ "reward. Rewards are based on your city's population, and consist of special buildings and monuments "
-			+ "to your mayoral prowess. When this tool is active, the cursor appears as a mayor tipping his hat.",
-		"The rewards you can strive to gain are... No, I won't tell you. You'll just have to wait and see for "
-			+ "yourself.",
+	"City Bonus": [
+		"As your city grows in size, the city council will vote to reward you.",
+		"Mayor's House - You will be given a residence at 2000 population.",
+		"City Hall - The council will vote to build a City Hall at 10000 population.",
+		"Statue - This will occur after the City Hall, but before Arcologies or the other rewards.",
 	],
 	"Roads": [
-		"Roads is a multi-use tool. Clicking and holding on it opens a submenu that allows you to choose "
-			+ "between five different road-related functions: placing roads and highways, and building tunnels, "
-			+ "onramps and bus depots. When this tool is active, the cursor appears as a piece of paved road.",
-		"Depending on the year and technology level of your city, you may only have access to roads and "
-			+ "tunnels. As time passes, the other options become available.",
-		"Road (the default setting) lets you \"paint\" your roads onto the land by clicking in the place where "
-			+ "you want the road to start, dragging the cursor to the place you want the road to stop, and "
-			+ "releasing the mouse button.",
-		"Roads can run in straight lines, 90 degree angles and 45 degree angles. When roads cross, they form "
-			+ "an intersection. If you lay a road across water and it is possible to build a bridge, you will be "
-			+ "told how much it will cost. If a bridge can't be built, you will be notified.",
-		"Cost: $10 per road tile.",
-		"Highways are high-capacity roads that are raised above the ground on pylons. They can handle four "
-			+ "times as many cars as regular roads. They are placed the same way as roads. You will need to place "
-			+ "onramps to allow cars to get on and off highways. When highways cross, they form cloverleaves. If "
-			+ "you lay a highway across water and it is possible to build a bridge, you will be told how much it "
-			+ "will cost. If a bridge can't be built, you will be notified.",
-		"Cost: $100 per highway section (4 tiles).",
-		"Tunnel lets you road pathways through hills and mountains. Tunnels cannot curve, and you cannot "
-			+ "cross tunnels, even at different altitudes. To place a tunnel, click on the tile that you want as "
-			+ "your entrance point. The entrance point must be a sloped tile. Your highway engineers won't try to "
-			+ "build a tunnel where it's impossible to build, or where it is unsafe, due to unstable terrain. If "
-			+ "you pick a good spot, an engineer's report will tell you how much the tunnel will cost and ask if "
-			+ "you want to go ahead or not.",
-		"Cost: $150 per tile of tunnel.",
-		"Onramps allow cars and buses to travel back and forth between roads and highways. Onramps are a "
-			+ "little tricky to place. You can only put them at intersections between roads and highways.",
-		"Cost: $25 per tile.",
-		"Bus Depots allow commuters to take the bus to work and help alleviate traffic. They must be placed "
-			+ "on level ground. You will need at least two bus depots since buses travel between them. Passengers "
-			+ "can get on and off between depots.",
-		"Cost: $250 per depot.",
+		"Road - This is your primary method of transport.  Roads connect zones, allowing them to grow.",
+		"Highway - Highways are faster and more efficient than roads.  Commuters will move from road to "
+			+ "onramps, then to highways, back to onramps, then on to roads again.  Without the roads and on-ramps, "
+			+ "highway are useless.",
+		"Tunnel - Tunnels dig through a mountain rather than going over it.  One advantage to tunnels is that "
+			+ "zones can be built over tunneled areas, improving land usage.",
+		"Onramp - These are necessary for highways to function.  They can only be placed at a highway/road "
+			+ "juncture.",
+		"Bus Depot - Depots provide rapid, low traffic transport.  Up to half of your city's commuters will "
+			+ "use these depots if they are well placed.",
 	],
-	"Rails": [
-		"Rails is a multi-use tool. Clicking and holding on it opens a submenu that allows you to choose "
-			+ "between four different rail-related functions: placing rails, placing subways (underground rails), "
-			+ "building rail depots and building subway stations. When this tool is active, the cursor appears as "
-			+ "length of track.",
-		"Depending on the year and technology level of your city, you may only have access to rails and rail "
-			+ "depots. As time passes, the other options become available.",
-		"Rail (the default setting) lets you \"paint\" your tracks onto the land by clicking in the place where "
-			+ "you want the rail to start, dragging the cursor to the place where you want it to stop, and "
-			+ "releasing the mouse button. Rails are useless without rail depots.",
-		"Cost: $25 per tile.",
-		"Subway is an underground rail system. Subways are placed in the same way as rails, but while looking "
-			+ "at the underground view. Subways are useless without subway stations.",
-		"Cost: $100 per tile.",
-		"Rail Depots allow commuters to get on and off trains. Without depots, rails are useless. They must "
-			+ "be placed on level ground, and adjacent to tracks.",
-		"Cost: $500 per depot.",
-		"Subway Stations allow passengers access to subway trains. Subway trains only stop at stations. They "
-			+ "must be placed on level ground, adjacent to a subway line. It's usually easiest to place subway "
-			+ "stations while looking at the underground level.",
-		"Cost: $250 per depot.",
-		"Subway to Rail junction allows you to hook up your subways and above-ground rails for a continuous "
-			+ "transit system. They must be placed adjacent to a rail tile.",
-		"Cost $250 per tile.",
+	"Rail": [
+		"Rail - This transport method is efficient and traffic free.  You must carefully place your rail "
+			+ "depots, or else the rail will go unused.",
+		"Subway - These are underground railways.  They operate like rail, except that subways need subway "
+			+ "stations to operate.",
+		"Rail Depot - This is where commuters enter and exit the rail system.",
+		"Sub Station - This is where commuters enter and exit the subway system.",
+		"Sub<-->Rail - This allows you to connect your above-ground rail with your below-ground subway.  You "
+			+ "must place this next to an existing rail line.",
 	],
 	"Ports": [
-		"Ports is a dual-purpose tool that allows you to place both airports and seaports. Click and hold on "
-			+ "the Ports button to open a menu and choose the type of port you want to place. When this tool is "
-			+ "active, the cursor will appear as an airplane.",
-		"Ports are placed by clicking and dragging to form a square or rectangle, then release the mouse "
-			+ "button. Ports must be powered before they will develop. Seaports must be on a shoreline to be of any "
-			+ "use.",
-		"Cost: $150 per seaport tile, $250 per airport tile.",
+		"Seaport - This provides vital external transport for your city's industries.  It will not be "
+			+ "necessary until your city hits 10,000 people or so.",
+		"Airport - This provides inter-city transport for your city's commerce.  It will not be needed until "
+			+ "your city hits 15,000 people or so.",
 	],
-	"Residential Zones": [
-		"The Residential Zone tool lets you, as mayor, designate areas of your city as places where people "
-			+ "live. Clicking and holding on Residential Zones opens a submenu that lets you choose whether the "
-			+ "zones will be low density (light) or high density (dense). When this tool is active, the cursor will "
-			+ "appear as a little house.",
-		"To zone an area as residential, click and hold on the terrain, then drag the mouse, creating a "
-			+ "rectangle, then release the mouse button. If you zone residential over an area that includes some "
-			+ "tiles that are already the same density residential, you will not be charged for rezoning those "
-			+ "tiles. If you zone residential over an undeveloped area that is already commercial industrial or a "
-			+ "different density residential, it will be rezoned and you will be charged. You cannot rezone an area "
-			+ "that is already developed.",
-		"Cost: Light Residential $5 per tile, Dense Residential $10 per tile.",
+	"Residential Zoning": [
+		"Residential zones are where the people live.  Low density zoning will only allow single family homes "
+			+ "in an area.  High density zoning will allow homes as well as high-rise apartments and condominiums.",
 	],
-	"Commercial Zones": [
-		"The Commercial Zone tool lets you, as mayor, designate areas of your city as places where people "
-			+ "build stores, offices and other places of commerce. Clicking and holding on Commercial Zones opens a "
-			+ "submenu that lets you choose whether the zones will be low density (light) or high density (dense). "
-			+ "When this tool is active, the cursor will appear as a little office building.",
-		"To zone an area as commercial, click and hold on the terrain, then drag the mouse, creating a "
-			+ "rectangle, then release the mouse button. If you zone commercial over an area that includes some "
-			+ "tiles that are already the same density commercial, you will not be charged for rezoning those "
-			+ "tiles. If you zone commercial over an undeveloped area that is already residential, industrial or a "
-			+ "different density commercial, it will be rezoned and you will be charged. You cannot rezone an area "
-			+ "that is already developed.",
-		"Cost: Light Commercial $5 per tile, Dense Commercial $10 per tile.",
+	"Commercial Zoning": [
+		"Commercial areas provide services to your local population.  This includes grocery stores, motels, "
+			+ "entertainment, maintenance and more.  High density zoning includes banking, real estate, and "
+			+ "financial services.",
 	],
-	"Industrial Zones": [
-		"The Industrial Zone tool lets you, as mayor, designate areas of your city as places where people "
-			+ "build factories. Clicking and holding on Industrial Zones opens a submenu that lets you choose "
-			+ "whether the zones will be low density (light) or high density (dense). When this tool is active, the "
-			+ "cursor will appear as a little factory.",
-		"To zone an area as industrial, click and hold on the terrain, then drag the mouse, creating a "
-			+ "rectangle, then release the mouse button. If you zone industrial over an area that includes some "
-			+ "tiles that are already the same density industrial, you will not be charged for rezoning those "
-			+ "tiles. If you zone industrial over an undeveloped area that is already commercial, residential or a "
-			+ "different density industrial, it will be rezoned and you will be charged. You cannot rezone an area "
-			+ "that is already developed.",
-		"Cost: Light Industrial $5 per tile, Dense Industrial $10 per tile.",
+	"Industrial Zoning": [
+		"Industry is the backbone of your city.  Initially, new residents are moving in to work with your "
+			+ "industry.  Meanwhile, industry is growing to meet external demands.",
 	],
-	"Education": [
-		"Education is a multi-function tool that lets you provide your citizens with everything they need to "
-			+ "improve their minds. Click and hold on the Education button to open a submenu with the following "
-			+ "smart choices: school, college, library and museum. When this tool is active, the cursor will appear "
-			+ "as a mortarboard.",
-		"Cost: $250 per school, $1,000 per college, $500 per library, $500 per museum.",
+	"Education Zones": [
+		"These special zones increase the \"EQ\" or education quotient of your residents over time. The EQ of "
+			+ "your city will influence many factors including crime, productivity, and which industries prosper. "
+			+ "Each type of zone affects different age groups and has a maintenance cost associated with it.",
+		"School - This represents primary and secondary education (from kindergarden to 12th grade). This "
+			+ "will increase the EQ of the 5- to 20-year olds in your city. Of all education zones, these should be "
+			+ "the most numerous in your city.",
+		"College - This represents higher education- universities, junior colleges and vocational schools. "
+			+ "This zone increases the EQ of the 15- to 25-year-olds primarily, and the older residents as well, "
+			+ "though to a lesser degree.",
+		"Library - This increases the EQ for all ages but to a lesser degree than the schools and colleges.",
+		"Museum - Like the library this zone increases the EQ for all ages. But the effect is more and so is "
+			+ "the cost.",
 	],
-	"City Services": [
-		"City Services is a multi-function tool that lets you provide your city with those necessities of "
-			+ "life that we all wish weren't necessary. Click and hold on the City Services button to open a "
-			+ "submenu with the following unpleasant choices: police, fire station, hospital and prison. When this "
-			+ "tool is active, the cursor will appear as a badge.",
-		"Cost: $500 per police station, $500 per fire station, $500 per hospital, $1000 per prison.",
+	"Health and Safety Zones": [
+		"These zones include essential city services to protect your residents.",
+		"Police - Police stations help manage the crime in your city.",
+		"Fire Station - Fire stations attempt to prevent and extinguish any fires in your city. They also "
+			+ "help during any sort of emergency.",
+		"Hospital - This will have an beneficial effect on the health of your citizens.",
+		"Prison - This will improve police performance if there is a lot of crime in your city.",
 	],
-	"Recreation": [
-		"Recreation is a multi-function tool that lets you provide your citizens with places to have a little "
-			+ "rest, relaxation and plain old fun. Click and hold on the Recreation button to open a submenu with "
-			+ "the following exciting choices: park, zoo, stadium, marina. When this tool is active, the cursor "
-			+ "will appear as a bunch of balloons!",
-		"Cost: $5 per small park, $25 per large park, $500 per zoo, $1,000 per stadium, $500 per marina.",
+	"Recreation Zones": [
+		"These special zones have a positive effect on residential growth and generally make your city a "
+			+ "nicer place to live.",
+		"Parks - Small and big parks both have a positive effect on local land values.",
+		"Zoo - Zoos improve your city's desirability for residents, and improves its tourist value.",
+		"Stadium - Your citizens are more enthusiastic and loyal if they have a local team to rally behind.",
+		"Marina - These can only be placed down by the water.",
 	],
-	"Signs": [
-		"The Sign tool lets you label streets, buildings and points of interest in your city. When this tool "
-			+ "is active, the cursor will appear as a little sign. To make a sign, activate the Sign tool and click "
-			+ "on the place where you want it to appear. When the dialog box opens, type in the words you want the "
-			+ "sign to say, then click DONE.",
-		"There is no cost for placing signs.",
-		"The display of your signs can be turned on and off with the Display Signs button.",
+	"Place Sign": [
+		"This tool is used to place signs (labels) in your city. To use it just click on the city location "
+			+ "where you want it placed and then enter the text for it. These can be used to name streets, "
+			+ "subdivisions, lakes, etc. Or you may use this for jotting down notes to yourself about future plans "
+			+ "for each area. \nThese signs can be toggled on and off with the layer control button near the bottom "
+			+ "of the City toolbar. To erase a sign, click on the base with the sign tool to open the record, then "
+			+ "hit the delete key.",
 	],
-	"Query": [
-		"Query is a tool for closely inspecting different parts of your city. When this tool is active, the "
-			+ "cursor appears as a magnifying glass. To get information, activate the tool, then click somewhere or "
-			+ "on something on the terrain. A dialog box will open, and display fascinating facts about the spot "
-			+ "where you clicked.",
-		"Once you have viewed the dialog box, you can usually just click anywhere to make it go away. "
-			+ "Sometimes the Query dialog box allows you to rename buildings (like stadiums). In these cases, you "
-			+ "will have to click on the DONE button to close the box. Click on RENAME if you want to change the "
-			+ "name of the queried building. There is no cost to use the Query tool.",
-		"There is a keyboard shortcut for the Query tool--just hold down the {query} key and click anywhere "
-			+ "in the terrain.",
+	"Query Tool": [
+		"This tool will give you detailed information on anything in your city.  Most areas only tell you "
+			+ "about land value, local traffic, power and water supply.  Special buildings such as fire "
+			+ "departments, zoos, museums, et al., will have a specific micro-simulation you can examine.",
 	],
-	"Center": [
-		"The Center tool lets you pick a place in your city to be centered in the City window. Just activate "
-			+ "the tool and click anywhere in the city. When Center is active, the cursor will appear as a target "
-			+ "sight. There is no cost for centering.",
-		"There is a keyboard shortcut for activating the center tool--hold down the {center} key.",
-	],
-	"Rotate Counter-Clockwise": [
-		"Click on this button to rotate the entire city limits 90 degrees counter-clockwise. There is no cost "
-			+ "for rotating.",
-	],
-	"Rotate Clockwise": [
-		"Click on this button to rotate the entire city limits 90 degrees clockwise. There is no cost for "
-			+ "rotating.",
-	],
-	"Zoom In": [
-		"Click here to zoom in for an enlarged, closer view in the City window. If you are currently zoomed "
-			+ "all the way in, this button will be ghosted and unavailable. There is no cost for zooming.",
+	"Center Display": [
+		"This is the centering tool. It is used to scroll around your city. When you click in the window the "
+			+ "scene will re-center on the place you clicked. If you click near the center of the window and hold "
+			+ "the mouse button down, you can then smoothly scroll around by moving the mouse to adjust direction "
+			+ "and speed.",
 	],
 	"Zoom Out": [
-		"Click here to zoom out for a smaller, farther-out view in the City window. If you are currently "
-			+ "zoomed all the way out, this button will be ghosted and unavailable. There is no cost for zooming.",
+		"There are three scales your city can be viewed at.  This button allows you to increase the scale of "
+			+ "your display.  The tiles grow smaller and the area displayed grows.",
 	],
-	"Show Buildings": [
-		"Click here to toggle on and off the display of all buildings in the City window. The buildings won't "
-			+ "really go away, they'll just be invisible until you turn them back on.",
+	"Zoom In": [
+		"There are three scales your city can be viewed at.  This button allows you to decrease the scale of "
+			+ "your display.  The tiles grow larger and the area displayed shrinks.",
 	],
-	"Show Signs": [
-		"Click here to toggle on and off the display of all signs in the City window. The signs will be "
-			+ "invisible until you turn them back on.",
+	"Zone Demand": [
+		"These colored bars show you the current demand for each type of zone in your city. If the bar is up "
+			+ "in the \"+\" area then your city needs more of that type of zone. The letters represent \"R\"esidential, "
+			+ "\"C\"ommercial and \"I\"ndustrial.",
 	],
-	"Show Infrastructure": [
-		"Click here to toggle on and off the display of all miscellaneous city infrastructure items in the "
-			+ "City window (roads, rails, subway lines, power lines, water pumps and subway stations).",
+	"Rotate Counter-Clockwise": [
+		"Each time you click this button the scene in the window will rotate 90 degrees counter-clockwise.",
 	],
-	"Show Underground": [
-		"Click here to toggle between the surface and the underground displays.",
+	"Rotate Clockwise": [
+		"Each time you click this button the scene in the window will rotate 90 degrees clockwise.",
 	],
-	"Demand Indicator": [
-		"The Demand Indicator gives you a constant readout of what types of zones the Sims in your city need. "
-			+ "Depending on the size of your city, the indicator can take up to a few minutes to respond to your "
-			+ "changes, so be patient.",
+	"Building Layer": [
+		"This button will flatten your buildings, allowing you to examine your roads, wires and other "
+			+ "infrastructure.  You will recognize the building types by their color:  green - residential, blue - "
+			+ "commercial, yellow - industrial, orange - city structures, grey - port structures. In under-view, "
+			+ "the zone colors will be shown as outlines instead of colored-in squares.",
 	],
-	"Make": [
-		"Click here to generate a new landscape based on the Coast button, the River button and the three "
-			+ "sliders.",
+	"Sign Layer": [
+		"This will hide your city's names and labels.  See the 'PLACE SIGN' tool above.",
+	],
+	"Road/Tree Layer": [
+		"This will turn off the display of your roads, rail, wires, trees and other non-building structures.",
+	],
+	"Under-View Layer": [
+		"This will transform your city display to a stick-figure outline of the terrain. Pipes and subways "
+			+ "will become more visible, while all surface items will be hidden. The other layer buttons are still "
+			+ "available and allow you to further customize the view.",
+	],
+	"Status Window": [
+		"The Status Window shows the currently selected tool and its cost.  It also has an iconic display for "
+			+ "the weather.  The second line of the window shows messages, warnings, and recommendations.\nIn the "
+			+ "Emergency Mode, the weather icon changes into a big red arrow.  By clicking here, you can cycle "
+			+ "through the disasters afflicting your city.",
+	],
+	"Make New Map": [
+		"This button will generate a new map. The new map will be based on the settings of the two buttons "
+			+ "and three sliders above.",
 	],
 	"Raise Terrain": [
-		"Click on the Raise Terrain button, then click or click and drag on the terrain to raise the land. "
-			+ "Clicking on water will eventually raise the waterbed above sea level and turn it into dry land. When "
-			+ "Raise Terrain is active, the cursor will appear as three upward-pointing arrows.",
+		"This tool will raise the altitude when you click on the terrain, thereby creating hills.",
 	],
 	"Lower Terrain": [
-		"Click on the Lower Terrain button, then click or click and drag on the terrain to lower the land. "
-			+ "Clicking on dry land will eventually lower it below sea level and turn it into a lake or stream. "
-			+ "When Lower Terrain is active, the cursor will appear as three downward-pointing arrows.",
+		"This tool will lower the altitude when you click on the terrain, thereby creating valleys.",
 	],
 	"Stretch Terrain": [
-		"The Stretch Terrain button lets you grab the land and stretch it up or down. Just click and hold on "
-			+ "the terrain, then drag it either up or down. When Stretch Terrain is active, the cursor will appear "
-			+ "as an up-and-down-pointing arrow.",
+		"This tool will allow you to stretch the terrain up or down. Click on the tile you wish to change and "
+			+ "slowly move the mouse up or down while holding the button.",
 	],
 	"Level Terrain": [
-		"The Level Terrain button lets you pick an altitude and quickly bring the land around it either up or "
-			+ "down to match your chosen level. Just click and hold at the altitude you want, then drag the cursor "
-			+ "around the area you want leveled. When Level Terrain is active, the cursor will appear as a flat, "
-			+ "four-way arrow.",
+		"This tool will level terrain and remove trees. Click on the tile level you wish to extend and move "
+			+ "the mouse in the direction you want while holding down the mouse button.",
 	],
 	"Raise Sea Level": [
-		"Click here to raise the sea level in the terrain by one tile.",
+		"Each time you press this button the sea level across the entire map will be raised one level.",
 	],
 	"Lower Sea Level": [
-		"Click here to lower the sea level in the terrain by one tile.",
+		"Each time you press this button the sea level across the entire map will be lowered one level.",
 	],
 	"Place Water": [
-		"The Place Water tool lets you create lakes and streams by clicking where you want your water to "
-			+ "appear. When this tool is active, the cursor appears as a water droplet.",
+		"This tool places tiles of water, thereby allowing you to create larger bodies of water like lakes and "
+			+ "streams.",
 	],
 	"Place Stream": [
-		"The Place Stream tool lets you send streams flowing down slopes into the valleys below. Click where "
-			+ "you want the stream to begin. When this tool is active, the cursor appears as a tiny babbling brook.",
+		"This tool creates streams. Click where you want the stream to start and it will flow downhill from "
+			+ "that point.",
 	],
 	"Place Tree": [
-		"The Place Tree tool lets you add trees to the landscape. When active, the cursor will appear as a "
-			+ "tree. Each click will place either one or two trees. You can click repeatedly on a single tile to "
-			+ "create dense thickets, and click and drag across many tiles to create forests.",
+		"This tool adds trees to the terrain. Holding down the SHIFT key while using this tool will remove "
+			+ "trees.",
 	],
 	"Place Forest": [
-		"The Place Forest tool works like Place Tree, except it places trees on a number of tiles with each "
-			+ "click. When active, the cursor will appear as a tiny little forest.",
+		"This tool will add a forested area to the terrain. Holding down the SHIFT key while using this tool "
+			+ "will remove trees.",
 	],
 	"Done": [
-		"Click here when you are done editing the terrain and are ready to switch over to city-building mode.",
-	],
-	"Status Bar": [
-		"The status bar is at the bottom of the City window. From left to right, it shows these items:",
-		"The active tool. Point at the tool name to read more about the tool.",
-		"The weather in your city.",
-		"The Demand Indicator. It shows the demand for residential, commercial and industrial zones.",
-		"The newest city reports. During a disaster, click the button next to the reports to see the "
-			+ "disaster.",
-		"The simulation speed.",
-		"The compass. It shows the direction of north.",
-		"The zoom level of the City window.",
-		"Hold down the {help} key and click a part of the status bar or a toolbar button to get help about "
-			+ "it.",
+		"When you are finished editing the terrain this button will bring you into the game. Make sure you "
+			+ "are finished because you cannot return to the map-editing mode once the game has started.",
 	],
 }
 
@@ -405,34 +261,6 @@ static func tool_topic(group: int, subtool: int, landscape_editor: bool) -> Stri
 	return group_topic(group)
 
 
-# The text of a topic, with the bound keys named, or "" for an unknown topic.
-static func text(topic: String, bindings: ControlBindings) -> String:
-	var paragraphs := PackedStringArray()
-
-	for paragraph: String in TOPICS.get(topic, []):
-		var named := _name_keys(paragraph, bindings)
-
-		if not named.is_empty():
-			paragraphs.append(named)
-
-	return "\n\n".join(paragraphs)
-
-
-# "" when the paragraph names a key that has no binding
-static func _name_keys(paragraph: String, bindings: ControlBindings) -> String:
-	var result := paragraph
-
-	for key_name: String in KEY_ACTIONS:
-		var placeholder := "{%s}" % key_name
-
-		if not result.contains(placeholder):
-			continue
-
-		var binding := bindings.first_key(KEY_ACTIONS[key_name]) if bindings != null else null
-
-		if binding == null:
-			return ""
-
-		result = result.replace(placeholder, binding.full_text())
-
-	return result
+# the text of a topic, or "" for an unknown topic
+static func text(topic: String) -> String:
+	return "\n\n".join(PackedStringArray(TOPICS.get(topic, [])))

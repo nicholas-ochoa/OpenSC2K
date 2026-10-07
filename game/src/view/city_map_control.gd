@@ -118,7 +118,6 @@ var stretch_terrain := false
 var stretch_height_delta := 0
 var network_preview_active := false
 var highway_preview := false
-var query_footprint_preview := false
 var scurk_stamp_visuals: Array[CityDynamicVisual] = []
 var trip_reach: TripReachOverlay
 var _legend: CityMapLegend

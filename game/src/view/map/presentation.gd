@@ -63,7 +63,7 @@ func _draw_overlay() -> void:
 	var canvas := map.layers.overlay_layer
 	var scale := map.camera._view_scale()
 	var offset := map.camera._draw_offset(scale)
-	var valid := (not map.placement_validator.is_valid()
+	var valid := (map.selection.query_preview_active() or not map.placement_validator.is_valid()
 		or bool(map.placement_validator.call(map.selection_end if map.selection_end.x >= 0 else map.hover_tile)))
 
 	map.selection._draw_selection_preview(canvas, scale, offset, valid)

@@ -207,7 +207,7 @@ func show_status(message: String) -> void:
 
 # the help of a toolbar button or the status bar, as a Shift-click shows it
 func show_button_help(topic: String) -> void:
-	var text := ButtonHelp.text(topic, app.preferences.control_bindings)
+	var text := ButtonHelp.text(topic)
 
 	if text.is_empty():
 		return
