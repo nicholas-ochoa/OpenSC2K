@@ -78,7 +78,9 @@ static func sync_sound_loop(audio: CityAudioController) -> void:
 		audio.sound_loop_player.stop()
 		audio.sound_loop_player.queue_free()
 
-	audio.sound_loop_player = _start_loop_player(audio, sound_id) if sound_id >= 0 else null
+	audio.sound_loop_player = (
+		_start_loop_player(audio, sound_id, audio.wave_sound_gate.loop_plays) if sound_id >= 0 else null
+	)
 	audio.sound_loop_id = sound_id
 
 
@@ -91,8 +93,10 @@ static func start_tool_loop_sound(audio: CityAudioController, sound_id: int, sou
 	audio.tool_loop_player = _start_loop_player(audio, sound_id)
 
 
-# a player that repeats the sound without a gap, or null without the sound
-static func _start_loop_player(audio: CityAudioController, sound_id: int) -> AudioStreamPlayer:
+# a player that repeats the sound without a gap, or null without the sound.
+# a counted loop plays `plays` copies of the sound and stops; the gate counts
+# base ticks, which last longer than each play
+static func _start_loop_player(audio: CityAudioController, sound_id: int, plays := 0) -> AudioStreamPlayer:
 	var cached_stream := audio.wave_stream_cache.get(sound_id) as AudioStreamWAV
 
 	if cached_stream == null:
@@ -103,9 +107,19 @@ static func _start_loop_player(audio: CityAudioController, sound_id: int) -> Aud
 	if stream == null:
 		return null
 
-	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	stream.loop_begin = 0
-	stream.loop_end = maxi(1, roundi(stream.get_length() * stream.mix_rate))
+	if plays > 0:
+		var copies := PackedByteArray()
+
+		for play in plays:
+			copies.append_array(cached_stream.data)
+
+		stream.data = copies
+		stream.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	else:
+		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		stream.loop_begin = 0
+		stream.loop_end = maxi(1, roundi(stream.get_length() * stream.mix_rate))
+
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
 	player.volume_linear = audio.effects_volume

@@ -58,8 +58,8 @@ sound:
   siren (520) for five plays.
 - Each scan that finds fire asks for the fire sound (507) as a loop with no
   end (`0x0045f760`). A request for the sound that loops changes nothing,
-  so the fire plays without a break. A loop request during the five siren
-  plays waits, and the fire starts when the siren ends.
+  so the fire plays without a break. A loop request during the siren plays
+  waits, and the fire starts when the siren ends.
 - After its five plays, the siren continues until another loop replaces it
   or the disaster ends: `0x0047fda0` clears the count but does not stop the
   sound.
@@ -69,6 +69,10 @@ The port sends these requests as sound events with `loop_plays` and a stop
 request. One player repeats the loop. Other sounds play over it; in the
 original, they interrupt the loop, and the loop then starts again. Closing
 the city or opening the main menu also stops the loop.
+
+The port plays the siren three times and then stops it (`SIREN_PLAYS`).
+The player holds exactly three copies of the sound, because the play count
+uses base ticks of 200 ms and each tick count is longer than the sound.
 
 ## Pace
 

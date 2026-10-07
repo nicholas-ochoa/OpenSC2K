@@ -47,8 +47,10 @@ pub const SOUND_MICROWAVE: i64 = 514;
 pub const SOUND_EARTHQUAKE: i64 = 504;
 pub const SOUND_VOLCANO: i64 = 507;
 pub const SOUND_HURRICANE: i64 = 502;
-/// SIMCITY.EXE 0x0045cf10 loops the siren for five plays when a disaster starts.
-pub const SIREN_PLAYS: i64 = 5;
+/// The siren plays when a disaster starts. SIMCITY.EXE 0x0045cf10 asks for
+/// five plays, and the siren then continues (see `sc2k_audio::sound_loop`).
+/// Presentation preference: the port plays it three times.
+pub const SIREN_PLAYS: i64 = 3;
 const VOLCANO_BUDGET: i64 = 25000;
 const FIRE_SPIRAL: [Vec2i; 4] = [Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1), Vec2i::new(-1, 0)];
 const EIGHT_DIRECTIONS: [Vec2i; 8] = [

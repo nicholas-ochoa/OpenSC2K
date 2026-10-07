@@ -47,6 +47,12 @@ impl NativeWaveSoundGate {
         self.gate.sound_loop.sound_id.unwrap_or(-1)
     }
 
+    /// The plays of a counted loop, or 0 for a loop until `stop_loop`.
+    #[func]
+    fn loop_plays(&self) -> i64 {
+        self.gate.sound_loop.plays
+    }
+
     #[func]
     fn advance(&mut self, delta_msec: f64) {
         self.gate.advance(delta_msec);

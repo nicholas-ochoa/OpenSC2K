@@ -32,6 +32,10 @@ var suppressed_count: int:
 var loop_sound_id: int:
 	get:
 		return _native.loop_sound_id()
+# the plays of a counted loop, or 0 for a loop until `stop_loop`
+var loop_plays: int:
+	get:
+		return _native.loop_plays()
 var city_sounds: CitySounds:
 	get:
 		return _native.city_sounds() as CitySounds

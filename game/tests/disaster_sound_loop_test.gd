@@ -1,5 +1,5 @@
 extends SceneTree
-## The siren loops for five plays, the fire loop follows it, and the end of the
+## The siren plays three times, the fire loop follows it, and the end of the
 ## disaster stops the loop.
 
 const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
@@ -15,18 +15,27 @@ func _run() -> void:
 	audio.setup(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), 0.0, 0.5)
 	var siren := SoundEvent.looped(DisasterStartConstants.SOUND_SIREN, DisasterStartConstants.SIREN_PLAYS)
 	var fire := SoundEvent.looped(DisasterMapConstants.SOUND_FIRE, SoundEvent.LOOP_UNTIL_STOPPED)
+	var siren_msec := WaveSounds.duration_ticks(DisasterStartConstants.SOUND_SIREN) * DisasterStartConstants.SIREN_PLAYS * 200.0
 	_play(audio, siren)
 	var siren_player := audio.sound_loop_player
-	assert(audio.sound_loop_id == DisasterStartConstants.SOUND_SIREN and siren_player != null)
-	assert((siren_player.stream as AudioStreamWAV).loop_mode == AudioStreamWAV.LOOP_FORWARD, "The siren does not loop")
+	var siren_stream := siren_player.stream as AudioStreamWAV
+	var one_play := audio.wave_stream_cache[DisasterStartConstants.SOUND_SIREN] as AudioStreamWAV
+	assert(audio.sound_loop_id == DisasterStartConstants.SOUND_SIREN)
+	assert(siren_stream.loop_mode == AudioStreamWAV.LOOP_DISABLED
+		and siren_stream.data.size() == one_play.data.size() * DisasterStartConstants.SIREN_PLAYS,
+		"The siren stream does not hold exactly three plays")
+	audio.advance(siren_msec)
+	assert(audio.sound_loop_id == -1 and audio.sound_loop_player == null, "The siren did not stop after its plays")
 
+	_play(audio, siren)
+	siren_player = audio.sound_loop_player
 	_play(audio, fire)
-	var siren_msec := WaveSounds.duration_ticks(DisasterStartConstants.SOUND_SIREN) * DisasterStartConstants.SIREN_PLAYS * 200.0
 	audio.advance(siren_msec - 200.0)
-	assert(audio.sound_loop_player == siren_player, "The fire loop did not wait for the five siren plays")
+	assert(audio.sound_loop_player == siren_player, "The fire loop did not wait for the siren plays")
 	audio.advance(200.0)
 	var fire_player := audio.sound_loop_player
 	assert(audio.sound_loop_id == DisasterMapConstants.SOUND_FIRE and fire_player != null and fire_player != siren_player)
+	assert((fire_player.stream as AudioStreamWAV).loop_mode == AudioStreamWAV.LOOP_FORWARD, "The fire does not loop")
 
 	_play(audio, fire)
 	audio.advance(60000.0)
@@ -42,7 +51,7 @@ func _run() -> void:
 	audio.free()
 	# the audio server releases stopped playbacks after a short time
 	await create_timer(0.2).timeout
-	print("PASS: siren plays, fire loop, volume and stop")
+	print("PASS: three siren plays, fire loop, volume and stop")
 	quit()
 
 

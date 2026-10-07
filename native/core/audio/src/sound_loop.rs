@@ -1,6 +1,10 @@
 //! The disaster sound loop of SIMCITY.EXE 0x00480480 and 0x0047fda0. One
 //! loop plays at a time, beside the other wave sounds. The simulation starts
 //! the siren and fire loops, and stops the loop when the disaster ends.
+//!
+//! A counted loop stops after its plays. In SIMCITY.EXE, 0x0047fda0 clears
+//! the count but does not stop the looping sound, so the siren continues
+//! until another loop or the end of the disaster.
 
 use crate::wave_gate::duration_ticks;
 
@@ -10,7 +14,9 @@ const SOUND_SIREN: i64 = 520;
 #[derive(Clone, Debug, Default)]
 pub struct SoundLoop {
     pub sound_id: Option<i64>,
-    /// The base ticks left of a counted loop. 0 loops until a stop request.
+    /// The plays of a counted loop, or 0 for a loop until a stop request.
+    pub plays: i64,
+    /// The base ticks left of a counted loop.
     remaining_ticks: i64,
     /// The loop that starts after the siren (0x004ea854).
     queued: Option<i64>,
@@ -34,12 +40,12 @@ impl SoundLoop {
         }
 
         self.sound_id = Some(sound_id);
-        self.remaining_ticks = if plays > 0 { duration * plays } else { 0 };
+        self.plays = plays.max(0);
+        self.remaining_ticks = duration * self.plays;
     }
 
-    /// One base tick. When the counted plays end, a queued loop starts.
-    /// Otherwise the sound continues until a stop request: 0x0047fda0 clears
-    /// the count but does not stop the looping sound.
+    /// One base tick. When the counted plays end, a queued loop starts, or
+    /// the loop stops.
     pub fn tick(&mut self) {
         if self.remaining_ticks <= 0 {
             return;
@@ -47,10 +53,16 @@ impl SoundLoop {
 
         self.remaining_ticks -= 1;
 
-        if self.remaining_ticks == 0
-            && let Some(next) = self.queued.take()
-        {
-            self.sound_id = Some(next);
+        if self.remaining_ticks > 0 {
+            return;
+        }
+
+        match self.queued.take() {
+            Some(next) => {
+                self.sound_id = Some(next);
+                self.plays = 0;
+            }
+            None => self.stop(),
         }
     }
 
@@ -75,13 +87,21 @@ mod tests {
     #[test]
     fn the_fire_loop_waits_for_the_siren_plays() {
         let mut sound_loop = SoundLoop::default();
-        sound_loop.request(SOUND_SIREN, 5);
+        sound_loop.request(SOUND_SIREN, 3);
         sound_loop.request(SOUND_FIRE, -1);
-        assert_eq!(sound_loop.sound_id, Some(SOUND_SIREN), "the fire waits for the siren");
-        ticks(&mut sound_loop, duration_ticks(SOUND_SIREN) * 5 - 1);
-        assert_eq!(sound_loop.sound_id, Some(SOUND_SIREN), "the siren plays five times");
+        assert_eq!(
+            (sound_loop.sound_id, sound_loop.plays),
+            (Some(SOUND_SIREN), 3),
+            "the fire waits for the siren"
+        );
+        ticks(&mut sound_loop, duration_ticks(SOUND_SIREN) * 3 - 1);
+        assert_eq!(sound_loop.sound_id, Some(SOUND_SIREN), "the siren plays three times");
         sound_loop.tick();
-        assert_eq!(sound_loop.sound_id, Some(SOUND_FIRE), "the fire loop follows the siren");
+        assert_eq!(
+            (sound_loop.sound_id, sound_loop.plays),
+            (Some(SOUND_FIRE), 0),
+            "the fire loop follows the siren"
+        );
         ticks(&mut sound_loop, 1000);
         assert_eq!(sound_loop.sound_id, Some(SOUND_FIRE), "the fire loops until a stop request");
         sound_loop.stop();
@@ -89,17 +109,13 @@ mod tests {
     }
 
     #[test]
-    fn the_siren_continues_until_another_loop_or_a_stop() {
+    fn the_siren_stops_after_its_plays() {
         let mut sound_loop = SoundLoop::default();
-        sound_loop.request(SOUND_SIREN, 5);
-        ticks(&mut sound_loop, duration_ticks(SOUND_SIREN) * 5 + 100);
-        assert_eq!(sound_loop.sound_id, Some(SOUND_SIREN), "the siren loops after its counted plays");
+        sound_loop.request(SOUND_SIREN, 3);
+        ticks(&mut sound_loop, duration_ticks(SOUND_SIREN) * 3);
+        assert_eq!(sound_loop.sound_id, None, "the siren stops after three plays");
         sound_loop.request(SOUND_FLOOD, -1);
-        assert_eq!(
-            sound_loop.sound_id,
-            Some(SOUND_FLOOD),
-            "after its plays, another loop replaces the siren"
-        );
+        assert_eq!(sound_loop.sound_id, Some(SOUND_FLOOD), "a later loop starts at once");
         sound_loop.request(0, -1);
         assert_eq!(sound_loop.sound_id, Some(SOUND_FLOOD), "an unknown sound does not loop");
     }
