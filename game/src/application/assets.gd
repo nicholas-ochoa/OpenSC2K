@@ -318,7 +318,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.main_menu.city_background.replace_graphics(app.asset_state.palette, app.asset_state.large_sprites)
 
 	if app.main_menu.visible:
-		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
+		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites, app.preferences.visual_enhancements)
 
 	app.map_render.refresh_map(false)
 
@@ -352,7 +352,7 @@ func apply_data_pack(pack: DataPack) -> void:
 	app.main_overlays.about_dialog.set_assets(app.asset_state.asset_source.assets)
 
 	if app.main_menu.visible and app.asset_state.assets_ready:
-		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
+		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites, app.preferences.visual_enhancements)
 
 
 # imported packs that need a new import because they are missing or out of date

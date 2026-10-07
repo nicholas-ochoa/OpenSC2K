@@ -56,3 +56,14 @@ An explicit custom folder replaces it. The catalog checks decoded source-index
 hashes before applying a mask, so other artwork cannot receive misplaced lights.
 Original sprites and palettes are not included. The PNG masks are imported as
 textures and the catalog is included in every export preset.
+
+### Main menu
+
+The scrolling menu city uses the same visual options and rendering components as
+the player view: day/night, authored lights and glow, seasonal colors, weather,
+clouds, water and decorative traffic. Applying options or reloading custom assets
+updates the menu too. Cloud bodies keep the normal zoom-dependent visibility.
+The existing private menu simulation and camera sequence are unchanged. Its
+render context has no active player document, save path, input or audio controller;
+all menu effect layers are released when gameplay starts.
+

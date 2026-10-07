@@ -50,6 +50,8 @@ func _load_custom_lut(path: String) -> void:
 
 
 func reload_luts() -> void:
+	if app.main_menu != null:
+		app.main_menu.city_background.reload_visual_assets()
 	profiles.reload(app.preferences.visual_enhancements.lut_folder)
 	_load_custom_lut(app.preferences.visual_enhancements.lut_path)
 	process(0.0)
@@ -92,6 +94,8 @@ func _configure_water(options: Dictionary, refresh := true) -> void:
 
 
 func reload_brightmaps(refresh := true) -> void:
+	if refresh and app.main_menu != null:
+		app.main_menu.city_background.reload_visual_assets()
 	for pair in [[app.asset_state.large_sprites, "large"], [app.asset_state.small_medium_sprites, "small-medium"]]:
 		var archive: Sc2SpriteArchive = pair[0]
 		if archive != null:

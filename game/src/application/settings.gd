@@ -84,6 +84,8 @@ func apply_settings() -> void:
 	var saved_before := _saved_settings_text()
 	preferences.visual_enhancements = values.visual_enhancements
 	app.visual_environment.configure()
+	if app.main_menu != null:
+		app.main_menu.city_background.set_visual_options(preferences.visual_enhancements)
 	var media_packs_changed := (not _same_pack(values.sound_pack_folder, preferences.sound_pack_folder)
 			or not _same_pack(values.music_pack_folder, preferences.music_pack_folder))
 
@@ -250,6 +252,8 @@ func load_app_settings() -> void:
 	preferences.toolbar_sounds = bool(values.toolbar_sounds)
 	preferences.visual_enhancements = values.visual_enhancements
 	app.visual_environment.configure()
+	if app.main_menu != null:
+		app.main_menu.city_background.set_visual_options(preferences.visual_enhancements)
 	preferences.city_sounds = values.city_sounds
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)

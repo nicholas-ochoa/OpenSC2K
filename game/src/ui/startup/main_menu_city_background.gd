@@ -16,32 +16,20 @@ var refresh_elapsed := 0.0
 var render_thread: Thread
 var demo_palette: Sc2Palette
 var demo_sprites: Sc2SpriteArchive
-var static_layer: Sprite2D
 var cycle_texture: ImageTexture
 var static_image: Image
-var occlusion_commands: Array[CityStaticCommand] = []
-var occlusion_grid: NativeRectIndex
-var sprite_cache := {}
-var dynamic_visuals: Array[CityDynamicVisual] = []
 var animation_elapsed := 0.0
 var animation_revision := 0
 var city_name_label: Label
 var _discard_render := false
+var presentation: MainMenuPresentation
+var visual_options := VisualEnhancementOptions.normalize({})
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	static_layer = Sprite2D.new()
-	static_layer.centered = false
-	static_layer.show_behind_parent = true
-	var shader_material := ShaderMaterial.new()
-	shader_material.shader = CityMapControl.PALETTE_CYCLE_SHADER
-	shader_material.set_shader_parameter("palette_lookup_all", true)
-	shader_material.set_shader_parameter("palette_cycle_enabled", true)
-	static_layer.material = shader_material
-	add_child(static_layer)
 	city_name_label = Label.new()
 	city_name_label.name = "HighlightedCityName"
 	city_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -69,9 +57,8 @@ func _process(delta: float) -> void:
 		if result.ok and not _discard_render:
 			static_image = result.image
 			demo_texture = ImageTexture.create_from_image(static_image)
-			static_layer.texture = demo_texture
-			occlusion_commands.assign(result.occlusion_commands)
-			occlusion_grid = Renderer.build_occlusion_grid(occlusion_commands, 1)
+			if presentation != null:
+				presentation.publish(static_image, demo_texture, result.city, result.occlusion_commands)
 			_refresh_animation()
 
 		_discard_render = false
@@ -91,6 +78,9 @@ func _process(delta: float) -> void:
 	if controller.engine.pending_disaster_type != 0 or controller.engine.active_disaster_type != 0:
 		Cleanup.end_disaster(demo_city, demo_city.document, controller.engine)
 
+	if presentation != null and presentation.needs_render:
+		refresh_elapsed = 10.0
+		presentation.needs_render = false
 	if refresh_elapsed >= 10.0 and render_thread == null:
 		refresh_elapsed = 0.0
 		_start_render()
@@ -100,8 +90,8 @@ func _process(delta: float) -> void:
 		_refresh_animation()
 
 	var camera := _camera()
-	static_layer.position = camera.offset
-	static_layer.scale = Vector2.ONE * float(camera.scale)
+	if presentation != null:
+		presentation.advance(delta, camera.offset, camera.scale)
 	queue_redraw()
 
 
@@ -109,25 +99,20 @@ func _draw() -> void:
 	if demo_texture == null or demo_city == null:
 		return
 
-	var camera := _camera()
-
-	for visual in dynamic_visuals:
-		draw_texture_rect(
-			visual.texture,
-			Rect2(camera.offset + visual.position * float(camera.scale), visual.texture.get_size() * float(camera.scale)),
-			false,
-		)
-
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.14))
 
 
 func _exit_tree() -> void:
+	if presentation != null:
+		presentation.close()
+		presentation = null
 	if render_thread != null:
 		render_thread.wait_to_finish()
 		render_thread = null
 
 
-func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
+func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive, options: Dictionary = {}) -> void:
+	set_visual_options(options)
 	if demo_city != null:
 		if static_image == null and render_thread == null:
 			_start_render()
@@ -176,6 +161,7 @@ func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteAr
 	Cleanup.end_disaster(demo_city, demo_city.document, engine)
 	controller = GameSpeedController.new(engine)
 	controller.set_speed(GameSpeedController.Speed.TURTLE)
+	presentation = MainMenuPresentation.new(self, demo_city, controller, palette, sprites, visual_options)
 
 	# _process starts the render after it drains a worker from the released city
 	if render_thread == null:
@@ -199,7 +185,7 @@ static func _collect_cities(folder: String, paths: PackedStringArray) -> void:
 func _start_render() -> void:
 	var snapshot := CityState.from_document(demo_city.document.duplicate_document())
 	render_thread = Thread.new()
-	var error := render_thread.start(_render.bind(snapshot, demo_sprites), Thread.PRIORITY_LOW)
+	var error := render_thread.start(_render.bind(snapshot, MainMenuPresentation.copy_graphics(presentation.app.asset_state.large_sprites)), Thread.PRIORITY_LOW)
 
 	if error != OK:
 		render_thread = null
@@ -211,6 +197,7 @@ static func _render(snapshot: CityState, sprites: Sc2SpriteArchive) -> RenderRes
 	result.ok = rendered.ok
 	result.error = rendered.error
 	result.image = rendered.image
+	result.city = snapshot
 	result.occlusion_commands = Renderer.static_occlusion_commands(snapshot, sprites)
 
 	return result
@@ -242,11 +229,6 @@ func _refresh_animation() -> void:
 
 	animation_revision += 1
 	var ticks := int(elapsed * 5.0)
-	var colors := Sc2Palette.new()
-
-	for index in demo_palette.animation_index_map(ticks):
-		colors.colors.append(demo_palette.colors[index])
-
 	var cycle_image := demo_palette.animation_image(ticks)
 
 	if cycle_texture == null:
@@ -254,98 +236,28 @@ func _refresh_animation() -> void:
 	else:
 		cycle_texture.update(cycle_image)
 
-	static_layer.material.set_shader_parameter("animated_palette", cycle_texture)
-	dynamic_visuals.clear()
-
-	for command in Renderer.dynamic_draw_commands(demo_city, demo_sprites, Renderer.VIEW_LARGE, int(elapsed * 10.0)):
-		var sprite = demo_sprites.find_sprite(int(command.sprite_id))
-
-		if sprite == null:
-			continue
-
-		var rendered := sprite.create_image(colors)
-
-		if not rendered.ok:
-			continue
-
-		var image: Image = rendered.image
-
-		if command.flip:
-			image.flip_x()
-
-		var sprite_position := Vector2i(command.position)
-
-		if command.shadow:
-			image = NativeSpriteCompositor.palette_shadow(image, static_image, sprite_position, colors.to_rgba_bytes())
-
-		if command.static_occlusion:
-			image = _occlude(image, sprite_position, int(command.depth_order), int(command.floating_altitude))
-
-		dynamic_visuals.append(CityDynamicVisual.new(ImageTexture.create_from_image(image), Vector2(sprite_position)))
+	if presentation != null:
+		presentation.animate(cycle_texture)
 
 
-# ships and sailboats pass `floating_altitude`; see IsometricFloatingOcclusion
-func _occlude(image: Image, sprite_position: Vector2i, order: int, floating_altitude := -1) -> Image:
-	var bounds := Rect2i(sprite_position, image.get_size())
-	# later foreground silhouettes, combined in the sprite's frame
-	var occluder := Image.create(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8)
-	occluder.fill(Color.TRANSPARENT)
-	var floating := floating_altitude >= 0
-	var waterline := IsometricFloatingOcclusion.waterline(image) if floating else PackedInt32Array()
+func set_visual_options(options: Dictionary) -> void:
+	visual_options = VisualEnhancementOptions.normalize(options)
+	if presentation != null:
+		presentation.set_options(visual_options)
 
-	for index in Renderer.occlusion_candidate_indices(occlusion_grid, bounds):
-		var command := occlusion_commands[index]
 
-		if floating:
-			if IsometricFloatingOcclusion.is_water_surface(int(command.sprite_id)):
-				continue
-		elif int(command.depth_order) <= order:
-			continue
-
-		var origin := Vector2i(command.position)
-		var overlap := bounds.intersection(Rect2i(origin, command.size))
-
-		if overlap.get_area() == 0:
-			continue
-
-		var key := Vector2i(int(command.sprite_id), int(command.flip))
-
-		if not sprite_cache.has(key):
-			var sprite = demo_sprites.find_sprite(key.x)
-
-			if sprite == null:
-				continue
-
-			var rendered := sprite.create_image(demo_palette)
-
-			if not rendered.ok:
-				continue
-
-			var rendered_mask: Image = rendered.image
-
-			if command.flip:
-				rendered_mask.flip_x()
-
-			sprite_cache[key] = rendered_mask
-
-		var mask: Image = sprite_cache[key]
-
-		if floating:
-			var hidden := IsometricFloatingOcclusion.hidden_columns(waterline, Vector2(sprite_position), 1.0,
-				Renderer.view_configuration(Renderer.VIEW_LARGE), floating_altitude, demo_city.map_size,
-				IsometricFloatingOcclusion.depth_tile(int(command.depth_order), demo_city.map_size))
-			IsometricFloatingOcclusion.blend_hidden_columns(occluder, mask, Rect2i(overlap.position - origin, overlap.size),
-				overlap.position - sprite_position, hidden)
-		else:
-			occluder.blend_rect(mask, Rect2i(overlap.position - origin, overlap.size), overlap.position - sprite_position)
-
-	return NativeSpriteCompositor.occlude(image, occluder, null, Vector2i.ZERO, PackedInt32Array()).image
+func reload_visual_assets() -> void:
+	if presentation != null:
+		presentation.reload_visual_assets()
 
 
 # Release the private city, its simulation, and its render buffers while
 # playing. The next menu visit loads a new city. An in-flight render is drained
 # by _process; hiding the menu must not wait for a worker or upload its image.
 func release_city() -> void:
+	if presentation != null:
+		presentation.close()
+		presentation = null
 	_discard_render = render_thread != null
 	demo_city = null
 	controller = null
@@ -361,14 +273,8 @@ func release_city() -> void:
 
 func _clear_render_data() -> void:
 	demo_texture = null
-	static_layer.texture = null
 	static_image = null
 	cycle_texture = null
-	static_layer.material.set_shader_parameter("animated_palette", null)
-	occlusion_commands.clear()
-	occlusion_grid = null
-	sprite_cache.clear()
-	dynamic_visuals.clear()
 	RenderingServer.canvas_item_clear(get_canvas_item())
 	queue_redraw()
 
@@ -394,6 +300,9 @@ func replace_graphics(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
 
 	demo_palette = palette
 	demo_sprites = sprites
+	if presentation != null:
+		presentation.close()
+	presentation = MainMenuPresentation.new(self, demo_city, controller, palette, sprites, visual_options)
 	_start_render()
 
 
@@ -403,4 +312,5 @@ class CameraFrame extends RefCounted:
 
 
 class RenderResult extends AssetImageResult:
+	var city: CityState
 	var occlusion_commands: Array[CityStaticCommand] = []
