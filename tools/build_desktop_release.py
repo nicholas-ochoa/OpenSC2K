@@ -195,7 +195,10 @@ def check_signing(identity, notary, required):
     listing = subprocess.check_output(['security', 'find-identity', '-v', '-p', 'codesigning'], text=True)
     name = identity_name(identity, listing)
     if name is None:
-        raise ValueError(f'No valid code signing identity {identity} in the keychain search list')
+        names = re.findall(r'^\s*\d+\) [0-9A-F]{40} "(.+)"$', listing, re.M)
+        found = ''.join(f'\n  {name}' for name in names) or ' none'
+        raise ValueError(f'No valid code signing identity {identity} in the keychain search list. '
+                         f'The name must match exactly. Valid identities:{found}')
     if notary is not None and not name.startswith(DEVELOPER_ID):
         raise ValueError(f'Notarization needs a {DEVELOPER_ID} identity, not {name}')
 

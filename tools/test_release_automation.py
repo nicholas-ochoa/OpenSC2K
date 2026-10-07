@@ -313,7 +313,7 @@ class SigningTest(unittest.TestCase):
             packages.check_signing('Apple Development: A B (TEAM1)', None, False)
             with self.assertRaisesRegex(ValueError, 'needs a Developer ID Application identity'):
                 packages.check_signing('Apple Development: A B (TEAM1)', notary, False)
-            with self.assertRaisesRegex(ValueError, 'No valid code signing identity'):
+            with self.assertRaisesRegex(ValueError, 'No valid code signing identity.*\n  Apple Development: A B'):
                 packages.check_signing('Developer ID Application: C D (TEAM3)', None, False)
 
 
