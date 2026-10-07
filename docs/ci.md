@@ -108,9 +108,11 @@ The disk image is made with `diskutil image create from` on macOS 26 and later, 
 Without signing settings, the macOS app has an ad hoc signature. With them,
 `tools/build_desktop_release.py` signs each library and then the app with a Developer ID, the
 hardened runtime, and a secure timestamp. The app has no entitlements: Gatekeeper loads its
-libraries because they have the same team. The script then signs the disk image, submits it to
-the Apple notary service, waits for the result, staples the ticket to the image, and checks it
-with `spctl`. A rejected submission fails the build with the notary log.
+libraries because they have the same team. The script submits the app to the Apple notary
+service in a zip archive, waits for the result, and staples the ticket to the app, so it opens
+offline after a player copies it out of the disk image. It then signs the disk image, notarizes and
+staples it in the same way, and checks both with `spctl`. A rejected submission fails the build
+with the notary log. The two submissions usually take a few minutes each.
 
 | Variable | Value |
 | --- | --- |

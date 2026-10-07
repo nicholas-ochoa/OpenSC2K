@@ -219,22 +219,36 @@ def sign_app(app, identity=AD_HOC):
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
 
 
-def notarize(image, notary):
-    """Submit `image` to the Apple notary service, wait for the result, and staple the ticket to it."""
-    result = subprocess.run(['xcrun', 'notarytool', 'submit', str(image), *notary, '--wait', '--output-format', 'json'],
+def submit_for_notarization(path, notary):
+    """Submit `path` to the Apple notary service and wait for the result."""
+    result = subprocess.run(['xcrun', 'notarytool', 'submit', str(path), *notary, '--wait', '--output-format', 'json'],
                             capture_output=True, text=True)
     try:
         submission = json.loads(result.stdout)
     except json.JSONDecodeError:
-        raise ValueError(f'notarytool failed for {image.name}: {result.stderr.strip()}') from None
+        raise ValueError(f'notarytool failed for {path.name}: {result.stderr.strip()}') from None
     if submission.get('status') != 'Accepted':
         log = subprocess.run(['xcrun', 'notarytool', 'log', submission.get('id', ''), *notary],
                              capture_output=True, text=True)
-        raise ValueError(f'Notarization of {image.name} ended with {submission.get("status")}:\n{log.stdout}{log.stderr}')
-    subprocess.run(['xcrun', 'stapler', 'staple', str(image)], check=True)
-    subprocess.run(['xcrun', 'stapler', 'validate', str(image)], check=True)
-    subprocess.run(['spctl', '--assess', '--type', 'open', '--context', 'context:primary-signature', '--verbose',
-                    str(image)], check=True)
+        raise ValueError(f'Notarization of {path.name} ended with {submission.get("status")}:\n{log.stdout}{log.stderr}')
+
+
+def notarize(item, notary):
+    """Notarize an app or a disk image, staple the ticket to it, and check it as
+    Gatekeeper does. An app goes to the notary service in a zip archive. Its own
+    ticket lets it open offline after it leaves the disk image."""
+    if item.suffix == '.app':
+        with tempfile.TemporaryDirectory(prefix='opensc2k-notary-') as work:
+            archive = Path(work) / f'{item.stem}.zip'
+            subprocess.run(['ditto', '-c', '-k', '--keepParent', str(item), str(archive)], check=True)
+            submit_for_notarization(archive, notary)
+        assessment = ['--type', 'execute']
+    else:
+        submit_for_notarization(item, notary)
+        assessment = ['--type', 'open', '--context', 'context:primary-signature']
+    subprocess.run(['xcrun', 'stapler', 'staple', str(item)], check=True)
+    subprocess.run(['xcrun', 'stapler', 'validate', str(item)], check=True)
+    subprocess.run(['spctl', '--assess', *assessment, '--verbose', str(item)], check=True)
 
 
 def add_app_icon(app, icon=APP_ICON, identity=AD_HOC):
@@ -333,6 +347,8 @@ def build(output, label, godot, native, platforms=None, require_notarization=Fal
                     assert stream.getmember(f'{name}/{binary}').mode & 0o111
             else:
                 add_app_icon(folder / binary, identity=identity)
+                if notary is not None:
+                    notarize(folder / binary, notary)
                 (folder / 'Applications').symlink_to('/Applications')
                 package = output / (name + '.dmg')
                 make_disk_image(folder, f'OpenSC2K {label}', package)
