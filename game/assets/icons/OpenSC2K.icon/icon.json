@@ -23,7 +23,7 @@
       "layers": [
         {
           "name": "city",
-          "glass": false,
+          "glass": true,
           "image-name-specializations": [
             {
               "value": "city.svg"

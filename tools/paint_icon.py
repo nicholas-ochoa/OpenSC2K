@@ -984,16 +984,17 @@ def main(folder):
         (folder / f'Assets/{name}.svg').write_text(paint())
         (folder / f'Assets/{name}-dusk.svg').write_text(paint(dusk=True))
 
-    def group(name, shadow):
+    # the city layer takes the Liquid Glass highlight of Icon Composer; the land stays flat
+    def group(name, shadow, glass):
         images = [{'value': f'{name}.svg'}, {'appearance': 'dark', 'value': f'{name}-dusk.svg'}]
-        return {'layers': [{'name': name, 'glass': False, 'image-name-specializations': images}],
+        return {'layers': [{'name': name, 'glass': glass, 'image-name-specializations': images}],
                 'shadow': {'kind': shadow, 'opacity': 0.5}, 'translucency': {'enabled': False, 'value': 0.5},
                 'specular': False}
 
     document = {
         'fill-specializations': [{'value': {'linear-gradient': [srgb(c) for c in SKY_DAY]}},
                                  {'appearance': 'dark', 'value': {'linear-gradient': [srgb(c) for c in SKY_DUSK]}}],
-        'groups': [group('city', 'neutral'), group('land', 'none')],
+        'groups': [group('city', 'neutral', True), group('land', 'none', False)],
         'supported-platforms': {'squares': ['macOS']},
     }
     (folder / 'icon.json').write_text(json.dumps(document, indent=2) + '\n')
