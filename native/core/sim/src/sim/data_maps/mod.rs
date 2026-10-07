@@ -20,6 +20,24 @@ pub const FIRE_COVERAGE_ORDINANCE: i64 = ordinance_ids::VOLUNTEER_FIRE_MASK;
 pub const CRIME_REDUCTION_ORDINANCE: i64 = ordinance_ids::LEGALIZED_GAMBLING_MASK;
 pub const ZONE_BUILDING_ORIGIN: i64 = 0x80;
 
+/// A fixed addition to every land value, in place of an original bug.
+///
+/// The original executable (Windows 95 and Macintosh) reuses a scratch grid
+/// for the land-value desirability scores and does not clear it first. Each
+/// score therefore starts from leftover pollution sources and from 0x28 values
+/// that the city-centre scan writes at building tile coordinates. These
+/// leftovers come from an unrelated part of the map (mostly the top-left
+/// quarter), so the original gives roughly +0 to +45 to every land value,
+/// depending on that corner of the map. The game was balanced with this
+/// offset in place: it moves land values across the wealth-class limits of
+/// 64 and 128.
+///
+/// We do not copy the bug, because it adds pollution to land value. A
+/// constant restores the average level instead. Against the land values
+/// saved in the supplied cities, 32 gives the lowest error: the same wealth
+/// class in about 85% of cells, against 69% without an offset.
+pub const LAND_VALUE_BASE: i64 = 32;
+
 gd_phase_result! {
     pub struct PollutionResult as "PollutionPhase.Result" {
         pub pollution_total: i64 = 0,

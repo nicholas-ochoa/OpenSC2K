@@ -143,6 +143,8 @@ static func run(city: CityState) -> PollutionPhase.Result:
 					value += 21 if old.XPOP[index] < 64 else 0
 					value += maxi(distance_value / 2, 0) - (int(pollution[index]) / 5) - (int(old.XCRM[index]) / 3)
 
+			value += PollutionReference.LAND_VALUE_BASE
+
 			if PollutionReference.LAND_VALUE_HALVED.has(int(city.buildings[index])):
 				value -= value / 2
 

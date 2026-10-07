@@ -3,7 +3,7 @@
 
 use super::grid_math;
 use super::{CRIME_REDUCTION_ORDINANCE, FIRE_COVERAGE_ORDINANCE, POLICE_COVERAGE_ORDINANCE, ZONE_BUILDING_ORIGIN};
-use super::{CoverageResult, PollutionResult, building_pollution, land_value_halved, population_weight};
+use super::{CoverageResult, LAND_VALUE_BASE, PollutionResult, building_pollution, land_value_halved, population_weight};
 use crate::sim::city::City;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
@@ -326,6 +326,9 @@ pub fn run_land_value_and_crime(city: &mut City) -> PollutionResult {
                 value += if old_population_value < 64 { 21 } else { 0 };
                 value += (distance_value / 2).max(0) - pollution_value / 5 - crime_value / 3;
             }
+
+            // See LAND_VALUE_BASE. This keeps SC2X land values at the coarse level.
+            value += LAND_VALUE_BASE;
 
             if land_value_halved(building) {
                 value -= value / 2;

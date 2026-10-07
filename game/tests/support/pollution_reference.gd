@@ -36,6 +36,8 @@ const FLAG_POWERED := Sc2TileFlags.POWERED
 const ZONE_BUILDING_ORIGIN := 0x80
 const BUDGET_POLICE := Sc2BudgetLayout.POLICE
 const BUDGET_FIRE := Sc2BudgetLayout.FIRE
+# The fixed land-value addition that replaces the original's uncleared scratch grid.
+const LAND_VALUE_BASE := 32
 const LAND_VALUE_HALVED := {
 	Tiles.ABANDONED_1X1_1: true, Tiles.ABANDONED_1X1_2: true,
 	Tiles.ABANDONED_2X2_1: true, Tiles.ABANDONED_2X2_2: true, Tiles.ABANDONED_2X2_3: true, Tiles.ABANDONED_2X2_4: true,

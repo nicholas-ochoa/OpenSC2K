@@ -2,7 +2,7 @@
 //! passes keep their scan order.
 
 use super::{CRIME_REDUCTION_ORDINANCE, FIRE_COVERAGE_ORDINANCE, POLICE_COVERAGE_ORDINANCE, ZONE_BUILDING_ORIGIN};
-use super::{PollutionResult, building_pollution, land_value_halved, population_weight};
+use super::{LAND_VALUE_BASE, PollutionResult, building_pollution, land_value_halved, population_weight};
 use crate::sim::city::City;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
@@ -351,6 +351,9 @@ pub fn run(city: &mut City) -> PollutionResult {
                     value -= crime_value / 3;
                 }
             }
+
+            // See LAND_VALUE_BASE. It replaces the original's uncleared scratch values.
+            value += LAND_VALUE_BASE;
 
             let building = buildings[full_index] as i64;
 
