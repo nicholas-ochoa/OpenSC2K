@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Build OpenSC2K for this Mac and install it as /Applications/OpenSC2K.app.
 
-One step: build the native libraries and FluidSynth for this Mac's
-architecture only (tools/build_native.py), export a copy of the Godot project
-with the macOS preset, add the Icon Composer icon, sign the app ad hoc, and
-replace the app in the target folder. The old app stays until the new one is
-complete. The export uses the working tree, with its changes.
+One step: build the native libraries for this Mac's architecture and FluidSynth
+(tools/build_native.py), export a copy of the Godot project with the macOS
+preset, keep only this Mac's slice of the universal Godot executable and
+FluidSynth library, add the Icon Composer icon, sign the app ad hoc, and
+replace the app in the target folder. The old app stays until the new one is complete.
+The export uses the working tree, with its changes.
 
-The Godot export templates have only a universal macOS executable, so the app
-runs Godot's universal executable with native libraries of this Mac's
-architecture. Use tools/build_desktop_release.py for a universal package.
+Every executable and library of the app then has only this architecture.
+Use tools/build_desktop_release.py for a universal package.
 
   python3 tools/install_macos_app.py               # build, export and install
   python3 tools/install_macos_app.py --no-build    # export the last native build again
@@ -51,6 +51,39 @@ def prepare_project(project):
 
     if '[editor]' not in settings:
         settings_path.write_text(settings + '\n[editor]\n\nimport/use_multiple_threads=false\n')
+
+
+def architectures(path):
+    """The architectures of a Mach-O file, from lipo."""
+    return set(subprocess.check_output(['lipo', '-archs', str(path)], text=True).split())
+
+
+def binaries(app):
+    """The executables and libraries of `app`."""
+    return sorted((app / 'Contents/MacOS').iterdir()) + sorted((app / 'Contents/Frameworks').glob('*.dylib'))
+
+
+def thin(app, arch):
+    """Keep only the `arch` slice of each universal binary of `app`: the export
+    templates have only a universal macOS executable, and FluidSynth builds
+    universal. A thin library is signed again ad hoc; the app is signed after."""
+    for binary in binaries(app):
+        if len(architectures(binary)) < 2:
+            continue
+
+        subprocess.run(['lipo', str(binary), '-thin', arch, '-output', str(binary)], check=True)
+
+        if binary.suffix == '.dylib':
+            subprocess.run(['codesign', '--force', '--sign', '-', str(binary)], check=True)
+
+
+def check_architecture(app, arch):
+    """Fail when an executable or library of `app` has another architecture than `arch`."""
+    for binary in binaries(app):
+        found = architectures(binary)
+
+        if found != {arch}:
+            raise ValueError(f'{binary.relative_to(app)} has {" ".join(sorted(found))}, not only {arch}')
 
 
 def running_from(app):
@@ -124,7 +157,10 @@ def main():
         app.parent.mkdir()
         release.checked_godot(args.godot, project, '--export-release', MACOS_PRESET, str(app))
 
+        # the icon step signs the app again, after the thin binaries
+        thin(app, arch)
         release.add_app_icon(app)
+        check_architecture(app, arch)
         subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
 
         try:
@@ -134,7 +170,7 @@ def main():
                   file=sys.stderr)
             return 1
 
-    print(f'Installed {destination}')
+    print(f'Installed {destination} ({arch})')
     return 0
 
 
