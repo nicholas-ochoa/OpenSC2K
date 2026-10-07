@@ -8,6 +8,7 @@ pub mod mixer;
 pub mod sequencer;
 pub mod shuffle;
 pub mod smf;
+pub mod sound_loop;
 pub mod soundfont;
 pub mod wav;
 pub mod wave_gate;

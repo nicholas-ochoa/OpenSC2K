@@ -35,7 +35,7 @@ func _test_fire(reference_root: String) -> void:
 		and water_tick.map_changed
 		and water_tick.counters.water_extinctions == 1
 		and water_tick.counters.remaining_fires == 0
-		and SoundEvent.same_arrays(water_tick.sound_events, SoundEvent.from_ids([DisasterMap.SOUND_FIRE])),
+		and SoundEvent.same_arrays(water_tick.sound_events, _fire_sounds([])),
 		"A selected fire marker on water clears and keeps the disaster active for this scan",
 	)
 	_check(
@@ -84,9 +84,7 @@ func _test_fire(reference_root: String) -> void:
 		and linked_spread_tick.effect_events[0].point == Vector2i(19, 20)
 		and linked_spread_tick.effect_events[0].sprite_id == 1394
 		and linked_spread_tick.effect_events[0].flip
-		and SoundEvent.same_arrays(linked_spread_tick.sound_events, SoundEvent.from_ids([
-			DisasterMap.SOUND_EARTHQUAKE, DisasterMap.SOUND_FIRE,
-		]))
+		and SoundEvent.same_arrays(linked_spread_tick.sound_events, _fire_sounds([DisasterMap.SOUND_EARTHQUAKE]))
 		and linked_spread_random.position == 4,
 		"Shared fire damage emits native dust and consumes its two visual random values",
 	)
@@ -694,7 +692,7 @@ func _test_engine_and_dispatch(reference_root: String) -> void:
 		and mixed_tick.counters.riot_markers_scanned == 1
 		and mixed_tick.counters.fire_markers_scanned == 1
 		and mixed_tick.counters.water_extinctions == 1
-		and SoundEvent.same_arrays(mixed_tick.sound_events, SoundEvent.from_ids([DisasterMap.SOUND_FIRE])),
+		and SoundEvent.same_arrays(mixed_tick.sound_events, _fire_sounds([])),
 		"The combined scan processes all marker classes and keeps original sound order",
 	)
 	_check(

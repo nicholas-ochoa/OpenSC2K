@@ -29,6 +29,24 @@ impl NativeWaveSoundGate {
         self.gate.request(sound_id, ambient, simulation)
     }
 
+    /// Loops the sound for `plays` plays, or until `stop_loop` when `plays`
+    /// is less than 1. See `sc2k_audio::sound_loop`.
+    #[func]
+    fn request_loop(&mut self, sound_id: i64, plays: i64) {
+        self.gate.sound_loop.request(sound_id, plays);
+    }
+
+    #[func]
+    fn stop_loop(&mut self) {
+        self.gate.sound_loop.stop();
+    }
+
+    /// The sound that loops, or -1.
+    #[func]
+    fn loop_sound_id(&self) -> i64 {
+        self.gate.sound_loop.sound_id.unwrap_or(-1)
+    }
+
     #[func]
     fn advance(&mut self, delta_msec: f64) {
         self.gate.advance(delta_msec);

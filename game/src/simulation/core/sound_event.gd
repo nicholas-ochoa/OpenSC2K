@@ -3,11 +3,19 @@ extends RefCounted
 # a sound request. moving-object requests retain their source metadata for
 # vehicle visibility, view-size filtering, and the shared sound gate
 
+# the `loop_plays` of a loop that plays until a stop request
+const LOOP_UNTIL_STOPPED := -1
+# the sound id of a request that stops the loop, as SIMCITY.EXE 0x00480720
+const STOP_LOOP := 0
+
 var sound_id: int
 var from_thing := false
 var thing_type := -1
 var record := -1
 var point := Vector2i(-1, -1)
+# 0 plays the sound once. otherwise the sound loops for this many plays, or
+# until a stop request for LOOP_UNTIL_STOPPED, as SIMCITY.EXE 0x00480480
+var loop_plays := 0
 
 
 func _init(id: int) -> void:
@@ -24,6 +32,17 @@ static func for_thing(id: int, type: int, record_id: int, location := Vector2i(-
 	return result
 
 
+static func looped(id: int, plays: int) -> SoundEvent:
+	var result := SoundEvent.new(id)
+	result.loop_plays = plays
+
+	return result
+
+
+static func stop_loop() -> SoundEvent:
+	return SoundEvent.new(STOP_LOOP)
+
+
 # tool and query rules can return plain ids. convert them at publication
 static func from_ids(ids: Array[int]) -> Array[SoundEvent]:
 	var result: Array[SoundEvent] = []
@@ -36,7 +55,8 @@ static func from_ids(ids: Array[int]) -> Array[SoundEvent]:
 
 func equals(other: SoundEvent) -> bool:
 	return other != null and sound_id == other.sound_id and from_thing == other.from_thing \
-		and thing_type == other.thing_type and record == other.record and point == other.point
+		and thing_type == other.thing_type and record == other.record and point == other.point \
+		and loop_plays == other.loop_plays
 
 
 static func same_arrays(first: Array[SoundEvent], second: Array[SoundEvent]) -> bool:
@@ -51,7 +71,10 @@ static func same_arrays(first: Array[SoundEvent], second: Array[SoundEvent]) -> 
 
 
 static func count_plain(events: Array[SoundEvent], id: int) -> int:
-	var expected := SoundEvent.new(id)
+	return count_equal(events, SoundEvent.new(id))
+
+
+static func count_equal(events: Array[SoundEvent], expected: SoundEvent) -> int:
 	var count := 0
 
 	for event in events:

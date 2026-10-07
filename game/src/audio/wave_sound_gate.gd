@@ -1,8 +1,9 @@
 class_name WaveSoundGate
 extends RefCounted
 ## Which wave sounds play: one sound plays at a time, and moving objects and
-## simulation events wait for their replay delays. The native audio library
-## holds the rules; see native/core/audio/src/wave_gate.rs.
+## simulation events wait for their replay delays. A disaster loop plays beside
+## them. The native audio library holds the rules; see
+## native/core/audio/src/wave_gate.rs and sound_loop.rs.
 
 # player preference for vehicle sounds. disaster sounds and player feedback always play
 enum CitySounds { DEFAULT, REDUCED, OFF }
@@ -27,6 +28,10 @@ var accepted_count: int:
 var suppressed_count: int:
 	get:
 		return _native.metrics().suppressed_count
+# the sound that loops, or -1
+var loop_sound_id: int:
+	get:
+		return _native.loop_sound_id()
 var city_sounds: CitySounds:
 	get:
 		return _native.city_sounds() as CitySounds
@@ -48,6 +53,15 @@ static func event_replay_msec(sound_id: int) -> float:
 # simulation events. both wait for their replay delay. other requests are player feedback
 func request(sound_id: int, ambient := false, simulation := false) -> bool:
 	return _native.request(sound_id, ambient, simulation)
+
+
+# loops the sound for `plays` plays, or until `stop_loop` when `plays` is less than 1
+func request_loop(sound_id: int, plays: int) -> void:
+	_native.request_loop(sound_id, plays)
+
+
+func stop_loop() -> void:
+	_native.stop_loop()
 
 
 func advance(delta_msec: float) -> void:

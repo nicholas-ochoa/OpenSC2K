@@ -8,6 +8,7 @@ use super::{
 };
 use crate::sim::bytes;
 use crate::sim::city::City;
+use crate::sim::events::{LOOP_UNTIL_STOPPED, SoundEvent};
 use crate::sim::geom::{Rect2i, Vec2i};
 use crate::sim::grid;
 use crate::sim::growth::development::{self, ZoneMaps};
@@ -158,6 +159,12 @@ fn ordered(values: Vec<(&'static str, i64)>) -> OrderedMap<i64> {
     OrderedMap(values.into_iter().map(|(name, value)| (name.to_string(), value)).collect())
 }
 
+/// SIMCITY.EXE 0x0045f760 loops the fire sound on each scan that finds fire.
+/// The loop continues until the disaster ends.
+fn fire_loop() -> SoundEvent {
+    SoundEvent::looped(SOUND_FIRE, LOOP_UNTIL_STOPPED)
+}
+
 fn remaining_riots(text: &[u8]) -> i64 {
     overlay::occurrences(text, RIOT_OVERLAY_FORWARD) + overlay::occurrences(text, RIOT_OVERLAY_REVERSE)
 }
@@ -253,8 +260,10 @@ pub fn run_all(
         events.sound_events.push(SOUND_FLOOD);
     }
 
+    let mut sound_events = sounds(&std::mem::take(&mut events.sound_events));
+
     if fire_active {
-        events.sound_events.push(SOUND_FIRE);
+        sound_events.push(fire_loop());
     }
 
     let mut next_hurricane_counter = hurricane_counter;
@@ -318,7 +327,8 @@ pub fn run_all(
     result.base.ok = true;
     result.base.effect_events = events.effect_events;
     result.connection_count_changes = events.connection_changes;
-    result.base.sound_events = sounds(&events.sound_events);
+    sound_events.extend(sounds(&events.sound_events));
+    result.base.sound_events = sound_events;
     result.base.view_center_requests = view_center_requests;
     result
 }
@@ -437,10 +447,6 @@ fn run_kind(
     };
     let values = match kind {
         Kind::Fire => {
-            if active {
-                events.sound_events.push(SOUND_FIRE);
-            }
-
             let mut values = counters.fire();
             values.push(("remaining_fires", overlay::occurrences(text, FIRE_OVERLAY)));
             values
@@ -476,6 +482,11 @@ fn run_kind(
     result.base.effect_events = events.effect_events;
     result.connection_count_changes = events.connection_changes;
     result.base.sound_events = sounds(&events.sound_events);
+
+    if kind == Kind::Fire && active {
+        result.base.sound_events.push(fire_loop());
+    }
+
     result
 }
 

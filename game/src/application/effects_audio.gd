@@ -110,6 +110,11 @@ func stop_sound_effects() -> void:
 		audio_controller.stop_sound_effects()
 
 
+func stop_sound_loop() -> void:
+	if audio_controller != null:
+		audio_controller.stop_sound_loop()
+
+
 # `simulation` paces the sounds of a simulation tick. player actions pass false
 func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[SoundEvent], simulation := false) -> void:
 	if document_state.city == null:

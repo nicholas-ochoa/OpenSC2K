@@ -1,7 +1,9 @@
 //! Which wave sounds play, as WaveSoundGate: one sound plays at a time, and
 //! moving objects and simulation events wait for their replay delays. The
 //! City Sounds preference controls the vehicle sounds; disaster sounds and
-//! player feedback always play.
+//! player feedback always play. The disaster loop is `sound_loop`.
+
+use crate::sound_loop::SoundLoop;
 
 const SOUND_FIRST: i64 = 500;
 const SOUND_LAST: i64 = 529;
@@ -62,6 +64,7 @@ pub struct WaveGate {
     pub city_sounds: CitySounds,
     reduced_remaining_msec: f64,
     tick_accumulator_msec: f64,
+    pub sound_loop: SoundLoop,
 }
 
 fn delay(delays: &[(i64, f64)], sound_id: i64) -> f64 {
@@ -146,6 +149,7 @@ impl WaveGate {
 
         while self.tick_accumulator_msec >= BASE_TICK_MSEC {
             self.tick_accumulator_msec -= BASE_TICK_MSEC;
+            self.sound_loop.tick();
 
             if self.remaining_ticks <= 0 {
                 continue;
@@ -166,6 +170,7 @@ impl WaveGate {
         self.current_sound_id = None;
         self.remaining_ticks = 0;
         self.tick_accumulator_msec = 0.0;
+        self.sound_loop.stop();
     }
 }
 

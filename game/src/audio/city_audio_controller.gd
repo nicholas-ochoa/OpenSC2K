@@ -37,6 +37,9 @@ var current_track_name := ""
 var application_has_focus := true
 var background_audio := false
 var tool_loop_player: AudioStreamPlayer
+# the siren or fire loop of a disaster. see `WaveSoundGate.loop_sound_id`
+var sound_loop_player: AudioStreamPlayer
+var sound_loop_id := -1
 var wave_sound_gate := WaveSounds.new()
 var wave_stream_cache: Dictionary = {}
 
@@ -86,6 +89,8 @@ func setup(
 
 func advance(delta_msec: float) -> void:
 	wave_sound_gate.advance(delta_msec)
+	# the siren gives way to a waiting loop after its plays
+	CityAudioEffects.sync_sound_loop(self)
 
 	if music_gap_remaining_msec > 0.0:
 		if not audio_allowed() or music_paused or music_volume <= 0.0:
@@ -118,6 +123,9 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 
 	if recording_player != null:
 		recording_player.volume_linear = music_volume
+
+	if is_instance_valid(sound_loop_player):
+		sound_loop_player.volume_linear = effects_volume
 
 
 ## Selects the music SoundFont. See SoundFontCatalog. The SoundFont loads when
@@ -328,6 +336,12 @@ func stop_music(clear_gap := true) -> void:
 
 func stop_sound_effects() -> void:
 	CityAudioEffects.stop_sound_effects(self)
+
+
+# stop the disaster loop when its city closes
+func stop_sound_loop() -> void:
+	wave_sound_gate.stop_loop()
+	CityAudioEffects.sync_sound_loop(self)
 
 
 func play_sound_ids(

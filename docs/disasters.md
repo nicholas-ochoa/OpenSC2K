@@ -20,6 +20,7 @@ simulation is in `native/core/sim/src/sim/disasters/` and
 | Explosion, monster, tornado | `0x004546f0`, `0x004548c0`, `0x00454ea0` | `things.rs` |
 | Airplane, helicopter | `0x00453980`, `0x004540c0` | `moving/air.rs` |
 | Maxis Man response | `0x00452fa0` | `end.rs` |
+| Sound loop: play, end of plays, stop | `0x00480480`, `0x0047fda0`, `0x00480720` | `sound_loop.rs` in `native/core/audio` |
 
 The random selection, the city status messages, the end summary story,
 the removal of dispatched units at the end, and the check for active
@@ -47,6 +48,27 @@ Riots (13, center), Major Flood (14, random tile) and Toxic Spill
 
 All menu items stay enabled during a disaster. A new disaster then starts
 on the next disaster tick and replaces the active type.
+
+## Siren and fire sounds
+
+The original plays one sound at a time. A disaster also has one looping
+sound:
+
+- When a disaster starts, `0x0045cf10` stops all sounds and loops the
+  siren (520) for five plays.
+- Each scan that finds fire asks for the fire sound (507) as a loop with no
+  end (`0x0045f760`). A request for the sound that loops changes nothing,
+  so the fire plays without a break. A loop request during the five siren
+  plays waits, and the fire starts when the siren ends.
+- After its five plays, the siren continues until another loop replaces it
+  or the disaster ends: `0x0047fda0` clears the count but does not stop the
+  sound.
+- When the disaster ends, `0x0045cf10` stops all sounds.
+
+The port sends these requests as sound events with `loop_plays` and a stop
+request. One player repeats the loop. Other sounds play over it; in the
+original, they interrupt the loop, and the loop then starts again. Closing
+the city or opening the main menu also stops the loop.
 
 ## Pace
 

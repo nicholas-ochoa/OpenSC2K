@@ -34,6 +34,7 @@ func activate_document(
 	app.city_menu_bar.disasters_menu.disabled = false
 
 	var music_was_active := app.effects_audio.music_playback_is_active()
+	app.effects_audio.stop_sound_loop()
 
 	app.budget.reset_prompts()
 	app.current_tool.reset_prompts()

@@ -123,6 +123,26 @@ func _clear_news_records(document) -> bool:
 	return misc_chunk.set_decoded_payload(misc)
 
 
+# one-shot `ids`, then the siren loop that starts a disaster
+func _start_sounds(ids: Array[int]) -> Array[SoundEvent]:
+	var events := SoundEvent.from_ids(ids)
+	events.append(_siren_loop())
+
+	return events
+
+
+func _siren_loop() -> SoundEvent:
+	return SoundEvent.looped(DisasterStartConstants.SOUND_SIREN, DisasterStartConstants.SIREN_PLAYS)
+
+
+# one-shot `ids`, then the fire loop of a scan that finds fire
+func _fire_sounds(ids: Array[int]) -> Array[SoundEvent]:
+	var events := SoundEvent.from_ids(ids)
+	events.append(SoundEvent.looped(DisasterMap.SOUND_FIRE, SoundEvent.LOOP_UNTIL_STOPPED))
+
+	return events
+
+
 func _fire_map_fixture(
 	reference_root: String, point: Vector2i, tile: int, water := false
 ) -> Dictionary:

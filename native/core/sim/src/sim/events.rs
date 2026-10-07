@@ -29,8 +29,17 @@ gd_object! {
         pub thing_type: i64 = -1,
         pub record: i64 = -1,
         pub point: Vec2i = Vec2i::NONE,
+        /// 0 plays the sound once. Otherwise the sound loops for this many
+        /// plays, or until a stop request for LOOP_UNTIL_STOPPED, as SIMCITY.EXE 0x00480480.
+        pub loop_plays: i64 = 0,
     }
 }
+
+/// The `loop_plays` of a loop that plays until a stop request.
+pub const LOOP_UNTIL_STOPPED: i64 = -1;
+
+/// The sound id of a request that stops the loop, as SIMCITY.EXE 0x00480720.
+pub const STOP_LOOP: i64 = 0;
 
 impl SoundEvent {
     pub fn new(id: i64) -> Self {
@@ -47,7 +56,21 @@ impl SoundEvent {
             thing_type,
             record,
             point,
+            ..Default::default()
         }
+    }
+
+    /// A loop of `plays` plays, or LOOP_UNTIL_STOPPED.
+    pub fn looped(id: i64, plays: i64) -> Self {
+        Self {
+            sound_id: id,
+            loop_plays: plays,
+            ..Default::default()
+        }
+    }
+
+    pub fn stop_loop() -> Self {
+        Self::new(STOP_LOOP)
     }
 }
 

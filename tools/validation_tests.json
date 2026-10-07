@@ -1089,6 +1089,13 @@
     "lane": "product"
   },
   {
+    "id": "disaster_sound_loop_test",
+    "script": "tests/disaster_sound_loop_test.gd",
+    "domain": "audio",
+    "lane": "product",
+    "requires": ["references/SIMCITY2000"]
+  },
+  {
     "id": "title_music_startup_test",
     "script": "tests/title_music_startup_test.gd",
     "domain": "audio",

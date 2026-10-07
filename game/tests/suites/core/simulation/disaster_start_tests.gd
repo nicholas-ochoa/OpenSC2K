@@ -40,7 +40,7 @@ func _test_monster_and_fire(reference_root: String) -> void:
 		and monster.started
 		and monster.complete
 		and monster.record == 1
-		and SoundEvent.same_arrays(monster.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(monster.sound_events, _start_sounds([]))
 		and monster.view_center_requests == [Vector2i(12, 12)],
 		"Monster disaster replaces an occupied moving object and centers the view 8 tiles up and left",
 	)
@@ -97,7 +97,7 @@ func _test_monster_and_fire(reference_root: String) -> void:
 		and fire.started
 		and fire.complete
 		and fire.point == fire_point
-		and SoundEvent.same_arrays(fire.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(fire.sound_events, _start_sounds([]))
 		and fire.view_center_requests == [fire_point],
 		"Fire starts at the first suitable point in the center spiral",
 	)
@@ -142,7 +142,7 @@ func _test_flood_and_toxic(reference_root: String) -> void:
 		and flood.started
 		and flood.point == flood_source
 		and flood.map_counter == 60
-		and SoundEvent.same_arrays(flood.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_FLOOD, DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(flood.sound_events, _start_sounds([DisasterStart.SOUND_FLOOD]))
 		and flood.view_center_requests == [flood_source],
 		"Flood starts on the first shoreline terrain cell and reports its runtime state",
 	)
@@ -175,7 +175,7 @@ func _test_flood_and_toxic(reference_root: String) -> void:
 		and toxic_start.started
 		and toxic_start.complete
 		and toxic_start.point == toxic_point
-		and SoundEvent.same_arrays(toxic_start.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(toxic_start.sound_events, _start_sounds([]))
 		and toxic_start.view_center_requests == [toxic_point]
 		and toxic_city.text_overlay_id(toxic_point.x, toxic_point.y) == DisasterMap.TOXIC_OVERLAY,
 		"Toxic Spill writes XTXT 0xFB directly at the requested point",
@@ -220,7 +220,7 @@ func _test_pollution(reference_root: String) -> void:
 		and pollution_start.complete
 		and pollution_start.counters.attempt_count == 8
 		and pollution_start.counters.seed_writes == 8
-		and SoundEvent.same_arrays(pollution_start.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(pollution_start.sound_events, _start_sounds([]))
 		and pollution_start.view_center_requests == [pollution_point],
 		"Pollution uses normal population for its seed count and reports a start",
 	)
@@ -290,11 +290,10 @@ func _test_riots(reference_root: String) -> void:
 		riot_city.text_overlay_id(20, 19) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and riot_city.text_overlay_id(20, 18) == DisasterStart.RIOT_OVERLAY_REVERSE
 		and riot_city.text_overlay_id(20, 17) == DisasterStart.RIOT_OVERLAY_FORWARD
-		and SoundEvent.same_arrays(riot_start.sound_events, SoundEvent.from_ids([
+		and SoundEvent.same_arrays(riot_start.sound_events, _start_sounds([
 			DisasterStart.SOUND_RIOT,
 			DisasterStart.SOUND_RIOT,
 			DisasterStart.SOUND_RIOT,
-			DisasterStart.SOUND_SIREN,
 		]))
 		and riot_random.position == 3,
 		"Riot uses one orientation bit and sound request for each seeded marker",
@@ -377,7 +376,7 @@ func _test_riots(reference_root: String) -> void:
 		and mass_riot_city.text_overlay_id(68, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and mass_riot_city.text_overlay_id(56, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and mass_riot_start.sound_events.size() == 8
-		and mass_riot_start.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN)),
+		and mass_riot_start.sound_events[-1].equals(_siren_loop()),
 		"Mass Riots stores each marker and appends the common siren after riot sounds",
 	)
 
@@ -436,7 +435,7 @@ func _test_earthquakes(reference_root: String) -> void:
 		and earthquake_start.sound_events.size() == 25
 		and earthquake_start.sound_events[0].equals(SoundEvent.new(DisasterStart.SOUND_EARTHQUAKE))
 		and earthquake_start.sound_events[23].equals(SoundEvent.new(DisasterStart.SOUND_EARTHQUAKE))
-		and earthquake_start.sound_events[24].equals(SoundEvent.new(DisasterStart.SOUND_SIREN))
+		and earthquake_start.sound_events[24].equals(_siren_loop())
 		and earthquake_start.view_center_requests == [earthquake_point],
 		"Earthquake reports its 24 shake frames, repeated sound, siren, and view center",
 	)

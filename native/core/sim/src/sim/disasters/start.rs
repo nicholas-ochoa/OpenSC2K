@@ -47,6 +47,8 @@ pub const SOUND_MICROWAVE: i64 = 514;
 pub const SOUND_EARTHQUAKE: i64 = 504;
 pub const SOUND_VOLCANO: i64 = 507;
 pub const SOUND_HURRICANE: i64 = 502;
+/// SIMCITY.EXE 0x0045cf10 loops the siren for five plays when a disaster starts.
+pub const SIREN_PLAYS: i64 = 5;
 const VOLCANO_BUDGET: i64 = 25000;
 const FIRE_SPIRAL: [Vec2i; 4] = [Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1), Vec2i::new(-1, 0)];
 const EIGHT_DIRECTIONS: [Vec2i; 8] = [
@@ -62,6 +64,13 @@ const EIGHT_DIRECTIONS: [Vec2i; 8] = [
 const RANDOM_REQUIRED: &str = "a compatible process random generator is required";
 const LFSR_REQUIRED: &str = "a compatible LFSR generator is required";
 
+/// The start sounds, then the siren loop.
+fn start_sounds(ids: &[i64]) -> Vec<SoundEvent> {
+    let mut events = sounds(ids);
+    events.push(SoundEvent::looped(SOUND_SIREN, SIREN_PLAYS));
+    events
+}
+
 /// DisasterStartObjectsState._result.
 fn result(disaster_type: i64, point: Vec2i, started: bool, complete: bool, record: i64) -> DisasterStartResult {
     let mut result = DisasterStartResult {
@@ -75,7 +84,7 @@ fn result(disaster_type: i64, point: Vec2i, started: bool, complete: bool, recor
     result.base.ok = true;
 
     if started {
-        result.base.sound_events = vec![SoundEvent::new(SOUND_SIREN)];
+        result.base.sound_events = start_sounds(&[]);
         result.base.view_center_requests.push(point);
     }
 
@@ -432,14 +441,9 @@ fn riot_result(disaster_type: i64, point: Vec2i, seed_points: Vec<Vec2i>, attemp
     let mut result = result(disaster_type, point, started, true, 0);
     result.counters.set("attempt_count", attempt_count);
     result.counters.set("seed_writes", seed_points.len() as i64);
-    let mut ids = vec![SOUND_RIOT; seed_points.len()];
-
-    if started {
-        ids.push(SOUND_SIREN);
-    }
-
+    let ids = vec![SOUND_RIOT; seed_points.len()];
     result.seed_points = seed_points;
-    result.base.sound_events = sounds(&ids);
+    result.base.sound_events = if started { start_sounds(&ids) } else { sounds(&ids) };
     result
 }
 
@@ -602,8 +606,7 @@ fn start_meltdown(
     result.map_changed = map_changed;
     result.base.effect_events = events.effect_events;
     result.connection_count_changes = events.connection_changes;
-    events.sound_events.push(SOUND_SIREN);
-    result.base.sound_events = sounds(&events.sound_events);
+    result.base.sound_events = start_sounds(&events.sound_events);
     result
 }
 
@@ -702,8 +705,7 @@ fn start_microwave(city: &mut City, random: Option<&mut SimRandom>, lfsr: Option
     let map_changed = snapshot.changed(city);
     snapshot.commit(city);
     let mut result = result(DISASTER_MICROWAVE, plant_point, true, true, 0);
-    events.sound_events.push(SOUND_SIREN);
-    result.base.sound_events = sounds(&events.sound_events);
+    result.base.sound_events = start_sounds(&events.sound_events);
     result.base.effect_events = events.effect_events;
     result.connection_count_changes = events.connection_changes;
     result.base.view_center_requests = view_centers;
@@ -822,7 +824,7 @@ fn flood_result(point: Vec2i, started: bool) -> DisasterStartResult {
     let mut result = result(DISASTER_FLOOD, point, started, true, 0);
 
     if started {
-        result.base.sound_events = sounds(&[SOUND_FLOOD, SOUND_SIREN]);
+        result.base.sound_events = start_sounds(&[SOUND_FLOOD]);
     }
 
     result.map_counter = if started { 60 } else { 0 };
@@ -885,9 +887,8 @@ fn start_mass_floods(
     result.map_changed = map_changed;
 
     if started {
-        let mut ids = vec![SOUND_FLOOD; seed_points.len()];
-        ids.push(SOUND_SIREN);
-        result.base.sound_events = sounds(&ids);
+        let ids = vec![SOUND_FLOOD; seed_points.len()];
+        result.base.sound_events = start_sounds(&ids);
         result.map_counter = 60;
     }
 
@@ -1025,8 +1026,7 @@ fn start_hurricane(
     let map_changed = snapshot.changed(city);
     snapshot.commit(city);
     let mut result = result(DISASTER_HURRICANE, requested_point, true, true, 0);
-    events.sound_events.push(SOUND_SIREN);
-    result.base.sound_events = sounds(&events.sound_events);
+    result.base.sound_events = start_sounds(&events.sound_events);
     result.base.view_center_requests.clear();
     result.base.effect_events = events.effect_events;
     result.connection_count_changes = events.connection_changes;
@@ -1211,8 +1211,7 @@ fn start_fire(city: &mut City, random: Option<&mut SimRandom>, lfsr: Option<&mut
     let mut result = result(DISASTER_FIRE, point, true, true, 0);
     result.base.effect_events = events.effect_events;
     result.connection_count_changes = events.connection_changes;
-    events.sound_events.push(SOUND_SIREN);
-    result.base.sound_events = sounds(&events.sound_events);
+    result.base.sound_events = start_sounds(&events.sound_events);
     result
 }
 
@@ -1285,8 +1284,7 @@ fn start_earthquake(
     result.base.effect_events = effect_events;
     let mut ids = vec![SOUND_EARTHQUAKE; 24];
     ids.append(&mut events.sound_events);
-    ids.push(SOUND_SIREN);
-    result.base.sound_events = sounds(&ids);
+    result.base.sound_events = start_sounds(&ids);
     result
 }
 
@@ -1370,8 +1368,7 @@ fn start_firestorm(
 
     if started {
         result.base.view_center_requests = vec![point];
-        events.sound_events.push(SOUND_SIREN);
-        result.base.sound_events = sounds(&events.sound_events);
+        result.base.sound_events = start_sounds(&events.sound_events);
     }
 
     result
@@ -1740,8 +1737,7 @@ fn start_volcano(city: &mut City, center: Vec2i, random: Option<&mut SimRandom>)
     let map_changed = snapshot.changed(city);
     snapshot.commit(city);
     let mut result = result(DISASTER_VOLCANO, center, true, true, 0);
-    ids.push(SOUND_SIREN);
-    result.base.sound_events = sounds(&ids);
+    result.base.sound_events = start_sounds(&ids);
     result.counters.set("iterations", iterations);
     result.counters.set("successful_raises", successful_raises);
     result.counters.set("rejected_raises", rejected_raises);

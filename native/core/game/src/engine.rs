@@ -339,6 +339,8 @@ impl Engine<'_> {
 
             result.base.news_items.extend(finished.news_items);
             result.map_changed = result.map_changed || finished.removed_units > 0;
+            // SIMCITY.EXE 0x0045cf10 stops the siren or fire loop when the disaster ends
+            result.base.sound_events.push(SoundEvent::stop_loop());
             result.base.newspaper_requested = true;
             result.base.newspaper_paper = DISASTER_END_PAPER;
 
@@ -789,7 +791,10 @@ fn rotate_point(point: Vec2i, counter_clockwise: bool, edge: i64) -> Vec2i {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sc2k_sim::sim::disasters::FIRE_OVERLAY;
+    use sc2k_sim::sim::events::LOOP_UNTIL_STOPPED;
     use sc2k_sim::sim::new_city::{city_of, template};
+    use sc2k_sim::sim::overlay;
     use sc2k_sim::sim::random::SimRandom;
 
     const SEED: i64 = 77;
@@ -853,6 +858,45 @@ mod tests {
         assert!(values::boolean(&started, "ok") && values::boolean(&started, "started"));
 
         (values::ints(&started, "notice_ids"), engine.begin_disaster_mode())
+    }
+
+    /// One disaster scan of `city` while a fire disaster is active.
+    fn fire_scan(city: &mut City, state: &mut EngineState) -> DisasterMapResult {
+        let mut randoms = Randoms::new(SEED, 1, 1);
+        let mut engine = Engine {
+            city,
+            randoms: &mut randoms,
+            state,
+            detailed: false,
+        };
+        let result = engine.advance_disaster_tick();
+        assert!(result.base.ok, "{}", result.base.error);
+
+        result
+    }
+
+    #[test]
+    fn the_fire_loops_until_the_disaster_ends() {
+        let mut city = city_of(&template::empty_city(128));
+        let empty_text = city.xtxt.data.clone();
+        let mut text = empty_text.clone();
+        overlay::set_marker_at(&mut text, 40 * 128 + 40, FIRE_OVERLAY);
+        city.xtxt.replace(text);
+        let mut state = EngineState::for_city(&city);
+        state.active_disaster_type = disaster_start::DISASTER_FIRE;
+        let fire_loop = SoundEvent::looped(disaster_map::SOUND_FIRE, LOOP_UNTIL_STOPPED);
+
+        let burning = fire_scan(&mut city, &mut state);
+        assert!(burning.active && burning.base.sound_events.contains(&fire_loop));
+
+        city.xtxt.replace(empty_text);
+        let ended = fire_scan(&mut city, &mut state);
+        assert_eq!(ended.ended_type, disaster_start::DISASTER_FIRE);
+        assert_eq!(
+            ended.base.sound_events,
+            vec![SoundEvent::stop_loop()],
+            "the end stops the fire loop"
+        );
     }
 
     #[test]

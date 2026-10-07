@@ -135,9 +135,7 @@ func _test_meltdown(reference_root: String) -> void:
 		and meltdown_start.plant_site == Rect2i(63, 63, 4, 4)
 		and meltdown_start.point == meltdown_center
 		and meltdown_start.view_center_requests == [meltdown_center]
-		and SoundEvent.same_arrays(meltdown_start.sound_events, SoundEvent.from_ids([
-			DisasterStart.SOUND_EARTHQUAKE, DisasterStart.SOUND_SIREN,
-		]))
+		and SoundEvent.same_arrays(meltdown_start.sound_events, _start_sounds([DisasterStart.SOUND_EARTHQUAKE]))
 		and meltdown_start.effect_events.size() == 64
 		and meltdown_start.effect_events[0].frame == 0
 		and meltdown_start.effect_events[16].frame == 1
@@ -320,7 +318,7 @@ func _test_microwave(reference_root: String) -> void:
 		and microwave_start.sound_events.size() == 39
 		and microwave_start.sound_events[0].equals(SoundEvent.new(DisasterStart.SOUND_MICROWAVE))
 		and microwave_start.sound_events[-2].equals(SoundEvent.new(DisasterStart.SOUND_MICROWAVE))
-		and microwave_start.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN)),
+		and microwave_start.sound_events[-1].equals(_siren_loop()),
 		"Microwave requests periodic view centers, one sound per damaged point, and the siren",
 	)
 	_check(
@@ -361,7 +359,7 @@ func _test_microwave(reference_root: String) -> void:
 		and edge_microwave.path_finish == Vector2i(128, 10)
 		and edge_microwave.counters.damage_attempts == 0
 		and not edge_microwave.map_changed
-		and SoundEvent.same_arrays(edge_microwave.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(edge_microwave.sound_events, _start_sounds([]))
 		and edge_microwave_random.position == 2,
 		"Microwave stops after an out-of-map move and retains its final random read",
 	)

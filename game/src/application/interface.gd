@@ -232,6 +232,7 @@ func show_main_menu() -> void:
 	if app.asset_state.assets_ready:
 		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
 
+	app.effects_audio.stop_sound_loop()
 	app.main_menu.show_menu(app.document_state.city != null)
 	app.status_label.text = "Main menu."
 

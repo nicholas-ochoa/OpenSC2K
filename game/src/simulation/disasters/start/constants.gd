@@ -31,6 +31,8 @@ const SOUND_MICROWAVE := 514
 const SOUND_EARTHQUAKE := 504
 const SOUND_VOLCANO := 507
 const SOUND_HURRICANE := 502
+# SIMCITY.EXE 0x0045cf10 loops the siren for five plays when a disaster starts
+const SIREN_PLAYS := 5
 const VOLCANO_BUDGET := 25000
 const MISC_CITY_CENTER_X := Sc2MiscLayout.CITY_CENTER_X
 const MISC_CITY_CENTER_Y := Sc2MiscLayout.CITY_CENTER_Y
