@@ -386,6 +386,22 @@ func _check_ground_buffer(main: CityApplication, ground: CityNightGround) -> voi
 		ground.sync(main, 0.45)
 	assert(ground.cache.size() > 10)
 	var saved := ground.cache.duplicate()
+	var old_zoom := map.zoom_factor
+	var selected := ground.visible_tiles.duplicate()
+	for zoom in [0.5, 0.25, 1.0, 2.0]:
+		map.zoom_factor = zoom
+		map.center_on_tile(Vector2i(64, 64))
+		ground.sync(main, 0.45)
+		for tile in selected:
+			var point := CityLifePaths.point(main.document_state.city, tile, 0, 2, 0.5, false)
+			if ground.bounds.has_point(Vector2i(point)):
+				assert(ground.visible_tiles.has(tile), "Zoom removed a street fixture inside the visible area")
+			if ground.cache.has(tile) and saved.has(tile):
+				assert(ground.cache[tile].origin == saved[tile].origin, "Zoom moved a street fixture in world space")
+	map.zoom_factor = old_zoom
+	map.center_on_tile(Vector2i(64, 64))
+	ground.sync(main, 0.45)
+	saved = ground.cache.duplicate()
 	# A new streamed source and render epoch must never empty complete receivers.
 	for i in 4:
 		main.static_render_state.epoch += 1

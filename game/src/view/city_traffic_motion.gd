@@ -106,12 +106,12 @@ func command_position(source: CityDynamicCommand, divisor: int) -> Vector2i:
 
 func draw_command(source: CityDynamicCommand, divisor: int, map_size: int) -> CityDynamicCommand:
 	var track: Track = tracks.get(source.record)
-	if track == null or track.current == track.target:
+	if track == null or (track.current == track.target and not source.train):
 		return source
 	var position := command_position(source, divisor)
 	var tile := Vector2i(floori(track.tile.x), floori(track.tile.y)).clamp(Vector2i.ZERO, Vector2i.ONE * (map_size - 1))
 	var order := (tile.x + tile.y) * map_size + tile.y
-	if position == source.position and order == source.depth_order:
+	if position == source.position and order == source.depth_order and not source.train:
 		return source
 	var command := CityDynamicCommand.new()
 	command.sprite_id = source.sprite_id
@@ -123,6 +123,15 @@ func draw_command(source: CityDynamicCommand, divisor: int, map_size: int) -> Ci
 	command.overlay = source.overlay
 	command.static_occlusion = source.static_occlusion
 	command.train = source.train
+	if source.train:
+		# A train spans the two completed rail positions throughout the blend.
+		# Flooring its anchor alone puts its own track in front of the body.
+		var supports := [track.target_tile] if track.current == track.target else [track.start_tile.round(), track.target_tile]
+		for support in supports:
+			var point := Vector2i(support)
+			var support_order := (point.x + point.y) * map_size + point.y
+			if not command.train_support_orders.has(support_order):
+				command.train_support_orders.append(support_order)
 	command.same_tile_foreground_indices = source.same_tile_foreground_indices
 	command.floating_altitude = source.floating_altitude
 	return command

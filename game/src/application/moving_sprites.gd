@@ -137,7 +137,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			occluder_mask = _dynamic_occluder_image(
 				sprite_archive, divisor, position, resource.native_size,
 				int(command.depth_order), bool(command.train), factor,
-				resource if command.floating_altitude >= 0 else null, int(command.floating_altitude)
+				resource if command.floating_altitude >= 0 else null, int(command.floating_altitude), command.train_support_orders
 			)
 
 		var samples_static: bool = bool(command.shadow) and not transparent_shadow
@@ -280,7 +280,8 @@ func _dynamic_occluder_image(
 	size: Vector2i,
 	draw_order: int,
 	is_train := false, texture_factor := 1,
-	floating: CitySpriteResource = null, floating_altitude := -1
+	floating: CitySpriteResource = null, floating_altitude := -1,
+	train_support_orders := PackedInt32Array()
 ) -> Image:
 	if draw_order < 0 or (caches.static_occlusion_commands.is_empty() and caches.region_cache == null):
 		return null
@@ -297,6 +298,8 @@ func _dynamic_occluder_image(
 		floating.get_instance_id() if floating != null else 0, floating_altitude,
 		divisor, sprite_archive.get_instance_id() if sprite_archive != null else 0,
 	]
+	if not train_support_orders.is_empty():
+		cache_key += ":" + str(train_support_orders)
 	if caches.dynamic_occluder_cache.has(cache_key):
 		return _occluder_region(caches.dynamic_occluder_cache[cache_key], requested, texture_factor)
 
@@ -317,8 +320,13 @@ func _dynamic_occluder_image(
 
 	# Bounding boxes include transparent pixels. Combine all later silhouettes
 	# to find the foreground that actually covers the sprite.
+	var train_height := _train_support_height(train_support_orders) if is_train else -1
 	for command in static_occlusion_candidates(bounds):
 		if is_train and bool(command.train_ignore):
+			continue
+		if is_train and train_support_orders.has(command.depth_order) and _train_support_surface(command.sprite_id):
+			continue
+		if train_height >= 0 and _ground_below_train(command, train_height):
 			continue
 
 		var later_static := int(command.depth_order) > draw_order
@@ -371,6 +379,39 @@ func _dynamic_occluder_image(
 	caches.dynamic_occluder_cache[cache_key] = cached
 
 	return _occluder_region(cached, requested, texture_factor)
+
+
+static func _train_support_surface(sprite_id: int) -> bool:
+	var id := posmod(sprite_id, 500)
+	# Only ground and ground-level rail artwork. Crossing decks, bridge towers,
+	# tunnel entrances, buildings and all unrelated tiles keep their masks.
+	return (id >= 256 and id <= 268) \
+		or (id >= BuildingTileIds.RAIL_FIRST and id <= BuildingTileIds.RAIL_LAST) \
+		or id in [BuildingTileIds.ROAD_RAIL_CROSSING_1, BuildingTileIds.ROAD_RAIL_CROSSING_2]
+
+
+func _train_support_height(orders: PackedInt32Array) -> int:
+	var city := app.document_state.city
+	if orders.is_empty() or city == null:
+		return -1
+	var height := 32
+	for order in orders:
+		var tile := IsometricFloatingOcclusion.depth_tile(order, city.map_size)
+		height = mini(height, city.land_altitude(tile.x, tile.y))
+	return height
+
+
+func _ground_below_train(command: CityStaticCommand, height: int) -> bool:
+	var id := posmod(command.sprite_id, 500)
+	if not _train_support_surface(command.sprite_id):
+		return false
+	var city := app.document_state.city
+	var tile := IsometricFloatingOcclusion.depth_tile(command.depth_order, city.map_size)
+	# Flat terrain at rail level cannot cover the train, even when its bitmap
+	# extends into an adjacent tile. Higher ground and cliff faces still can.
+	var flat := id == 256 or (id < 256 and city.terrain_id(tile.x, tile.y) == TerrainTileIds.FLAT)
+	var top := city.land_altitude(tile.x, tile.y) + (0 if flat else 1)
+	return top <= height
 
 
 static func _occluder_region(mask: RenderCaches.OccluderMask, bounds: Rect2i, factor: int) -> Image:

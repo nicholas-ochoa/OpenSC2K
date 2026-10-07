@@ -21,7 +21,6 @@ var geometry: Array = []
 var dirty: Dictionary[Vector2i, bool] = {}
 var last_used: Dictionary[Vector2i, int] = {}
 var collection := 0
-var density := 1
 var fixtures := Node2D.new()
 var clock := 0.0
 
@@ -87,9 +86,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 			if bounds.grow(64).has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
 				bounds = Rect2i()
 	var next := Rect2i(map.visible_source_rect().grow(BUFFER_MARGIN))
-	var next_density := maxi(1, ceili(sqrt(float(next.get_area()) / (256.0 * MAX_CACHED))))
-	if density != next_density or not bounds.encloses(next.grow(-BUFFER_MARGIN * 0.5)):
-		density = next_density
+	if not bounds.encloses(next.grow(-BUFFER_MARGIN * 0.5)) or bounds.get_area() > next.get_area() * 2:
 		bounds = next
 		_collect(city)
 	var built := 0
@@ -140,9 +137,8 @@ func _collect(city: CityState) -> void:
 	var points: Dictionary[Vector2i, Vector2] = {}
 	for index in CityLifePaths.candidate_indices(city, first, last):
 		var tile := Vector2i(index / city.map_size, index % city.map_size)
-		# World-anchored overview density, independent of viewport list ordering.
-		if posmod(tile.x * 73856093 ^ tile.y * 19349663, density * density) != 0:
-			continue
+		# Collect every fixture in this area at every zoom. The cache budget may
+		# evict offscreen receivers, but must never change the street layout.
 		if CityLifePaths.ports(city, tile) == 0 or city.land_altitude(tile.x, tile.y) >= city.visible_altitude_levels:
 			continue
 		var point := CityLifePaths.point(city, tile, 0, 2, 0.5, false)

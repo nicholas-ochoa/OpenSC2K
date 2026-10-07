@@ -4,6 +4,7 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 
 func _initialize() -> void:
+	_check_train_support()
 	_check_packed_masks()
 	_check_neighbor_masks()
 	var host := CityApplication.new()
@@ -218,6 +219,39 @@ func _check_packed_masks() -> void:
 		assert(IsometricPixelOperations.occlude_dynamic_with_mask(sprite, null, Vector2i.ZERO).image == sprite)
 		mask.fill(Color.TRANSPARENT)
 		assert(IsometricPixelOperations.occlude_dynamic_with_mask(sprite, mask, Vector2i.ZERO).image == sprite)
+
+
+func _check_train_support() -> void:
+	var host := CityApplication.new()
+	host.moving_sprites = TestSprites.new(host)
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	host.document_state.city = city
+	city.set_land_altitude(64, 64, 0)
+	city.set_land_altitude(65, 64, 0)
+	city.set_terrain_id(65, 64, TerrainTileIds.FLAT)
+	city.set_land_altitude(64, 65, 2)
+	var start := (64 + 64) * 128 + 64
+	var end := (65 + 64) * 128 + 64
+	var ids := [1256, 1120, 1045, 1077, 1257, 1269]
+	for index in ids.size():
+		var sprite := Image.create(8, 4, false, Image.FORMAT_RGBA8)
+		sprite.set_pixel(index, 1, Color.WHITE)
+		host.moving_sprites.images[ids[index]] = sprite
+		var command := CityStaticCommand.new()
+		command.sprite_id = ids[index]
+		command.size = sprite.get_size()
+		command.depth_order = end + 1 if index == 4 else end
+		if index == 3:
+			command.train_foreground_reference_sprite_id = -1
+			command.train_foreground_requires_depth = true
+		host.render_caches.static_occlusion_commands.append(command)
+	var original := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), start, true)
+	assert(original.get_pixel(0, 1).a > 0.0 and original.get_pixel(2, 1).a > 0.0)
+	var moving := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), start, true, 1, null, -1, PackedInt32Array([start, end]))
+	assert(moving.get_pixel(0, 1).a == 0.0 and moving.get_pixel(2, 1).a == 0.0, "Supporting ground and track must not cover a moving train")
+	for index in [1, 3, 4, 5]:
+		assert(moving.get_pixel(index, 1).a > 0.0, "Train support rule removed a building, deck, higher terrain or cliff mask")
+	host.free()
 
 
 class TestSprites extends ApplicationMovingSprites:
