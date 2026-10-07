@@ -370,6 +370,7 @@ func _check_ground_lighting(main: CityApplication) -> void:
 			var expected := Vector2i(CityLifeLights._project(junctions, tile, offset, height).round())
 			assert(CityNightFixtures._foot(junctions, tile, offset, high) == expected, "Lamp foot floats above its onramp")
 	await _check_ground_buffer(main, ground)
+	load("res://tests/support/night_template_checks.gd").run(main)
 	ground.queue_free()
 	await process_frame
 
@@ -421,7 +422,26 @@ func _check_ground_buffer(main: CityApplication, ground: CityNightGround) -> voi
 	assert(ground.dirty.has(tile) and ground.cache[tile].texture == saved[tile].texture, "Refresh blanked a complete receiver")
 	for i in 160:
 		ground.sync(main, 0.45)
-	assert(ground.cache[tile].texture != saved[tile].texture and not ground.dirty.has(tile), "Changed foreground never refreshed")
+	assert(not is_same(ground.cache[tile], saved[tile]) and not ground.dirty.has(tile), "Changed foreground never refreshed")
+	assert(ground.pending.is_empty() and ground.queued.is_empty(), "Stable receivers kept pending work")
+	for frame in 8:
+		ground.sync(main, 0.45, 1.0)
+	assert(ground.pending.is_empty() and ground.queued.is_empty(), "Signal phases scheduled static rebuilds")
+	# Demolition and rebuilding change the visible fixtures while an unrelated
+	# cached street retains its complete entry.
+	var demolished := Vector2i(64, 64)
+	var city := main.document_state.city
+	var road := city.building_id(demolished.x, demolished.y)
+	var distant := Vector2i(64, 60)
+	var retained: Dictionary = ground.cache[distant]
+	city.set_building_id(demolished.x, demolished.y, 0)
+	ground.sync(main, 0.45)
+	assert(not ground.visible_keys.has(demolished), "Demolished road retained its lamp")
+	assert(is_same(ground.cache[distant], retained), "Local road edit discarded distant lighting")
+	city.set_building_id(demolished.x, demolished.y, road)
+	for frame in 160:
+		ground.sync(main, 0.45)
+	assert(ground.visible_keys.has(demolished) and not ground.dirty.has(demolished), "Rebuilt road never regained its lighting")
 	map.city_source = old_source
 	main.render_caches.region_cache = regions
 	print("PASS: street light buffer survives source publications and panning; dirty receivers replace atomically")

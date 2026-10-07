@@ -17,11 +17,17 @@ var visible_tiles: Array[Vector2i] = []
 var signature: Array = []
 var bounds := Rect2i()
 var cursor := 0
+var pending: Array[Vector2i] = []
+var queued: Dictionary[Vector2i, bool] = {}
+var visible_keys: Dictionary[Vector2i, bool] = {}
+var templates := CityNightTemplates.new()
 var geometry: Array = []
 var dirty: Dictionary[Vector2i, bool] = {}
 var last_used: Dictionary[Vector2i, int] = {}
 var collection := 0
 var fixtures := Node2D.new()
+var signals := Node2D.new()
+var signal_tiles: Array[Vector2i] = []
 var clock := 0.0
 
 
@@ -36,6 +42,8 @@ func _init() -> void:
 	fixtures.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(fixtures)
 	fixtures.draw.connect(_draw_fixtures)
+	fixtures.add_child(signals)
+	signals.draw.connect(_draw_signals)
 
 
 func reset() -> void:
@@ -47,11 +55,17 @@ func reset() -> void:
 	masker._occluders.clear()
 	masker._occluder_bounds.clear()
 	visible_tiles.clear()
+	visible_keys.clear()
+	pending.clear()
+	queued.clear()
+	signal_tiles.clear()
+	templates.clear()
 	signature.clear()
 	bounds = Rect2i()
 	cursor = 0
 	queue_redraw()
 	fixtures.queue_redraw()
+	signals.queue_redraw()
 
 
 func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
@@ -61,7 +75,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 	var previous_second := floori(clock)
 	clock = fposmod(clock + maxf(elapsed, 0.0), 14.0)
 	if floori(clock) != previous_second:
-		fixtures.queue_redraw()
+		signals.queue_redraw()
 	fixtures.modulate.a = smoothstep(0.0, 0.25, strength)
 	var map := app.map_view
 	var city := app.document_state.city
@@ -82,7 +96,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 	elif not changed.is_empty():
 		for tile in changed:
 			if cache.has(tile):
-				dirty[tile] = true
+				_mark_dirty(tile)
 			if bounds.grow(64).has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
 				bounds = Rect2i()
 	var next := Rect2i(map.visible_source_rect().grow(BUFFER_MARGIN))
@@ -90,27 +104,30 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 		bounds = next
 		_collect(city)
 	var built := 0
-	var visited := 0
+	var attempts := mini(BUILD_BUDGET, pending.size())
 	var started := Time.get_ticks_usec()
 	# Refresh in place: an old complete texture remains until its replacement is ready.
-	while visited < visible_tiles.size() and built < BUILD_BUDGET:
-		cursor %= visible_tiles.size()
-		var tile := visible_tiles[cursor]
+	while attempts > 0:
+		var tile := pending[cursor]
 		cursor += 1
-		visited += 1
-		if cache.has(tile) and not dirty.has(tile):
-			continue
+		attempts -= 1
 		if not _regions_ready(app, tile):
+			pending.append(tile)
 			continue
+		queued.erase(tile)
 		_forget_helpers(tile)
 		cache[tile] = _build(app, tile)
 		dirty.erase(tile)
 		built += 1
 		if Time.get_ticks_usec() - started > 4000:
 			break
+	if cursor > 0:
+		pending = pending.slice(cursor)
+		cursor = 0
 	if built > 0:
 		queue_redraw()
 		fixtures.queue_redraw()
+		_refresh_signals()
 	var scale_value := map.camera._view_scale()
 	position = map.camera._draw_offset(scale_value)
 	scale = Vector2.ONE * scale_value
@@ -122,6 +139,9 @@ func _collect(city: CityState) -> void:
 		if not cache.has(tile):
 			last_used.erase(tile)
 	visible_tiles.clear()
+	visible_keys.clear()
+	pending.clear()
+	queued.clear()
 	cursor = 0
 	var first := Vector2i(city.map_size, city.map_size)
 	var last := Vector2i.ZERO
@@ -144,6 +164,7 @@ func _collect(city: CityState) -> void:
 		var point := CityLifePaths.point(city, tile, 0, 2, 0.5, false)
 		if bounds.has_point(Vector2i(point)) and not sources(city, tile).is_empty():
 			visible_tiles.append(tile)
+			visible_keys[tile] = true
 			points[tile] = point
 	collection += 1
 	for tile in visible_tiles:
@@ -166,13 +187,28 @@ func _collect(city: CityState) -> void:
 	var center := Vector2(bounds.get_center())
 	visible_tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return points[a].distance_squared_to(center) < points[b].distance_squared_to(center))
+	for tile in visible_tiles:
+		if not cache.has(tile) or dirty.has(tile):
+			_enqueue(tile)
 	queue_redraw()
 	fixtures.queue_redraw()
+	_refresh_signals()
+
+
+func _enqueue(tile: Vector2i) -> void:
+	if visible_keys.has(tile) and not queued.has(tile):
+		pending.append(tile)
+		queued[tile] = true
+
+
+func _mark_dirty(tile: Vector2i) -> void:
+	dirty[tile] = true
+	_enqueue(tile)
 
 
 func invalidate_all() -> void:
 	for tile in cache:
-		dirty[tile] = true
+		_mark_dirty(tile)
 
 
 func invalidate_regions(changes: Array[Rect2i]) -> void:
@@ -182,7 +218,7 @@ func invalidate_regions(changes: Array[Rect2i]) -> void:
 		var receiver := Rect2i(cache[tile].origin, Vector2i(64, 64))
 		for changed in changes:
 			if receiver.intersects(changed):
-				dirty[tile] = true
+				_mark_dirty(tile)
 				break
 
 
@@ -211,7 +247,8 @@ func sources(city: CityState, tile: Vector2i) -> Array[Dictionary]:
 	for fixture in CityNightFixtures.street_layout(city, tile, int(profiles.street.spacing)):
 		var street: Dictionary = profiles.street.duplicate()
 		street.enter = fixture.enter
-		street.position = Vector2(tile) + Vector2(fixture.offset) * 0.65
+		street.offset = Vector2(fixture.offset) * 0.65
+		street.position = Vector2(tile) + street.offset
 		result.append(street)
 	# Only short, street-facing approaches for the explicitly listed shops.
 	# No guess at facade height and no illumination across unrelated buildings.
@@ -222,7 +259,8 @@ func sources(city: CityState, tile: Vector2i) -> Array[Dictionary]:
 		var id := str(city.building_id(neighbor.x, neighbor.y))
 		if profiles.entrances.has(id) and city.land_altitude(tile.x, tile.y) == city.land_altitude(neighbor.x, neighbor.y):
 			var entrance: Dictionary = profiles.entrances[id].duplicate()
-			entrance.position = Vector2(tile) + Vector2(CityLifePaths.DIRECTIONS[direction]) * 0.32
+			entrance.offset = Vector2(CityLifePaths.DIRECTIONS[direction]) * 0.32
+			entrance.position = Vector2(tile) + entrance.offset
 			result.append(entrance)
 	return result
 
@@ -232,37 +270,16 @@ func _build(app: CityApplication, tile: Vector2i) -> Dictionary:
 	var center := CityLifePaths.point(city, tile, 0, 2, 0.5, false)
 	var origin := Vector2i(center) - Vector2i(32, 32)
 	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
-	var lights := sources(city, tile)
-	var seen := {}
-	# Each approach/deck gets its own occlusion mask (including lower crossings).
-	for enter in 4:
-		if not CityLifePaths.ports(city, tile) & (1 << enter):
-			continue
-		var occluders := masker._candidates(app, tile, enter)
-		for patch: Dictionary in roads._road_patches(city, tile, enter):
-			var pixels: Image = patch.image
-			for y in pixels.get_height():
-				for x in pixels.get_width():
-					var sample := pixels.get_pixel(x, y)
-					if sample.a <= 0.0:
-						continue
-					var point: Vector2i = patch.origin + Vector2i(x, y)
-					var local := point - origin
-					if seen.has(point) or not Rect2i(0, 0, 64, 64).has_point(local) or CityLifeCanvas.hidden_at(point, occluders):
-						continue
-					seen[point] = true
-					var color := Color(0, 0, 0, 1)
-					for light in lights:
-						if light.has("enter") and int(light.enter) != enter and not CityLifePaths.can_turn(city, tile, enter, int(light.enter)):
-							continue
-						var distance := Vector2(sample.r, sample.g).distance_to(light.position)
-						var falloff := pow(maxf(0.0, 1.0 - distance / float(light.radius)), 1.6)
-						color += Color(str(light.color)) * falloff * float(light.intensity)
-					color.a = 1.0
-					image.set_pixelv(local, color.clamp())
+	var parts := templates.receiver(city, tile, origin, sources(city, tile), roads)
+	# Earlier approaches own overlapping pixels, unless their own deck is hidden.
+	# Clip each approach before composition to preserve stacked road crossings.
+	for index in range(parts.size() - 1, -1, -1):
+		var part: Dictionary = parts[index]
+		var visible := CityLifeCanvas.visible_sprite(part.image, origin, masker._candidates(app, tile, part.enter))
+		image.blit_rect_mask(visible, visible, Rect2i(0, 0, 64, 64), Vector2i.ZERO)
 	var result := CityNightFixtures.build(app, tile, origin,
-		CityNightFixtures.street_layout(city, tile, int(profiles.street.spacing)), masker)
-	result.merge({"texture": ImageTexture.create_from_image(image), "origin": origin})
+		CityNightFixtures.street_layout(city, tile, int(profiles.street.spacing)), masker, templates.texture)
+	result.merge({"texture": templates.texture(image), "origin": origin})
 	return result
 
 
@@ -278,6 +295,18 @@ func _draw_fixtures() -> void:
 			continue
 		var entry: Dictionary = cache[tile]
 		fixtures.draw_texture(entry.fixtures, entry.origin)
-		for signal_light: Dictionary in entry.signals:
+
+
+func _refresh_signals() -> void:
+	signal_tiles.clear()
+	for tile in visible_tiles:
+		if cache.has(tile) and not cache[tile].signals.is_empty():
+			signal_tiles.append(tile)
+	signals.queue_redraw()
+
+
+func _draw_signals() -> void:
+	for tile in signal_tiles:
+		for signal_light: Dictionary in cache[tile].signals:
 			var lens := CityNightFixtures.signal_lens(tile, signal_light.axis, clock)
-			fixtures.draw_texture(signal_light.lenses[lens], signal_light.origin)
+			signals.draw_texture(signal_light.lenses[lens], signal_light.origin)

@@ -371,6 +371,7 @@ func _check_street_fixtures(hdr: bool) -> void:
 	(ground.material as ShaderMaterial).set_shader_parameter("strength", 0.45)
 	ground.queue_redraw()
 	ground.fixtures.queue_redraw()
+	ground._refresh_signals()
 	await RenderingServer.frame_post_draw
 	var after := viewport.get_texture().get_image()
 	var red := 0
@@ -384,10 +385,15 @@ func _check_street_fixtures(hdr: bool) -> void:
 			warm += int(pixel.r > before.get_pixel(x, y).r + 0.08 and pixel.r > pixel.b * 1.3)
 	assert(red >= 2 and green >= 2, "Junction lamps are missing red or green output on the GPU")
 	assert(warm > 50, "Street light pools remain too small or dim to read: hdr=%s warm=%d red=%d green=%d" % [hdr, warm, red, green])
+	var redraws := {"ground": 0, "fixtures": 0, "signals": 0}
+	ground.draw.connect(func(): redraws.ground += 1)
+	ground.fixtures.draw.connect(func(): redraws.fixtures += 1)
+	ground.signals.draw.connect(func(): redraws.signals += 1)
 	ground.clock = 6.0
-	ground.fixtures.queue_redraw()
+	ground.signals.queue_redraw()
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() != after.get_data(), "Cosmetic signal phase failed to change visible lenses")
+	assert(redraws.ground == 0 and redraws.fixtures == 0 and redraws.signals == 1, "Signal animation rebuilt static drawing commands")
 	ground.hide()
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == before.get_data(), "Disabled street lighting left fixtures behind")

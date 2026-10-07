@@ -51,7 +51,8 @@ static func signal_lens(tile: Vector2i, axis: int, seconds: float) -> int:
 	return 1 if phase < 6.0 else 0
 
 
-static func build(app: CityApplication, tile: Vector2i, origin: Vector2i, layout: Array[Dictionary], masker: CityLifeCanvas) -> Dictionary:
+static func build(app: CityApplication, tile: Vector2i, origin: Vector2i, layout: Array[Dictionary], masker: CityLifeCanvas,
+		texture_lookup := Callable()) -> Dictionary:
 	var city := app.document_state.city
 	var art := Image.create(64, 64, false, Image.FORMAT_RGBA8)
 	for fixture in layout:
@@ -88,9 +89,13 @@ static func build(app: CityApplication, tile: Vector2i, origin: Vector2i, layout
 			var point := head + Vector2i(0, lens)
 			_halo(image, lamp_origin, point, SIGNAL_COLORS[lens], 2.5, occluders)
 			_pixel(image, lamp_origin, point, SIGNAL_COLORS[lens], occluders)
-			lenses.append(ImageTexture.create_from_image(image))
+			lenses.append(_texture(image, texture_lookup))
 		signals.append({"origin": lamp_origin, "lenses": lenses, "axis": direction % 2})
-	return {"fixtures": ImageTexture.create_from_image(art), "signals": signals}
+	return {"fixtures": _texture(art, texture_lookup), "signals": signals}
+
+
+static func _texture(image: Image, lookup: Callable) -> Texture2D:
+	return lookup.call(image) if lookup.is_valid() else ImageTexture.create_from_image(image)
 
 
 static func _foot(city: CityState, tile: Vector2i, offset: Vector2, enter: int) -> Vector2i:
