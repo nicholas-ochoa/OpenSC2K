@@ -2,6 +2,7 @@ class_name CityStatusBar
 extends PanelContainer
 
 signal disaster_locate_requested
+signal help_requested(topic: String)
 
 const REPORT_ROTATION_SECONDS := 7.0
 const NEWS_NAMES := {
@@ -102,6 +103,8 @@ var music_notice := ""
 var music_notice_seconds := 0.0
 var report_index := 0
 var report_elapsed_seconds := 0.0
+# the key that turns a click on the status bar into a request for its help
+var control_bindings := ControlBindings.defaults()
 
 
 func _ready() -> void:
@@ -117,6 +120,30 @@ func _ready() -> void:
 	speed_label.theme_changed.connect(_fit_speed_label)
 	_fit_speed_label()
 	refresh_tooltips()
+	_watch_help_clicks(self)
+
+
+func _watch_help_clicks(control: Control) -> void:
+	control.gui_input.connect(_on_help_gui_input.bind(control))
+
+	for child in control.get_children():
+		if child is Control:
+			_watch_help_clicks(child)
+
+
+# A click with the help key shows the help of the status bar, or of the
+# Demand Indicator. The gui_input signal comes before a button reads the click
+func _on_help_gui_input(event: InputEvent, control: Control) -> void:
+	var mouse := event as InputEventMouseButton
+
+	if mouse == null or mouse.button_index != MOUSE_BUTTON_LEFT or not mouse.pressed:
+		return
+
+	if not control_bindings.modifier_held("button_help_modifier", event):
+		return
+
+	control.accept_event()
+	help_requested.emit(ButtonHelp.DEMAND_INDICATOR if control == rci_graph else ButtonHelp.STATUS_BAR)
 
 
 func _on_locate_disaster_pressed() -> void:

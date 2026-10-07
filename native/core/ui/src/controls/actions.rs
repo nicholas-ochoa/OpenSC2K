@@ -129,7 +129,7 @@ pub const SURFACE_LAYERS: [(&str, &str, &str); 11] = [
 ];
 /// The Windows menu actions: id, label, menu id, and default bindings.
 pub const WINDOW_ACTIONS: [(&str, &str, i64, &[&str]); 9] = [
-    ("window_budget", "Budget", 0, &["key:B"]),
+    ("window_budget", "Budget", 0, &["key:Command+B"]),
     ("window_ordinances", "Ordinances", 1, &[]),
     ("window_population", "Population", 2, &[]),
     ("window_industry", "Industry", 3, &[]),
@@ -254,6 +254,24 @@ fn build() -> Vec<Action> {
         Modifier,
         &["key:Shift"],
     );
+    // The Macintosh version turns the cursor into the Bulldozer while B is
+    // down, and into the Center tool while Option is down.
+    c.add(
+        "tool_bulldoze_modifier",
+        "Bulldoze with any tool (hold)",
+        "Tools",
+        Map,
+        Modifier,
+        &["key:B"],
+    );
+    c.add(
+        "tool_center_modifier",
+        "Center with any tool (hold)",
+        "Tools",
+        Map,
+        Modifier,
+        &["key:Alt"],
+    );
 
     c.add("view_city", "City view", "View", Map, Press, &["key:V"]);
     c.add("view_toggle_underground", "Underground view", "View", Map, Press, &["key:U"]);
@@ -320,6 +338,14 @@ fn build() -> Vec<Action> {
     c.add("map_context_menu", "Context menu", "Mouse", Map, Click, &["mouse:Right"]);
     c.add("map_center_on_tile", "Center on tile", "Mouse", Map, Click, &["mouse:Middle"]);
     c.add("map_pan", "Move map (drag)", "Mouse", Map, Drag, &["mouse:Right", "mouse:Middle"]);
+    c.add(
+        "button_help_modifier",
+        "Toolbar and status bar help (hold)",
+        "Mouse",
+        Map,
+        Modifier,
+        &["key:Shift"],
+    );
 
     c.add("scurk_open", "Open tile set", "SCURK", Scurk, Press, &["key:Command+O"]);
     c.add("scurk_save", "Save tile set", "SCURK", Scurk, Press, &["key:Command+S"]);

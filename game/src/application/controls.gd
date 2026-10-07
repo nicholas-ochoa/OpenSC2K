@@ -46,6 +46,27 @@ static func key_id(event: InputEventKey) -> int:
 	return event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
 
 
+# The Center tool while its key is down, else the Bulldozer while its key is
+# down. Mouse events also carry the modifier keys, so a key release that the
+# window did not get still ends the held tool
+func update_held_tool(event: InputEvent) -> void:
+	if not (event is InputEventKey or event is InputEventMouse):
+		return
+
+	var tool := ApplicationCurrentTool.NO_TOOL
+
+	if bindings().modifier_held("tool_center_modifier", event):
+		tool = Vector2i(CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER)
+	elif bindings().modifier_held("tool_bulldoze_modifier", event) and not app.tool_state.landscape_editor:
+		tool = Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.DEMOLISH)
+
+	if tool != ApplicationCurrentTool.NO_TOOL and not app.camera_input.camera_keys_allowed():
+		tool = ApplicationCurrentTool.NO_TOOL
+
+	if tool != app.tool_state.held_tool or app.tool_state.held_tool_pending:
+		app.current_tool.hold_tool(tool)
+
+
 func camera_speed_scale() -> float:
 	return FAST_CAMERA_SCALE if bindings().is_held("camera_fast") else 1.0
 

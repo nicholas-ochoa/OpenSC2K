@@ -149,6 +149,7 @@ func _notification(what: int) -> void:
 		settings.apply_ui_scale()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		effects_audio.handle_application_focus_out()
+		current_tool.hold_tool(ApplicationCurrentTool.NO_TOOL)
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		effects_audio.handle_application_focus_in()
 

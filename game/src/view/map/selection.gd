@@ -25,13 +25,11 @@ func set_edit_enabled(
 	value: bool,
 	mode := "rectangle",
 	footprint_area := 1,
-	shift_queries := false
 ) -> void:
 	_hide_placement_error()
 	map.edit_enabled = value
 	map.selection_mode = mode
 	map.point_footprint_area = clampi(footprint_area, 1, 7)
-	map.shift_query_enabled = shift_queries
 	clear_selection_price()
 	map.mouse_default_cursor_shape = (
 		Control.CURSOR_CROSS if map.edit_enabled else Control.CURSOR_ARROW

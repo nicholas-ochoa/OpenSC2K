@@ -29,10 +29,13 @@ func _run() -> void:
 	_test_focus_and_extras()
 	_test_mouse_buttons()
 	_test_tool_modifiers()
+	_test_held_tools()
+	_test_shift_click_queries()
+	_test_button_help()
 
 	main.queue_free()
 	await process_frame
-	print("PASS: control dispatch for speed, tools, camera, menus, rebinding, and mouse buttons")
+	print("PASS: control dispatch for speed, tools, camera, menus, rebinding, mouse buttons, held tools, and button help")
 	quit()
 
 
@@ -225,7 +228,6 @@ func _test_tool_modifiers() -> void:
 	var queries: Array[Vector2i] = []
 	main.map_view.query_requested.connect(func(point: Vector2i) -> void: queries.append(point))
 	main.map_view.edit_enabled = true
-	main.map_view.shift_query_enabled = true
 	main.map_view.shift_line_enabled = false
 	main.map_view.shift_rectangle_enabled = false
 	var click := _mouse(MOUSE_BUTTON_LEFT, main.map_view.size * 0.5, true)
@@ -253,6 +255,144 @@ func _test_tool_modifiers() -> void:
 	assert(main.controls.handle_music_key(_key(KEY_F8)))
 	main.preferences.control_bindings = ControlBindings.defaults()
 	main.settings.apply_control_bindings()
+
+
+# B gives the map the Bulldozer and Option gives it the Center tool while the
+# key is down. The toolbar keeps the chosen tool
+func _test_held_tools() -> void:
+	var state := main.tool_state
+	var map := main.map_view
+	main.camera_input.choose_tool_group(CityToolIds.Group.RESIDENTIAL)
+	var chosen := Vector2i(state.selected_group, state.selected_subtool)
+	main.camera_input.input(_key(KEY_B))
+	assert(Vector2i(state.selected_group, state.selected_subtool) == Vector2i(CityToolIds.Group.BULLDOZER,
+		CityToolIds.Bulldozer.DEMOLISH), "Holding B bulldozes")
+	assert(map.demolish_brush and main.city_toolbar.toolbar_buttons[CityToolIds.Group.RESIDENTIAL].button_pressed)
+	main.camera_input.input(_key(KEY_B, false))
+	assert(Vector2i(state.selected_group, state.selected_subtool) == chosen, "Releasing B gives back the chosen tool")
+
+	# a release during a drag waits for the drag to end
+	main.camera_input.input(_key(KEY_B))
+	map.interaction._handle_mouse_button(_mouse(MOUSE_BUTTON_LEFT, map.size * 0.5, true))
+	main.camera_input.input(_key(KEY_B, false))
+	assert(state.selected_group == CityToolIds.Group.BULLDOZER, "The drag keeps the held tool")
+	map.interaction._handle_mouse_button(_mouse(MOUSE_BUTTON_LEFT, map.size * 0.5, false))
+	assert(Vector2i(state.selected_group, state.selected_subtool) == chosen, "The tool comes back after the drag")
+
+	# a click with Option held centers the map on the tile
+	var alt := _key(KEY_ALT)
+	alt.alt_pressed = true
+	main.camera_input.input(alt)
+	assert(state.selected_group == CityToolIds.Group.CENTERING, "Holding Option centers")
+	var center := map.source_center
+	var target := map.size * 0.5 + Vector2(96, 48)
+	assert(map.camera._tile_at(target).x >= 0)
+	var click := _mouse(MOUSE_BUTTON_LEFT, target, true)
+	click.alt_pressed = true
+	map.interaction._handle_mouse_button(click)
+	click = _mouse(MOUSE_BUTTON_LEFT, target, false)
+	click.alt_pressed = true
+	map.interaction._handle_mouse_button(click)
+	assert(map.source_center != center, "An Option-click centers the map")
+	main.camera_input.input(_key(KEY_ALT, false))
+	assert(state.selected_group == CityToolIds.Group.RESIDENTIAL)
+
+	# a chosen tool ends the held tool, and a text field takes the key
+	main.camera_input.input(_key(KEY_B))
+	main.camera_input.choose_tool_group(CityToolIds.Group.ROADS)
+	assert(state.selected_group == CityToolIds.Group.ROADS and state.held_tool == ApplicationCurrentTool.NO_TOOL)
+	main.camera_input.input(_key(KEY_B, false))
+	assert(state.selected_group == CityToolIds.Group.ROADS)
+	var field := LineEdit.new()
+	main.add_child(field)
+	field.grab_focus()
+	main.camera_input.input(_key(KEY_B))
+	assert(state.selected_group == CityToolIds.Group.ROADS, "B types in a text field")
+	main.camera_input.input(_key(KEY_B, false))
+	field.queue_free()
+
+
+# Shift-click queries with every tool. A box tool keeps Shift for its box and
+# queries only when the pointer does not move
+func _test_shift_click_queries() -> void:
+	var map := main.map_view
+	var queries: Array[Vector2i] = []
+	var completed := [0]
+	map.query_requested.connect(func(point: Vector2i) -> void: queries.append(point))
+	map.selection_completed.connect(func(_start: Vector2i, _end: Vector2i, _path: Array, _moved: bool) -> void:
+		completed[0] += 1)
+	main.camera_input.choose_tool_group(CityToolIds.Group.RESIDENTIAL)
+	map.interaction._handle_mouse_button(_shift_click(map.size * 0.5, true))
+	assert(queries.size() == 1 and not map.is_left_drag_active(), "Shift-click queries with a zone tool")
+	main.query_choices.close_query()
+	map.interaction._handle_mouse_button(_shift_click(map.size * 0.5, false))
+
+	main.camera_input.choose_tool_group(CityToolIds.Group.BULLDOZER)
+	main.current_tool.select_subtool(CityToolIds.Bulldozer.DEMOLISH)
+	assert(map.shift_rectangle_enabled)
+	map.interaction._handle_mouse_button(_shift_click(map.size * 0.5, true))
+	assert(queries.size() == 1 and map.is_left_drag_active())
+	map.interaction._handle_mouse_button(_shift_click(map.size * 0.5, false))
+	assert(queries.size() == 2 and completed[0] == 0, "A Shift-click without a drag queries")
+	main.query_choices.close_query()
+	map.interaction._handle_mouse_button(_shift_click(map.size * 0.5, true))
+	var drag := InputEventMouseMotion.new()
+	drag.position = map.size * 0.5 + Vector2(96, 48)
+	drag.shift_pressed = true
+	drag.button_mask = MOUSE_BUTTON_MASK_LEFT
+	map.interaction._handle_mouse_motion(drag)
+	assert(map.selection_moved)
+	map.interaction._handle_mouse_button(_shift_click(drag.position, false))
+	assert(queries.size() == 2 and completed[0] == 1, "A Shift-drag demolishes a box")
+
+
+# Shift-click on a toolbar button or the status bar shows its help
+func _test_button_help() -> void:
+	var help := main.city_dialogs.help_dialog
+	var toolbar := main.city_toolbar
+
+	for group in ButtonHelp.GROUP_TOPICS.size():
+		assert(not ButtonHelp.text(ButtonHelp.group_topic(group), main.preferences.control_bindings).is_empty())
+
+	var topics: Array[String] = [ButtonHelp.STATUS_BAR, ButtonHelp.DEMAND_INDICATOR]
+	topics.append_array(ButtonHelp.EDITOR_TOPICS.values())
+	topics.append_array(toolbar._help_topics.values())
+
+	for topic in topics:
+		assert(not ButtonHelp.text(topic, main.preferences.control_bindings).is_empty(), "Help for " + topic)
+
+	var bulldozer := toolbar.toolbar_buttons[CityToolIds.Group.BULLDOZER]
+	bulldozer.gui_input.emit(_mouse(MOUSE_BUTTON_LEFT, Vector2.ONE, true))
+	assert(not help.visible, "A plain click presses the button")
+	bulldozer.gui_input.emit(_shift_click(Vector2.ONE, true))
+	assert(help.visible and help.topic == ButtonHelp.group_topic(CityToolIds.Group.BULLDOZER))
+	help.hide()
+	main.zoom_in_button.gui_input.emit(_shift_click(Vector2.ONE, true))
+	assert(help.visible and help.topic == toolbar._help_topics[main.zoom_in_button])
+	help.hide()
+	var status := main.city_status_bar
+	status.rci_graph.gui_input.emit(_shift_click(Vector2.ONE, true))
+	assert(help.visible and help.topic == ButtonHelp.DEMAND_INDICATOR)
+	help.hide()
+	status.gui_input.emit(_shift_click(Vector2.ONE, true))
+	assert(help.visible and help.topic == ButtonHelp.STATUS_BAR)
+	help.hide()
+
+	# the text names the bound keys and leaves out a paragraph for an unbound key
+	var bindings := main.preferences.control_bindings
+	var query_key := bindings.first_key("tool_query_modifier").full_text()
+	assert(ButtonHelp.text("Query", bindings).contains(query_key))
+	var unbound := bindings.duplicate_set()
+	unbound.bindings["tool_query_modifier"] = []
+	var shorter := ButtonHelp.text("Query", unbound)
+	assert(not shorter.contains("{") and shorter.length() < ButtonHelp.text("Query", bindings).length())
+
+
+func _shift_click(position: Vector2, pressed: bool) -> InputEventMouseButton:
+	var event := _mouse(MOUSE_BUTTON_LEFT, position, pressed)
+	event.shift_pressed = true
+
+	return event
 
 
 func _press(keycode: Key, shift := false) -> void:

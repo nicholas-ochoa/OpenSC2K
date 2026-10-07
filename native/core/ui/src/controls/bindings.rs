@@ -8,7 +8,13 @@ use std::collections::HashMap;
 const SECTION: &str = "controls";
 const PREFIX: &str = "binding/";
 const VERSION_KEY: &str = "bindings_version";
-const VERSION: i64 = 1;
+const VERSION: i64 = 2;
+/// Version 2 moves Budget to Command+B, the Ctrl+B of the original menu, so
+/// that a held B can bulldoze.
+const BUDGET_VERSION: i64 = 2;
+const BUDGET_ID: &str = "window_budget";
+const BUDGET_KEY: &str = "key:B";
+const NEW_BUDGET_KEY: &str = "key:Command+B";
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Bindings {
@@ -63,7 +69,60 @@ impl Bindings {
             result.bindings.insert(id.to_string(), list);
         }
 
+        if config.int(SECTION, VERSION_KEY, 0) < BUDGET_VERSION {
+            result.migrate_budget_key();
+        }
+
+        result.drop_used_defaults(config);
+
         result
+    }
+
+    /// Earlier versions opened the budget with B. The new key moves across
+    /// only when no other action uses it.
+    fn migrate_budget_key(&mut self) {
+        let (Some(old_key), Some(new_key)) = (Binding::from_text(BUDGET_KEY), Binding::from_text(NEW_BUDGET_KEY)) else {
+            return;
+        };
+
+        let Some(list) = self.bindings.get_mut(BUDGET_ID) else {
+            return;
+        };
+
+        if !list.contains(&old_key) {
+            return;
+        }
+
+        list.retain(|binding| *binding != old_key);
+
+        if self.conflicts(&new_key, BUDGET_ID).is_empty() {
+            self.add(BUDGET_ID, new_key);
+        }
+    }
+
+    /// An action that the settings do not list yet, such as a new action,
+    /// keeps only the default bindings that no saved action uses.
+    fn drop_used_defaults(&mut self, config: &Config) {
+        if !config.sections.iter().any(|(name, _)| name == SECTION) {
+            return;
+        }
+
+        for id in actions::bindable_ids() {
+            if config.get(SECTION, &format!("{PREFIX}{id}")).is_some() {
+                continue;
+            }
+
+            let used: Vec<Binding> = self
+                .for_action(id)
+                .iter()
+                .filter(|binding| !self.conflicts(binding, id).is_empty())
+                .cloned()
+                .collect();
+
+            if let Some(list) = self.bindings.get_mut(id) {
+                list.retain(|binding| !used.contains(binding));
+            }
+        }
     }
 
     /// Write every bindable action to the controls section.

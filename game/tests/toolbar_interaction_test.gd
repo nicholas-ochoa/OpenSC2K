@@ -258,7 +258,7 @@ func _test_brush_and_drag_input(map: CityMapControl, shift: InputEventKey) -> vo
 	brush.free()
 	# Shift changes the same in-progress path in either direction.
 	map.landscape_brush = false
-	map.set_edit_enabled(true, "path", 1, true)
+	map.set_edit_enabled(true, "path", 1)
 	map.shift_rectangle_enabled = true
 	map.selection_start = Vector2i(80, 80)
 	map.selection_end = Vector2i(83, 82)

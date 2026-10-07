@@ -12,6 +12,7 @@ const Highways = preload("res://src/tools/city/highway_command.gd")
 const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const Dispatch = preload("res://src/tools/city/dispatch_command.gd")
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
+const NO_TOOL := Vector2i(-1, -1)
 const LEVEL_BRUSH_SIZE := 1
 const EDITOR_LEVEL_BRUSH_SIZE := 5
 
@@ -60,7 +61,59 @@ func reset_prompts() -> void:
 	app.tool_state.pending_building_objection_subtool = -1
 
 
+# Give the map a tool while a key is down, or NO_TOOL to give back the chosen
+# tool. The toolbar does not change. A change waits for the end of a drag
+func hold_tool(tool: Vector2i) -> void:
+	var state := app.tool_state
+
+	if app.map_view != null and app.map_view.is_left_drag_active():
+		state.held_tool_pending = tool != state.held_tool
+		state.pending_held_tool = tool
+
+		return
+
+	state.held_tool_pending = false
+
+	if tool == state.held_tool:
+		return
+
+	_give_back_chosen_tool()
+
+	if tool != NO_TOOL:
+		state.chosen_tool = Vector2i(state.selected_group, state.selected_subtool)
+		state.selected_group = tool.x
+		state.selected_subtool = tool.y
+		state.held_tool = tool
+
+	update_edit_state()
+
+
+# run the held tool change that waited for a drag
+func finish_held_tool() -> void:
+	if app.tool_state.held_tool_pending:
+		hold_tool(app.tool_state.pending_held_tool)
+
+
+func _give_back_chosen_tool() -> void:
+	var state := app.tool_state
+
+	if state.held_tool == NO_TOOL:
+		return
+
+	state.selected_group = state.chosen_tool.x
+	state.selected_subtool = state.chosen_tool.y
+	state.held_tool = NO_TOOL
+
+
+# a tool that the player chooses ends a held tool
+func _drop_held_tool() -> void:
+	app.tool_state.held_tool_pending = false
+	_give_back_chosen_tool()
+
+
 func select_tool_group(index: int) -> void:
+	_drop_held_tool()
+
 	if app.tool_state.terrain_stretch.active:
 		app.map_view.cancel_active_selection()
 
@@ -116,6 +169,8 @@ func _auto_select_underground() -> void:
 
 
 func select_subtool(index: int) -> void:
+	_drop_held_tool()
+
 	if app.tool_state.terrain_stretch.active:
 		app.map_view.cancel_active_selection()
 
@@ -285,7 +340,6 @@ func update_edit_state() -> void:
 		bool(state.enabled),
 		str(state.selection),
 		int(state.area),
-		bool(state.landscape),
 	)
 
 	app.interface.refresh_status_summary()

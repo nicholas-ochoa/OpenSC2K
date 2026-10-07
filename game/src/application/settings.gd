@@ -378,6 +378,12 @@ func apply_control_bindings() -> void:
 	if app.map_view != null:
 		app.map_view.control_bindings = preferences.control_bindings
 
+	if app.city_toolbar != null:
+		app.city_toolbar.control_bindings = preferences.control_bindings
+
+	if app.city_status_bar != null:
+		app.city_status_bar.control_bindings = preferences.control_bindings
+
 	if app.city_menu_bar != null:
 		app.city_menu_bar.refresh_shortcut_hints(preferences.control_bindings)
 

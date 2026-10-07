@@ -80,7 +80,6 @@ var edit_enabled := false
 var shift_rectangle_enabled := false
 var selection_mode := "rectangle"
 var point_footprint_area := 1
-var shift_query_enabled := false
 # the mouse buttons for map actions. the left button always uses the tool
 var control_bindings := ControlBindings.defaults()
 var context_menu: ContextMenu
@@ -244,9 +243,8 @@ func set_edit_enabled(
 	value: bool,
 	mode := "rectangle",
 	footprint_area := 1,
-	shift_queries := false
 ) -> void:
-	selection.set_edit_enabled(value, mode, footprint_area, shift_queries)
+	selection.set_edit_enabled(value, mode, footprint_area)
 
 
 func zoom_percent() -> int:

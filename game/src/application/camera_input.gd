@@ -81,6 +81,8 @@ func input(event: InputEvent) -> void:
 
 		return
 
+	app.controls.update_held_tool(event)
+
 	# A focused control can consume the release event. Stop camera movement anyway.
 	if event is InputEventKey and not event.pressed:
 		app.view_state.camera_motion.release(ApplicationControls.key_id(event))
@@ -394,6 +396,7 @@ func on_map_selection_finished() -> void:
 		app.tool_state.terrain_stretch.finish()
 
 	app.effects_audio.stop_tool_loop_sound()
+	app.current_tool.finish_held_tool()
 
 
 func on_terrain_stretch_changed(levels: int, deferred: bool) -> void:

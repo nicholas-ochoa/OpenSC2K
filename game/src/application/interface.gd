@@ -86,6 +86,8 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.map_view.viewport_changed.connect(app.reports.city_map.refresh_viewport)
 	app.city_status_bar = app.city_workspace.status_bar
 	app.city_status_bar.disaster_locate_requested.connect(app.camera_input.center_map_on_disaster)
+	app.city_status_bar.help_requested.connect(show_button_help)
+	app.city_toolbar.help_requested.connect(show_button_help)
 	app.status_label = app.city_status_bar.message_label
 	app.frame.sync_speed_ui()
 
@@ -201,6 +203,16 @@ func _build_main_menu() -> void:
 func show_status(message: String) -> void:
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = message
+
+
+# the help of a toolbar button or the status bar, as a Shift-click shows it
+func show_button_help(topic: String) -> void:
+	var text := ButtonHelp.text(topic, app.preferences.control_bindings)
+
+	if text.is_empty():
+		return
+
+	app.city_dialogs.help_dialog.show_topic(topic, text)
 
 
 func show_main_menu() -> void:

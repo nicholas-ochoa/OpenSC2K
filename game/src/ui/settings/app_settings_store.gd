@@ -4,7 +4,11 @@ extends RefCounted
 const GRAPHICS_ZOOMS := [25, 50, 100, 200, 300, 400]
 const GRAPHICS_SIZES := ["Small", "Medium", "Large"]
 const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
-const BINDINGS_VERSION := 1
+const BINDINGS_VERSION := 2
+# version 2 moves Budget to Command+B, the Ctrl+B of the original menu, so
+# that a held B can bulldoze
+const BUDGET_KEY := "key:B"
+const NEW_BUDGET_KEY := "key:Command+B"
 const BINDING_PREFIX := "binding/"
 
 
@@ -122,10 +126,47 @@ static func load_bindings(config: ConfigFile) -> ControlBindings:
 
 		result.bindings[id] = list
 
-	if not config.has_section_key("controls", "bindings_version"):
+	var version := int(config.get_value("controls", "bindings_version", 0))
+
+	if version < 1:
 		_migrate_mouse_buttons(config, result)
 
+	if version < 2:
+		_migrate_budget_key(result)
+
+	_drop_used_defaults(config, result)
+
 	return result
+
+
+# Earlier versions opened the budget with B. The new key moves across only
+# when no other action uses it
+static func _migrate_budget_key(result: ControlBindings) -> void:
+	var old_key := ControlBinding.from_text(BUDGET_KEY)
+	var new_key := ControlBinding.from_text(NEW_BUDGET_KEY)
+
+	if not result.for_action("window_budget").any(func(binding: ControlBinding) -> bool: return binding.equals(old_key)):
+		return
+
+	result.remove_binding("window_budget", old_key)
+
+	if result.conflicts(new_key, "window_budget").is_empty():
+		result.add("window_budget", new_key)
+
+
+# An action that the file does not list yet, such as a new action, keeps only
+# the default bindings that no saved action uses
+static func _drop_used_defaults(config: ConfigFile, result: ControlBindings) -> void:
+	if not config.has_section("controls"):
+		return
+
+	for id in ControlActions.bindable_ids():
+		if config.has_section_key("controls", BINDING_PREFIX + id):
+			continue
+
+		for binding in result.for_action(id):
+			if not result.conflicts(binding, id).is_empty():
+				result.remove_binding(id, binding)
 
 
 # Earlier versions had one choice each for the right and middle buttons, and

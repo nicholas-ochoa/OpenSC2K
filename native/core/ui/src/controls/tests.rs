@@ -1,6 +1,6 @@
 use super::binding::modifiers::{COMMAND, SHIFT};
 use super::{Binding, Bindings, Input, Kind, Scope, find};
-use sc2k_platform::config::Config;
+use sc2k_platform::config::{Config, Value};
 
 fn key(name: &str, modifiers: u8) -> Input {
     Input::Key {
@@ -51,4 +51,31 @@ fn settings_keep_the_bindings() {
         vec!["speed_pause".to_string()]
     );
     assert!(find("camera_up").is_some());
+}
+
+/// Write saved bindings of one action, as the settings file stores them.
+fn save(config: &mut Config, id: &str, texts: &[&str]) {
+    let values = texts.iter().map(|text| Value::Str(text.to_string())).collect();
+    config.set(
+        "controls",
+        &format!("binding/{id}"),
+        Value::Packed("PackedStringArray".into(), values),
+    );
+}
+
+#[test]
+fn version_one_settings_move_budget_off_the_bulldoze_key() {
+    let mut config = Config::default();
+    save(&mut config, "window_budget", &["key:B"]);
+    config.set("controls", "bindings_version", Value::Int(1));
+    let loaded = Bindings::load(&config);
+    assert_eq!(loaded.for_action("window_budget"), [Binding::key("B", COMMAND)]);
+    assert_eq!(loaded.for_action("tool_bulldoze_modifier"), [Binding::key("B", 0)]);
+
+    // a saved action keeps B, and the new action does without it
+    save(&mut config, "speed_pause", &["key:B"]);
+    let loaded = Bindings::load(&config);
+    assert_eq!(loaded.for_action("speed_pause"), [Binding::key("B", 0)]);
+    assert!(loaded.for_action("tool_bulldoze_modifier").is_empty());
+    assert_eq!(loaded.for_action("tool_center_modifier"), [Binding::key("Alt", 0)]);
 }

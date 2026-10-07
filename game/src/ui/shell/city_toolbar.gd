@@ -20,6 +20,7 @@ signal underground_water_mains_visibility_requested(visible: bool)
 signal underground_pipes_visibility_requested(visible: bool)
 signal underground_subways_visibility_requested(visible: bool)
 signal underground_tunnels_visibility_requested(visible: bool)
+signal help_requested(topic: String)
 
 const LANDSCAPE_TOOL_ORDER := [
 	Vector2i(
@@ -93,6 +94,10 @@ var child_palette: CityChildToolPalette
 var view_layers_heading: Label
 var view_visibility_checks: Dictionary = {}
 var view_mode_buttons: Dictionary[CityViewMode.Mode, CheckBox] = {}
+# the key that turns a click on a button into a request for its help
+var control_bindings := ControlBindings.defaults()
+# the help topics of the buttons that are not tools
+var _help_topics: Dictionary[Control, String] = {}
 
 
 func _ready() -> void:
@@ -189,6 +194,14 @@ func _ready() -> void:
 	view_visibility_checks.pipes.toggled.connect(underground_pipes_visibility_requested.emit)
 	view_visibility_checks.subways.toggled.connect(underground_subways_visibility_requested.emit)
 	view_visibility_checks.tunnels.toggled.connect(underground_tunnels_visibility_requested.emit)
+	_help_topics = {
+		rotate_counter_clockwise_button: "Rotate Counter-Clockwise", rotate_clockwise_button: "Rotate Clockwise",
+		zoom_in_button: "Zoom In", zoom_out_button: "Zoom Out",
+		view_visibility_checks.buildings: "Show Buildings", view_visibility_checks.signs: "Show Signs",
+		view_visibility_checks.networks: "Show Infrastructure",
+		view_mode_buttons[CityViewMode.Mode.UNDERGROUND]: "Show Underground",
+		start_city_button: "Done", regenerate_button: "Make",
+	}
 	_watch_buttons(self)
 
 
@@ -434,12 +447,53 @@ func set_landscape_editor(enabled: bool) -> void:
 func _watch_buttons(node: Node) -> void:
 	if node is BaseButton and not node.pressed.is_connected(button_clicked.emit):
 		node.pressed.connect(button_clicked.emit)
+		node.gui_input.connect(_on_button_gui_input.bind(node))
 
 	if not node.child_entered_tree.is_connected(_watch_buttons):
 		node.child_entered_tree.connect(_watch_buttons)
 
 	for child in node.get_children():
 		_watch_buttons(child)
+
+
+# A click with the help key asks for the help of the button and does not
+# press it. The gui_input signal comes before the button reads the click
+func _on_button_gui_input(event: InputEvent, button: BaseButton) -> void:
+	var mouse := event as InputEventMouseButton
+
+	if mouse == null or mouse.button_index != MOUSE_BUTTON_LEFT or not mouse.pressed:
+		return
+
+	if not control_bindings.modifier_held("button_help_modifier", event):
+		return
+
+	var topic := help_topic(button)
+
+	if topic.is_empty():
+		return
+
+	button.accept_event()
+	help_requested.emit(topic)
+
+
+# the help topic of a toolbar button, or "" for a button without help
+func help_topic(button: Control) -> String:
+	var group := toolbar_buttons.find(button)
+
+	if group >= 0:
+		return ButtonHelp.group_topic(group)
+
+	for key: Vector2i in landscape_buttons:
+		if landscape_buttons[key] == button:
+			return ButtonHelp.tool_topic(key.x, key.y, true)
+
+	if child_palette.is_ancestor_of(button):
+		return ButtonHelp.group_topic(child_palette.shown_group)
+
+	if hold_menu.is_ancestor_of(button):
+		return ButtonHelp.group_topic(hold_menu.palette.shown_group)
+
+	return _help_topics.get(button, "")
 
 
 func replace_artwork(value: Image) -> void:

@@ -63,6 +63,7 @@ var analysis_dialog: CityAnalysisDialog
 var newspaper_dialog: NewspaperDialog
 var building_objection_dialog: PictureNoticeDialog
 var library_windows: LibraryRuminateWindows
+var help_dialog: ButtonHelpDialog
 var game_over_dialog: AcceptDialog
 var notice_dialog: AcceptDialog
 # the notices that the original shows with a picture: the National Guard and the parade
@@ -163,6 +164,8 @@ func _create_information_windows() -> void:
 	newspaper_dialog.set_control_graphics(original_assets.city_ui_graphics)
 	library_windows = LibraryWindowsView.new()
 	_register(library_windows, "CityWindows", Modality.BLOCKING)
+	help_dialog = ButtonHelpDialog.new()
+	_register(help_dialog, "CityWindows", Modality.BLOCKING)
 
 
 func _create_event_dialogs() -> void:

@@ -486,7 +486,6 @@ func _test_selection_signals(map_control: CityMapControl, starter: CityState, ce
 		and selection_finish_signals[0] == 2,
 		"Map selection reports its moved action and finished state",
 	)
-	map_control.shift_query_enabled = true
 	var shift_query_event := InputEventMouseButton.new()
 	shift_query_event.button_index = MOUSE_BUTTON_LEFT
 	shift_query_event.pressed = true

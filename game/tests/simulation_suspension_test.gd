@@ -71,7 +71,7 @@ func _check_current_classification() -> void:
 		main.city_dialogs.scenario_dialog, main.city_dialogs.military_dialog, main.city_dialogs.budget_dialog,
 		main.city_dialogs.notice_dialog, main.city_dialogs.picture_notice_dialog, main.city_dialogs.game_over_dialog,
 		main.city_dialogs.analysis_dialog,
-		main.city_dialogs.library_windows,
+		main.city_dialogs.library_windows, main.city_dialogs.help_dialog,
 		main.main_menu, main.main_overlays.settings_dialog, main.reference_import_dialog, main.main_overlays.save_changes_dialog,
 		main.main_overlays.update_dialog, main.main_overlays.busy_overlay,
 		main.scurk_editor, main.scurk_place_print, main.scurk_print,
