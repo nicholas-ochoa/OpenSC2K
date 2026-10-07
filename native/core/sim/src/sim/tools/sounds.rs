@@ -17,6 +17,7 @@ pub const BUS_DEPOT: i64 = 521;
 pub const PRISON: i64 = 522;
 pub const EDUCATION: i64 = 523;
 pub const RAIL_DEPOT: i64 = 524;
+pub const MILITARY: i64 = 525;
 pub const ZOO: i64 = 527;
 
 /// The last subtool of the groups whose subtools all build.
@@ -38,7 +39,8 @@ pub fn success_events(group_index: i64, subtool: i64) -> Vec<i64> {
         (group::LANDSCAPE, landscape::TREES | landscape::FOREST) => &[TREE],
         (group::LANDSCAPE, landscape::WATER) => &[WATER],
         (group::DISPATCH, 1) => &[FIRE_STATION],
-        (group::DISPATCH, 0 | 2) => &[SERVICE],
+        (group::DISPATCH, 0) => &[SERVICE],
+        (group::DISPATCH, 2) => &[MILITARY],
         (group::POWER, power::WIRES) => &[POWER_LINE],
         (group::POWER, power::COAL..=LAST_POWER_PLANT) => &[BUILD],
         (group::WATER, 0..=LAST_WATER_SUBTOOL) => &[BUILD],
@@ -90,6 +92,8 @@ mod tests {
     #[test]
     fn each_tool_sounds_its_family() {
         assert_eq!(success_events(group::RAIL, RAIL_DEPOT_TOOL), vec![RAIL_DEPOT, BUILD]);
+        assert_eq!(success_events(group::DISPATCH, 0), vec![SERVICE]);
+        assert_eq!(success_events(group::DISPATCH, 2), vec![MILITARY]);
         assert_eq!(success_events(group::REWARDS, rewards::ARCOLOGIES), Vec::<i64>::new());
         assert_eq!(success_events(group::LANDSCAPE, landscape::STREAM), Vec::<i64>::new());
         assert_eq!(failure_events(group::LANDSCAPE, 0, "insufficient funds"), vec![ERROR]);

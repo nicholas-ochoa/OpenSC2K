@@ -264,7 +264,7 @@ func _test_tool_sound_rules() -> void:
 		ToolSounds.success_events(0, 0).is_empty()
 		and ToolSounds.success_events(2, 0) == [506]
 		and ToolSounds.success_events(2, 1) == [509]
-		and ToolSounds.success_events(2, 2) == [506]
+		and ToolSounds.success_events(2, 2) == [525]
 		and ToolSounds.success_events(3, 1).is_empty()
 		and ToolSounds.success_events(5, 4).is_empty()
 		and ToolSounds.success_events(16, 0).is_empty(),

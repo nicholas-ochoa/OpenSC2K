@@ -35,7 +35,7 @@ func _run() -> void:
 	assert(QueryNeighborhood.zoom_for_tile(BuildingTileIds.GAS_POWER) == 2.5)
 	assert(ToolSoundRules.success_events(2, 0) == [506])
 	assert(ToolSoundRules.success_events(2, 1) == [509])
-	assert(ToolSoundRules.success_events(2, 2) == [506])
+	assert(ToolSoundRules.success_events(2, 2) == [525])
 	audio.queue_free()
 	bar.queue_free()
 	await process_frame
