@@ -76,7 +76,6 @@ const NEWS_NAMES := {
 	0x42: "Good employment",
 	0x1f8: "Explosion",
 	0x1fe: "Traffic report",
-	0x201: "High mayor approval",
 	0x202: "Monster attack",
 	0x203: "Air disaster",
 	0x205: "Cargo ship report",

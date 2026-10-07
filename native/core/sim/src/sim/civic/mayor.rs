@@ -3,7 +3,7 @@
 use crate::gd_phase_result;
 use crate::sim::bytes::{read_i32_be, read_u16_be, read_u32_be, write_u16_be};
 use crate::sim::city::City;
-use crate::sim::events::NewsEvent;
+use crate::sim::events::SoundEvent;
 use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::sc2budget_layout as budget;
 use crate::sim::ids::sc2graph_layout as graph_layout;
@@ -17,7 +17,11 @@ const GRAPH_TRAFFIC: i64 = 4;
 const GRAPH_POLLUTION: i64 = 5;
 const GRAPH_LAND_VALUE: i64 = 6;
 const GRAPH_CRIME: i64 = 7;
-const NEWS_HIGH_APPROVAL: i64 = 0x201;
+/// SIMCITY.EXE 0x00472510 shows the parade notice, string 284 with picture
+/// 407, and plays sound 513 when approval rises to 80 percent.
+pub const PARADE_NOTICE: i32 = 284;
+const PARADE_SOUND: i64 = 513;
+const PARADE_APPROVAL: i64 = 80;
 
 gd_phase_result! {
     pub struct MayorApprovalResult as "MayorApprovalPhase.Result" {
@@ -154,8 +158,9 @@ pub fn run(city: &mut City, random: &mut SimRandom, previous_approval: i64) -> M
     };
     result.base.ok = true;
 
-    if previous_approval < 80 && approval > 79 {
-        result.base.news_items.push(NewsEvent::new(NEWS_HIGH_APPROVAL, 0));
+    if previous_approval < PARADE_APPROVAL && approval >= PARADE_APPROVAL {
+        result.base.sound_events.push(SoundEvent::new(PARADE_SOUND));
+        result.base.notice_ids.0.push(PARADE_NOTICE);
     }
 
     result
@@ -198,4 +203,36 @@ pub fn recount_tiles(city: &mut City) -> i64 {
     }
 
     changed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::empty_city;
+
+    /// A city without complaints approves of the mayor. A rise to 80 percent
+    /// shows the parade notice once.
+    #[test]
+    fn a_rise_to_80_percent_throws_a_parade() {
+        let mut city = empty_city(128);
+        let funding = misc_layout::BUDGETS + budget::RESIDENTIAL * budget::RECORD_SIZE + budget::FUNDING;
+
+        for (offset, value) in [
+            (misc_layout::NORMAL_POPULATION, 1000),
+            (misc_layout::WORKFORCE_EDUCATION, 100),
+            (misc_layout::WORKFORCE_LIFE_EXPECTANCY, 70),
+            (funding, 0),
+        ] {
+            assert!(city.set_misc_u32(offset, value));
+        }
+        let mut random = SimRandom::new(9);
+
+        let rise = run(&mut city, &mut random, 79);
+        assert!(rise.base.ok && rise.approval >= PARADE_APPROVAL, "approval {}", rise.approval);
+        assert_eq!(rise.base.notice_ids.0, [PARADE_NOTICE]);
+        assert_eq!(rise.base.sound_events, [SoundEvent::new(PARADE_SOUND)]);
+
+        let again = run(&mut city, &mut random, rise.approval);
+        assert!(again.base.notice_ids.0.is_empty() && again.base.sound_events.is_empty());
+    }
 }

@@ -210,7 +210,7 @@ func open_query(point: Vector2i) -> void:
 
 			return
 
-		app.reports.show_news_items(approval.news_items)
+		app.reports.show_mayor_approval(approval)
 		result = Queries.inspect(app.document_state.city, point)
 
 	if (

@@ -65,6 +65,8 @@ var building_objection_dialog: PictureNoticeDialog
 var library_windows: LibraryRuminateWindows
 var game_over_dialog: AcceptDialog
 var notice_dialog: AcceptDialog
+# the notices that the original shows with a picture: the National Guard and the parade
+var picture_notice_dialog: PictureNoticeDialog
 var scenario_dialog: ScenarioIntroDialog
 var military_dialog: ConfirmationDialog
 var budget_dialog: BudgetDialog
@@ -187,6 +189,16 @@ func _create_event_dialogs() -> void:
 	notice_dialog.min_size = Vector2i(420, 160)
 	notice_dialog.exclusive = true
 	_register(notice_dialog, "CityEvents", Modality.BLOCKING)
+	picture_notice_dialog = PictureDialogView.instantiate()
+	_register(picture_notice_dialog, "CityEvents", Modality.BLOCKING)
+	picture_notice_dialog.configure(
+		"SimulationPictureNoticeDialog",
+		"Notice",
+		"SimulationNoticeImage",
+		"SimulationNoticeMessage",
+		null,
+		"",
+	)
 	scenario_dialog = ScenarioDialogView.instantiate()
 	_register(scenario_dialog, "Startup", Modality.BLOCKING)
 	military_dialog = ConfirmationDialog.new()

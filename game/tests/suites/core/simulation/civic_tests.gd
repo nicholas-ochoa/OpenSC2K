@@ -264,8 +264,9 @@ func test_mayor_approval_phase(reference_root: String) -> void:
 	_check(favorable.approval == 100, "Mayor approval counts all favorable survey samples")
 	_check(favorable_random.position == 100, "Mayor approval consumes 100 process random values")
 	_check(
-		NewsEvent.same_arrays(favorable.news_items, [NewsEvent.new(0x201, 0)]),
-		"Mayor approval reports the upward 80-percent threshold",
+		favorable.news_items.is_empty() and favorable.notice_ids == PackedInt32Array([284])
+		and favorable.sound_events.size() == 1 and favorable.sound_events[0].sound_id == 513,
+		"Mayor approval shows the parade notice at the upward 80-percent threshold",
 	)
 	var mayor_house := city.microsim(1)
 	_check(

@@ -124,6 +124,10 @@ A save keeps whether the next due tick is dropped.
   to its last seed. A Maxis Man goes to this point.
 - **Monster.** In a scenario the monster gets no goal and draws no random
   values. The view centers 8 tiles up and to the left of the monster.
+- **National Guard.** When disaster mode starts in a city with no police,
+  fire, or military units, `0x0044f910` sends one military unit, plays
+  sound 513 and shows notice 119 with picture 406. The port sent the unit
+  without the notice.
 - **Menus.** Air Crash starts a plane crash (type 18). It did nothing.
   Each menu item now selects its place as in the original, and not at the
   view center. A disaster can start during another one.

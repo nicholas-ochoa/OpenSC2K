@@ -38,6 +38,9 @@ pub struct Availability {
     pub fire: i64,
     pub military: i64,
     pub base_type: i64,
+    /// True when the city has no police, fire, or military units, so the
+    /// National Guard sends the one military unit (SIMCITY.EXE 0x0044f910).
+    pub national_guard: bool,
 }
 
 impl Availability {
@@ -76,8 +79,9 @@ pub fn availability(city: &City) -> Result<Availability, String> {
     let fire = city.misc_u32(misc::TILE_COUNTS + tiles::FIRE_STATION * 4) >> 3;
     let base_type = city.misc_u32(misc::MILITARY_BASE_TYPE);
     let mut military = MILITARY_AVAILABILITY.get(base_type as usize).copied().unwrap_or(0);
+    let national_guard = police == 0 && fire == 0 && military == 0;
 
-    if police == 0 && fire == 0 && military == 0 {
+    if national_guard {
         military = 1;
     }
 
@@ -86,6 +90,7 @@ pub fn availability(city: &City) -> Result<Availability, String> {
         fire,
         military,
         base_type,
+        national_guard,
     })
 }
 

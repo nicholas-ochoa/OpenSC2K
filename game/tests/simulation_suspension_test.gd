@@ -69,7 +69,8 @@ func _check_current_classification() -> void:
 		main.city_dialogs.network_connection_dialog, main.city_dialogs.highway_connection_dialog, main.city_dialogs.tunnel_dialog,
 		main.city_dialogs.query_dialog, main.city_dialogs.ordinance_window, main.city_dialogs.building_objection_dialog,
 		main.city_dialogs.scenario_dialog, main.city_dialogs.military_dialog, main.city_dialogs.budget_dialog,
-		main.city_dialogs.notice_dialog, main.city_dialogs.game_over_dialog, main.city_dialogs.analysis_dialog,
+		main.city_dialogs.notice_dialog, main.city_dialogs.picture_notice_dialog, main.city_dialogs.game_over_dialog,
+		main.city_dialogs.analysis_dialog,
 		main.city_dialogs.library_windows,
 		main.main_menu, main.main_overlays.settings_dialog, main.reference_import_dialog, main.main_overlays.save_changes_dialog,
 		main.main_overlays.update_dialog, main.main_overlays.busy_overlay,
@@ -162,6 +163,29 @@ func _check_notices() -> void:
 	dialog.hide()
 	await process_frame
 	assert(not dialog.visible)
+
+	# the National Guard and the parade show their original picture, when the
+	# graphics are imported, in a modal notice
+	var picture_dialog: PictureNoticeDialog = main.city_dialogs.picture_notice_dialog
+	var assets: OriginalGameAssets = main.city_dialogs.original_assets
+	var pictures: bool = assets != null and assets.city_ui_graphics != null and assets.city_ui_graphics.notices.has(406)
+	main.reports.show_notices(PackedInt32Array([119, 284]))
+	var shown: Window = picture_dialog if pictures else dialog
+	assert(shown.visible and main.frame._simulation_suspended(), "A picture notice suspends the simulation")
+	assert(main.reports.pending_notices == PackedInt32Array([284]), "The parade follows the National Guard")
+
+	if pictures:
+		assert(picture_dialog.message_label.text.begins_with("Because you have no police or firefighters"))
+		assert(picture_dialog.picture_view.texture != null)
+	else:
+		assert(dialog.dialog_text.begins_with("Because you have no police or firefighters"))
+
+	shown.hide()
+	await process_frame
+	assert(shown.visible, "The parade notice follows")
+	shown.hide()
+	await process_frame
+	assert(not main.reports.notice_visible() and not main.frame._simulation_suspended())
 
 
 # a newspaper that the simulation opens suspends it until the player closes it

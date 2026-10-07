@@ -18,7 +18,7 @@ use sc2k_sim::sim::geom::{Rect2i, Vec2i};
 use sc2k_sim::sim::ids::sc2misc_layout as misc;
 use sc2k_sim::sim::moving::phase::{self as moving, TickOptions};
 use sc2k_sim::sim::moving::result::{ConnectionChange, MovingThingResult};
-use sc2k_sim::sim::phase::TimingSpan;
+use sc2k_sim::sim::phase::{PhaseBase, TimingSpan};
 use sc2k_sim::sim::random::Randoms;
 use sc2k_sim::sim::reports::news;
 use sc2k_sim::sim::things;
@@ -31,6 +31,11 @@ const DISASTER_MODE: i64 = 2;
 
 /// The sound of the arrival of the Maxis Man.
 const MAXIS_MAN_ARRIVAL_SOUND: i64 = 513;
+
+/// The notice when the National Guard comes: SIMCITY.EXE string 119, which
+/// 0x0044f910 shows with picture 406 and sound 513.
+pub const NATIONAL_GUARD_NOTICE: i32 = 119;
+const NATIONAL_GUARD_SOUND: i64 = 513;
 
 /// The newspaper that the end of a disaster opens: the first one, not the
 /// player's choice.
@@ -360,16 +365,20 @@ impl Engine<'_> {
 
     /// SIMCITY.EXE 0x00406a50 enters disaster mode from normal mode only. It
     /// fixes the dispatch counts and removes the units of an earlier disaster.
-    fn begin_disaster_mode(&mut self) {
+    /// True when the city has no units, so the National Guard comes.
+    fn begin_disaster_mode(&mut self) -> bool {
         if self.city.city_mode() == DISASTER_MODE {
-            return;
+            return false;
         }
 
-        self.state.dispatch_capacity = match dispatch::begin_disaster(self.city) {
-            Ok(available) => available.counts(),
-            Err(_) => NO_CAPACITY,
+        let (capacity, national_guard) = match dispatch::begin_disaster(self.city) {
+            Ok(available) => (available.counts(), available.national_guard),
+            Err(_) => (NO_CAPACITY, false),
         };
+        self.state.dispatch_capacity = capacity;
         self.state.dispatch_epoch += 1;
+
+        national_guard
     }
 
     /// The point that a Disasters or Debug menu item of SIMCITY.EXE gives a
@@ -456,7 +465,10 @@ impl Engine<'_> {
         }
 
         self.state.unsupported_disaster_type = 0;
-        self.begin_disaster_mode();
+
+        if self.begin_disaster_mode() {
+            national_guard_notice(&mut started.base);
+        }
 
         if !self.city.set_misc_u32(misc::CITY_MODE, DISASTER_MODE) {
             (
@@ -659,20 +671,22 @@ impl Engine<'_> {
             return DayResult::failure(error);
         }
 
-        result.set_phase("disaster_start", started.to_value());
-
         if started.started {
             let changes = started.connection_count_changes.clone();
             self.apply_connection_changes(&changes);
             self.state.active_disaster_type = disaster_type;
             self.state.disaster_map_counter = started.map_counter;
             self.state.disaster_hurricane_counter = started.hurricane_counter;
-            self.begin_disaster_mode();
+
+            if self.begin_disaster_mode() {
+                national_guard_notice(&mut started.base);
+            }
 
             if !self.city.set_misc_u32(misc::CITY_MODE, DISASTER_MODE) {
                 return DayResult::failure("cannot store active disaster mode");
             }
 
+            result.set_phase("disaster_start", started.to_value());
             result.applied.push("disaster_start".into());
 
             // the original runs the first disaster update in the same step as the start
@@ -683,10 +697,14 @@ impl Engine<'_> {
             }
 
             result.disaster_results.push(first_update.to_value());
-        } else if !started.base.complete {
-            self.state.unsupported_disaster_type = disaster_type;
-            result.pending.push("disaster_start".into());
-            result.complete = false;
+        } else {
+            result.set_phase("disaster_start", started.to_value());
+
+            if !started.base.complete {
+                self.state.unsupported_disaster_type = disaster_type;
+                result.pending.push("disaster_start".into());
+                result.complete = false;
+            }
         }
 
         result
@@ -712,6 +730,13 @@ impl Engine<'_> {
 
         started
     }
+}
+
+/// SIMCITY.EXE 0x0044f910 plays sound 513 and shows notice 119 with picture
+/// 406 when the city has no police, fire, or military units at a disaster start.
+fn national_guard_notice(base: &mut PhaseBase) {
+    base.sound_events.push(SoundEvent::new(NATIONAL_GUARD_SOUND));
+    base.notice_ids.0.push(NATIONAL_GUARD_NOTICE);
 }
 
 /// The measured time of a day with the steps of its schedule, and the
@@ -806,5 +831,41 @@ mod tests {
         assert_eq!(menu_point(disaster_start::DISASTER_FLOOD), (Vec2i::new(40, 50), unused));
         assert_eq!(menu_point(disaster_start::DISASTER_MELTDOWN), (Vec2i::ZERO, unused));
         assert_eq!(menu_point(disaster_start::DISASTER_PLANE_CRASH), (Vec2i::new(1, 2), unused));
+    }
+
+    /// The notice IDs of a monster start on a 128-tile city with
+    /// `police_tiles` police station tiles, and whether a second start of
+    /// disaster mode would show the notice again.
+    fn monster_notices(police_tiles: i64) -> (Vec<i32>, bool) {
+        let mut city = city_of(&template::empty_city(128));
+        let police_count = misc::TILE_COUNTS + sc2k_sim::sim::ids::building_tile_ids::POLICE_STATION * 4;
+        assert!(city.set_misc_u32(police_count, police_tiles));
+
+        let mut randoms = Randoms::new(SEED, 1, 1);
+        let mut state = EngineState::for_city(&city);
+        let mut engine = Engine {
+            city: &mut city,
+            randoms: &mut randoms,
+            state: &mut state,
+            detailed: false,
+        };
+        let started = engine.start_disaster(disaster_start::DISASTER_MONSTER, Vec2i::new(20, 20));
+        assert!(values::boolean(&started, "ok") && values::boolean(&started, "started"));
+
+        (values::ints(&started, "notice_ids"), engine.begin_disaster_mode())
+    }
+
+    #[test]
+    fn the_national_guard_comes_to_a_city_without_units() {
+        assert_eq!(
+            monster_notices(0),
+            (vec![NATIONAL_GUARD_NOTICE], false),
+            "only the start of disaster mode shows it"
+        );
+        assert_eq!(
+            monster_notices(8).0,
+            Vec::<i32>::new(),
+            "one police unit keeps the National Guard away"
+        );
     }
 }

@@ -12,16 +12,24 @@ const NOTICE_TEXT := {
 	244: "Six missile sites have been placed in your city.",
 	411: ("The military is unable to find a suitable\nlocation for a base near your city.  You\nhave "
 		+ "the thanks of the nation for your\npatriotic acquiesence.  SALUTE!!"),
+	119: "Because you have no police or firefighters, the National Guard has been deployed to your city",
+	284: "The people of your city love you so dearly that they\nhave thrown  a spontaneous parade in your honor.",
 	292: "Due to the current fiscal crisis, the city council urges you to cut back drastically on city expenditures.",
 	529: "The exodus has begun.",
 	530: "Your launch arcos have departed into space to found new worlds. You have been compensated for their construction.",
 }
+# the notices that SIMCITY.EXE shows with a picture (0x0042b870), by string ID:
+# the National Guard and the parade. the value is the BITMAPS picture
+const NOTICE_PICTURES := {119: 406, 284: 407}
+# the original stops the bulldozer sound before the National Guard notice
+const NATIONAL_GUARD_NOTICE := 119
 
 var app: CityApplication
 var city_map: ApplicationCityMapReports
 var document_state: ActiveDocumentState
 var text_resources: OriginalTextResources
-var pending_notices := PackedStringArray()
+# the string IDs of the notices that wait for the notice dialog
+var pending_notices := PackedInt32Array()
 var military_notice_pending := false
 var pending_game_over_events: Array[GameOverEvent] = []
 var game_over_terminal := false
@@ -123,6 +131,7 @@ func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 		result.effect_events, result.sound_events
 	)
 	show_news_items(result.news_items)
+	show_notices(result.notice_ids)
 	var first_update := result.first_update
 
 	if first_update != null:
@@ -384,35 +393,50 @@ func refresh_saved_news_summary() -> void:
 	app.interface.refresh_status_summary()
 
 
-# queue each notice and show them one at a time. the notice dialog suspends
+# queue each notice and show them one at a time. the notice dialogs suspend
 # the simulation, as the original message box does
 func show_notices(notice_ids: PackedInt32Array) -> void:
-	var dialog := app.city_dialogs.notice_dialog
-
-	if not dialog.visibility_changed.is_connected(_show_next_notice):
-		dialog.visibility_changed.connect(_show_next_notice, CONNECT_DEFERRED)
+	for dialog: Window in _notice_dialogs():
+		if not dialog.visibility_changed.is_connected(_show_next_notice):
+			dialog.visibility_changed.connect(_show_next_notice, CONNECT_DEFERRED)
 
 	for notice_id in notice_ids:
 		if NOTICE_TEXT.has(notice_id):
-			pending_notices.append(NOTICE_TEXT[notice_id])
+			pending_notices.append(notice_id)
 
 	# a notice can follow an option change, such as Auto Budget
 	app.menus.sync_city_option_menus()
 	_show_next_notice()
 
 
+# the result of a mayor approval poll: the parade notice and its sound
+func show_mayor_approval(approval: MayorApprovalPhase.Result) -> void:
+	app.effects_audio.play_sound_events(approval.sound_events, true)
+	show_news_items(approval.news_items)
+	show_notices(approval.notice_ids)
+
+
 func reset_notices() -> void:
 	military_notice_pending = false
 	pending_notices.clear()
 
-	if app.city_dialogs.notice_dialog.visible:
-		app.city_dialogs.notice_dialog.hide()
+	for dialog: Window in _notice_dialogs():
+		if dialog.visible:
+			dialog.hide()
+
+
+func notice_visible() -> bool:
+	return _notice_dialogs().any(func(dialog: Window) -> bool: return dialog.visible)
+
+
+func _notice_dialogs() -> Array[Window]:
+	var dialogs: Array[Window] = [app.city_dialogs.notice_dialog, app.city_dialogs.picture_notice_dialog]
+
+	return dialogs
 
 
 func _show_next_notice() -> void:
-	var dialog := app.city_dialogs.notice_dialog
-
-	if dialog.visible:
+	if notice_visible():
 		return
 
 	if pending_notices.is_empty():
@@ -422,9 +446,32 @@ func _show_next_notice() -> void:
 
 		return
 
-	dialog.dialog_text = pending_notices[0]
+	var notice_id := pending_notices[0]
 	pending_notices.remove_at(0)
-	dialog.popup_centered()
+	var text: String = NOTICE_TEXT[notice_id]
+	var picture := _notice_picture(notice_id)
+
+	if notice_id == NATIONAL_GUARD_NOTICE:
+		app.effects_audio.stop_tool_loop_sound()
+
+	if picture == null:
+		app.city_dialogs.notice_dialog.dialog_text = text
+		app.city_dialogs.notice_dialog.popup_centered()
+
+		return
+
+	app.city_dialogs.picture_notice_dialog.set_picture(picture)
+	app.city_dialogs.picture_notice_dialog.show_message(text, true)
+
+
+# the original picture of a notice, or null without a picture or imported graphics
+func _notice_picture(notice_id: int) -> Image:
+	var assets := app.city_dialogs.original_assets
+
+	if not NOTICE_PICTURES.has(notice_id) or assets == null or assets.city_ui_graphics == null:
+		return null
+
+	return assets.city_ui_graphics.notices.get(NOTICE_PICTURES[notice_id])
 
 
 func show_game_over_events(events: Array[GameOverEvent]) -> void:
