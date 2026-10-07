@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Build desktop packages from the committed tree on macOS."""
+"""Build desktop packages from the committed tree on macOS.
+
+--platform builds only the named platforms, such as `--platform macos`; it can repeat.
+"""
 import argparse
 import hashlib
 import json
@@ -79,10 +82,25 @@ PACKAGES = (
 )
 
 
-def install_native(native, project):
-    """Copy each prebuilt extension, and FluidSynth beside the audio extension, into the exported project."""
+def selected_packages(platforms):
+    """The PACKAGES entries of `platforms`, in PACKAGES order. None or empty selects all.
+    A name can be a package platform, such as macos-universal, or a native folder, such as macos."""
+    if not platforms:
+        return list(PACKAGES)
+    names = set()
+    for name in platforms:
+        match = [platform for platform, (folder, _, _) in NATIVE_PLATFORMS.items() if name in (platform, folder)]
+        if not match:
+            known = ', '.join(NATIVE_PLATFORMS)
+            raise ValueError(f'Unknown platform {name}. Use one of: {known}')
+        names.update(match)
+    return [package for package in PACKAGES if package[0] in names]
+
+
+def install_native(native, project, platforms=tuple(NATIVE_PLATFORMS)):
+    """Copy each prebuilt extension of `platforms`, and FluidSynth beside the audio extension, into the exported project."""
     for module in NATIVE_MODULES:
-        for folder, template, _ in NATIVE_PLATFORMS.values():
+        for folder, template, _ in (NATIVE_PLATFORMS[platform] for platform in platforms):
             library = template.format(module)
             source = native / f'opensc2k_{module}' / folder / library
             if not source.is_file():
@@ -90,7 +108,8 @@ def install_native(native, project):
             target = project / 'bin' / f'opensc2k_{module}' / folder / library
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
-    for platform, (library, _) in FLUIDSYNTH.items():
+    for platform in platforms:
+        library = FLUIDSYNTH[platform][0]
         folder = NATIVE_PLATFORMS[platform][0]
         source = native / 'opensc2k_audio' / folder / library
         if not source.is_file():
@@ -158,13 +177,15 @@ def make_disk_image(folder, volume, image):
     subprocess.run(['hdiutil', 'verify', str(image)], check=True)
 
 
-def build(output, label, godot, native):
+def build(output, label, godot, native, platforms=None):
     if sys.platform != 'darwin':
         raise ValueError('Desktop packaging requires macOS to create and sign the app and DMG')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.+-]{0,79}', label):
         raise ValueError('Invalid package label')
+    selected = selected_packages(platforms)
     output.mkdir(parents=True, exist_ok=False)
-    soundfont = build_fluidsynth.download(*SOUNDFONT)
+    linux = any(platform.startswith('linux') for platform, _, _ in selected)
+    soundfont = build_fluidsynth.download(*SOUNDFONT) if linux else None
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     engine = subprocess.check_output([godot, '--version'], text=True).strip()
     with tempfile.TemporaryDirectory(prefix='opensc2k-export-') as temporary:
@@ -178,7 +199,7 @@ def build(output, label, godot, native):
         with tarfile.open(archive) as stream:
             stream.extractall(source, filter='data')
         project = source / 'game'
-        install_native(native, project)
+        install_native(native, project, [platform for platform, _, _ in selected])
         settings = (project / 'project.godot').read_text()
         version = re.search(r'^config/version="([^"]+)"', settings, re.M).group(1)
         # the headless renderer stores textures without a lock, so parallel
@@ -188,7 +209,7 @@ def build(output, label, godot, native):
         (project / 'project.godot').write_text(settings + '\n[editor]\n\nimport/use_multiple_threads=false\n')
         checked_godot(godot, project, '--editor', '--import')
         packages = []
-        for platform, preset, binary in PACKAGES:
+        for platform, preset, binary in selected:
             name = f'OpenSC2K-{label}-{platform}'
             folder = work / name
             folder.mkdir()
@@ -237,8 +258,10 @@ def main():
     parser.add_argument('--godot', default=os.environ.get('GODOT', 'godot'))
     parser.add_argument('--native', type=Path, default=ROOT / 'game/bin',
                         help='Folder with each native extension and platform, as tools/build_native.py --package writes it')
+    parser.add_argument('--platform', action='append', default=[],
+                        help='Build only this platform, such as macos or windows-x64. Repeat for more')
     args = parser.parse_args()
-    build(args.output.resolve(), args.label, args.godot, args.native.resolve())
+    build(args.output.resolve(), args.label, args.godot, args.native.resolve(), args.platform)
 
 
 if __name__ == '__main__':

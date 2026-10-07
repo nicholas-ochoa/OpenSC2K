@@ -306,6 +306,20 @@ class NativePackageTest(unittest.TestCase):
             (native / 'opensc2k_audio/linux-x86_64/libfluidsynth.so.3').unlink()
             with self.assertRaisesRegex(ValueError, 'Missing FluidSynth library'):
                 packages.install_native(native, project)
+            # a macOS build needs only the macOS libraries
+            missing.unlink()
+            subset = root / 'subset'
+            packages.install_native(native, subset, ['windows-x64'])
+            self.assertTrue((subset / 'bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll').is_file())
+            self.assertFalse((subset / 'bin/opensc2k_audio/macos').exists())
+
+    def test_platform_selection_takes_package_or_native_folder_names(self):
+        self.assertEqual(packages.selected_packages([]), list(packages.PACKAGES))
+        self.assertEqual([package[0] for package in packages.selected_packages(['macos'])], ['macos-universal'])
+        selected = packages.selected_packages(['linux-arm64', 'windows-x86_64', 'linux-arm64'])
+        self.assertEqual([package[0] for package in selected], ['windows-x64', 'linux-arm64'])
+        with self.assertRaisesRegex(ValueError, 'Unknown platform amiga'):
+            packages.selected_packages(['amiga'])
 
 
 if __name__ == '__main__':

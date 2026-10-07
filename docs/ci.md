@@ -96,6 +96,8 @@ python3 tools/build_desktop_release.py --output local/packages --label 0.1.0
 ```
 
 Use a new output directory. The tool exports the committed tree at `HEAD`.
+Add `--platform macos` (repeatable; a package or native folder name) to build only some
+platforms. Then only those platforms need native libraries.
 It includes install notes, licenses, source and engine versions, and package hashes.
 The macOS app is ad-hoc signed and is not notarized. The disk image is made with
 `diskutil image create from` on macOS 26 and later, and with `hdiutil create` on older macOS
