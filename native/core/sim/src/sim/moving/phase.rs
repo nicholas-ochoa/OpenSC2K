@@ -1,6 +1,7 @@
 //! One moving-thing tick, as MovingThingPhase.
 
 use super::air::{self, HelicopterMaps};
+use super::ambient;
 use super::maxis_man;
 use super::result::MovingThingResult;
 use super::sailboat;
@@ -78,6 +79,9 @@ pub fn run(
         ..Default::default()
     };
     let record_count = things::count(&city.xthg.data);
+
+    // the city sounds come before the records, as in the original
+    counters.base.sound_events.extend(ambient::sounds(city, random));
 
     for record in 1..record_count {
         crate::sim::budget::checkpoint();
