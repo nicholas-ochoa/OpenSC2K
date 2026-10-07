@@ -99,9 +99,54 @@ Use a new output directory. The tool exports the committed tree at `HEAD`.
 Add `--platform macos` (repeatable; a package or native folder name) to build only some
 platforms. Then only those platforms need native libraries.
 It includes install notes, licenses, source and engine versions, and package hashes.
-The macOS app is ad-hoc signed and is not notarized. The disk image is made with
-`diskutil image create from` on macOS 26 and later, and with `hdiutil create` on older macOS
-versions, such as the CI runner. Windows packages are unsigned.
+The disk image is made with `diskutil image create from` on macOS 26 and later, and with
+`hdiutil create` on older macOS versions, such as the CI runner. Windows packages are unsigned.
+`build-info.json` records the macOS signing identity and whether the image is notarized.
+
+## macOS signing and notarization
+
+Without signing settings, the macOS app has an ad hoc signature. With them,
+`tools/build_desktop_release.py` signs each library and then the app with a Developer ID, the
+hardened runtime, and a secure timestamp. The app has no entitlements: Gatekeeper loads its
+libraries because they have the same team. The script then signs the disk image, submits it to
+the Apple notary service, waits for the result, staples the ticket to the image, and checks it
+with `spctl`. A rejected submission fails the build with the notary log.
+
+| Variable | Value |
+| --- | --- |
+| `MACOS_SIGNING_IDENTITY` | The name or SHA-1 hash of a `Developer ID Application` identity in the keychain |
+| `APPLE_NOTARY_PROFILE` | A `notarytool store-credentials` keychain profile, for local builds |
+| `APPLE_API_KEY_PATH`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER_ID` | An App Store Connect API key, for CI |
+
+The script checks these settings before the export. `--require-notarization` fails the build
+unless the app can be signed and notarized. To make a notarized package locally:
+
+```sh
+xcrun notarytool store-credentials opensc2k-notary \
+  --key ~/keys/AuthKey_KEYID.p8 --key-id KEYID --issuer ISSUER-UUID
+MACOS_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+APPLE_NOTARY_PROFILE=opensc2k-notary \
+python3 tools/build_desktop_release.py --output local/packages --label test --platform macos
+```
+
+In CI, the package workflow has a `signing` input. Release runs use `required`, so a stable
+release is always notarized. Nightly runs use `optional`, so they stay ad hoc when a secret is
+missing, with a warning. Other CI builds are not signed. `tools/setup_macos_signing_ci.sh` imports
+the certificate into a temporary keychain with the Apple Developer ID G2 intermediate (pinned by
+SHA-256), and `tools/cleanup_macos_signing_ci.sh` removes the keychain and key at the end.
+Store these values as repository secrets (**Settings > Secrets and variables > Actions**):
+
+| Secret | Value |
+| --- | --- |
+| `MACOS_CERTIFICATE_P12` | The Developer ID Application certificate and private key as a `.p12`, base64-encoded |
+| `MACOS_CERTIFICATE_PASSWORD` | The password of that `.p12` |
+| `APPLE_API_KEY_P8` | The App Store Connect API key file (`AuthKey_<id>.p8`), base64-encoded |
+| `APPLE_API_KEY_ID` | The key ID of that key |
+| `APPLE_API_ISSUER_ID` | The issuer ID on the App Store Connect keys page |
+
+Encode a file with `base64 -i file | pbcopy` and paste it as the secret value. The certificate
+is valid for five years. Replace `MACOS_CERTIFICATE_P12` and its password before it expires;
+notarized releases stay valid after expiry because their signatures have secure timestamps.
 
 ## Manual stable releases
 

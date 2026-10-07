@@ -2,6 +2,12 @@
 """Build desktop packages from the committed tree on macOS.
 
 --platform builds only the named platforms, such as `--platform macos`; it can repeat.
+
+The macOS app is signed with MACOS_SIGNING_IDENTITY, a Developer ID Application
+identity of the keychain, or ad hoc without it. The disk image is then notarized
+and stapled with a notarytool keychain profile (APPLE_NOTARY_PROFILE) or an App
+Store Connect API key (APPLE_API_KEY_PATH, APPLE_API_KEY_ID, APPLE_API_ISSUER_ID).
+--require-notarization fails the build without them. See docs/ci.md.
 """
 import argparse
 import hashlib
@@ -145,19 +151,100 @@ APP_ICON = ROOT / 'game/assets/icons/Assets.car'
 APP_ICON_NAME = 'OpenSC2K'
 
 
-def add_app_icon(app, icon=APP_ICON):
+# The identity of an ad hoc signature, and the certificate kind that notarization accepts
+AD_HOC = '-'
+DEVELOPER_ID = 'Developer ID Application'
+NOTARY_KEY_VARIABLES = ('APPLE_API_KEY_PATH', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER_ID')
+
+
+def signing_identity():
+    """MACOS_SIGNING_IDENTITY, a name or SHA-1 hash of a keychain identity, or ad hoc."""
+    return os.environ.get('MACOS_SIGNING_IDENTITY', '').strip() or AD_HOC
+
+
+def notary_arguments():
+    """The notarytool credentials of the environment, or None."""
+    profile = os.environ.get('APPLE_NOTARY_PROFILE', '').strip()
+    if profile:
+        return ['--keychain-profile', profile]
+    path, key_id, issuer = (os.environ.get(name, '').strip() for name in NOTARY_KEY_VARIABLES)
+    if path and key_id and issuer:
+        return ['--key', path, '--key-id', key_id, '--issuer', issuer]
+    if path or key_id or issuer:
+        raise ValueError(f'Set all of {", ".join(NOTARY_KEY_VARIABLES)}, or none')
+    return None
+
+
+def identity_name(identity, listing):
+    """The name of `identity`, a name or SHA-1 hash, in `security find-identity` output, or None."""
+    for line in listing.splitlines():
+        match = re.match(r'\s*\d+\) ([0-9A-F]{40}) "(.+)"$', line)
+        if match and identity in match.groups():
+            return match.group(2)
+    return None
+
+
+def check_signing(identity, notary, required):
+    """Fail before the export when the signing settings cannot give a notarized app."""
+    if required and (identity == AD_HOC or notary is None):
+        raise ValueError('--require-notarization needs MACOS_SIGNING_IDENTITY and notary credentials')
+    if identity == AD_HOC:
+        if notary is not None:
+            raise ValueError('Notarization needs MACOS_SIGNING_IDENTITY')
+        return
+    listing = subprocess.check_output(['security', 'find-identity', '-v', '-p', 'codesigning'], text=True)
+    name = identity_name(identity, listing)
+    if name is None:
+        raise ValueError(f'No valid code signing identity {identity} in the keychain search list')
+    if notary is not None and not name.startswith(DEVELOPER_ID):
+        raise ValueError(f'Notarization needs a {DEVELOPER_ID} identity, not {name}')
+
+
+def sign_app(app, identity=AD_HOC):
+    """Sign the libraries of `app`, then the app. An ad hoc app keeps the
+    entitlements and options of the export. With an identity, each binary gets
+    the hardened runtime and a secure timestamp, and the app has no
+    entitlements: its libraries have the same team, so library validation passes."""
+    if identity == AD_HOC:
+        subprocess.run(['codesign', '--force', '--sign', AD_HOC,
+                        '--preserve-metadata=entitlements,requirements,flags,runtime', str(app)], check=True)
+    else:
+        options = ['--force', '--timestamp', '--options', 'runtime', '--sign', identity]
+        for library in sorted((app / 'Contents/Frameworks').glob('*.dylib')):
+            subprocess.run(['codesign', *options, str(library)], check=True)
+        subprocess.run(['codesign', *options, str(app)], check=True)
+    subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
+
+
+def notarize(image, notary):
+    """Submit `image` to the Apple notary service, wait for the result, and staple the ticket to it."""
+    result = subprocess.run(['xcrun', 'notarytool', 'submit', str(image), *notary, '--wait', '--output-format', 'json'],
+                            capture_output=True, text=True)
+    try:
+        submission = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        raise ValueError(f'notarytool failed for {image.name}: {result.stderr.strip()}') from None
+    if submission.get('status') != 'Accepted':
+        log = subprocess.run(['xcrun', 'notarytool', 'log', submission.get('id', ''), *notary],
+                             capture_output=True, text=True)
+        raise ValueError(f'Notarization of {image.name} ended with {submission.get("status")}:\n{log.stdout}{log.stderr}')
+    subprocess.run(['xcrun', 'stapler', 'staple', str(image)], check=True)
+    subprocess.run(['xcrun', 'stapler', 'validate', str(image)], check=True)
+    subprocess.run(['spctl', '--assess', '--type', 'open', '--context', 'context:primary-signature', '--verbose',
+                    str(image)], check=True)
+
+
+def add_app_icon(app, icon=APP_ICON, identity=AD_HOC):
     """Give an exported app the compiled Icon Composer icon, so macOS 26 and
     later show the icon in its own shape and not in a grey frame. Earlier
-    versions keep the .icns of the export. The app is signed again ad hoc,
-    with the entitlements and options of the export."""
+    versions keep the .icns of the export. The app is then signed again."""
     contents = app / 'Contents'
     shutil.copy2(icon, contents / 'Resources' / 'Assets.car')
     info_path = contents / 'Info.plist'
     info = plistlib.loads(info_path.read_bytes())
     info['CFBundleIconName'] = APP_ICON_NAME
     info_path.write_bytes(plistlib.dumps(info))
-    subprocess.run(['codesign', '--force', '--sign', '-',
-                    '--preserve-metadata=entitlements,requirements,flags,runtime', str(app)], check=True)
+    sign_app(app, identity)
 
 
 def has_diskutil_image():
@@ -177,12 +264,16 @@ def make_disk_image(folder, volume, image):
     subprocess.run(['hdiutil', 'verify', str(image)], check=True)
 
 
-def build(output, label, godot, native, platforms=None):
+def build(output, label, godot, native, platforms=None, require_notarization=False):
     if sys.platform != 'darwin':
         raise ValueError('Desktop packaging requires macOS to create and sign the app and DMG')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.+-]{0,79}', label):
         raise ValueError('Invalid package label')
     selected = selected_packages(platforms)
+    macos = any(platform.startswith('macos') for platform, _, _ in selected)
+    identity, notary = signing_identity(), notary_arguments()
+    if macos:
+        check_signing(identity, notary, require_notarization)
     output.mkdir(parents=True, exist_ok=False)
     linux = any(platform.startswith('linux') for platform, _, _ in selected)
     soundfont = build_fluidsynth.download(*SOUNDFONT) if linux else None
@@ -238,17 +329,24 @@ def build(output, label, godot, native, platforms=None):
                 with tarfile.open(package) as stream:
                     assert stream.getmember(f'{name}/{binary}').mode & 0o111
             else:
-                add_app_icon(folder / binary)
-                subprocess.run(['codesign', '--verify', '--deep', '--strict', str(folder / binary)], check=True)
+                add_app_icon(folder / binary, identity=identity)
                 (folder / 'Applications').symlink_to('/Applications')
                 package = output / (name + '.dmg')
                 make_disk_image(folder, f'OpenSC2K {label}', package)
+                if identity != AD_HOC:
+                    subprocess.run(['codesign', '--force', '--timestamp', '--sign', identity, str(package)], check=True)
+                if notary is not None:
+                    notarize(package, notary)
             packages.append(package)
         packages.append(write_fluidsynth_source(output / f'OpenSC2K-{label}-fluidsynth-source.zip', work))
     hashes = {path.name: sha256(path) for path in packages}
     (output / 'SHA256SUMS.txt').write_text(''.join(f'{value}  {name}\n' for name, value in sorted(hashes.items())))
+    signing = None
+    if macos:
+        signing = dict(identity=identity, notarized=notary is not None)
     (output / 'build-info.json').write_text(json.dumps(dict(version=version, label=label, commit=commit,
-                                                          engine=engine, sha256=hashes), indent=2) + '\n')
+                                                          engine=engine, macos_signing=signing, sha256=hashes),
+                                                     indent=2) + '\n')
 
 
 def main():
@@ -260,8 +358,11 @@ def main():
                         help='Folder with each native extension and platform, as tools/build_native.py --package writes it')
     parser.add_argument('--platform', action='append', default=[],
                         help='Build only this platform, such as macos or windows-x64. Repeat for more')
+    parser.add_argument('--require-notarization', action='store_true',
+                        help='Fail unless the macOS app can be signed with a Developer ID and notarized')
     args = parser.parse_args()
-    build(args.output.resolve(), args.label, args.godot, args.native.resolve(), args.platform)
+    build(args.output.resolve(), args.label, args.godot, args.native.resolve(), args.platform,
+          args.require_notarization)
 
 
 if __name__ == '__main__':

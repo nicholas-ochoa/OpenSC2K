@@ -33,6 +33,12 @@ jobs:
   build:
     name: Package
     uses: ./.github/workflows/package.yml
+    with:
+      # only the builds that replace the nightly release are signed and notarized
+      signing: >-
+        ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_nightly))
+        && 'optional' || 'none' }}
+    secrets: inherit
 
   nightly:
     name: Replace the nightly release

@@ -83,6 +83,8 @@ jobs:
       ref: ${{ needs.prepare.outputs.sha }}
       version: ${{ needs.inspect.outputs.version }}
       retention-days: 7
+      signing: required
+    secrets: inherit
 
   publish:
     name: Create GitHub release

@@ -275,6 +275,48 @@ class PackageTest(unittest.TestCase):
                 self.assertEqual((folder / packages.SOUNDFONT[2]).is_file(), linux, platform)
 
 
+class SigningTest(unittest.TestCase):
+    LISTING = ('  1) 0123456789ABCDEF0123456789ABCDEF01234567 "Apple Development: A B (TEAM1)"\n'
+               '  2) 89ABCDEF0123456789ABCDEF0123456789ABCDEF "Developer ID Application: A B (TEAM2)"\n'
+               '     2 valid identities found\n')
+    NO_SIGNING = {name: '' for name in ('MACOS_SIGNING_IDENTITY', 'APPLE_NOTARY_PROFILE',
+                                        *packages.NOTARY_KEY_VARIABLES)}
+
+    def test_notary_credentials_come_from_a_profile_or_a_complete_api_key(self):
+        with patch.dict('os.environ', self.NO_SIGNING):
+            self.assertIsNone(packages.notary_arguments())
+            self.assertEqual(packages.signing_identity(), packages.AD_HOC)
+        with patch.dict('os.environ', dict(self.NO_SIGNING, APPLE_NOTARY_PROFILE='opensc2k')):
+            self.assertEqual(packages.notary_arguments(), ['--keychain-profile', 'opensc2k'])
+        key = dict(zip(packages.NOTARY_KEY_VARIABLES, ('/k.p8', 'KEY', 'ISSUER')))
+        with patch.dict('os.environ', dict(self.NO_SIGNING, **key)):
+            self.assertEqual(packages.notary_arguments(), ['--key', '/k.p8', '--key-id', 'KEY', '--issuer', 'ISSUER'])
+        with patch.dict('os.environ', dict(self.NO_SIGNING, APPLE_API_KEY_ID='KEY')):
+            with self.assertRaisesRegex(ValueError, 'Set all of'):
+                packages.notary_arguments()
+
+    def test_identity_is_found_by_name_or_hash(self):
+        name = 'Developer ID Application: A B (TEAM2)'
+        self.assertEqual(packages.identity_name(name, self.LISTING), name)
+        self.assertEqual(packages.identity_name('89ABCDEF0123456789ABCDEF0123456789ABCDEF', self.LISTING), name)
+        self.assertIsNone(packages.identity_name('Developer ID Application: C D (TEAM3)', self.LISTING))
+
+    def test_signing_settings_that_cannot_notarize_fail_before_the_export(self):
+        notary = ['--keychain-profile', 'opensc2k']
+        packages.check_signing(packages.AD_HOC, None, False)
+        with self.assertRaisesRegex(ValueError, 'require-notarization'):
+            packages.check_signing(packages.AD_HOC, None, True)
+        with self.assertRaisesRegex(ValueError, 'needs MACOS_SIGNING_IDENTITY'):
+            packages.check_signing(packages.AD_HOC, notary, False)
+        with patch.object(packages.subprocess, 'check_output', return_value=self.LISTING):
+            packages.check_signing('Developer ID Application: A B (TEAM2)', notary, True)
+            packages.check_signing('Apple Development: A B (TEAM1)', None, False)
+            with self.assertRaisesRegex(ValueError, 'needs a Developer ID Application identity'):
+                packages.check_signing('Apple Development: A B (TEAM1)', notary, False)
+            with self.assertRaisesRegex(ValueError, 'No valid code signing identity'):
+                packages.check_signing('Developer ID Application: C D (TEAM3)', None, False)
+
+
 class NativePackageTest(unittest.TestCase):
     def test_install_copies_both_extensions_for_every_platform(self):
         with tempfile.TemporaryDirectory() as temporary:
