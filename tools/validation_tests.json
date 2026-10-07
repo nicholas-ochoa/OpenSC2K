@@ -168,6 +168,12 @@
     "lane": "product"
   },
   {
+    "id": "export_scene_layout_test",
+    "script": "tests/export_scene_layout_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "scene_behavior_test",
     "script": "tests/scene_behavior_test.gd",
     "domain": "ui",
