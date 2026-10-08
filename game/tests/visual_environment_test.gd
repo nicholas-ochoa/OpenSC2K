@@ -85,6 +85,7 @@ func _run() -> void:
 	main.settings.open_settings_dialog()
 	var tab := main.main_overlays.settings_dialog.visual_tab
 	_check_menu_dependencies(tab)
+	await _check_visual_save(main, tab)
 	(tab.controls.disaster_blending as CheckBox).button_pressed = false
 	assert(not main.preferences.visual_enhancements.disaster_blending)
 	(tab.controls.disaster_blending as CheckBox).button_pressed = true
@@ -723,10 +724,10 @@ func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	(tab.controls.weather_enabled as CheckBox).button_pressed = false
 	assert((tab.controls.weather_fixed as OptionButton).disabled and weather_source.disabled)
 	var day_source := tab.controls.day_mode as OptionButton
-	assert(not (tab.controls.day_hour as SpinBox).editable and (tab.controls.day_seconds as SpinBox).editable)
+	assert(not (tab.controls.day_hour as VisualTimeEdit).editable and (tab.controls.day_seconds as SpinBox).editable)
 	day_source.select(1)
 	day_source.item_selected.emit(1)
-	assert((tab.controls.day_hour as SpinBox).editable and not (tab.controls.day_seconds as SpinBox).editable)
+	assert((tab.controls.day_hour as VisualTimeEdit).editable and not (tab.controls.day_seconds as SpinBox).editable)
 	(tab.controls.brightmaps as CheckBox).button_pressed = false
 	assert(not (tab.controls.brightmap_folder as LineEdit).editable)
 	assert(not (tab.controls.night_light_strength as SpinBox).editable)
@@ -876,3 +877,35 @@ func _check_standard_brightmaps() -> void:
 	custom.entries_by_id[1112] = different
 	CityBrightmaps.load_archive(custom, "", "large")
 	assert(custom.visual_emission.is_empty(), "Default masks must not attach to changed custom artwork")
+
+
+func _check_visual_save(main: CityApplication, tab: VisualEnhancementsTab) -> void:
+	var original := tab.selected_values()
+	var dialog := main.main_overlays.settings_dialog
+	main.settings.flush_visual_save()
+	var saved := FileAccess.get_file_as_bytes(main.preferences.settings_path)
+	var strength := tab.controls.day_lut_strength as SpinBox
+	strength.value = 15.0
+	strength.value = 25.0
+	strength.value = 35.0
+	assert(main.preferences.visual_enhancements.day_lut_strength == 0.35)
+	assert(main.settings._visual_save_pending)
+	assert(FileAccess.get_file_as_bytes(main.preferences.settings_path) == saved)
+	await create_timer(0.4).timeout
+	assert(not main.settings._visual_save_pending)
+	assert(AppSettingsStore.load_values(main.preferences.settings_path).visual_enhancements.day_lut_strength == 0.35)
+	strength.value = 45.0
+	dialog.hide()
+	assert(not main.settings._visual_save_pending)
+	assert(AppSettingsStore.load_values(main.preferences.settings_path).visual_enhancements.day_lut_strength == 0.45)
+	main.settings.open_settings_dialog()
+	# No-op/non-visual changes must not rerun visual configuration.
+	var configured := main.visual_environment._options
+	main.settings.apply_settings()
+	assert(is_same(configured, main.visual_environment._options))
+	dialog.default_mayor_edit.text = "UI regression mayor"
+	dialog.default_mayor_edit.text_submitted.emit(dialog.default_mayor_edit.text)
+	assert(is_same(configured, main.visual_environment._options))
+	tab.show_values(original)
+	tab.changed.emit()
+	main.settings.flush_visual_save()

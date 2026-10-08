@@ -21,7 +21,7 @@ const SECTIONS := [
 		["life_cars_enabled", "life_car_amount", "life_people_enabled", "life_people_amount", "traffic_vehicles_enabled", "traffic_shadows_enabled"]],
 	["Disaster Effects", "Extra effects for disasters and demolition. These settings do not change disaster frequency, damage or emergency response.",
 		["disaster_enabled", "disaster_strength", "disaster_blending", "disaster_crowds", "disaster_dust", "disaster_lights", "disaster_motion", "disaster_shake"]],
-	["Animation", "Shared timing for visual cycles and animated effects. Cycle durations use Turtle speed when linked; otherwise they use real time.",
+	["Animation", "Cycle durations use Turtle speed when linked; otherwise they use real time. Weather and clouds always pause with the game. The pause option below controls the other environment cycles.",
 		["speed_link", "pause_freezes"]],
 	["Custom Graphics", "Optional files for custom colors and lights. Standard effects work without these fields.",
 		["lut_path", "brightmap_folder"]],
@@ -34,7 +34,7 @@ const LABELS := {
 	"disaster_crowds": "Animated riot crowds", "disaster_lights": "Fire and impact lighting",
 	"disaster_shake": "Earthquake camera shake",
 	"pause_freezes": "Pause environment cycles with the game",
-	"day_mode": "Time source", "day_hour": "Fixed hour (0â€“24)", "day_seconds": "Day cycle duration",
+	"day_mode": "Time source", "day_hour": "Fixed time (HH:MM)", "day_seconds": "Day cycle duration",
 	"day_lut_strength": "Time-of-day color strength", "night_strength": "Night darkness",
 	"brightmaps": "Building and vehicle lights", "night_light_strength": "Light brightness",
 	"season_seconds": "Year cycle duration", "season_transition": "Season blend duration", "season_lut_strength": "Season color strength",
@@ -60,7 +60,7 @@ const HINTS := {
 	"disaster_shake": "Strength of earthquake camera movement. Set to 0% to remove camera shake while enhanced disaster visuals are enabled.",
 	"pause_freezes": "Pause day, season, water and enhanced disaster animations. Weather, clouds and weather sounds always pause with the game. Dust from player demolition can continue.",
 	"weather_fixed": "Fixed weather can show snow in any season. Game weather and automatic weather show snow only in winter.",
-	"day_hour": "24-hour time in quarter-hour steps: 7.5 means 07:30.",
+	"day_hour": "Enter a 24-hour time, for example 07:30. Up and Down adjust by 15 minutes.",
 	"day_seconds": "Seconds for one complete day/night cycle. The Animation section controls speed and pause behavior.",
 	"season_seconds": "Seconds for one complete visual year. The city calendar is unchanged.",
 	"season_transition": "Part of each season used to blend into the next season. Higher values make the transition longer.",
@@ -70,9 +70,9 @@ const HINTS := {
 	"weather_lut_strength": "Strength of weather color filters. 0% disables these filters.",
 	"season_water_strength": "Strength of the seasonal water tint. Enable Seasons to use this setting.",
 	"cloud_density": "Amount of decorative cloud coverage.",
-	"cloud_speed": "Multiplier for cloud movement. 1Ã— is the standard speed; 0Ã— stops movement.",
-	"life_car_amount": "Decorative car density. 1Ã— is the standard amount; does not change simulated traffic.",
-	"life_people_amount": "Decorative pedestrian density. 1Ã— is the standard amount; does not change population.",
+	"cloud_speed": "Multiplier for cloud movement. 1× is the standard speed; 0× stops movement.",
+	"life_car_amount": "Decorative car density. 1× is the standard amount; does not change simulated traffic.",
+	"life_people_amount": "Decorative pedestrian density. 1× is the standard amount; does not change population.",
 	"night_light_strength": "Brightness of building and vehicle lights. 100% uses the original brightness; 0% turns the lights off without changing night colors.",
 	"brightmap_folder": "Leave empty for the included standard light masks. Custom folders replace the standard set. Relative to the data folder, for example brightmaps-standard. Absolute paths are also supported. Requires active lighting.",
 	"lut_path": "Optional PNG lookup table (LUT) for custom color grading. Leave empty for standard colors.",
@@ -84,6 +84,13 @@ var profile_folder := ""
 var pages: Array[VBoxContainer] = []
 var category_buttons: Array[Button] = []
 var page_scroll: ScrollContainer
+var selected_category := -1
+var scroll_positions: Dictionary = {}
+var dependency_hints: Dictionary = {}
+var undo_values: Dictionary = {}
+var undo_button: Button
+var action_message: Label
+var last_values: Dictionary = {}
 
 
 func _ready() -> void:
@@ -114,6 +121,9 @@ func _ready() -> void:
 	page_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page_scroll.add_child(page_stack)
 	var group := ButtonGroup.new()
+	var fields := {}
+	for field in VisualEnhancementOptions.FIELDS:
+		fields[field[0]] = field
 	for section in SECTIONS:
 		var page := VBoxContainer.new()
 		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -127,9 +137,11 @@ func _ready() -> void:
 		page.add_child(_help(section[1]))
 		page.add_child(HSeparator.new())
 		for key: String in section[2]:
-			for field in VisualEnhancementOptions.FIELDS:
-				if field[0] == key:
-					_add_field(page, field)
+			if key in ["weather_enabled", "weather_fog_enabled", "cloud_enabled"]:
+				var subgroup := Label.new()
+				subgroup.text = {"weather_enabled": "Weather", "weather_fog_enabled": "Fog", "cloud_enabled": "Clouds"}[key]
+				page.add_child(subgroup)
+			_add_field(page, fields[key])
 		var button := Button.new()
 		button.text = section[0]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -151,11 +163,20 @@ func _ready() -> void:
 	var actions := HFlowContainer.new()
 	add_child(actions)
 	_add_button(actions, "Disable all", _disable_all)
-	_add_button(actions, "Use defaults", func() -> void:
-		show_values({})
-		changed.emit())
+	_add_button(actions, "Reset this category", _reset_category)
+	_add_button(actions, "Reset all visual settings", _reset_all)
+	_add_button(actions, "Undo", _undo_action)
+	undo_button = actions.get_child(3)
+	undo_button.disabled = true
 	actions.get_child(0).tooltip_text = "Turn off all visual enhancements. Keep effect strengths and custom file paths."
-	actions.get_child(1).tooltip_text = "Reset all visual enhancements, including custom file paths, to their defaults."
+	actions.get_child(1).tooltip_text = "Reset only the open category. Custom Graphics also resets custom file paths."
+	actions.get_child(2).tooltip_text = "Reset every category, including custom file paths. Undo restores the previous values."
+	undo_button.tooltip_text = "Undo the last reset or Disable all, before making another edit."
+	action_message = _help("Undo restores the last reset or Disable all.")
+	# A wrapping footer can inflate the window before its first layout pass.
+	action_message.autowrap_mode = TextServer.AUTOWRAP_OFF
+	action_message.clip_text = true
+	add_child(action_message)
 	select_category(0)
 	show_values({})
 
@@ -202,22 +223,15 @@ func _add_field(page: VBoxContainer, field: Array) -> void:
 			choice.item_selected.connect(func(_v: int) -> void: _changed())
 			control = choice
 		"number":
-			var spin := SpinBox.new()
-			var scale := _display_scale(key)
-			spin.min_value = float(field[4]) * scale
-			spin.max_value = float(field[5]) * scale
-			spin.step = float(field[6]) * scale
-			if key in PERCENT_FIELDS or key in ["night_light_strength", "night_ambient", "night_glow", "night_ground"]:
-				spin.suffix = "%"
-			elif key.ends_with("_seconds") or key == "weather_transition":
-				spin.suffix = "s"
-			elif key in ["cloud_speed", "life_car_amount", "life_people_amount"]:
-				spin.suffix = "Ã—"
-			spin.value_changed.connect(func(_v: float) -> void: _changed())
-			control = spin
+			if key == "day_hour":
+				var time := VisualTimeEdit.new()
+				time.value_changed.connect(func(_v: float) -> void: _changed())
+				control = time
+			else:
+				control = _number_control(key, field)
 		"path":
 			var edit := LineEdit.new()
-			edit.placeholder_text = "Optional â€” leave empty for standard effects"
+			edit.placeholder_text = "Optional - leave empty for standard effects"
 			edit.text_submitted.connect(func(_v: String) -> void: _changed())
 			edit.focus_exited.connect(_changed)
 			control = edit
@@ -227,13 +241,52 @@ func _add_field(page: VBoxContainer, field: Array) -> void:
 	row.tooltip_text = control.tooltip_text
 	row.add_child(control)
 	controls[key] = control
+	var hint := _help("")
+	hint.hide()
+	page.add_child(hint)
+	dependency_hints[key] = hint
+
+
+func _number_control(key: String, field: Array) -> SpinBox:
+	var spin := SpinBox.new()
+	var scale := _display_scale(key)
+	spin.min_value = float(field[4]) * scale
+	spin.max_value = float(field[5]) * scale
+	spin.step = float(field[6]) * scale
+	if key in PERCENT_FIELDS or key in ["night_light_strength", "night_ambient", "night_glow", "night_ground"]:
+		spin.suffix = "%"
+	elif key.ends_with("_seconds") or key == "weather_transition":
+		spin.suffix = "s"
+	elif key in ["cloud_speed", "life_car_amount", "life_people_amount"]:
+		spin.suffix = "×"
+	spin.value_changed.connect(func(_v: float) -> void: _changed())
+	return spin
 
 
 func select_category(index: int) -> void:
+	if selected_category >= 0:
+		scroll_positions[selected_category] = page_scroll.scroll_vertical
+	selected_category = index
 	for i in pages.size():
 		pages[i].visible = i == index
 		category_buttons[i].set_pressed_no_signal(i == index)
-	page_scroll.scroll_vertical = 0
+	# Wait for the newly visible page to update its scroll range.
+	_schedule_scroll_restore.call_deferred(index)
+
+
+func _schedule_scroll_restore(index: int) -> void:
+	# Bound signals disconnect when the tab is freed; a suspended coroutine
+	# would otherwise resume on a deleted dialog during shutdown.
+	if selected_category != index:
+		return
+	var restore := _restore_scroll.bind(index)
+	if not get_tree().process_frame.is_connected(restore):
+		get_tree().process_frame.connect(restore, CONNECT_ONE_SHOT)
+
+
+func _restore_scroll(index: int) -> void:
+	if selected_category == index:
+		page_scroll.scroll_vertical = scroll_positions.get(index, 0)
 
 
 func _display_scale(key: String) -> float:
@@ -247,14 +300,58 @@ func _disable_all() -> void:
 			values[key] = false
 	values.water_reflections = 0
 	values.water_topography = false
+	_apply_bulk(values, "All effects disabled. Undo restores previous settings.")
+
+
+func _reset_category() -> void:
+	var values := selected_values()
+	var defaults := VisualEnhancementOptions.normalize({})
+	for key: String in SECTIONS[selected_category][2]:
+		values[key] = defaults[key]
+	if "lut_path" in SECTIONS[selected_category][2]:
+		values.lut_folder = defaults.lut_folder
+	_apply_bulk(values, "%s reset. Other categories unchanged." % SECTIONS[selected_category][0])
+
+
+func _reset_all() -> void:
+	_apply_bulk(VisualEnhancementOptions.normalize({}), "All settings reset, including custom paths. Undo is available.")
+
+
+func _apply_bulk(values: Dictionary, message: String) -> void:
+	var previous := selected_values()
+	if values == previous:
+		return
 	show_values(values)
+	undo_values = previous
+	undo_button.disabled = false
+	action_message.text = message
+	changed.emit()
+
+
+func _undo_action() -> void:
+	if undo_values.is_empty():
+		return
+	var previous := undo_values.duplicate(true)
+	show_values(previous)
+	action_message.text = "Previous visual settings restored."
 	changed.emit()
 
 
 func _changed() -> void:
 	if not filling:
+		var values := selected_values()
+		if values == last_values:
+			return
+		last_values = values
+		_clear_undo()
 		_update_availability()
 		changed.emit()
+
+
+func _clear_undo() -> void:
+	undo_values.clear()
+	undo_button.disabled = true
+	action_message.text = "Undo restores the last reset or Disable all."
 
 
 func _update_availability() -> void:
@@ -329,15 +426,55 @@ func _update_availability() -> void:
 		elif control is LineEdit:
 			(control as LineEdit).editable = available
 		control.get_parent().modulate.a = 1.0 if available else 0.45
+		var hint: Label = dependency_hints[key]
+		hint.text = _dependency_reason(key, values) if not available else ""
+		hint.visible = relevant and not hint.text.is_empty()
+
+
+func _dependency_reason(key: String, values: Dictionary) -> String:
+	# Explain each disabled group once, at its first relevant setting.
+	match key:
+		"day_mode":
+			return "Enable Day and night to adjust the time and night appearance."
+		"season_mode", "season_water_strength":
+			return "Enable Seasons to use these settings."
+		"weather_mode":
+			return "Enable Weather to adjust weather effects."
+		"weather_fog_enabled":
+			return "Enable Weather to use fog."
+		"cloud_density":
+			return "Enable Clouds and cloud shadows to adjust clouds."
+		"night_daytime_enabled":
+			return "Enable Building and vehicle lights to use lighting controls."
+		"night_light_strength", "brightmap_folder":
+			if not values.brightmaps:
+				return "Enable Building and vehicle lights in Lighting." if key == "brightmap_folder" else ""
+			return "Enable Day and night or Keep lights on during daytime."
+		"night_ambient":
+			return "Enable Day and night to adjust ambient night light."
+		"night_glow":
+			return "Raise Light brightness above 0% to use glow and street lighting." if values.brightmaps and values.night_light_strength == 0.0 else ""
+		"life_car_amount":
+			return "Enable Individual cars to adjust car density."
+		"life_people_amount":
+			return "Enable Pedestrians to adjust pedestrian density."
+		"disaster_strength":
+			return "Enable Enhanced disaster visuals to adjust additional effects."
+		"disaster_crowds":
+			return "Raise Additional effect intensity above 0% to use crowds, dust and lighting." if values.disaster_enabled else ""
+	return ""
 
 
 func show_values(source: Dictionary) -> void:
 	filling = true
+	_clear_undo()
 	var values := VisualEnhancementOptions.normalize(source)
 	profile_folder = str(values.lut_folder)
 	for key in controls:
 		var control: Control = controls[key]
-		if control is CheckBox:
+		if control is VisualTimeEdit:
+			(control as VisualTimeEdit).value = float(values[key])
+		elif control is CheckBox:
 			(control as CheckBox).button_pressed = values[key]
 		elif control is OptionButton:
 			(control as OptionButton).select(values[key])
@@ -346,6 +483,7 @@ func show_values(source: Dictionary) -> void:
 		elif control is LineEdit:
 			(control as LineEdit).text = values[key]
 	filling = false
+	last_values = values
 	_update_availability()
 
 
@@ -354,7 +492,9 @@ func selected_values() -> Dictionary:
 	var values := {"lut_folder": profile_folder}
 	for key in controls:
 		var control: Control = controls[key]
-		if control is CheckBox:
+		if control is VisualTimeEdit:
+			values[key] = (control as VisualTimeEdit).pending_value()
+		elif control is CheckBox:
 			values[key] = (control as CheckBox).button_pressed
 		elif control is OptionButton:
 			values[key] = (control as OptionButton).selected

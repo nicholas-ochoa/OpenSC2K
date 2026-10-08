@@ -1783,5 +1783,11 @@
     "domain": "rendering",
     "lane": "native",
     "driver": "scene-batch"
+  },
+  {
+    "id": "visual_settings_usability_test",
+    "script": "tests/visual_settings_usability_test.gd",
+    "domain": "ui",
+    "lane": "product"
   }
 ]

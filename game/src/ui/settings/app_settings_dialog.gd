@@ -59,6 +59,7 @@ var reset_controls_dialog: ConfirmationDialog
 var loading_values := false
 var visual_tab: VisualEnhancementsTab
 var visual_message_dialog: AcceptDialog
+var visual_change_in_progress := false
 
 
 func _ready() -> void:
@@ -95,7 +96,7 @@ func _ready() -> void:
 	tabs = %Tabs
 	visual_tab = VisualEnhancementsTab.new()
 	tabs.add_child(visual_tab)
-	visual_tab.changed.connect(_notify_change)
+	visual_tab.changed.connect(_notify_visual_change)
 	visual_tab.reload_requested.connect(func() -> void: brightmaps_reload_requested.emit())
 	visual_tab.export_requested.connect(func() -> void: brightmaps_export_requested.emit())
 	toolbar_sounds_check = %ToolbarSoundsCheck
@@ -216,6 +217,9 @@ func _watch_clicks(node: Node) -> void:
 
 
 func _watch_changes(node: Node) -> void:
+	# This tab owns its control signals, including batch resets and time input.
+	if node == visual_tab:
+		return
 	if node is CheckBox:
 		node.toggled.connect(_notify_change.unbind(1))
 	elif node is OptionButton:
@@ -233,6 +237,12 @@ func _watch_changes(node: Node) -> void:
 func _notify_change() -> void:
 	if not loading_values:
 		settings_changed.emit()
+
+
+func _notify_visual_change() -> void:
+	visual_change_in_progress = true
+	_notify_change()
+	visual_change_in_progress = false
 
 
 func _on_slider_key_input(event: InputEvent) -> void:
@@ -297,13 +307,14 @@ func show_values(
 	effects_slider.value = clampf(effects_volume, 0.0, 1.0) * 100.0
 	fullscreen_check.button_pressed = fullscreen
 	folder_edit.text = pack_file_path(folder) if source == "folder" else ""
-	tabs.current_tab = 0
+	if tabs.get_current_tab_control() != visual_tab:
+		tabs.current_tab = 0
 
 	# every tab opens at the top, not where the player left it
 	for tab in tabs.get_children():
 		if tab is ScrollContainer:
 			(tab as ScrollContainer).scroll_vertical = 0
-	visual_tab.select_category(0)
+	# Visual settings retain the category and its scroll position for this session.
 
 	_update_use_defaults(tabs.current_tab)
 	loading_values = was_loading

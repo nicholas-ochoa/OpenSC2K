@@ -5,6 +5,8 @@ const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
 
 var app: CityApplication
 var preferences: AppPreferences
+var _visual_save_timer: Timer
+var _visual_save_pending := false
 
 
 func _init(application: CityApplication) -> void:
@@ -80,12 +82,18 @@ func _refresh_settings_pack_names() -> void:
 # the earlier pack and does not stop the other settings
 func apply_settings() -> void:
 	var dialog := app.main_overlays.settings_dialog
+	# Visual controls have their own signal. Do not revisit audio, packs, input
+	# bindings or window settings for each step of a visual adjustment.
+	if dialog.visual_change_in_progress:
+		if _apply_visual_options(dialog.visual_tab.selected_values()):
+			if dialog.visible:
+				_queue_visual_save()
+			else:
+				_save_settings()
+		return
 	var values: AppSettingsStore.Values = dialog.selected_values()
 	var saved_before := _saved_settings_text()
-	preferences.visual_enhancements = values.visual_enhancements
-	app.visual_environment.configure()
-	if app.main_menu != null:
-		app.main_menu.city_background.set_visual_options(preferences.visual_enhancements)
+	_apply_visual_options(values.visual_enhancements)
 	var media_packs_changed := (not _same_pack(values.sound_pack_folder, preferences.sound_pack_folder)
 			or not _same_pack(values.music_pack_folder, preferences.music_pack_folder))
 
@@ -206,6 +214,44 @@ func apply_settings() -> void:
 	if _saved_settings_text() == saved_before:
 		return
 
+	_save_settings()
+
+
+func _apply_visual_options(values: Dictionary) -> bool:
+	if preferences.visual_enhancements == values:
+		return false
+	preferences.visual_enhancements = values
+	app.visual_environment.configure()
+	if app.main_menu != null:
+		app.main_menu.city_background.set_visual_options(values)
+	return true
+
+
+func _queue_visual_save() -> void:
+	if _visual_save_timer == null:
+		_visual_save_timer = Timer.new()
+		_visual_save_timer.one_shot = true
+		_visual_save_timer.wait_time = 0.3
+		_visual_save_timer.process_mode = Node.PROCESS_MODE_ALWAYS
+		app.add_child(_visual_save_timer)
+		_visual_save_timer.timeout.connect(flush_visual_save)
+		app.tree_exiting.connect(flush_visual_save)
+		app.main_overlays.settings_dialog.visibility_changed.connect(func() -> void:
+			if not app.main_overlays.settings_dialog.visible:
+				flush_visual_save())
+	_visual_save_pending = true
+	_visual_save_timer.start()
+
+
+func flush_visual_save() -> void:
+	if _visual_save_pending:
+		_save_settings()
+
+
+func _save_settings() -> void:
+	_visual_save_pending = false
+	if is_instance_valid(_visual_save_timer):
+		_visual_save_timer.stop()
 	var error := SettingsStore.save_values(preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
 		preferences.settings_path, preferences.save_options(),
 	)
