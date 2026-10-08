@@ -59,6 +59,10 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: native
+      # cpal in the native game links ALSA on Linux
+      - name: Install the ALSA headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image.
       # The audio library folder also receives FluidSynth, which needs CMake
       - name: Build the package libraries
