@@ -6,6 +6,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _check_dispatch_lights()
+	await _check_power_warnings()
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(16, 16)
 	viewport.transparent_bg = true
@@ -86,6 +87,63 @@ func _run() -> void:
 	await _check_street_fixtures(true)
 	print("PASS: GPU uniform morning/evening tint, colored graded brightmaps and original pixels when disabled")
 	quit()
+
+
+func _check_power_warnings() -> void:
+	var pack := GraphicsPack.load_root("res://../ext/graphics")
+	assert(pack.error.is_empty(), pack.error)
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(64, 32)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var sprite := Sprite2D.new()
+	sprite.centered = false
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	viewport.add_child(sprite)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://src/view/map/palette_cycle.gdshader")
+	sprite.material = material
+	material.set_shader_parameter("palette_lookup_all", true)
+	material.set_shader_parameter("palette_cycle_enabled", true)
+	material.set_shader_parameter("environment_enabled", true)
+	material.set_shader_parameter("environment_tint", Vector3(0.1, 0.2, 0.3))
+	material.set_shader_parameter("environment_has_seasons", true)
+	material.set_shader_parameter("environment_seasons", Vector4(0, 0, 0, 1))
+	for archive: Sc2SpriteArchive in [pack.large_sprites, pack.small_medium_sprites]:
+		CitySeasonColors.prepare(archive, pack.palette)
+		for id in [386, 886, 1386]:
+			var entry := archive.find_sprite(id)
+			if entry == null:
+				continue
+			var mask: Image = archive.visual_seasons[id]
+			var indices := entry.decode_indices().pixels
+			sprite.texture = ImageTexture.create_from_image(entry.create_image(Sc2Palette.index_encoding()).image)
+			material.set_shader_parameter("environment_season_mask", ImageTexture.create_from_image(mask))
+			for tick in 8:
+				var first := pack.palette.animation_image(tick)
+				var next := pack.palette.animation_image(tick + 1)
+				material.set_shader_parameter("animated_palette", ImageTexture.create_from_image(first))
+				material.set_shader_parameter("power_warning_palette", ImageTexture.create_from_image(next))
+				for blend in [0.0, 0.5, 1.0]:
+					material.set_shader_parameter("power_warning_blend", blend)
+					await process_frame
+					await RenderingServer.frame_post_draw
+					var actual := viewport.get_texture().get_image()
+					for y in entry.height:
+						for x in entry.width:
+							var index: int = indices[y * entry.width + x]
+							var pixel := actual.get_pixel(x, y)
+							if index < 0:
+								assert(pixel.a == 0.0 and mask.get_pixel(x, y).a == 0.0, "Warning silhouette changed")
+								continue
+							var expected := first.get_pixel(index, 0).lerp(next.get_pixel(index, 0), blend)
+							assert(abs(pixel.r8 - expected.r8) <= 2 and abs(pixel.g8 - expected.g8) <= 2
+								and abs(pixel.b8 - expected.b8) <= 2 and pixel.a8 == 255,
+								"Power warning %d lost its fullbright palette blend at tick %d" % [id, tick])
+	viewport.queue_free()
+	await process_frame
+	print("PASS: all power-warning sizes blend resolved palette colors and stay fullbright at night with lighting disabled")
 
 
 func _check_dispatch_lights() -> void:

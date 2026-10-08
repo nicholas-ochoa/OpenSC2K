@@ -88,16 +88,19 @@ func _simulation_suspended() -> bool:
 
 func _advance_palette_animation(delta: float, suspended: bool) -> void:
 	# Keep palette animation running while the simulation worker is busy.
-	if suspended or app.simulation_state.speed_controller.speed == GameSpeed.Speed.PAUSED or app.debug_tools.state.palette_frozen:
-		return
-
-	palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
+	if not suspended and app.simulation_state.speed_controller.speed != GameSpeed.Speed.PAUSED and not app.debug_tools.state.palette_frozen:
+		palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
 	var ticks := int(palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC)
 
 	if ticks > 0:
 		palette_clock.elapsed_msec -= ticks * GameSpeedController.BASE_TICK_MSEC
 		palette_clock.cycle_ticks += ticks
 		app.static_render.update_palette_cycle_texture()
+
+	if app.map_view != null:
+		app.map_view.layers.set_power_warning_animation(palette_clock.next_cycle_texture,
+			palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC
+			if app.preferences.visual_enhancements.disaster_blending else 0.0)
 
 
 func consume_simulation_result(result: SimulationTickResult) -> void:

@@ -9,6 +9,8 @@ uniform bool palette_cycle_enabled = false;
 uniform bool palette_lookup_all = false;
 uniform bool dark_underground = false;
 uniform sampler2D dark_underground_palette : source_color, filter_nearest, repeat_disable;
+uniform sampler2D power_warning_palette : source_color, filter_nearest, repeat_disable;
+uniform float power_warning_blend = 0.0;
 
 varying flat float emission_draw;
 varying flat float indexed_emission_draw;
@@ -39,6 +41,9 @@ void fragment() {
 		palette_lookup_all ? base_color.r : texture(palette_indices, UV).r
 	);
 	int palette_index = int(round(encoded_index * 255.0));
+	// The auxiliary mask follows sprite silhouettes and painter occlusion.
+	// Its blue channel is reserved for power warnings, not terrain colors.
+	bool power_warning = environment_has_seasons && texture(environment_season_mask, UV).b > 0.5;
 	bool animated_index =
 		(palette_index >= 171 && palette_index <= 198) ||
 		(palette_index >= 200 && palette_index <= 219) ||
@@ -49,6 +54,10 @@ void fragment() {
 		COLOR = vec4(cycle_color.rgb, base_color.a);
 	} else {
 		COLOR = base_color;
+	}
+	if (power_warning && palette_cycle_enabled && power_warning_blend > 0.0) {
+		vec3 next_color = texture(power_warning_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
+		COLOR.rgb = mix(COLOR.rgb, next_color, power_warning_blend);
 	}
 	if (hazard_draw > 0.5) {
 		float frame = floor(hazard_phase);
@@ -78,7 +87,7 @@ void fragment() {
 		COLOR.rgb = mix(ambient, gas, float(environment_enabled) * clamp(environment_night, 0.0, 1.0));
 	} else if (dark_underground) {
 		COLOR.rgb = texture(dark_underground_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
-	} else if (fullbright_draw < 0.5) {
+	} else if (fullbright_draw < 0.5 && !power_warning) {
 		COLOR.rgb = environment_color(cloud_shadow(COLOR.rgb, cloud_ground_grid), UV);
 	}
 }

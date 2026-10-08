@@ -52,6 +52,7 @@ func _run() -> void:
 	var before := DocumentState.capture(main.document_state.city.document)
 	var engine := main.simulation_state.simulation_engine
 	var random_before := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
+	_check_power_warning_clock(main)
 	main.preferences.visual_enhancements = defaults.duplicate()
 	main.preferences.visual_enhancements.pause_freezes = false
 	main.visual_environment.process(0.0)
@@ -658,6 +659,31 @@ func _check_light_graphics_caches(main: CityApplication) -> void:
 	lights._select_ground(original_view)
 
 
+func _check_power_warning_clock(main: CityApplication) -> void:
+	var clock := main.palette_clock
+	clock.cycle_ticks = 0
+	clock.elapsed_msec = 0.0
+	main.static_render.update_palette_cycle_texture()
+	main.simulation_state.speed_controller.speed = GameSpeedController.Speed.TURTLE
+	main.preferences.visual_enhancements.disaster_enabled = false
+	main.preferences.visual_enhancements.disaster_blending = true
+	main.frame._advance_palette_animation(GameSpeedController.BASE_TICK_MSEC / 2000.0, false)
+	assert(is_equal_approx(main.map_view.layers._power_warning_blend, 0.5))
+	var ticks := clock.cycle_ticks
+	var elapsed := clock.elapsed_msec
+	main.frame._advance_palette_animation(1.0, true)
+	assert(clock.cycle_ticks == ticks and clock.elapsed_msec == elapsed)
+	main.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+	main.frame._advance_palette_animation(1.0, false)
+	assert(clock.cycle_ticks == ticks and clock.elapsed_msec == elapsed)
+	main.preferences.visual_enhancements.disaster_blending = false
+	main.frame._advance_palette_animation(0.0, true)
+	assert(main.map_view.layers._power_warning_blend == 0.0)
+	main.preferences.visual_enhancements.disaster_blending = true
+	main.frame._advance_palette_animation(0.0, true)
+	assert(is_equal_approx(main.map_view.layers._power_warning_blend, 0.5))
+
+
 func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	var original := tab.selected_values()
 	# Navigation is presentation-only, and percentage displays round-trip every option.
@@ -689,6 +715,7 @@ func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	(tab.controls.disaster_strength as SpinBox).value = 70.0
 	assert((tab.controls.disaster_lights as SpinBox).editable)
 	(tab.controls.disaster_enabled as CheckBox).button_pressed = false
+	assert(not (tab.controls.disaster_blending as CheckBox).disabled, "Power-warning blending must remain available without disaster effects")
 	assert(not (tab.controls.disaster_strength as SpinBox).editable)
 	assert(not (tab.controls.disaster_shake as SpinBox).editable)
 	assert((tab.controls.disaster_motion as CheckBox).disabled)

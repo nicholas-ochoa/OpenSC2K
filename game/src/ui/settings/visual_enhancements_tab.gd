@@ -20,9 +20,9 @@ const SECTIONS := [
 	["Traffic & Movement", "Decorative cars and pedestrians, plus smoother movement for existing vehicles.",
 		["life_cars_enabled", "life_car_amount", "life_people_enabled", "life_people_amount", "traffic_vehicles_enabled", "traffic_shadows_enabled"]],
 	["Disaster Effects", "Extra effects for disasters and demolition. These settings do not change disaster frequency, damage or emergency response.",
-		["disaster_enabled", "disaster_strength", "disaster_blending", "disaster_crowds", "disaster_dust", "disaster_lights", "disaster_motion", "disaster_shake"]],
+		["disaster_enabled", "disaster_strength", "disaster_crowds", "disaster_dust", "disaster_lights", "disaster_motion", "disaster_shake"]],
 	["Animation", "Cycle durations use Turtle speed when linked; otherwise they use real time. Weather and clouds always pause with the game. The pause option below controls the other environment cycles.",
-		["speed_link", "pause_freezes"]],
+		["disaster_blending", "speed_link", "pause_freezes"]],
 	["Custom Graphics", "Optional files for custom colors and lights. Standard effects work without these fields.",
 		["lut_path", "brightmap_folder"]],
 ]
@@ -44,7 +44,7 @@ const LABELS := {
 	"lut_path": "Custom color filter (LUT PNG)", "brightmap_folder": "Custom light masks (brightmaps)",
 }
 const HINTS := {
-	"disaster_blending": "Blend animation frames for fire, toxic clouds, floods, tornadoes, smoke, explosion clouds and demolition dust. Fire also fades in and out. The initial explosion flash stays immediate. Does not change disaster behavior.",
+	"disaster_blending": "Blend animation frames for power warnings, fire, toxic clouds, floods, tornadoes, smoke, explosion clouds and demolition dust. Fire also fades in and out. Disaster blending requires Enhanced disaster visuals. Power warnings always stay fullbright. The initial explosion flash stays immediate.",
 	"night_daytime_enabled": "Keep building brightmaps, glow, street lamps, junction signals and vehicle lights on at any hour, even with the day-night cycle off. Daylight colors and individual light strengths stay unchanged.",
 	"night_ambient": "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate.",
 	"night_glow": "Soft colored light around visible brightmaps. Zero keeps only the sharp original lights.",
@@ -358,7 +358,7 @@ func _update_availability() -> void:
 	var values := selected_values()
 	for key: String in controls:
 		var available := true
-		if key.begins_with("disaster_") and key != "disaster_enabled":
+		if key.begins_with("disaster_") and key not in ["disaster_enabled", "disaster_blending"]:
 			available = values.disaster_enabled
 		elif key.begins_with("season_") and key != "season_enabled":
 			available = values.season_enabled

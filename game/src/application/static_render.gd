@@ -515,6 +515,12 @@ func update_palette_cycle_texture() -> void:
 	else:
 		palette_clock.cycle_texture.update(image)
 
+	var next_image := app.asset_state.palette.animation_image(palette_clock.cycle_ticks + 1)
+	if palette_clock.next_cycle_texture == null:
+		palette_clock.next_cycle_texture = ImageTexture.create_from_image(next_image)
+	else:
+		palette_clock.next_cycle_texture.update(next_image)
+
 	var underground_image := app.asset_state.palette.underground_animation_image(palette_clock.cycle_ticks)
 
 	if palette_clock.underground_cycle_texture == null:

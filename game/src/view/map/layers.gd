@@ -29,6 +29,25 @@ var environment_parameters: Dictionary = {}
 var water_layer: CityWaterLayer
 var _visual_materials: Dictionary = {}
 var _environment := CityEnvironmentParameters.new()
+var _power_warning_palette: Texture2D
+var _power_warning_blend := 0.0
+
+
+func set_power_warning_animation(next_palette: Texture2D, blend: float) -> void:
+	if _power_warning_palette == next_palette and _power_warning_blend == blend:
+		return
+	_power_warning_palette = next_palette
+	_power_warning_blend = blend
+	_apply_power_warning(_base_material)
+	for material: ShaderMaterial in _visual_materials.values():
+		_apply_power_warning(material)
+
+
+func _apply_power_warning(material: ShaderMaterial) -> void:
+	if material == null:
+		return
+	material.set_shader_parameter("power_warning_palette", _power_warning_palette)
+	material.set_shader_parameter("power_warning_blend", _power_warning_blend if _power_warning_palette != null else 0.0)
 
 
 func set_environment(parameters: Dictionary) -> void:
@@ -457,6 +476,7 @@ func _sync_base_material() -> void:
 		(map.palette_index_texture != null or map.base_palette_lookup_all) and map.animated_palette_texture != null,
 	)
 	_base_material.set_shader_parameter("palette_lookup_all", map.base_palette_lookup_all)
+	_apply_power_warning(_base_material)
 
 	if _dynamic_material != null:
 		_dynamic_material.set_shader_parameter(

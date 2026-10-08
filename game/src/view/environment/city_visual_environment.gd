@@ -159,7 +159,9 @@ func process(delta: float) -> void:
 	var grading_delta: float = options.weather_transition if paused and weather.kind != previous_weather else weather_delta
 	profiles.advance_weather(weather.kind, grading_delta, options.weather_transition, active and options.weather_enabled)
 	var daytime_lights: bool = options.brightmaps and options.night_daytime_enabled
-	if active and (options.day_enabled or options.season_enabled or options.weather_enabled or daytime_lights):
+	# The auxiliary mask also identifies fullbright warning icons, even with
+	# all environment effects disabled.
+	if active:
 		_sync_whole_masks()
 	if active and VisualEnhancementOptions.water_pass_enabled(options):
 		_sync_whole_water()
