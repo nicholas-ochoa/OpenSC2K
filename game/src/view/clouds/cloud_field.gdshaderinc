@@ -81,6 +81,9 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 			float size = cloud_span / 3.0 * size_factor;
 			vec2 uv = sky / size + vec2(0.5);
 			if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { continue; }
+			// Mirror within the atlas cell, with one stable choice shared by the
+			// cloud body, its shadow and reflections throughout drift and zoom.
+			if (cloud_hash(id + vec2(41.0, 53.0)) < 0.5) { uv.x = 1.0 - uv.x; }
 			float variant = floor(cloud_hash(id + vec2(13.0, 19.0)) * 4.0);
 			vec2 quadrant = vec2(mod(variant, 2.0), floor(variant * 0.5));
 			vec2 atlas_uv = (quadrant + uv) * 0.5;
