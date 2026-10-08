@@ -648,7 +648,10 @@ func _check_zone_soil_masks() -> void:
 			var mask: Image = archive.visual_seasons[id]
 			var markings := 0
 			for at in indices.size():
-				if indices[at] >= 0 and not flat.has(indices[at]):
+				# Original zoning uses soil shade124 for its darker tile borders.
+				if indices[at] == 124:
+					assert(mask.get_pixel(at % entry.width, int(at / entry.width)).g == 1.0, "Zoned soil border stayed brown")
+				elif indices[at] >= 0 and not flat.has(indices[at]):
 					markings += 1
 					assert(mask.get_pixel(at % entry.width, int(at / entry.width)).a == 0.0, "Season mask recolors a zoning mark")
 			assert(markings > 0, "Zone fixture lacks distinctive markings")

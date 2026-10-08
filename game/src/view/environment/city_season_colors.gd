@@ -8,9 +8,10 @@ static func prepare(archive: Sc2SpriteArchive, palette: Sc2Palette) -> void:
 	archive.visual_seasons.clear()
 	var soil_indices: Dictionary[int, bool] = {}
 	# Zone ground contains both soil and saturated zoning marks. Match the
-	# soil palette indices of flat terrain instead of recoloring those marks.
+	# soil palette indices of terrain (including shaded edges) instead of marks.
 	for id: int in archive.entries_by_id:
-		if id % 500 != 256:
+		var offset := id % 500
+		if not ((offset >= 256 and offset <= 268) or (offset >= 270 and offset <= 283)):
 			continue
 		for index: int in archive.find_sprite(id).decode_indices().pixels:
 			if index >= 0 and _is_soil(palette.color(index)):
