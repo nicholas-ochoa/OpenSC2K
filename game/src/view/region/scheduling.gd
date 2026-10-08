@@ -152,7 +152,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		cache._changed = false
 		return changed
 	if cache.gpu_workers.is_empty():
-		for index in mini(CityRegionCache.GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
+		for index in mini(1 if cache.background_preparation else CityRegionCache.GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
 			cache.gpu_workers.append(CityRegionCache.RegionWorker.new())
 
 	for worker in cache.gpu_workers:
@@ -166,7 +166,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		if not current:
 			worker.cancel()
 
-		var regions := worker.take_regions()
+		var regions := worker.take_regions(4 if cache.background_preparation and current else 0)
 
 		if current:
 			if not regions.is_empty() and worker.generation == cache.generation and not cache._prepared:
@@ -218,7 +218,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		if not regions.is_empty():
 			cache._gpu_has_work = true
 
-		if running:
+		if running or worker.has_regions():
 			continue
 
 		var result: CityGpuRegionBatch.Result = worker.task.finish()
@@ -302,7 +302,8 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		if worker.task != null:
 			# Top up a current stream. A stale stream finishes its queue, and
 			# the worker then starts again with the new snapshot.
-			var room := CityGpuRegionBatch.STREAM_QUEUE - worker.queued()
+			var room := (8 - worker.keys.size() if cache.background_preparation
+				else CityGpuRegionBatch.STREAM_QUEUE - worker.queued())
 
 			if not _streams_current(cache, worker) or room <= 0:
 				continue
@@ -322,7 +323,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 			continue
 
-		var keys := _claim_gpu_keys(cache, queue, active, worker_index, CityGpuRegionBatch.STREAM_QUEUE)
+		var keys := _claim_gpu_keys(cache, queue, active, worker_index, 8 if cache.background_preparation else CityGpuRegionBatch.STREAM_QUEUE)
 
 		if keys.is_empty():
 			continue

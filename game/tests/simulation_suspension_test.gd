@@ -64,7 +64,6 @@ func _check_every_window_is_classified() -> void:
 func _check_current_classification() -> void:
 	var blocking: Array[Node] = [
 		main.city_dialogs.city_save_dialog, main.city_dialogs.city_rename_dialog, main.city_dialogs.png_export_dialog, main.city_dialogs.png_export_progress,
-		main.city_dialogs.visual_preparation_progress,
 		main.city_dialogs.new_city_dialog, main.city_dialogs.bridge_dialog, main.city_dialogs.tool_choice_dialog,
 		main.city_dialogs.stadium_dialog,
 		main.city_dialogs.network_connection_dialog, main.city_dialogs.highway_connection_dialog, main.city_dialogs.tunnel_dialog,
@@ -77,6 +76,7 @@ func _check_current_classification() -> void:
 		main.scurk_editor, main.scurk_place_print, main.scurk_print,
 	]
 	var modeless: Array[Node] = [
+		main.city_dialogs.visual_preparation_progress,
 		main.city_dialogs.city_open_dialog, main.tile_set_dialog, main.city_dialogs.sign_dialog,
 		main.city_dialogs.graph_window, main.city_dialogs.population_window, main.city_dialogs.industry_window,
 		main.city_dialogs.simnation_window, main.city_dialogs.city_map_window,

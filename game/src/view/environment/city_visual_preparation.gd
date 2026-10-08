@@ -17,6 +17,8 @@ var background_cursor := 0
 var completed := 0
 var total := 0
 var failure := ""
+var progress := 0.0
+var lighting_started := false
 var light_rescan: Dictionary[int, bool] = {}
 
 
@@ -61,7 +63,7 @@ func _index(view: int) -> int:
 
 
 func archive_for_view(view: int) -> Sc2SpriteArchive:
-	return archives[_index(view)] if archives.size() == VARIANTS else null
+	return archives[_index(view)] if archives.size() == VARIANTS and (ready or preparing_view >= 0) else null
 
 
 func selected_cache(view: int) -> CityRegionCache:
@@ -72,14 +74,15 @@ func begin() -> void:
 	# Initialize presentation clocks while the previous render source is still
 	# attached. A detached regional source must never enter the whole-image path.
 	app.visual_environment.process(0.0)
+	var replace_active := owns(app.render_caches.region_cache)
 	reset()
-	app.map_render.close_region_cache()
-	app.visual_environment.night_lighting.reset()
 	app.city_life.sprites.prepare_frames()
 	layout = _layout()
 	failure = ""
 	stage = 0
 	completed = 0
+	progress = 0.0
+	lighting_started = false
 	total = VARIANTS
 	for index in VARIANTS:
 		var view := index / 2
@@ -99,15 +102,19 @@ func begin() -> void:
 		var cache := CityRegionCache.new()
 		cache.gpu_enabled = CityRegionCache.gpu_supported(app.preferences.city_renderer)
 		cache.resident = true
+		cache.background_preparation = true
 		banks.append(cache)
 		_configure(index)
 		cache.update_viewport(Rect2(Vector2.ZERO, Vector2(cache.native_size * cache.divisor)))
 	busy = true
+	if replace_active:
+		app.map_render.refresh_map(false)
 	_progress(0.0, "Preparing city graphics…")
 
 
 func _progress(fraction: float, detail: String) -> void:
-	app.city_dialogs.visual_preparation_progress.show_progress("Preparing Visual Enhancements", detail, fraction)
+	progress = maxf(progress, fraction)
+	app.city_dialogs.visual_preparation_progress.show_progress("Preparing Visual Enhancements", detail, progress)
 
 
 func process() -> bool:
@@ -121,25 +128,48 @@ func process() -> bool:
 		return false
 	if layout != _layout():
 		begin()
-		return true
+		return false
 	if not busy:
 		if ready:
 			_background()
 		return false
-	var cache := banks[stage]
+	# Camera work uses the normal renderer. Do not compete with uncovered areas.
+	var active := app.render_caches.region_cache
+	if active != null and not active.covered():
+		return false
+	var previous_view := preparing_view
+	var previous_traffic := preparing_traffic
 	preparing_view = stage / 2
 	preparing_traffic = stage % 2
-	app.render_caches.region_cache = cache
-	cache.tick()
-	if not cache.last_error.is_empty():
-		failure = cache.last_error
+	app.render_caches.region_cache = banks[stage]
+	_prepare_step()
+	preparing_view = previous_view
+	preparing_traffic = previous_traffic
+	app.render_caches.region_cache = active
+	if not failure.is_empty():
+		var message := failure
 		var failed_layout := layout
 		reset()
 		layout = failed_layout
-		app.map_render.refresh_map()
-		app.interface.show_error("Visual preparation failed: " + failure)
-		return false
-	var fraction := float(cache.entries.size()) / maxi(cache.wanted.size(), 1)
+		app.interface.show_error("Visual preparation failed: " + message)
+	elif ready:
+		app.map_render.refresh_map(false)
+		app.city_dialogs.visual_preparation_progress.hide()
+	return false
+
+
+func _prepare_step() -> void:
+	var cache := banks[stage]
+	_configure(stage)
+	cache.tick()
+	# An edit can arrive while a bank is loading. Publish its changed silhouettes
+	# to retained light masks, just as the ordinary visible renderer does.
+	if cache.generation > 1 and not cache.lighting_changes.is_empty():
+		app.visual_environment.night_lighting.invalidate_regions(cache.lighting_changes)
+	if not cache.last_error.is_empty():
+		failure = cache.last_error
+		return
+	var fraction := 0.8 * float(cache.entries.size()) / maxi(cache.wanted.size(), 1)
 	var detail := "%s graphics: %d / %d areas" % [["Small", "Medium", "Large"][preparing_view], cache.entries.size(), cache.wanted.size()]
 	if cache.prefetch_ready():
 		if stage % 2 == 0:
@@ -147,35 +177,32 @@ func process() -> bool:
 			lighting._select_ground(preparing_view)
 			var ground := lighting.ground
 			ground.resident = true
-			ground.prepare_entire_city = true
-			ground.sync(app, 0.0, 0.0, true)
-			fraction = 0.8 + 0.2 * float(ground.cache.size()) / maxi(ground.visible_tiles.size(), 1)
-			detail = "%s lighting: %d / %d streets" % [["Small", "Medium", "Large"][preparing_view], ground.cache.size(), ground.visible_tiles.size()]
+			if not lighting_started:
+				# Discover offscreen receivers once. Keep the ordinary viewport for
+				# drawing; resident pending jobs survive the visible-area collection.
+				ground.sync(app, 0.0, 0.0, true, 1000)
+				ground.bounds = ground._city_bounds(app.document_state.city)
+				ground._collect(app.document_state.city)
+				ground.bounds = Rect2i()
+				lighting_started = true
+			ground.sync(app, 0.0, 0.0, true, 1000)
+			fraction = 0.8 + 0.2 * float(ground.cache.size()) / maxi(ground.cache.size() + ground.pending.size(), 1)
+			detail = "%s lighting: %d streets remaining" % [["Small", "Medium", "Large"][preparing_view], ground.pending.size()]
 			if not ground.pending.is_empty():
 				_progress((stage + fraction) / VARIANTS, detail)
-				return true
-			ground.prepare_entire_city = false
-			ground.bounds = Rect2i()
-			ground.sync(app, 0.0, 0.0, true)
+				return
 		cache.update_viewport(app.map_view.visible_source_rect())
-		# Completed meshes own their textures. Release the large temporary native
-		# painter caches; later edits create workers only for affected regions.
 		cache._close_gpu_workers()
 		cache._gpu_has_work = false
+		cache.background_preparation = false
 		stage += 1
 		completed = stage
+		lighting_started = false
 		fraction = 0.0
 		if stage == VARIANTS:
-			preparing_view = -1
-			preparing_traffic = -1
 			ready = true
 			busy = false
-			app.map_render.refresh_map(false)
-			app.visual_environment.process(0.0)
-			app.city_dialogs.visual_preparation_progress.hide()
-			return true
-	_progress((completed + fraction * 0.8) / VARIANTS, detail)
-	return true
+	_progress((completed + fraction) / VARIANTS, detail)
 
 
 func _configure(index: int, dirty := Rect2i()) -> void:
@@ -192,7 +219,7 @@ func _configure(index: int, dirty := Rect2i()) -> void:
 		CityViewMode.Mode.CITY, app.view_state.surface_visibility, app.view_state.show_underground_pipes,
 		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains, changed, listed,
 		app.view_state.show_underground_tunnels)
-	if ready and cache.generation != previous_generation:
+	if (ready or busy) and cache.generation != previous_generation:
 		light_rescan[view] = true
 
 

@@ -22,6 +22,8 @@ var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
 # A city preparation bank keeps complete region resources between camera moves.
 var resident := false
+# Limit background uploads and worker queues while the player uses another view.
+var background_preparation := false
 # Shared with CityRegionScheduling; each cache owns its worker lifetime.
 var gpu_workers: Array[RegionWorker] = []
 var entries: Dictionary[Vector2i, CityRegionResult] = {}
@@ -711,13 +713,20 @@ class RegionWorker extends RefCounted:
 
 		return count
 
-	func take_regions() -> Array[CityGpuRegionResult]:
+	func take_regions(limit := 0) -> Array[CityGpuRegionResult]:
 		mutex.lock()
-		var regions := outbox
-		outbox = []
+		var count := mini(limit, outbox.size()) if limit > 0 else outbox.size()
+		var regions: Array[CityGpuRegionResult] = outbox.slice(0, count)
+		outbox = outbox.slice(count)
 		mutex.unlock()
 
 		return regions
+
+	func has_regions() -> bool:
+		mutex.lock()
+		var pending := not outbox.is_empty()
+		mutex.unlock()
+		return pending
 
 	# Stop the stream after its current region.
 	func cancel() -> void:
