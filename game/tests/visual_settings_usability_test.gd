@@ -15,6 +15,15 @@ func _run() -> void:
 	var tab := dialog.visual_tab
 	_check_cloud_settings(tab)
 	var defaults := VisualEnhancementOptions.normalize({})
+	assert(tab.terrain_strength_slider.value == 50.0)
+	tab.terrain_strength_slider.value = 75.0
+	assert(tab.selected_values().nature_terrain_strength == 0.75)
+	(tab.controls.nature_terrain_strength as SpinBox).value = 20.0
+	assert(tab.terrain_strength_slider.value == 20.0)
+	(tab.controls.nature_terrain_enabled as CheckBox).button_pressed = false
+	assert(not tab.terrain_strength_slider.editable and not (tab.controls.nature_terrain_strength as SpinBox).editable)
+	tab.show_values(defaults)
+	assert(tab.terrain_strength_slider.editable and tab.terrain_strength_slider.value == 50.0)
 	var custom := VisualEnhancementOptions.normalize({"day_mode": 1, "day_hour": 7.5,
 		"night_light_strength": 65.0, "weather_mode": 2, "weather_fixed": 6,
 		"lut_folder": "user://profiles", "lut_path": "user://colors.png", "brightmap_folder": "masks"})

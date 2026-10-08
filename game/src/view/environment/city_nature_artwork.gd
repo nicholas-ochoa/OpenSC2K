@@ -33,9 +33,7 @@ static func sprite_id(view: int, density: int, neighbors: int, variant: int) -> 
 static func prepare(archive: Sc2SpriteArchive, palette: Sc2Palette) -> void:
 	if not archive.visual_nature.is_empty():
 		return
-	var colors: Array[int] = []
-	for color in [Color(0.03, 0.21, 0), Color(0.03, 0.34, 0), Color(0.03, 0.46, 0), Color(0.03, 0.59, 0), Color(0.03, 0.72, 0), Color("655032"), Color("978466")]:
-		colors.append(_nearest(palette, color))
+	var trees := _templates(palette)
 	for view in 3:
 		if not archive.entries_by_id.has(view * 500 + 6):
 			continue
@@ -46,7 +44,7 @@ static func prepare(archive: Sc2SpriteArchive, palette: Sc2Palette) -> void:
 					if source == null:
 						continue
 					var size := Vector2i(32 >> (2 - view), 36 >> (2 - view))
-					var group := _group(size, colors, density, neighbors, variant)
+					var group := _group(size, trees, density, neighbors, variant)
 					var pixels: PackedInt32Array = group.pixels
 					var mask := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
 					# Red marks foliage; green 0.1/0.2/0.3 identifies pine/oak/birch.
@@ -91,7 +89,7 @@ static func _nearest(palette: Sc2Palette, target: Color) -> int:
 	return best
 
 
-static func _group(size: Vector2i, colors: Array[int], density: int, neighbors: int, variant: int) -> Dictionary:
+static func _group(size: Vector2i, trees: Array[Dictionary], density: int, neighbors: int, variant: int) -> Dictionary:
 	var pixels := PackedInt32Array()
 	pixels.resize(32 * 36)
 	pixels.fill(-1)
@@ -112,7 +110,7 @@ static func _group(size: Vector2i, colors: Array[int], density: int, neighbors: 
 		roots.append(Vector3i(root.x, root.y, seed + (1000 if shared else 0)))
 	roots.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return a.y < b.y)
 	for root in roots:
-		_tree(pixels, species, root, colors)
+		_tree(pixels, species, root, trees)
 	if size == Vector2i(32, 36):
 		return {"pixels": pixels, "species": species}
 	var reduced := PackedInt32Array()
@@ -127,34 +125,55 @@ static func _group(size: Vector2i, colors: Array[int], density: int, neighbors: 
 	return {"pixels": reduced, "species": reduced_species}
 
 
-static func _tree(pixels: PackedInt32Array, foliage: PackedByteArray, root: Vector3i, colors: Array[int]) -> void:
-	# Hand-shaped clusters at the original artwork's pixel scale. The conifer
-	# uses stepped branch tiers; oak and birch have unequal leafy lobes.
-	const CROWNS := [
-		[".....3.....", ".....43....", "....432....", "....443....", "...34421...",
-		 "....432....", "...44321...", "..344322...", "...44321...", "..3443321..",
-		 "..4543321..", ".34432321..", "..343221...", ".344332211.", "34443322211", ".33322211.."],
-		["....443....", "..344532...", ".34545332..", ".455343221.", "34543443221",
-		 "34454333221", "45343432311", "34434323221", ".343223221.", "..3323211..", "...2211...."],
-		["....43...", "...4542..", "..454432.", "..543332.", ".45434321", "345443321",
-		 ".43453221", "344343321", ".34343221", "..433221.", ".343321..", "..33211..", "...21...."]]
+static func _templates(palette: Sc2Palette) -> Array[Dictionary]:
+	# Authored sprite sheet from the selected C design. Decode once at the
+	# native artwork scale, preserving the source silhouettes and pixel shading.
+	var sheet := (load("res://assets/nature/mixed-woodland-c.png") as Texture2D).get_image()
+	var bounds := [Rect2i(168, 103, 197, 376), Rect2i(687, 193, 163, 286),
+		Rect2i(1151, 209, 204, 270), Rect2i(167, 586, 213, 384),
+		Rect2i(615, 651, 299, 319), Rect2i(1177, 612, 196, 358)]
+	var sizes := [Vector2i(9, 18), Vector2i(8, 14), Vector2i(11, 14),
+		Vector2i(10, 18), Vector2i(13, 14), Vector2i(10, 18)]
+	var kinds := [1, 1, 2, 3, 2, 1]
+	var result: Array[Dictionary] = []
+	for index in bounds.size():
+		var image := sheet.get_region(bounds[index])
+		var size: Vector2i = sizes[index]
+		image.resize(size.x, size.y, Image.INTERPOLATE_NEAREST)
+		var pixels := PackedInt32Array()
+		var species := PackedByteArray()
+		pixels.resize(size.x * size.y)
+		pixels.fill(-1)
+		species.resize(pixels.size())
+		for y in size.y:
+			for x in size.x:
+				var color := image.get_pixel(x, y)
+				if color.a < 0.5:
+					continue
+				var trunk := color.r > color.g * 1.05
+				# Match original indexed greens; avoid grey nearest-palette matches
+				# for the authored sheet's blue-green shadows.
+				pixels[y * size.x + x] = _nearest(palette, color if trunk else Color(0.02, color.g, 0.0))
+				species[y * size.x + x] = 0 if trunk else kinds[index]
+		result.append({"size": size, "pixels": pixels, "species": species})
+	return result
+
+
+static func _tree(pixels: PackedInt32Array, foliage: PackedByteArray, root: Vector3i, trees: Array[Dictionary]) -> void:
 	var seed := root.z % 1000
-	var species := seed % 3
-	var shape: Array = CROWNS[species]
-	var width: int = shape[0].length()
-	var height := shape.size() + seed % 3
-	var spread := 1 if root.z >= 1000 and species != 2 else 0
-	for y in range(root.y - 7, root.y + 1):
-		_put(pixels, foliage, root.x, y, colors[6 if species == 2 and y % 3 != 0 else 5], 0)
+	var tree: Dictionary = trees[seed % trees.size()]
+	var size: Vector2i = tree.size
+	var height := size.y + (seed / 6) % 2
+	var width := size.x + (1 if root.z >= 1000 else 0)
 	for y in height:
-		var row: String = shape[mini(shape.size() - 1, y * shape.size() / height)]
-		for x in range(width + spread):
-			var sx := mini(width - 1, x * width / (width + spread))
-			if seed & 1 != 0:
-				sx = width - 1 - sx
-			var value := row.substr(sx, 1)
-			if value != ".":
-				_put(pixels, foliage, root.x + x - (width + spread) / 2, root.y - height - 3 + y, colors[value.to_int() - 1], species + 1)
+		var sy := mini(size.y - 1, y * size.y / height)
+		for x in width:
+			var sx := mini(size.x - 1, x * size.x / width)
+			if (seed / 6) & 1 != 0:
+				sx = size.x - 1 - sx
+			var at := sy * size.x + sx
+			if tree.pixels[at] >= 0:
+				_put(pixels, foliage, root.x + x - width / 2, root.y - height + 1 + y, tree.pixels[at], tree.species[at])
 
 
 static func _put(pixels: PackedInt32Array, foliage: PackedByteArray, x: int, y: int, index: int, species: int) -> void:

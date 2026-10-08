@@ -5,6 +5,7 @@ extends RefCounted
 const FIELDS := [
 	["nature_forests_enabled", "Connected forests and tree variants", "bool", true],
 	["nature_terrain_enabled", "Subtle terrain variation", "bool", true],
+	["nature_terrain_strength", "Terrain overlay strength", "number", 0.5, 0.0, 1.0, 0.05],
 	["disaster_enabled", "Disaster effects", "bool", true],
 	["disaster_strength", "Effect strength", "number", 0.7, 0.0, 1.0, 0.05],
 	["disaster_crowds", "Use city pedestrians for riots", "bool", true],

@@ -9,6 +9,10 @@ func _initialize() -> void:
 func _run() -> void:
 	var defaults := VisualEnhancementOptions.normalize({})
 	assert(defaults.day_seconds == 600.0)
+	assert(defaults.nature_terrain_strength == 0.5)
+	assert(VisualEnhancementOptions.normalize({"nature_terrain_strength": NAN}).nature_terrain_strength == 0.5)
+	assert(VisualEnhancementOptions.normalize({"nature_terrain_strength": -1.0}).nature_terrain_strength == 0.0)
+	assert(VisualEnhancementOptions.normalize({"nature_terrain_strength": 2.0}).nature_terrain_strength == 1.0)
 	assert(defaults.night_light_strength == 100.0)
 	assert(not defaults.night_daytime_enabled)
 	assert(defaults.disaster_blending)
@@ -21,6 +25,7 @@ func _run() -> void:
 	var save := AppSettingsStore.SaveOptions.new()
 	save.visual_enhancements = VisualEnhancementOptions.normalize({"day_mode": 1, "day_hour": 7.0, "weather_fixed": 6})
 	save.visual_enhancements.day_lut_strength = 0.25
+	save.visual_enhancements.nature_terrain_strength = 0.3
 	save.visual_enhancements.season_lut_strength = 0.75
 	save.visual_enhancements.weather_lut_strength = 0.0
 	save.visual_enhancements.night_light_strength = 35.0
@@ -85,6 +90,10 @@ func _run() -> void:
 	main.preferences.visual_enhancements.weather_mode = 0
 	main.settings.open_settings_dialog()
 	var tab := main.main_overlays.settings_dialog.visual_tab
+	tab.terrain_strength_slider.value = 25.0
+	assert(main.preferences.visual_enhancements.nature_terrain_strength == 0.25)
+	main.visual_environment.process(0.0)
+	assert(main.map_view.layers.environment_parameters.nature_terrain_strength == 0.25)
 	_check_menu_dependencies(tab)
 	await _check_visual_save(main, tab)
 	(tab.controls.disaster_blending as CheckBox).button_pressed = false

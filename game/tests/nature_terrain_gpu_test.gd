@@ -23,6 +23,7 @@ func _run() -> void:
 	material.set_shader_parameter("environment_has_seasons", true)
 	material.set_shader_parameter("environment_season_mask", ImageTexture.create_from_image(mask))
 	material.set_shader_parameter("nature_ground", CityNatureArtwork.ground_texture())
+	material.set_shader_parameter("nature_terrain_strength", 1.0)
 	# One terrain tile spans many pixels. Test seams at actual artwork scale.
 	var projection := Basis(Vector3(0.0625, 0, 0), Vector3(0, 0.0625, 0), Vector3(0, 0, 1))
 	material.set_shader_parameter("nature_canvas_to_grid", projection)
@@ -43,6 +44,19 @@ func _run() -> void:
 		assert(absf(a.r - b.r) < 0.065 and absf(a.g - b.g) < 0.065, "Terrain detail exceeds the restrained contrast budget")
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == enhanced.get_data(), "Static terrain animated")
+	material.set_shader_parameter("nature_terrain_strength", 0.0)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == classic.get_data(), "Zero overlay did not restore original ground")
+	material.set_shader_parameter("nature_terrain_strength", 0.5)
+	await RenderingServer.frame_post_draw
+	var half_strength := viewport.get_texture().get_image()
+	for x in range(0, 256, 7):
+		var expected := classic.get_pixel(x, 32).lerp(enhanced.get_pixel(x, 32), 0.5)
+		var actual := half_strength.get_pixel(x, 32)
+		assert(absf(actual.r - expected.r) < 0.008 and absf(actual.g - expected.g) < 0.008 and absf(actual.b - expected.b) < 0.008,
+			"Half overlay strength did not blend original and enhanced ground")
+	assert(half_strength.get_region(Rect2i(0, 64, 256, 64)).get_data() == classic.get_region(Rect2i(0, 64, 256, 64)).get_data())
+	material.set_shader_parameter("nature_terrain_strength", 1.0)
 	# Move the canvas and compensate its world transform, as camera panning does.
 	sprite.position.x = 8
 	material.set_shader_parameter("nature_canvas_to_grid", Basis(Vector3(0.0625, 0, 0), Vector3(0, 0.0625, 0), Vector3(-0.5, 0, 1)))
@@ -69,6 +83,10 @@ func _run() -> void:
 	material.set_shader_parameter("nature_terrain_enabled", true)
 	await RenderingServer.frame_post_draw
 	var summer := viewport.get_texture().get_image()
+	# Seasonal processing must also work on a partially blended overlay.
+	material.set_shader_parameter("nature_terrain_strength", 0.5)
+	await RenderingServer.frame_post_draw
+	summer = viewport.get_texture().get_image()
 	material.set_shader_parameter("environment_enabled", true)
 	var seasons: Array[Image] = []
 	for season in 4:

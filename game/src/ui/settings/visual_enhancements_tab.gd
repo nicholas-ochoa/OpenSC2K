@@ -16,7 +16,7 @@ const SECTIONS := [
 	["Weather & Clouds", "Weather and clouds have separate switches. Fog is part of Clouds. Fixed weather can show snow in any season.",
 		["weather_enabled", "weather_mode", "weather_fixed", "weather_seconds", "weather_transition", "weather_strength", "weather_lut_strength", "cloud_enabled", "cloud_mode", "cloud_density", "cloud_shadow_strength", "cloud_speed"]],
 	["Environment", "Forests, subtle terrain variation and water appearance. Seasonal water colors require Seasons.",
-		["nature_forests_enabled", "nature_terrain_enabled", "water_reflections", "water_waves_enabled", "water_topography", "season_water_strength"]],
+		["nature_forests_enabled", "nature_terrain_enabled", "nature_terrain_strength", "water_reflections", "water_waves_enabled", "water_topography", "season_water_strength"]],
 	["Traffic & Movement", "Decorative cars and pedestrians, plus smoother movement for existing vehicles.",
 		["life_cars_enabled", "life_car_amount", "life_people_enabled", "life_people_amount", "traffic_vehicles_enabled", "traffic_shadows_enabled"]],
 	["Disaster Effects", "Extra effects for disasters and demolition. These settings do not change disaster frequency, damage or emergency response.",
@@ -26,7 +26,7 @@ const SECTIONS := [
 	["Custom Graphics", "Optional files for custom colors and lights. Standard effects work without these fields.",
 		["lut_path", "brightmap_folder"]],
 ]
-const PERCENT_FIELDS := ["day_lut_strength", "night_strength", "season_transition", "season_lut_strength",
+const PERCENT_FIELDS := ["nature_terrain_strength", "day_lut_strength", "night_strength", "season_transition", "season_lut_strength",
 	"season_water_strength", "weather_strength", "weather_lut_strength", "cloud_density", "cloud_shadow_strength",
 	"disaster_strength", "disaster_lights", "disaster_shake"]
 const LABELS := {
@@ -46,6 +46,7 @@ const LABELS := {
 const HINTS := {
 	"nature_forests_enabled": "Varied tree shapes and connected forest edges follow the existing tree density. Empty ground and clearings stay open. Does not change tree counts or the simulation.",
 	"nature_terrain_enabled": "Quiet, continuous variations across natural ground. Terrain height, water and zoning markings stay unchanged.",
+	"nature_terrain_strength": "Blend the terrain variation over the original ground. 0% shows the original colors; 100% applies the full variation. Seasons still apply.",
 	"disaster_blending": "Blend animation frames for power warnings, fire, toxic clouds, floods, tornadoes, smoke, explosion clouds and demolition dust. Fire also fades in and out. Disaster blending requires Enhanced disaster visuals. Power warnings always stay fullbright. The initial explosion flash stays immediate.",
 	"night_daytime_enabled": "Keep building brightmaps, glow, street lamps, junction signals and vehicle lights on at any hour, even with the day-night cycle off. Daylight colors and individual light strengths stay unchanged.",
 	"night_ambient": "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate.",
@@ -84,6 +85,7 @@ const HINTS := {
 }
 
 var controls: Dictionary = {}
+var terrain_strength_slider: HSlider
 var filling := false
 var profile_folder := ""
 var pages: Array[VBoxContainer] = []
@@ -244,6 +246,18 @@ func _add_field(page: VBoxContainer, field: Array) -> void:
 		control.custom_minimum_size.x = 155
 	control.tooltip_text = HINTS.get(key, "")
 	row.tooltip_text = control.tooltip_text
+	if key == "nature_terrain_strength":
+		var spin := control as SpinBox
+		terrain_strength_slider = HSlider.new()
+		terrain_strength_slider.min_value = spin.min_value
+		terrain_strength_slider.max_value = spin.max_value
+		terrain_strength_slider.step = spin.step
+		terrain_strength_slider.custom_minimum_size.x = 120
+		terrain_strength_slider.tooltip_text = control.tooltip_text
+		terrain_strength_slider.value_changed.connect(func(value: float) -> void: spin.value = value)
+		spin.value_changed.connect(terrain_strength_slider.set_value_no_signal)
+		row.add_child(terrain_strength_slider)
+		control.custom_minimum_size.x = 90
 	row.add_child(control)
 	controls[key] = control
 	var hint := _help("")
@@ -374,6 +388,9 @@ func _update_availability() -> void:
 		elif key.begins_with("cloud_") and key != "cloud_enabled":
 			available = values.cloud_enabled
 		match key:
+			"nature_terrain_strength":
+				available = values.nature_terrain_enabled
+				terrain_strength_slider.editable = available
 			"disaster_crowds", "disaster_dust", "disaster_lights":
 				available = available and values.disaster_strength > 0.0
 			"season_fixed":
@@ -444,6 +461,8 @@ func _update_availability() -> void:
 func _dependency_reason(key: String, values: Dictionary) -> String:
 	# Explain each disabled group once, at its first relevant setting.
 	match key:
+		"nature_terrain_strength":
+			return "Enable terrain variation to adjust its strength."
 		"day_mode":
 			return "Enable Day and night to adjust the time and night appearance."
 		"season_mode", "season_water_strength":

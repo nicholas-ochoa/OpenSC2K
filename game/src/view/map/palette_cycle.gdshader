@@ -14,6 +14,7 @@ uniform float power_warning_blend = 0.0;
 // One tiny shared texture, no extra draw pass or per-tile frame updates.
 uniform bool nature_terrain_enabled = false;
 uniform bool nature_forests_enabled = false;
+uniform float nature_terrain_strength : hint_range(0.0, 1.0) = 0.5;
 uniform sampler2D nature_ground : filter_linear, repeat_enable;
 uniform mat3 nature_canvas_to_grid = mat3(1.0);
 varying vec2 nature_grid;
@@ -67,18 +68,13 @@ void fragment() {
 		vec3 next_color = texture(power_warning_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
 		COLOR.rgb = mix(COLOR.rgb, next_color, power_warning_blend);
 	}
-	if (nature_forests_enabled && natural_mask.r > 0.5 && !dark_underground) {
-		// Keep the original indexed foliage shades, with the restrained greens
-		// of the woodland concept. Trunks and non-natural artwork stay intact.
-		float leaf = clamp((COLOR.g - 0.15) / 0.62, 0.0, 1.0);
-		float broadleaf = step(0.15, natural_mask.g);
-		float birch = step(0.25, natural_mask.g);
-		vec3 shade = mix(vec3(0.07, 0.18, 0.14), vec3(0.15, 0.25, 0.12), broadleaf);
-		vec3 light = mix(vec3(0.31, 0.48, 0.29), vec3(0.48, 0.58, 0.27), broadleaf);
-		light += vec3(0.035, 0.025, 0.0) * birch;
-		COLOR.rgb = mix(shade, light, leaf);
+	if (nature_forests_enabled && natural_mask.r > 0.5 && natural_mask.g > 0.05 && natural_mask.g < 0.35 && !dark_underground) {
+		// Restore the selected artwork's dark greens after indexed palette
+		// lookup, which otherwise makes the imported greens unnaturally vivid.
+		float leaf = clamp((COLOR.g - 0.15) / 0.85, 0.0, 1.0);
+		COLOR.rgb = mix(vec3(0.01, 0.10, 0.04), vec3(0.28, 0.58, 0.06), leaf);
 	}
-	if (nature_terrain_enabled && natural_mask.g > 0.5 && !dark_underground) {
+	if (nature_terrain_enabled && nature_terrain_strength > 0.0 && natural_mask.g > 0.5 && !dark_underground) {
 		// Broad related meadow/dry-soil patches, with narrow pixel-dither
 		// boundaries and sparse detail. World-fixed: no per-frame randomness.
 		vec3 patch = texture(nature_ground, nature_grid / 160.0).rgb;
@@ -96,7 +92,7 @@ void fragment() {
 		float surface_shade = mix(0.72 + original_shade * 0.45, clamp(0.10 + original_shade * 1.55, 0.28, 1.22), slope);
 		float shading = mix(surface_shade, clamp(0.25 + original_shade * 1.6, 0.28, 1.2), rock);
 		float detail = (step(0.91, grain.g) - step(grain.g, 0.07)) * 0.012;
-		COLOR.rgb = ground * shading + vec3(detail);
+		COLOR.rgb = mix(COLOR.rgb, ground * shading + vec3(detail), nature_terrain_strength);
 
 	}
 	if (hazard_draw > 0.5) {

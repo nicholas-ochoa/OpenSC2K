@@ -207,6 +207,7 @@ func process(delta: float) -> void:
 	weather.set_cloud_cover(clouds.precipitation_readiness)
 	var parameters := {
 		"nature_terrain_enabled": active and options.nature_terrain_enabled,
+		"nature_terrain_strength": options.nature_terrain_strength,
 		"nature_forests_enabled": active and options.nature_forests_enabled,
 		"nature_ground": CityNatureArtwork.ground_texture(),
 		"nature_canvas_to_grid": _nature_projection(),
