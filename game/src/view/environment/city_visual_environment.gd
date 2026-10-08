@@ -231,6 +231,13 @@ func process(delta: float) -> void:
 	parameters.merge(clouds.parameters)
 	parameters.merge(profiles.parameters(options, hour, parameters.environment_seasons, app.map_view.get_viewport().use_hdr_2d))
 	app.map_view.layers.set_environment(parameters)
+	if app.map_view.layers.dynamic_canvas != null:
+		var detail := VisualEnhancementOptions.detail_lights_visible(options, app.map_view.zoom_factor)
+		var changed := detail != app.map_view.layers.dynamic_canvas.detail_lights_visible
+		app.map_view.layers.dynamic_canvas.set_detail_lights_visible(detail)
+		if changed and active:
+			# Restore or remove moving emission masks even when simulation is paused.
+			app.moving_sprites.refresh_moving_things()
 	# Appearance fades finish in real time, also when the simulation is paused.
 	night_lighting.process(active, night, options, elapsed * factor, maxf(delta, 0.0))
 	if clouds.layer != null and clouds.layer.visible:

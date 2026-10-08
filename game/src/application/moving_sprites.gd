@@ -123,7 +123,9 @@ func refresh_moving_things(view_size := -1) -> void:
 			cloud_style = app.disaster_effects.cloud_style(IsometricFloatingOcclusion.depth_tile(command.depth_order, app.document_state.city.map_size))
 		var toxic_cloud := cloud_style == 1
 		var warm_cloud := cloud_style == 2
-		var visual_cache_key := var_to_str([view_size, factor, sprite_archive.visual_revision, transparent_shadow, toxic_cloud, warm_cloud, position, command.value_signature()])
+		var light_allowed := VisualEnhancementOptions.detail_lights_visible(app.preferences.visual_enhancements, app.map_view.zoom_factor) \
+			or not (command.record >= 0 and _is_vehicle(int(command.record)))
+		var visual_cache_key := var_to_str([view_size, factor, sprite_archive.visual_revision, transparent_shadow, toxic_cloud, warm_cloud, light_allowed, position, command.value_signature()])
 		# Include fully hidden shadows: a static change can make them visible.
 		caches.dynamic_active_keys[visual_cache_key] = true
 
@@ -191,6 +193,7 @@ func refresh_moving_things(view_size := -1) -> void:
 				index_texture = texture
 
 		var visual := CityDynamicVisual.new()
+		visual.vehicle_light = command.record >= 0 and _is_vehicle(int(command.record))
 		visual.samples_static = samples_static
 		visual.texture = texture
 		visual.index_texture = index_texture
@@ -199,7 +202,7 @@ func refresh_moving_things(view_size := -1) -> void:
 		visual.position = Vector2(position)
 		visual.size = Vector2(resource.native_size)
 		visual.image = visual_image
-		if not command.shadow:
+		if not command.shadow and light_allowed:
 			var emission := resource.light_mask(moving_lights.mask(sprite_archive, command.sprite_id), command.flip)
 			if visual_image == resource.image:
 				visual.emission_texture = resource.light_texture()
@@ -210,6 +213,8 @@ func refresh_moving_things(view_size := -1) -> void:
 					moving_lights.mask(sprite_archive, command.sprite_id), visual_image, command.flip))
 		if sprite_archive.water_reflections and command.floating_altitude >= 0 and not command.shadow:
 			visual.water_reflection = resource.reflection(position, int(command.floating_altitude), app.asset_state.palette)
+			if not light_allowed and visual.water_reflection != null:
+				visual.water_reflection.emission = null
 		visual.special_overlay = command.overlay >= 0
 		visual.fullbright = command.overlay == 0xff
 		visual.toxic_cloud = toxic_cloud

@@ -329,6 +329,8 @@ func _weather_snapshot(environment: CityVisualEnvironment) -> Array:
 
 
 func _check_ground_lighting(main: CityApplication) -> void:
+	# This cache regression explicitly exercises lights at every zoom level.
+	main.preferences.visual_enhancements.detail_lights_min_zoom = 0
 	var city := load("res://tests/city_life_test.gd").fixture() as CityState
 	assert(main.city_session.activate_document(city.document))
 	var ground := CityNightGround.new()

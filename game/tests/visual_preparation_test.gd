@@ -20,7 +20,7 @@ func _run() -> void:
 	for y in range(12, 20):
 		fixture.set_building_id(12, y, BuildingTileIds.ROAD_STRAIGHT_1)
 	assert(main.city_session.activate_document(fixture.document))
-	main.preferences.visual_enhancements = VisualEnhancementOptions.normalize({"day_mode": 1, "day_hour": 0.0})
+	main.preferences.visual_enhancements = VisualEnhancementOptions.normalize({"day_mode": 1, "day_hour": 0.0, "detail_lights_min_zoom": 0})
 	main.visual_environment.configure()
 	var city := main.document_state.city
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)

@@ -10,7 +10,7 @@ const SECTIONS := [
 	["Day & Night", "Set the time of day and the appearance of the night.",
 		["day_enabled", "day_mode", "day_hour", "day_seconds", "day_lut_strength", "night_strength"]],
 	["Lighting", "Building, vehicle and street lights. Keep lights on during the day with the daytime override.",
-		["brightmaps", "night_daytime_enabled", "night_light_strength", "night_ambient", "night_glow", "night_ground"]],
+		["brightmaps", "night_daytime_enabled", "night_light_strength", "night_ambient", "night_glow", "night_ground", "detail_lights_min_zoom"]],
 	["Seasons", "Follow the city calendar, run a visual cycle or choose one season.",
 		["season_enabled", "season_mode", "season_fixed", "season_seconds", "season_transition", "season_lut_strength"]],
 	["Weather & Clouds", "Weather and clouds have separate switches. Fog is part of Clouds. Fixed weather can show snow in any season.",
@@ -51,6 +51,7 @@ const HINTS := {
 	"night_ambient": "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate.",
 	"night_glow": "Soft colored light around visible brightmaps. Zero keeps only the sharp original lights.",
 	"night_ground": "Street lamps, warm road lighting, cosmetic junction signals and selected shop approaches. Signals do not control traffic. Zero disables these lights.",
+	"detail_lights_min_zoom": "Show street, junction and vehicle lights at this zoom or closer. Below it, their light rendering and preparation stop. Building lights remain available.",
 	"traffic_vehicles_enabled": "Smooth movement of helicopters, airplanes, ships, sailboats and trains.",
 	"water_waves_enabled": "Moving waves and breaking surf along the terrain shoreline. Turn off for a still water surface.",
 	"disaster_enabled": "Enable additional presentation effects. Turning this off restores the original disaster visuals; disasters still occur.",
@@ -395,7 +396,7 @@ func _update_availability() -> void:
 				available = values.brightmaps
 			"brightmap_folder", "night_light_strength":
 				available = (values.day_enabled or values.night_daytime_enabled) and values.brightmaps
-			"night_glow", "night_ground":
+			"night_glow", "night_ground", "detail_lights_min_zoom":
 				available = (values.day_enabled or values.night_daytime_enabled) and values.brightmaps and values.night_light_strength > 0.0
 			"life_car_amount":
 				available = values.life_cars_enabled

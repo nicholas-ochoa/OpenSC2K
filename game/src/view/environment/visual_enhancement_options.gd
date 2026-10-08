@@ -41,6 +41,7 @@ const FIELDS := [
 	["night_light_strength", "Night light strength", "number", 100.0, 0.0, 100.0, 5.0],
 	["night_glow", "Light glow strength", "number", 35.0, 0.0, 100.0, 5.0],
 	["night_ground", "Street and junction lighting", "number", 45.0, 0.0, 100.0, 5.0],
+	["detail_lights_min_zoom", "Detail lights from zoom", "choice", 2, ["10% (all zoom levels)", "25%", "50%", "100%", "200%", "400%"]],
 	["brightmap_folder", "Brightmap folder", "path", ""],
 	["lut_path", "Optional color LUT (PNG strip)", "path", ""],
 	["lut_folder", "Custom LUT profile folder (empty = built-in)", "path", ""],
@@ -90,6 +91,10 @@ static func normalize(source: Variant) -> Dictionary:
 
 static func speed_factor(speed: int) -> float:
 	return [0.0, 0.0, 1.0, 1.5, 2.0, 3.0][clampi(speed, 0, 5)]
+
+
+static func detail_lights_visible(options: Dictionary, zoom: float) -> bool:
+	return zoom + 0.00001 >= [0.1, 0.25, 0.5, 1.0, 2.0, 4.0][clampi(int(options.get("detail_lights_min_zoom", 2)), 0, 5)]
 
 
 static func water_pass_enabled(options: Dictionary) -> bool:

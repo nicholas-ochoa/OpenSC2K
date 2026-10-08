@@ -8,6 +8,7 @@ var visuals: Array[CityDynamicVisual] = []
 var view_scale := 1.0
 var view_offset := Vector2.ZERO
 var visual_revision := 0
+var detail_lights_visible := true
 
 
 func _draw() -> void:
@@ -33,7 +34,7 @@ func _draw() -> void:
 			Color(1, 0, 1) if visual.transparent_shadow else (Color(1, 0, 0) if visual.toxic_cloud else (Color(1, 0.5, 0) if visual.warm_cloud else (Color(1, 1, 0) if visual.fullbright else Color.WHITE))),
 		)
 
-		if visual.emission_texture != null:
+		if visual.emission_texture != null and (detail_lights_visible or not visual.vehicle_light):
 			# Palette-address masks use LA8; authored color masks remain RGBA8.
 			var indexed := visual.emission_texture is ImageTexture and (visual.emission_texture as ImageTexture).get_format() == Image.FORMAT_LA8
 			draw_texture_rect(visual.emission_texture, Rect2(source_position, source_size), false,
@@ -48,6 +49,12 @@ func set_visuals(
 	set_view_transform(scale_value, offset_value)
 	visible = not visuals.is_empty()
 	queue_redraw()
+
+
+func set_detail_lights_visible(value: bool) -> void:
+	if detail_lights_visible != value:
+		detail_lights_visible = value
+		queue_redraw()
 
 
 func set_view_transform(scale_value: float, offset_value: Vector2) -> void:
