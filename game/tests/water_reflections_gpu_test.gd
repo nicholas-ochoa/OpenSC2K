@@ -9,6 +9,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_check_moving_texture_reuse()
+	await _check_unlit_ship_regions()
+	await _check_resident_water_uploads()
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(32, 32)
 	viewport.transparent_bg = true
@@ -320,3 +322,129 @@ func _check_moving_texture_reuse() -> void:
 	assert(pixels.get_pixel(4, 4) == Color.RED)
 	assert(region.compose_moving([]).is_empty(), "Removing the last ship retained its reflection")
 	assert(not region.compose_moving([ship]).is_empty(), "A returning ship lost its reflection")
+
+
+func _check_unlit_ship_regions() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(64, 32)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var palette := Image.create(256, 1, false, Image.FORMAT_RGBA8)
+	palette.fill(Color(0.05, 0.2, 0.7))
+	palette.set_pixel(40, 0, Color(0.8, 0.3, 0.1))
+	var palette_texture := ImageTexture.create_from_image(palette)
+	var source := CityMapSource.new(Vector2i(64, 32))
+	for x in [0, 32]:
+		var region := WaterReflectionRegion.new()
+		region.bounds = Rect2i(x, 0, 32, 32).grow(WaterReflectionRegion.PADDING)
+		for key in ["surface", "reflected", "emission", "seasons"]:
+			region.set(key, Image.create(38, 38, false, Image.FORMAT_RGBA8))
+		region.surface.fill(Color(1.0 / 255.0, 96.0 / 255.0, 0, 1))
+		var entry := CityMapSource.TileEntry.new(Vector2(x, 0), Vector2(32, 32), null)
+		entry.water = region
+		source.tiles.append(entry)
+	var resource := CitySpriteResource.new()
+	resource.image = Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	resource.image.fill(Color(40.0 / 255.0, 0, 0, 1))
+	var light := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	light.fill(Color(1.0, 0.2, 0.1))
+	resource.light_mask(light, false)
+	var original := resource.reflection(Vector2i(8, 8), 0, null)
+	var original_emission := original.emission.get_data()
+	var unlit := resource.reflection(Vector2i(8, 8), 0, null, false)
+	assert(unlit.emission != null and unlit.emission.is_invisible())
+	assert(unlit.emission == resource.reflection(Vector2i(20, 8), 0, null, false).emission,
+		"Ship motion must reuse the transparent emission mask")
+	assert(original.emission.get_data() == original_emission and not original.emission.is_invisible(),
+		"Hiding lights must not erase their shared source mask")
+	var layer := CityWaterLayer.new()
+	viewport.add_child(layer)
+	layer.set_environment({"water_enabled": true, "water_frozen": true, "water_geometry_preview": true})
+	var visual := CityDynamicVisual.new()
+	visual.water_reflection = unlit
+	# A ship can already overlap a region when its water node is first created.
+	layer.set_moving([visual])
+	for zoom in [0.25, 0.5, 1.0]:
+		layer.sync(source, zoom, Vector2.ZERO, palette_texture)
+		for lit in [false, true, false]:
+			for x in [8, 30, 40]:
+				visual.water_reflection = resource.reflection(Vector2i(x, 8), 0, null, lit)
+				layer.set_moving([visual])
+				await RenderingServer.frame_post_draw
+				var frame := viewport.get_texture().get_image()
+				for point in [Vector2(4, 4), Vector2(28, 24), Vector2(36, 4), Vector2(60, 24)]:
+					var pixel := frame.get_pixelv(Vector2i(point * zoom))
+					assert(pixel.a > 0.98 and pixel.b > 0.6, "An unlit ship removed its water region at zoom %s" % zoom)
+				var ship_pixel := frame.get_pixelv(Vector2i(Vector2(x + 2, 13) * zoom))
+				assert(ship_pixel.r > 0.7, "Hiding lights must preserve the reflected ship")
+				for node: Sprite2D in layer.nodes.values():
+					var emission: ImageTexture = node.material.get_shader_parameter("environment_emission")
+					assert(lit or emission.get_image().is_invisible(), "Unlit ship still emitted reflected light")
+		# Returning to a cached region must keep the same complete surface.
+		layer.sync(null, zoom, Vector2.ZERO, palette_texture)
+		layer.sync(source, zoom, Vector2.ZERO, palette_texture)
+	layer.set_moving([])
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(42, 13).b > 0.6)
+	viewport.queue_free()
+	await process_frame
+
+
+func _check_resident_water_uploads() -> void:
+	var cache := CityRegionCache.new()
+	cache.resident = true
+	cache.region_edge = 32
+	var worker := CityRegionCache.RegionWorker.new()
+	var snapshots := []
+	for x in 12:
+		var key := Vector2i(x, 0)
+		cache.wanted_keys[key] = true
+		var result := CityGpuRegionResult.new()
+		result.key = key
+		result.bounds = Rect2i(x * 32, 0, 32, 32)
+		result.gpu_arrays.resize(Mesh.ARRAY_MAX)
+		result.gpu_arrays[Mesh.ARRAY_VERTEX] = PackedVector2Array()
+		var region := WaterReflectionRegion.new()
+		region.bounds = result.bounds.grow(WaterReflectionRegion.PADDING)
+		for name in ["surface", "reflected", "emission", "seasons", "seabed"]:
+			region.set(name, Image.create(38, 38, false, Image.FORMAT_RGBA8))
+		region.surface.fill(Color(1.0 / 255.0, 96.0 / 255.0, 0, 1))
+		result.water = region
+		snapshots.append(region.surface.get_data())
+		CityRegionScheduling._publish_region(cache, worker, result)
+		assert(region.textures.is_empty(), "Offscreen preload must not allocate water GPU textures")
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(64, 32)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var palette := Image.create(256, 1, false, Image.FORMAT_RGBA8)
+	palette.fill(Color(0.05, 0.2, 0.7))
+	var layer := CityWaterLayer.new()
+	viewport.add_child(layer)
+	layer.set_environment({"water_enabled": true, "water_frozen": true})
+	var before: PackedByteArray
+	for first in [0, 6, 0]:
+		var source := CityMapSource.new(Vector2i(384, 32))
+		for x in range(first, first + 2):
+			var entry := CityMapSource.TileEntry.new(Vector2(x * 32, 0), Vector2(32, 32), null)
+			entry.water = cache.entries[Vector2i(x, 0)].water
+			source.tiles.append(entry)
+		layer.sync(source, 1.0, Vector2(-first * 32, 0), ImageTexture.create_from_image(palette))
+		await RenderingServer.frame_post_draw
+		var uploads := 0
+		for result: CityGpuRegionResult in cache.entries.values():
+			uploads += int(not result.water.textures.is_empty())
+			assert(result.water.surface.get_data() == snapshots[result.key.x])
+		assert(uploads == 2, "Hidden water uploads accumulated after panning")
+		var pixels := viewport.get_texture().get_image()
+		assert(pixels.get_pixel(16, 16).a > 0.98 and pixels.get_pixel(48, 16).a > 0.98)
+		if first == 0:
+			if before.is_empty():
+				before = pixels.get_data()
+			else:
+				assert(before == pixels.get_data(), "Returning water changed despite identical cached geometry")
+	viewport.queue_free()
+	cache.close()
+	await process_frame

@@ -12,6 +12,7 @@ var _light_mask: Image
 var _light_texture: ImageTexture
 var _reflection: WaterReflectionSprite
 var _reflection_palette: Sc2Palette
+var _unlit_reflection_emission: Image
 
 
 # the waterline rows of `image`, for floating sprites. see IsometricFloatingOcclusion
@@ -36,7 +37,7 @@ func light_texture() -> ImageTexture:
 	return _light_texture
 
 
-func reflection(origin: Vector2i, level: int, palette: Sc2Palette) -> WaterReflectionSprite:
+func reflection(origin: Vector2i, level: int, palette: Sc2Palette, lights_enabled := true) -> WaterReflectionSprite:
 	if _reflection == null or _reflection_palette != palette:
 		_reflection = WaterReflectionSprite.create(image, _light_mask, Vector2i.ZERO, 0, palette)
 		_reflection_palette = palette
@@ -44,5 +45,9 @@ func reflection(origin: Vector2i, level: int, palette: Sc2Palette) -> WaterRefle
 	result.position = origin
 	result.level = level
 	result.image = _reflection.image
-	result.emission = _reflection.emission
+	# The native compositor needs a valid RGBA image even below the light cutoff.
+	# Reuse a transparent mask; never erase the shared illuminated reflection.
+	if not lights_enabled and (_unlit_reflection_emission == null or _unlit_reflection_emission.get_size() != _reflection.image.get_size()):
+		_unlit_reflection_emission = Image.create(_reflection.image.get_width(), _reflection.image.get_height(), false, Image.FORMAT_RGBA8)
+	result.emission = _reflection.emission if lights_enabled else _unlit_reflection_emission
 	return result

@@ -8,6 +8,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	# Exercise the production GPU region banks even under a headless test host.
+	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "folder")
@@ -28,6 +30,13 @@ func _run() -> void:
 	var engine := main.simulation_state.simulation_engine
 	var random_before := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
 	var prepare := main.visual_preparation
+	main.preferences.zoom_graphics = [0, 1, 2, 2, 2, 2]
+	assert(prepare.required_variants() == [0, 3, 5], "Preload only the variants reachable at configured zooms")
+	main.preferences.zoom_graphics = [1, 2, 2, 2, 2, 2]
+	assert(prepare.required_variants() == [0, 2, 5])
+	main.preferences.visual_enhancements.life_cars_enabled = false
+	assert(prepare.required_variants() == [0, 2, 4])
+	main.preferences.visual_enhancements.life_cars_enabled = true
 	assert(not prepare.process())
 	assert(prepare.busy and not main.frame._simulation_suspended())
 	assert(main.city_dialogs.visual_preparation_progress.mouse_filter == Control.MOUSE_FILTER_IGNORE)
@@ -89,8 +98,11 @@ func _run() -> void:
 		assert(ground.cache.has(Vector2i(12, 16)), "Offscreen streets were not prepared")
 		assert(ground.cache.has(Vector2i(64, 64)))
 		snapshots[view] = ground.cache.duplicate()
-	for cache in prepare.banks:
-		assert(cache.prefetch_ready())
+	for index in prepare.banks.size():
+		var cache := prepare.banks[index]
+		assert(index not in prepare.stages or cache.prefetch_ready())
+		if index not in prepare.stages:
+			assert(cache.entries.is_empty(), "Unused traffic variant was prepared twice")
 	main.preferences.zoom_graphics = [1, 2, 2, 2, 2, 2]
 	for zoom in [0.25, 0.1, 0.5, 0.25]:
 		main.map_view.zoom_factor = zoom
@@ -174,8 +186,8 @@ func _settle(main: CityApplication) -> void:
 	while true:
 		main.frame.process(0.016)
 		var complete := main.visual_preparation.light_rescan.is_empty()
-		for cache in main.visual_preparation.banks:
-			complete = complete and cache.prefetch_ready()
+		for index in main.visual_preparation.stages:
+			complete = complete and main.visual_preparation.banks[index].prefetch_ready()
 		for ground in main.visual_environment.night_lighting.ground_views.values():
 			complete = complete and ground.pending.is_empty()
 		if complete:

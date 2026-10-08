@@ -212,9 +212,7 @@ func refresh_moving_things(view_size := -1) -> void:
 				visual.emission_texture = ImageTexture.create_from_image(CityBrightmaps.transform_mask(
 					moving_lights.mask(sprite_archive, command.sprite_id), visual_image, command.flip))
 		if sprite_archive.water_reflections and command.floating_altitude >= 0 and not command.shadow:
-			visual.water_reflection = resource.reflection(position, int(command.floating_altitude), app.asset_state.palette)
-			if not light_allowed and visual.water_reflection != null:
-				visual.water_reflection.emission = null
+			visual.water_reflection = resource.reflection(position, int(command.floating_altitude), app.asset_state.palette, light_allowed)
 		visual.special_overlay = command.overlay >= 0
 		visual.fullbright = command.overlay == 0xff
 		visual.toxic_cloud = toxic_cloud

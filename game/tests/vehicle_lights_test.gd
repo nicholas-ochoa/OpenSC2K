@@ -147,7 +147,8 @@ func _check_moving_masks() -> void:
 		var bodies := app.map_view.dynamic_sprites.filter(func(v: CityDynamicVisual) -> bool: return not v.shadow)
 		assert(not bodies.is_empty() and bodies[0].vehicle_light)
 		assert((bodies[0].emission_texture != null) == (cutoff == 2), "Paused cutoff left stale vehicle lights")
-		assert((bodies[0].water_reflection.emission != null) == (cutoff == 2), "Reflected lights ignored cutoff")
+		assert(bodies[0].water_reflection.emission != null, "Unlit reflections still require a valid compositor mask")
+		assert(bodies[0].water_reflection.emission.is_invisible() == (cutoff == 5), "Reflected lights ignored cutoff")
 	assert(DocumentState.capture(city.document) == cutoff_before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	# Disaster emission must remain independent of the vehicle-only cutoff.

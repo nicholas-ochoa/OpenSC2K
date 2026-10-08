@@ -221,6 +221,7 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 		if caches.region_cache != selected:
 			close_region_cache()
 			caches.region_cache = selected
+		caches.region_cache.background_preparation = false
 	if caches.region_cache == null:
 		caches.region_cache = CityRegionCache.new()
 		caches.region_cache.gpu_enabled = CityRegionCache.gpu_supported(app.preferences.city_renderer)

@@ -397,8 +397,8 @@ static func _publish_region(cache: CityRegionCache, worker: CityRegionCache.Regi
 		else (cache.entries[key].last_visible if cache.entries.has(key) else 0))
 	region.gpu_arrays = []
 	region.atlas_image = null
-	if cache.resident and region.water != null:
-		region.water.upload()
+	# Keep prepared water images in CPU memory. Only the visible water layer
+	# uploads them; whole-city banks must not fill VRAM with hidden textures.
 	cache.publish_changes(cache.entries.get(key), region)
 	cache.entries[key] = region
 

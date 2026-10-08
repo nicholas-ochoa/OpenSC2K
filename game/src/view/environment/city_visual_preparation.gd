@@ -13,6 +13,8 @@ var preparing_view := -1
 var preparing_traffic := -1
 var layout: Array = []
 var stage := 0
+var stages: Array[int] = []
+var prepared_light_views: Dictionary[int, bool] = {}
 var background_cursor := 0
 var completed := 0
 var total := 0
@@ -38,6 +40,8 @@ func reset() -> void:
 		cache.close()
 	banks.clear()
 	archives.clear()
+	stages.clear()
+	prepared_light_views.clear()
 	light_rescan.clear()
 	preparing_lights.clear()
 	layout.clear()
@@ -57,8 +61,21 @@ func _layout() -> Array:
 	return [city.document.get_instance_id(), city.map_size, city.compass_rotation(), city.visible_altitude_levels,
 		app.asset_state.large_sprites, app.asset_state.small_medium_sprites,
 		app.view_state.surface_visibility.duplicate(), app.preferences.city_renderer,
+		app.preferences.zoom_graphics.duplicate(), app.preferences.overview_graphics, app.preferences.visual_enhancements.life_cars_enabled,
 		app.asset_state.large_sprites.visual_nature_enabled, app.asset_state.large_sprites.visual_terrain_enabled,
 		app.asset_state.small_medium_sprites.visual_nature_enabled, app.asset_state.small_medium_sprites.visual_terrain_enabled]
+
+
+func required_variants() -> Array[int]:
+	var result: Array[int] = []
+	for zoom: float in CityMapConstants.ZOOM_LEVELS:
+		var view := AppSettingsStore.graphics_size_at_zoom(app.preferences.zoom_graphics, roundi(zoom * 100), app.preferences.overview_graphics)
+		var traffic := int(zoom >= 0.5 and app.preferences.visual_enhancements.life_cars_enabled and app.view_state.surface_visibility.networks)
+		var index := mini(view, 2) * 2 + traffic
+		if index not in result:
+			result.append(index)
+	result.sort()
+	return result
 
 
 func _index(view: int) -> int:
@@ -87,7 +104,8 @@ func begin() -> void:
 	completed = 0
 	progress = 0.0
 	lighting_started = false
-	total = VARIANTS
+	stages = required_variants()
+	total = stages.size()
 	for index in VARIANTS:
 		var view := index / 2
 		var original := app.static_render.original_archive_for_view(view)
@@ -113,7 +131,8 @@ func begin() -> void:
 		cache.background_preparation = true
 		banks.append(cache)
 		_configure(index)
-		cache.update_viewport(Rect2(Vector2.ZERO, Vector2(cache.native_size * cache.divisor)))
+		if index in stages:
+			cache.update_viewport(Rect2(Vector2.ZERO, Vector2(cache.native_size * cache.divisor)))
 	busy = true
 	if replace_active:
 		app.map_render.refresh_map(false)
@@ -147,9 +166,10 @@ func process() -> bool:
 		return false
 	var previous_view := preparing_view
 	var previous_traffic := preparing_traffic
-	preparing_view = stage / 2
-	preparing_traffic = stage % 2
-	app.render_caches.region_cache = banks[stage]
+	var index := stages[stage]
+	preparing_view = index / 2
+	preparing_traffic = index % 2
+	app.render_caches.region_cache = banks[index]
 	_prepare_step()
 	preparing_view = previous_view
 	preparing_traffic = previous_traffic
@@ -167,8 +187,8 @@ func process() -> bool:
 
 
 func _prepare_step() -> void:
-	var cache := banks[stage]
-	_configure(stage)
+	var cache := banks[stages[stage]]
+	_configure(stages[stage])
 	cache.tick()
 	# An edit can arrive while a bank is loading. Publish its changed silhouettes
 	# to retained light masks, just as the ordinary visible renderer does.
@@ -178,11 +198,12 @@ func _prepare_step() -> void:
 		failure = cache.last_error
 		return
 	var fraction := 0.8 * float(cache.entries.size()) / maxi(cache.wanted.size(), 1)
-	var detail := "%s graphics: %d / %d areas" % [["Small", "Medium", "Large"][preparing_view], cache.entries.size(), cache.wanted.size()]
+	var detail := "%s graphics (%s): %d / %d areas" % [["Small", "Medium", "Large"][preparing_view],
+		"individual cars" if preparing_traffic == 1 else "classic traffic", cache.entries.size(), cache.wanted.size()]
 	# Ongoing simulation repaints must not starve initial preparation. Every
 	# area must exist; newer generations continue through the normal updater.
 	if cache.covered():
-		if stage % 2 == 0 and VisualEnhancementOptions.detail_lights_visible(app.preferences.visual_enhancements, app.map_view.zoom_factor):
+		if not prepared_light_views.has(preparing_view) and VisualEnhancementOptions.detail_lights_visible(app.preferences.visual_enhancements, app.map_view.zoom_factor):
 			var lighting := app.visual_environment.night_lighting
 			lighting._select_ground(preparing_view)
 			var ground := lighting.ground
@@ -205,21 +226,22 @@ func _prepare_step() -> void:
 			# Dirty existing lights may keep arriving while the city is running.
 			# Their refresh must not restart or hold up initial cache completion.
 			if built_lights < preparing_lights.size():
-				_progress((stage + fraction) / VARIANTS, detail)
+				_progress((stage + fraction) / total, detail)
 				return
+		prepared_light_views[preparing_view] = true
 		cache.update_viewport(app.map_view.visible_source_rect())
 		cache._close_gpu_workers()
 		cache._gpu_has_work = false
-		cache.background_preparation = false
+		cache.background_preparation = true
 		stage += 1
 		completed = stage
 		lighting_started = false
 		preparing_lights.clear()
 		fraction = 0.0
-		if stage == VARIANTS:
+		if stage == total:
 			ready = true
 			busy = false
-	_progress((completed + fraction) / VARIANTS, detail)
+	_progress((completed + fraction) / total, detail)
 
 
 func _configure(index: int, dirty := Rect2i()) -> void:
@@ -243,6 +265,8 @@ func _configure(index: int, dirty := Rect2i()) -> void:
 func refresh(dirty := Rect2i()) -> void:
 	var divisor := CityIsometricRenderer.view_configuration(app.static_render.city_view_size()).divisor
 	for index in banks.size():
+		if index not in stages and banks[index].entries.is_empty() and banks[index] != app.render_caches.region_cache:
+			continue
 		var converted := Rect2i(dirty.position * divisor / banks[index].divisor, dirty.size * divisor / banks[index].divisor)
 		_configure(index, converted)
 
@@ -253,7 +277,13 @@ func _background() -> void:
 	background_cursor = (background_cursor + 1) % VARIANTS
 	var cache := banks[background_cursor]
 	if cache == app.render_caches.region_cache:
+		# The active lighting layer checks its geometry in the ordinary frame.
+		light_rescan.erase(background_cursor / 2)
 		return
+	if background_cursor not in stages and cache.entries.is_empty():
+		return
+	# Hidden views keep the same small queues and upload allowance as loading.
+	cache.background_preparation = true
 	cache.tick()
 	if not cache.lighting_changes.is_empty():
 		app.visual_environment.night_lighting.invalidate_regions(cache.lighting_changes)
