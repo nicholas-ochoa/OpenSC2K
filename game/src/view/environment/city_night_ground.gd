@@ -104,15 +104,16 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 		geometry = shape
 		invalidate_all()
 		bounds = Rect2i()
+		if resident and not prepare_entire_city:
+			# Large replacements can exceed the geometry tracker's local delta.
+			# Only that reset needs another city-wide discovery pass.
+			bounds = _city_bounds(city)
+			_collect(city)
 	elif not changed.is_empty():
-		for tile in changed:
-			if cache.has(tile):
-				_mark_dirty(tile, true)
-			if bounds.grow(64).has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
-				bounds = Rect2i()
+		_update_tiles(city, changed)
 	var next := Rect2i(map.visible_source_rect().grow(BUFFER_MARGIN))
 	if prepare_entire_city:
-		next = Rect2i(Vector2i.ZERO, CityIsometricRenderer.output_size_for_view(2, city.map_size)).grow(160)
+		next = _city_bounds(city)
 	if not bounds.encloses(next.grow(-BUFFER_MARGIN * 0.5)) or bounds.get_area() > next.get_area() * 2:
 		bounds = next
 		_collect(city)
@@ -152,6 +153,32 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 	position = map.camera._draw_offset(scale_value)
 	scale = Vector2.ONE * scale_value
 	(material as ShaderMaterial).set_shader_parameter("strength", strength)
+
+
+func _city_bounds(city: CityState) -> Rect2i:
+	return Rect2i(Vector2i.ZERO, CityIsometricRenderer.output_size_for_view(2, city.map_size)).grow(160)
+
+
+func _update_tiles(city: CityState, changed: Dictionary[Vector2i, bool]) -> void:
+	for tile in changed:
+		if cache.has(tile):
+			_mark_dirty(tile, true)
+		var has_fixture := (city.index_of(tile.x, tile.y) >= 0 and CityLifePaths.ports(city, tile) != 0
+			and city.land_altitude(tile.x, tile.y) < city.visible_altitude_levels and not sources(city, tile).is_empty())
+		var in_view := has_fixture and bounds.has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false)))
+		if in_view and not visible_keys.has(tile):
+			visible_tiles.append(tile)
+			visible_keys[tile] = true
+		elif not in_view and visible_keys.has(tile):
+			visible_tiles.erase(tile)
+			visible_keys.erase(tile)
+		if has_fixture and (resident or in_view):
+			last_used[tile] = collection
+			if not cache.has(tile):
+				_enqueue(tile)
+	queue_redraw()
+	fixtures.queue_redraw()
+	_refresh_signals()
 
 
 func _collect(city: CityState) -> void:

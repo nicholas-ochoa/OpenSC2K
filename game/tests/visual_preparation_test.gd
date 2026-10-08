@@ -67,26 +67,35 @@ func _run() -> void:
 		assert(main.visual_environment.clouds.layer != null)
 		assert(lights.ground.get_index() < main.visual_environment.clouds.layer.get_index())
 		assert(lights.output.get_index() < main.visual_environment.clouds.layer.get_index())
+	# Traffic repaints must not rediscover every road in each prepared variant.
+	# The first update may align a hidden receiver's viewport after the zooms.
+	for density in [0, 255]:
+		var collections := []
+		for view in 3:
+			collections.append(lights.ground_views[view].collection)
+		var traffic := city.document.find_chunk("XTRF")
+		var payload := traffic.decoded_payload.duplicate()
+		payload.fill(density)
+		assert(traffic.set_decoded_payload(payload, true))
+		main.map_render.refresh_map(false)
+		await _settle(main)
+		if density == 255:
+			for view in 3:
+				assert(lights.ground_views[view].collection == collections[view], "Traffic triggered a road discovery scan")
 	# An edit outside the current camera must reach every retained variant.
 	var before_building := city.building_id(64, 64)
 	city.set_building_id(64, 64, BuildingTileIds.EMPTY)
+	var added := Vector2i(100, 100)
+	for view in 3:
+		assert(not lights.ground_views[view].cache.has(added))
+	city.set_building_id(added.x, added.y, BuildingTileIds.ROAD_CROSSROADS)
 	assert(prepare.banks[0].source_payloads["XBLD"][64 * 128 + 64] == before_building, "Native edit mutated the cached before-image")
 	main.map_render.refresh_map(false)
-	started = Time.get_ticks_msec()
-	while true:
-		main.frame.process(0.016)
-		var complete := prepare.light_rescan.is_empty()
-		for cache in prepare.banks:
-			complete = complete and cache.prefetch_ready()
-		for ground in lights.ground_views.values():
-			complete = complete and ground.pending.is_empty()
-		if complete:
-			break
-		assert(Time.get_ticks_msec() - started < 60000, "Hidden variants did not receive a city edit")
-		await process_frame
+	await _settle(main)
 	for view in 3:
 		var ground := lights.ground_views[view]
 		assert(ground.cache[Vector2i(64, 64)].texture.get_image().is_invisible(), "Removed street retained its light")
+		assert(ground.cache.has(added) and not ground.cache[added].texture.get_image().is_invisible(), "New offscreen street was not prepared")
 		assert(is_same(snapshots[view][Vector2i(12, 16)], ground.cache[Vector2i(12, 16)]), "Local edit rebuilt a distant light")
 	# Teardown cancels in-flight workers; a replacement document cannot inherit banks.
 	var old_banks := prepare.banks.duplicate()
@@ -102,3 +111,18 @@ func _run() -> void:
 	await process_frame
 	print("PASS: full-city visual preparation, all zoom variants, cloud order, local edits, pause and cancellation")
 	quit()
+
+
+func _settle(main: CityApplication) -> void:
+	var started := Time.get_ticks_msec()
+	while true:
+		main.frame.process(0.016)
+		var complete := main.visual_preparation.light_rescan.is_empty()
+		for cache in main.visual_preparation.banks:
+			complete = complete and cache.prefetch_ready()
+		for ground in main.visual_environment.night_lighting.ground_views.values():
+			complete = complete and ground.pending.is_empty()
+		if complete:
+			return
+		assert(Time.get_ticks_msec() - started < 60000, "Hidden variants did not receive a city edit")
+		await process_frame

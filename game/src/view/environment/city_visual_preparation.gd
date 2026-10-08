@@ -224,12 +224,9 @@ func _background() -> void:
 	app.render_caches.region_cache = cache
 	preparing_view = view
 	preparing_traffic = background_cursor % 2
-	if light_rescan.has(view):
-		ground.prepare_entire_city = true
-		ground.sync(app, 0.0, 0.0, true)
-		ground.prepare_entire_city = false
-		ground.bounds = Rect2i()
-		light_rescan.erase(view)
+	# Geometry tracking finds local additions/removals, including offscreen
+	# streets. Traffic repaint generations must not enumerate the whole city.
+	light_rescan.erase(view)
 	ground.sync(app, 0.0, 0.0, true)
 	preparing_view = -1
 	preparing_traffic = -1
