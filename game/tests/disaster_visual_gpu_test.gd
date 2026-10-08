@@ -38,6 +38,19 @@ func _run() -> void:
 			await RenderingServer.frame_post_draw
 			assert(viewport.get_texture().get_image().get_data() != image.get_data(), "Replacement artwork must animate")
 			material.set_shader_parameter("effect_time", 0.7)
+	material.set_shader_parameter("effect_kind", CityDisasterEffects.TOXIC)
+	material.set_shader_parameter("progress", -1.0)
+	for style in [0, 1, 2]:
+		material.set_shader_parameter("cloud_style", style)
+		await RenderingServer.frame_post_draw
+		var gas := viewport.get_texture().get_image().get_pixel(48, 128)
+		assert(gas.a > 0.1)
+		if style == 1:
+			assert(gas.g > gas.r and gas.g > gas.b * 2.0)
+		elif style == 2:
+			assert(gas.r > gas.g and gas.g > gas.b * 2.0)
+		else:
+			assert(absf(gas.r - gas.g) < 0.03)
 	material.set_shader_parameter("effect_kind", CityDisasterEffects.FLOOD)
 	material.set_shader_parameter("progress", -1.0)
 	await RenderingServer.frame_post_draw
@@ -95,6 +108,7 @@ func _check_hazard_blending() -> void:
 	atlas.set_pixel(1, 0, Color.TRANSPARENT)
 	var visual := CityDynamicVisual.new(ImageTexture.create_from_image(atlas), Vector2.ZERO, Vector2(8, 8))
 	visual.hazard_animation = CitySpriteFrameBlend.new()
+	visual.fullbright = true
 	var canvas := CityDynamicSpriteCanvas.new()
 	canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var material := ShaderMaterial.new()
@@ -142,6 +156,19 @@ func _check_hazard_blending() -> void:
 	await RenderingServer.frame_post_draw
 	var gas := viewport.get_texture().get_image().get_pixel(3, 3)
 	assert(gas.g > gas.r * 1.5 and gas.g > gas.b * 2.0)
+	visual.toxic_cloud = false
+	visual.warm_cloud = true
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	var ash := viewport.get_texture().get_image().get_pixel(3, 3)
+	assert(ash.r > ash.g and ash.g > ash.b * 2.0 and ash.a > 0.98, "Blended volcanic ash must be amber without losing coverage")
+	assert(viewport.get_texture().get_image().get_pixel(0, 0).a == 0.0)
+	visual.warm_cloud = false
+	visual.fullbright = false
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	var neutral := viewport.get_texture().get_image().get_pixel(3, 3)
+	assert(neutral.r < 0.2 and neutral.g < 0.2, "Unknown cloud origins retain normal environmental lighting")
 	# The tornado uses a pair of observed frames and the same resolved-color rule.
 	var sprite := Sprite2D.new()
 	sprite.centered = false
@@ -217,7 +244,7 @@ func _check_procedural_blending() -> void:
 
 func _check_fullbright() -> void:
 	var viewport := SubViewport.new()
-	viewport.size = Vector2i(32, 8)
+	viewport.size = Vector2i(40, 8)
 	viewport.transparent_bg = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
@@ -229,15 +256,16 @@ func _check_fullbright() -> void:
 	indexed.set_pixel(0, 0, Color.TRANSPARENT)
 	var texture := ImageTexture.create_from_image(indexed)
 	var visuals: Array[CityDynamicVisual] = []
-	for i in 4:
+	for i in 5:
 		var visual := CityDynamicVisual.new(texture, Vector2(i * 8, 0))
 		visual.image = indexed
 		visual.special_overlay = true
 		visual.fullbright = i < 2
 		visual.toxic_cloud = i == 3
+		visual.warm_cloud = i == 4
 		visuals.append(visual)
 	var batched := CityDynamicSpriteCanvas.batch_special_visuals(visuals)
-	assert(batched.size() == 3 and batched[0].fullbright and not batched[1].fullbright and batched[2].toxic_cloud)
+	assert(batched.size() == 4 and batched[3].warm_cloud and batched[0].fullbright and not batched[1].fullbright and batched[2].toxic_cloud)
 	var canvas := CityDynamicSpriteCanvas.new()
 	var material := ShaderMaterial.new()
 	material.shader = load("res://src/view/map/palette_cycle.gdshader")
@@ -257,6 +285,10 @@ func _check_fullbright() -> void:
 	var gas := frame.get_pixel(26, 2)
 	assert(gas.g > 0.5 and gas.g > gas.r * 1.5 and gas.g > gas.b * 2.0, "The original toxic cloud must glow green at night")
 	assert(frame.get_pixel(24, 0).a == 0.0, "Toxic recoloring preserves original transparent pixels")
+	var ash := frame.get_pixel(34, 2)
+	assert(ash.r > ash.g and ash.g > ash.b * 2.0, "Unblended volcanic cloud must render amber")
+	assert(frame.get_pixel(32, 0).a == 0.0, "Volcanic recoloring preserves transparent pixels")
+	assert(batched[3].copy().matches(batched[3]))
 	palette.fill(Color.GREEN)
 	palette_texture.update(palette)
 	await RenderingServer.frame_post_draw

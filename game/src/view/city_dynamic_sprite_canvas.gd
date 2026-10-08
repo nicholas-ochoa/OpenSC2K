@@ -23,14 +23,14 @@ func _draw() -> void:
 			var animation := visual.hazard_animation
 			# Reserved blue values select the eight-frame indexed atlas in the palette shader.
 			draw_texture_rect(texture, Rect2(source_position, source_size), false,
-				Color(animation.phase / 8.0, animation.opacity, 0.25 if visual.toxic_cloud else 0.5))
+				Color(animation.phase / 8.0, animation.opacity, 0.25 if visual.toxic_cloud else (0.125 if visual.warm_cloud else (0.5 if visual.fullbright else 0.75))))
 			continue
 
 		draw_texture_rect(
 			texture,
 			Rect2(source_position, source_size),
 			false,
-			Color(1, 0, 1) if visual.transparent_shadow else (Color(1, 0, 0) if visual.toxic_cloud else (Color(1, 1, 0) if visual.fullbright else Color.WHITE)),
+			Color(1, 0, 1) if visual.transparent_shadow else (Color(1, 0, 0) if visual.toxic_cloud else (Color(1, 0.5, 0) if visual.warm_cloud else (Color(1, 1, 0) if visual.fullbright else Color.WHITE))),
 		)
 
 		if visual.emission_texture != null:
@@ -87,6 +87,7 @@ static func batch_special_visuals(
 				or int(visual.texture_factor) != int(pending[0].texture_factor)
 				or visual.fullbright != pending[0].fullbright
 				or visual.toxic_cloud != pending[0].toxic_cloud
+				or visual.warm_cloud != pending[0].warm_cloud
 			)
 		):
 			_append_special_batch(result, pending, batch_cache)
@@ -155,6 +156,7 @@ static func _append_special_batch(
 	batch.special_batch = true
 	batch.fullbright = pending[0].fullbright
 	batch.toxic_cloud = pending[0].toxic_cloud
+	batch.warm_cloud = pending[0].warm_cloud
 	result.append(batch)
 
 	if not cache_key.is_empty():

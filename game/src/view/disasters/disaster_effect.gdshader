@@ -3,6 +3,7 @@ render_mode unshaded;
 #include "res://src/view/environment/environment_color.gdshaderinc"
 
 uniform int effect_kind = 0;
+uniform int cloud_style = 0;
 uniform float effect_time = 0.0;
 uniform float effect_seed = 0.0;
 uniform float effect_strength = 0.7;
@@ -74,7 +75,8 @@ vec4 effect_frame(vec2 uv, float sample_time) {
 			ink = vec4(mix(water, vec3(0.78, 0.87, 0.83), foam), mix(0.78, 0.92, foam));
 		}
 	} else if (effect_kind == 2 || effect_kind == 9) {
-		vec3 gas = effect_kind == 9 ? vec3(0.64, 0.55, 0.25) : vec3(0.55, 0.62, 0.23);
+		vec3 gas = effect_kind == 9 ? vec3(0.64, 0.55, 0.25)
+			: (cloud_style == 2 ? vec3(0.92, 0.50, 0.09) : (cloud_style == 1 ? vec3(0.55, 0.62, 0.23) : vec3(0.53, 0.51, 0.47)));
 		if (diamond < 1.0) {
 			float n = noise((q + world_origin) * 0.21 + vec2(t * 0.3, 0.0));
 			ink = vec4(mix(gas * 0.60, gas, n), 0.55);

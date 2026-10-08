@@ -111,6 +111,7 @@ func _run() -> void:
 	_check_debris(app)
 	_check_tornado_retention(app)
 	_check_hazard_transitions(app)
+	_check_cloud_styles(app)
 	app.queue_free()
 	await process_frame
 	print("PASS: disaster marker replacement, dispatch layering, retained nodes, event deduplication, pause, fallback and unchanged city/RNG")
@@ -305,3 +306,59 @@ func _check_debris(app: CityApplication) -> void:
 	effects.observe_simulation_result(tick)
 	assert(effects.pulses.size() == 1, "Do not replay confirmed debris")
 	assert(DocumentState.capture(city.document) == before)
+
+
+func _check_cloud_styles(app: CityApplication) -> void:
+	var effects := app.disaster_effects
+	var engine := app.simulation_state.simulation_engine
+	var city := app.document_state.city
+	var tile := Vector2i(64, 64)
+	var order := (tile.x + tile.y) * city.map_size + tile.y
+	city.set_text_overlay_id(tile.x, tile.y, 0xfb)
+	var before := DocumentState.capture(city.document)
+	var random_before := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
+	var original_disaster := engine.active_disaster_type
+	for disaster in range(19):
+		var expected := 1 if disaster in [4, 15] else (2 if disaster == 11 else 0)
+		assert(CityDisasterEffects.cloud_style_for_disaster(disaster) == expected)
+		engine.active_disaster_type = disaster
+		effects._cloud_styles.clear()
+		effects._cloud_context = 0
+		app.moving_sprites.refresh_moving_things()
+		var visual := app.moving_sprites.hazard_animation.entries[order].visual
+		assert(visual.toxic_cloud == (expected == 1) and visual.warm_cloud == (expected == 2))
+		var gas: CityDisasterEffects.Visual = effects.markers["tile:64:64"]
+		assert(gas.sprite.material.get_shader_parameter("cloud_style") == expected)
+		var tint := effects.cloud_light_color(expected)
+		assert((tint.g > tint.r) == (expected == 1), "Only toxic and pollution clouds may cast green light")
+	# An observed volcanic cloud keeps its identity after the event ends.
+	engine.active_disaster_type = 11
+	effects._cloud_styles.clear()
+	assert(effects.cloud_style(tile) == 2)
+	engine.active_disaster_type = 4
+	assert(effects.cloud_style(tile) == 2)
+	# Removal releases provenance, so the next cloud at this tile can be toxic.
+	city.set_text_overlay_id(tile.x, tile.y, 0)
+	effects.begin_commands()
+	city.set_text_overlay_id(tile.x, tile.y, 0xfb)
+	assert(effects.cloud_style(tile) == 1)
+	# The completed start callback also colors a cloud when the first tick has
+	# already ended its disaster, and refreshes paused presentation immediately.
+	engine.active_disaster_type = 0
+	effects._cloud_styles.clear()
+	effects._cloud_context = 0
+	var result := DisasterStartResult.new()
+	result.ok = true
+	result.started = true
+	result.disaster_type = 11
+	result.point = tile
+	effects.disaster_started(result)
+	assert(app.moving_sprites.hazard_animation.entries[order].visual.warm_cloud)
+	app.preferences.visual_enhancements.disaster_blending = false
+	app.moving_sprites.refresh_moving_things()
+	assert(effects.cloud_style(tile) == 2)
+	assert(app.map_view.dynamic_sprites.any(func(visual: CityDynamicVisual) -> bool: return visual.warm_cloud and not visual.toxic_cloud), "Unblended rendering must receive volcanic styling too")
+	app.preferences.visual_enhancements.disaster_blending = true
+	engine.active_disaster_type = original_disaster
+	assert(DocumentState.capture(city.document) == before, "Cloud color must not change city data")
+	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)

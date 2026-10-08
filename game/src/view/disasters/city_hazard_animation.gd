@@ -76,8 +76,10 @@ func observe(command: CityDynamicCommand, archive: Sc2SpriteArchive, view: int) 
 		entry.visual.depth_order = command.depth_order
 		entry.visual.hazard_animation = entry.animation
 		entry.visual.fullbright = command.overlay == 0xff
-		entry.visual.toxic_cloud = command.overlay == 0xfb
 		entries[command.depth_order] = entry
+	var style := app.disaster_effects.cloud_style(entry.tile) if command.overlay == 0xfb else 0
+	entry.visual.toxic_cloud = style == 1
+	entry.visual.warm_cloud = style == 2
 	# A renewed fire reverses its fade continuously.
 	if entry.retired >= 0.0:
 		entry.start_opacity = entry.animation.opacity

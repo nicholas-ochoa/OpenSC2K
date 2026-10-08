@@ -43,6 +43,8 @@ var _trails: Dictionary[int, Vector2] = {}
 var _shake_remaining := 0.0
 var lighting := CityDisasterLighting.new()
 var earthquake_blur := CityEarthquakeBlur.new()
+var _cloud_styles: Dictionary[Vector2i, int] = {}
+var _cloud_context := 0
 var _tornado_sites: Dictionary[Vector2i, int] = {}
 
 
@@ -125,6 +127,9 @@ func _sync_city() -> void:
 	var signature: Array = [] if city == null else [city.document.get_instance_id(), city.compass_rotation(), city.visible_altitude_levels]
 	if signature != _city_signature:
 		_clear()
+		_cloud_styles.clear()
+		if signature.is_empty() or _city_signature.is_empty() or signature[0] != _city_signature[0]:
+			_cloud_context = 0
 		_city_signature = signature
 		clock = 0.0
 
@@ -197,6 +202,32 @@ func begin_commands() -> void:
 	_sync_city()
 	_seen.clear()
 	_tornado_sites.clear()
+	for tile in _cloud_styles.keys():
+		if app.document_state.city.marker_overlay_id(tile.x, tile.y) != 0xfb:
+			_cloud_styles.erase(tile)
+
+
+static func cloud_style_for_disaster(disaster: int) -> int:
+	if disaster in [DisasterStartConstants.DISASTER_TOXIC_SPILL, DisasterStartConstants.DISASTER_POLLUTION]:
+		return 1
+	return 2 if disaster == DisasterStartConstants.DISASTER_VOLCANO else 0
+
+
+func cloud_style(tile: Vector2i) -> int:
+	# The simulation shares one marker for toxic and volcanic clouds. Remember
+	# observed provenance only in this presentation; unknown origins stay neutral.
+	if int(_cloud_styles.get(tile, 0)) > 0:
+		return _cloud_styles[tile]
+	var engine := app.simulation_state.simulation_engine
+	var style := cloud_style_for_disaster(engine.active_disaster_type) if engine != null and engine.active_disaster_type != 0 else _cloud_context
+	_cloud_styles[tile] = style
+	return style
+
+
+static func cloud_light_color(style: int) -> Color:
+	if style == 1:
+		return Color(0.28, 1.0, 0.035)
+	return Color(1.0, 0.52, 0.055) if style == 2 else Color(0.55, 0.52, 0.46)
 
 
 ## Return true only when a visible replacement was actually installed.
@@ -352,7 +383,7 @@ func _sync_lighting(scale_value: float) -> void:
 		cells[cell] = true
 		var tint := Color(1.0, 0.24, 0.025)
 		if visual.kind == TOXIC:
-			tint = Color(0.28, 1.0, 0.035)
+			tint = cloud_light_color(cloud_style(visual.tile))
 		elif visual.kind == MICROWAVE:
 			tint = Color(0.025, 0.35, 1.0)
 		elif visual.kind == MONSTER:
@@ -427,6 +458,7 @@ func _update_material(visual: Visual) -> void:
 		visual.sprite.position = (ground_point(app.document_state.city, visual.tile) - ANCHOR + offset + visual.anchor_offset).round()
 	material.set_shader_parameter("world_origin", visual.sprite.position + ANCHOR * visual.sprite.scale)
 	material.set_shader_parameter("effect_kind", visual.kind)
+	material.set_shader_parameter("cloud_style", cloud_style(visual.tile) if visual.kind == TOXIC else 0)
 	material.set_shader_parameter("effect_time", clock)
 	material.set_shader_parameter("frame_blending", app.preferences.visual_enhancements.disaster_blending)
 	material.set_shader_parameter("lifecycle_opacity", _opacity(visual))
@@ -526,8 +558,14 @@ static func is_dust(event: EffectEvent) -> bool:
 
 func disaster_started(result: DisasterStartResult) -> void:
 	_sync_city()
-	if not active() or result == null or not result.ok or not result.started:
+	if result == null or not result.ok or not result.started:
 		return
+	_cloud_context = cloud_style_for_disaster(result.disaster_type)
+	if not active():
+		return
+	# Start results arrive after the map refresh; update neutral first-frame art
+	# immediately, including when the player has paused the simulation.
+	app.moving_sprites.refresh_moving_things()
 	var city := app.document_state.city
 	match result.disaster_type:
 		9:
