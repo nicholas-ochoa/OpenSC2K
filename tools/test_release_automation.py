@@ -282,26 +282,42 @@ class DiskImageTest(unittest.TestCase):
     MACOS_27 = ('USAGE: diskutil image create from [--encrypt] [--verbose] [--stdinpassphrase] [--plist] '
                 '[--format <format>] [--volumeName <volumeName>] [--shadow <shadow> ...] <source> <destination>\n')
 
-    def create_command(self, help_text):
+    def make_image(self, help_text, failures=0):
+        """Run make_disk_image with `failures` failed create attempts. Return the commands."""
         commands = []
+        attempts = []
 
         def run(command, **_):
             commands.append(command)
+            if command[-1] == str(image) and command[1] != 'verify':
+                # each attempt starts without the partial image of a failed attempt
+                self.assertFalse(image.exists())
+                attempts.append(command)
+                if len(attempts) <= failures:
+                    image.write_bytes(b'partial')
+                    return subprocess.CompletedProcess(command, 1)
             return subprocess.CompletedProcess(command, 0, help_text, '')
 
-        with patch.object(packages.subprocess, 'run', run):
-            packages.make_disk_image(Path('/build'), 'OpenSC2K 1.0', Path('/OpenSC2K.dmg'))
-        # the help probe, the create command, then the verify
-        self.assertEqual(commands[2], ['hdiutil', 'verify', '/OpenSC2K.dmg'])
-        return commands[1]
+        with tempfile.TemporaryDirectory() as temporary:
+            image = Path(temporary) / 'OpenSC2K.dmg'
+            with patch.object(packages.subprocess, 'run', run), patch.object(packages.time, 'sleep'):
+                packages.make_disk_image(Path(temporary), 'OpenSC2K 1.0', image)
+        return commands
 
     def test_disk_image_keeps_the_volume_name_with_either_tool(self):
-        command = self.create_command(self.MACOS_15)
+        probe, command, verify = self.make_image(self.MACOS_15)
         self.assertEqual(command[:2], ['hdiutil', 'create'])
         self.assertEqual(command[command.index('-volname') + 1], 'OpenSC2K 1.0')
-        command = self.create_command(self.MACOS_27)
+        self.assertEqual(verify[:2], ['hdiutil', 'verify'])
+        probe, command, verify = self.make_image(self.MACOS_27)
         self.assertEqual(command[:4], ['diskutil', 'image', 'create', 'from'])
         self.assertEqual(command[command.index('--volumeName') + 1], 'OpenSC2K 1.0')
+
+    def test_busy_disk_image_is_retried_then_fails(self):
+        commands = self.make_image(self.MACOS_15, failures=2)
+        self.assertEqual([command[1] for command in commands[1:]], ['create', 'create', 'create', 'verify'])
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.make_image(self.MACOS_15, failures=packages.DISK_IMAGE_ATTEMPTS)
 
 
 class SigningTest(unittest.TestCase):

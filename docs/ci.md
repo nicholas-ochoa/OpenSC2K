@@ -99,8 +99,10 @@ Use a new output directory. The tool exports the committed tree at `HEAD`.
 Add `--platform macos` (repeatable; a package or native folder name) to build only some
 platforms. Then only those platforms need native libraries.
 It includes install notes, licenses, source and engine versions, and package hashes.
-The disk image is made with `diskutil image create from` on macOS 26 and later, and with
-`hdiutil create` on older macOS versions, such as the CI runner. Windows packages are unsigned.
+The disk image is made with `diskutil image create from` where that command has `--volumeName`,
+and with `hdiutil create` on older macOS versions, such as the macOS 15 CI runner. GitHub macOS
+runners sometimes report "Resource busy" for a new image, so the tool tries up to five times.
+Windows packages are unsigned.
 `build-info.json` records the macOS signing identity and whether the image is notarized.
 
 ## macOS signing and notarization

@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import zipfile
 
 import build_fluidsynth
@@ -271,14 +272,32 @@ def has_diskutil_image():
     return probe.returncode == 0 and '--volumeName' in probe.stdout + probe.stderr
 
 
+# GitHub macOS runners sometimes fail to create an image with "Resource busy"
+# (actions/runner-images#7522). A later attempt usually succeeds
+DISK_IMAGE_ATTEMPTS = 5
+DISK_IMAGE_RETRY_SECONDS = 10
+
+
 def make_disk_image(folder, volume, image):
     """A compressed read-only disk image of `folder`. Older macOS versions use hdiutil."""
     if has_diskutil_image():
-        subprocess.run(['diskutil', 'image', 'create', 'from', '--format', 'UDZO', '--volumeName', volume,
-                        str(folder), str(image)], check=True)
+        command = ['diskutil', 'image', 'create', 'from', '--format', 'UDZO', '--volumeName', volume,
+                   str(folder), str(image)]
     else:
-        subprocess.run(['hdiutil', 'create', '-volname', volume, '-srcfolder', str(folder),
-                        '-format', 'UDZO', str(image)], check=True)
+        command = ['hdiutil', 'create', '-volname', volume, '-srcfolder', str(folder),
+                   '-format', 'UDZO', str(image)]
+
+    for attempt in range(1, DISK_IMAGE_ATTEMPTS + 1):
+        # a failed attempt can leave a partial image, and hdiutil does not replace a file
+        image.unlink(missing_ok=True)
+        result = subprocess.run(command)
+        if result.returncode == 0:
+            break
+        if attempt == DISK_IMAGE_ATTEMPTS:
+            result.check_returncode()
+        print(f'Disk image attempt {attempt} failed. Retry in {DISK_IMAGE_RETRY_SECONDS} seconds.')
+        time.sleep(DISK_IMAGE_RETRY_SECONDS)
+
     subprocess.run(['hdiutil', 'verify', str(image)], check=True)
 
 
