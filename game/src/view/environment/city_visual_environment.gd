@@ -136,8 +136,10 @@ func process(delta: float) -> void:
 	var options := app.preferences.visual_enhancements
 	var speed := app.simulation_state.speed_controller.speed if app.simulation_state.speed_controller != null else 1
 	var elapsed := maxf(delta, 0.0)
-	if options.pause_freezes and (speed == 1 or app.frame._simulation_suspended()):
+	var paused := speed == GameSpeedController.Speed.PAUSED or app.frame._simulation_suspended()
+	if options.pause_freezes and paused:
 		elapsed = 0.0
+	var weather_delta := 0.0 if paused else maxf(delta, 0.0)
 	var factor := VisualEnhancementOptions.speed_factor(speed) if options.speed_link and speed > 1 else 1.0
 	if active and options.day_enabled and options.day_mode == 0:
 		phase = fposmod(phase + elapsed * factor / float(options.day_seconds), 1.0)
@@ -150,10 +152,12 @@ func process(delta: float) -> void:
 		season = fposmod(float(city.age_in_days() % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_YEAR * 4.0 - 2.0 / 3.0, 4.0)
 	elif options.season_mode == 2:
 		season = float(options.season_fixed)
-	weather.process(delta, elapsed * factor, active, season)
+	var previous_weather := weather.kind
+	weather.process(delta, weather_delta * factor, active, season, paused)
 	if profiles.atlases.is_empty():
 		profiles.reload(options.lut_folder)
-	profiles.advance_weather(weather.kind, delta, options.weather_transition, active and options.weather_enabled)
+	var grading_delta: float = options.weather_transition if paused and weather.kind != previous_weather else weather_delta
+	profiles.advance_weather(weather.kind, grading_delta, options.weather_transition, active and options.weather_enabled)
 	var daytime_lights: bool = options.brightmaps and options.night_daytime_enabled
 	if active and (options.day_enabled or options.season_enabled or options.weather_enabled or daytime_lights):
 		_sync_whole_masks()
@@ -164,7 +168,7 @@ func process(delta: float) -> void:
 	# Artificial lights can stay on without changing daylight, grading or cloud shadows.
 	var light_level := 1.0 if daytime_lights else ambient_night
 	night = light_level * float(options.night_light_strength) / 100.0 if options.brightmaps else 0.0
-	clouds.process(delta, elapsed * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
+	clouds.process(weather_delta, weather_delta * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
 	var parameters := {
 		"water_enabled": active and VisualEnhancementOptions.water_pass_enabled(options),
 		"water_reflections_enabled": active and options.water_reflections == 1,

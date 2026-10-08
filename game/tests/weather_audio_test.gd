@@ -45,13 +45,29 @@ func _run() -> void:
 	weather.process(0.0, 0.0, true, 1.0)
 	assert(is_equal_approx(rain_player.volume_linear, audio.rain_gains.y * 0.4))
 	assert(audio.rain_players[1] == rain_player, "A frame restarted the rain loop")
+	var frozen_rain := [weather.clock, weather.rain, weather.tint, audio.rain_gains]
+	weather.process(60.0, 60.0, true, 1.0, true)
+	assert([weather.clock, weather.rain, weather.tint, audio.rain_gains] == frozen_rain)
+	assert(audio.rain_players.all(func(player: AudioStreamPlayer) -> bool: return player.stream_paused))
+	weather.process(0.1, 0.1, true, 1.0)
+	assert(audio.rain_players[1] == rain_player and not rain_player.stream_paused, "Resume restarted rain ambience")
+	assert(is_equal_approx(weather.clock, float(frozen_rain[0]) + 0.1))
 	app.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.DRY_STORM
 	weather.process(5.0, 0.0, true, 1.0)
 	assert(audio.rain_players.is_empty(), "Dry storm retained rain ambience")
 	assert(weather.lightning.thunder_wait > 0.0)
 	assert(audio.thunder_players.is_empty(), "Thunder preceded its travel delay")
+	var frozen_storm := [weather.lightning.thunder_wait, weather.lightning.wait, weather.lightning.age, weather.flash, weather.lightning.random.state]
+	weather.process(60.0, 60.0, true, 1.0, true)
+	assert([weather.lightning.thunder_wait, weather.lightning.wait, weather.lightning.age, weather.flash, weather.lightning.random.state] == frozen_storm)
+	assert(audio.thunder_players.is_empty(), "Paused storm emitted pending thunder")
 	weather.process(weather.lightning.thunder_wait + 0.01, 0.0, true, 1.0)
 	assert(audio.thunder_players.size() == 1 and audio.thunder_players[0].playing)
+	var thunder_player := audio.thunder_players[0]
+	weather.process(60.0, 60.0, true, 1.0, true)
+	assert(thunder_player.stream_paused)
+	weather.process(0.0, 0.0, true, 1.0)
+	assert(audio.thunder_players[0] == thunder_player and not thunder_player.stream_paused)
 	for i in 8:
 		audio.play_thunder(weather.lightning, 1.0)
 	assert(audio.thunder_players.size() <= CityWeatherAudio.MAX_THUNDER)

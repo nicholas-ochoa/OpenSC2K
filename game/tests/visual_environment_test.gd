@@ -42,6 +42,7 @@ func _run() -> void:
 	assert(CityVisualWeather.from_game(7, true) == 2)
 	_check_brightmaps()
 	_check_standard_brightmaps()
+	_check_zone_soil_masks()
 	var main := (load("res://main.tscn") as PackedScene).instantiate() as CityApplication
 	root.add_child(main)
 	await process_frame
@@ -64,6 +65,7 @@ func _run() -> void:
 	var paused_phase := main.visual_environment.phase
 	main.visual_environment.process(60.0)
 	assert(main.visual_environment.phase == paused_phase)
+	_check_weather_pause(main)
 	main.preferences.visual_enhancements.day_mode = 1
 	main.preferences.visual_enhancements.day_hour = 7.0
 	main.preferences.visual_enhancements.weather_mode = 2
@@ -282,6 +284,46 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	print("PASS: cosmetic clocks, speed, pause, grading, seasons, weather mapping, settings preservation and unchanged city/RNG")
 	quit()
+
+
+func _check_weather_pause(main: CityApplication) -> void:
+	var saved := main.preferences.visual_enhancements.duplicate()
+	var environment := main.visual_environment
+	var weather := environment.weather
+	for freeze_cycles in [true, false]:
+		main.preferences.visual_enhancements = VisualEnhancementOptions.normalize({
+			"weather_mode": 2, "weather_fixed": CityVisualWeather.Kind.RAIN_STORM,
+			"season_mode": 2, "season_fixed": 3, "pause_freezes": freeze_cycles})
+		for kind in [CityVisualWeather.Kind.RAIN_STORM, CityVisualWeather.Kind.HEAVY_SNOW]:
+			main.simulation_state.speed_controller.speed = GameSpeedController.Speed.TURTLE
+			main.preferences.visual_enhancements.weather_fixed = kind
+			environment.process(0.25)
+			var frozen := _weather_snapshot(environment)
+			main.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+			for frame in 3:
+				environment.process(20.0)
+			assert(_weather_snapshot(environment) == frozen, "Pause advanced weather particles, a front, lightning, clouds or fog")
+			assert(weather.material.get_shader_parameter("clock") == weather.clock)
+			main.simulation_state.speed_controller.speed = GameSpeedController.Speed.TURTLE
+			environment.process(0.1)
+			assert(is_equal_approx(weather.clock, float(frozen[0]) + 0.1), "Weather caught up paused time")
+		main.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+		main.preferences.visual_enhancements.weather_mode = 1
+		environment.process(0.0)
+		var selection := [weather.selected_kind, weather.interval, weather.random.state]
+		environment.process(600.0)
+		assert([weather.selected_kind, weather.interval, weather.random.state] == selection, "Paused automation chose new weather")
+	main.preferences.visual_enhancements = saved
+	environment.process(0.0)
+
+
+func _weather_snapshot(environment: CityVisualEnvironment) -> Array:
+	var weather := environment.weather
+	var clouds := environment.clouds
+	return [weather.clock, weather.rain, weather.snow, weather.frost, weather.tint, weather.flash,
+		weather.lightning.wait, weather.lightning.age, weather.lightning.thunder_wait,
+		weather.lightning.random.state, environment.profiles.weather_weights.duplicate(),
+		clouds.drift, clouds.density, clouds.fog, clouds.weather_clock, clouds.opacity]
 
 
 func _check_ground_lighting(main: CityApplication) -> void:
@@ -555,6 +597,26 @@ func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	assert(not (tab.controls.life_people_amount as SpinBox).editable)
 	tab.show_values(original)
 	tab.changed.emit()
+
+
+func _check_zone_soil_masks() -> void:
+	var pack := FixtureGraphics.pack()
+	for archive: Sc2SpriteArchive in [pack.large_sprites, pack.small_medium_sprites]:
+		CitySeasonColors.prepare(archive, pack.palette)
+		for id: int in archive.entries_by_id:
+			if id % 500 < 291 or id % 500 > 299:
+				continue
+			assert(archive.visual_seasons.has(id), "Zoned soil has no seasonal mask: %d" % id)
+			var entry := archive.find_sprite(id)
+			var indices: PackedInt32Array = entry.decode_indices().pixels
+			var flat: PackedInt32Array = archive.find_sprite(id - id % 500 + 256).decode_indices().pixels
+			var mask: Image = archive.visual_seasons[id]
+			var markings := 0
+			for at in indices.size():
+				if indices[at] >= 0 and not flat.has(indices[at]):
+					markings += 1
+					assert(mask.get_pixel(at % entry.width, int(at / entry.width)).a == 0.0, "Season mask recolors a zoning mark")
+			assert(markings > 0, "Zone fixture lacks distinctive markings")
 
 
 func _check_brightmaps() -> void:

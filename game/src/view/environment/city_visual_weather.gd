@@ -27,6 +27,7 @@ var material: ShaderMaterial
 var camera_pan := Vector2.ZERO
 var last_camera_center := Vector2.ZERO
 var last_camera_zoom := 0.0
+var _preview_signature: Array = []
 
 
 func _init(application: CityApplication) -> void:
@@ -61,9 +62,10 @@ func reset() -> void:
 	flash = 0.0
 	camera_pan = Vector2.ZERO
 	last_camera_zoom = 0.0
+	_preview_signature.clear()
 
 
-func process(delta: float, phase_elapsed: float, active: bool, season: float) -> void:
+func process(delta: float, phase_elapsed: float, active: bool, season: float, paused := false) -> void:
 	var options := app.preferences.visual_enhancements
 	var enabled: bool = active and options.weather_enabled
 	var snow_allowed: bool = options.weather_mode == 2 or int(fposmod(season, 4.0)) == 3
@@ -78,8 +80,8 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 				last_game_weather = game_weather
 				selected_kind = from_game(game_weather, random.randf() < 0.5)
 		elif options.weather_mode == 1:
-			interval += phase_elapsed
-			if interval >= float(options.weather_seconds):
+			interval += phase_elapsed if not paused else 0.0
+			if not paused and interval >= float(options.weather_seconds):
 				interval = fposmod(interval, float(options.weather_seconds))
 				var choices := [Kind.SUNNY, Kind.SUNNY, Kind.LIGHT_RAIN, Kind.HEAVY_RAIN, Kind.RAIN_STORM, Kind.DRY_STORM]
 				if int(season) == 3:
@@ -96,8 +98,14 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 	else:
 		kind = Kind.SUNNY
 		flash = 0.0
-	var weight := minf(1.0, maxf(delta, 0.0) / float(options.weather_transition)) if enabled else 1.0
 	var strength := float(options.weather_strength)
+	var elapsed := 0.0 if paused else maxf(delta, 0.0)
+	var preview := [enabled, kind, strength, options.weather_mode, snow_allowed]
+	# Explicit menu changes remain visible while paused; existing fronts stay frozen.
+	var weight := minf(1.0, elapsed / float(options.weather_transition)) if enabled else 1.0
+	if paused and preview != _preview_signature:
+		weight = 1.0
+	_preview_signature = preview
 	var target_tint := Color.WHITE.lerp(TINTS[kind], strength)
 	tint = Color(move_toward(tint.r, target_tint.r, weight), move_toward(tint.g, target_tint.g, weight), move_toward(tint.b, target_tint.b, weight))
 	frost = move_toward(frost, (0.18 if kind == Kind.LIGHT_SNOW else (0.85 if kind == Kind.HEAVY_SNOW else 0.0)) * strength, weight)
@@ -107,10 +115,12 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 		# Automatic weather clears out-of-season flakes even while paused.
 		snow = 0.0
 		frost = 0.0
-	clock = fposmod(clock + maxf(delta, 0.0), 3600.0)
+	clock = fposmod(clock + elapsed, 3600.0)
 	var storm := enabled and kind in [Kind.RAIN_STORM, Kind.DRY_STORM]
-	audio.update(delta, enabled and strength > 0.0, rain, storm)
-	var thunder_due := lightning.advance(delta, storm, strength)
+	audio.update(elapsed, enabled and strength > 0.0, rain, storm, paused)
+	var thunder_due := false
+	if not paused or not storm or strength <= 0.0:
+		thunder_due = lightning.advance(elapsed, storm, strength)
 	flash = lightning.flash
 	if not audio.allowed():
 		# Muting or losing focus discards pending thunder, without a catch-up burst.

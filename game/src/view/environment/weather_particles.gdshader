@@ -14,6 +14,30 @@ uniform vec3 flash_color = vec3(0.87, 0.93, 1.0);
 
 float random(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
+float rain_layer(vec2 pixel, float depth) {
+	// Sparse, soft foreground drops pass a denser, fine distant curtain.
+	float near_plane = depth * 0.5;
+	vec2 spacing = vec2(18.0 + depth * depth * 10.0, 32.0 + depth * depth * 19.0);
+	float speed = mix(190.0, 510.0, near_plane);
+	vec2 moving = vec2(pixel.x + pixel.y * 0.21 - clock * (22.0 + depth * 17.0), pixel.y - clock * speed);
+	vec2 cell = floor(moving / spacing);
+	vec2 id = cell + vec2(depth * 137.0, depth * 83.0);
+	if (random(id + vec2(57.3, 19.8)) > rain * mix(0.85, 0.6, near_plane)) { return 0.0; }
+	float shape = random(id + vec2(89.2, 7.6));
+	float half_length = (2.5 + depth * depth * 2.0 + rain * 1.5) * mix(0.75, 1.25, shape);
+	float width = mix(0.35, 1.25, near_plane) * mix(0.8, 1.2, shape);
+	float softness = max(0.45 / particle_scale, mix(0.25, 1.1, near_plane * near_plane));
+	vec2 margin = vec2(width + softness + 0.5, half_length + width + softness + 0.5);
+	vec2 seed = vec2(random(id), random(id + vec2(31.7, 43.1)));
+	vec2 center = margin + seed * (spacing - 2.0 * margin);
+	vec2 local = mod(moving, spacing) - center;
+	// Rounded, feathered streak ends avoid rectangular strips. Cell padding
+	// keeps the complete silhouette intact while it crosses the viewport.
+	float distance = length(vec2(local.x, max(abs(local.y) - half_length, 0.0)));
+	float drop = 1.0 - smoothstep(max(0.0, width - softness), width + softness, distance);
+	return drop * mix(0.16, 0.38, near_plane) * mix(0.65, 1.0, shape);
+}
+
 float snow_layer(vec2 pixel, float depth) {
 	vec2 spacing = vec2(29.0 + depth * 8.0, 31.0 + depth * 5.0);
 	float wind = clock * (6.0 + depth * 4.0);
@@ -54,12 +78,10 @@ void fragment() {
 		float depth = float(layer);
 		// Nearby precipitation follows camera movement slightly more strongly.
 		vec2 pixel = (UV * extent + camera_pan * (0.035 + depth * 0.035)) / particle_scale;
-		vec2 r = vec2(pixel.x + pixel.y * 0.21 - clock * (34.0 + depth * 7.0), pixel.y - clock * (270.0 + depth * 75.0));
-		vec2 cell = floor(r / vec2(23.0, 43.0));
-		vec2 local = mod(r, vec2(23.0, 43.0));
-		float seed = random(cell + depth * 71.0);
-		float drop = step(abs(local.x - (2.0 + seed * 18.0)), 0.65) * step(local.y, 5.0 + rain * 6.0);
-		rain_alpha += drop * step(seed, rain * 0.82) * (0.23 + depth * 0.07);
+		if (rain > 0.001) {
+			vec2 rain_pixel = (UV * extent + camera_pan * (0.02 + depth * depth * 0.035)) / particle_scale;
+			rain_alpha = 1.0 - (1.0 - rain_alpha) * (1.0 - rain_layer(rain_pixel, depth));
+		}
 		if (snow > 0.001) {
 			snow_alpha += snow_layer(pixel, depth);
 		}

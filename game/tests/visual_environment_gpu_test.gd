@@ -76,6 +76,8 @@ func _run() -> void:
 	viewport.queue_free()
 	await process_frame
 	await _check_weather_layer()
+	await _check_rain_depth()
+	await _check_zone_seasons()
 	await _check_night_glow(false)
 	await _check_night_glow(true)
 	await _check_city_life_glow(false)
@@ -468,6 +470,9 @@ func _check_weather_layer() -> void:
 		weather.process(5.0, 0.0, true, 1.0)
 		await RenderingServer.frame_post_draw
 		var stationary := viewport.get_texture().get_image().get_data()
+		weather.process(60.0, 60.0, true, 1.0, true)
+		await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_data() == stationary, "Paused precipitation changed GPU pixels")
 		map.source_center += Vector2(120, 80)
 		weather._sync_layer(true)
 		await RenderingServer.frame_post_draw
@@ -504,6 +509,90 @@ func _check_weather_layer() -> void:
 	assert(viewport.get_texture().get_image().get_data() == sunny.get_data(), "Sunny changed original city pixels")
 	viewport.queue_free()
 	app.free()
+	await process_frame
+
+
+func _check_zone_seasons() -> void:
+	var pack := FixtureGraphics.pack()
+	var archive := pack.large_sprites
+	CitySeasonColors.prepare(archive, pack.palette)
+	var viewport := SubViewport.new()
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var sprite := Sprite2D.new()
+	sprite.centered = false
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://src/view/map/palette_cycle.gdshader")
+	material.set_shader_parameter("environment_has_seasons", true)
+	sprite.material = material
+	viewport.add_child(sprite)
+	for id in range(1291, 1300):
+		var entry := archive.find_sprite(id)
+		var pixels: Image = entry.create_image(pack.palette).image
+		viewport.size = pixels.get_size()
+		sprite.texture = ImageTexture.create_from_image(pixels)
+		var mask: Image = archive.visual_seasons[id]
+		material.set_shader_parameter("environment_season_mask", ImageTexture.create_from_image(mask))
+		material.set_shader_parameter("environment_enabled", false)
+		await RenderingServer.frame_post_draw
+		var original := viewport.get_texture().get_image()
+		material.set_shader_parameter("environment_enabled", true)
+		for season in 4:
+			var weights := Vector4.ZERO
+			weights[season] = 1.0
+			material.set_shader_parameter("environment_seasons", weights)
+			await RenderingServer.frame_post_draw
+			var colored := viewport.get_texture().get_image()
+			var changed := 0
+			for y in pixels.get_height():
+				for x in pixels.get_width():
+					if pixels.get_pixel(x, y).a <= 0.0:
+						continue
+					var different := not colored.get_pixel(x, y).is_equal_approx(original.get_pixel(x, y))
+					if mask.get_pixel(x, y).g > 0.0 and season != 1:
+						changed += int(different)
+					else:
+						assert(not different, "Season changed zone markings or original summer colors")
+			assert(season == 1 or changed > 20, "Zoned ground retained brown soil in a seasonal view")
+	viewport.queue_free()
+	await process_frame
+
+
+func _check_rain_depth() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(256, 192)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var background := ColorRect.new()
+	background.size = Vector2(viewport.size)
+	background.color = Color.BLACK
+	viewport.add_child(background)
+	await RenderingServer.frame_post_draw
+	var empty := viewport.get_texture().get_image()
+	# Isolate each production rain plane to measure its visible footprint.
+	var source: String = CityVisualWeather.PARTICLES.code
+	var shader := Shader.new()
+	shader.code = source.substr(0, source.find("void fragment()")) + \
+		"uniform float test_depth; void fragment() { COLOR = vec4(vec3(1.0), rain_layer(UV * extent, test_depth)); }"
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("extent", Vector2(viewport.size))
+	material.set_shader_parameter("rain", 1.0)
+	material.set_shader_parameter("clock", 9.25)
+	var rain := ColorRect.new()
+	rain.size = Vector2(viewport.size)
+	rain.material = material
+	viewport.add_child(rain)
+	var widths: Array[float] = []
+	for depth in 3:
+		material.set_shader_parameter("test_depth", float(depth))
+		await RenderingServer.frame_post_draw
+		widths.append(_particle_width(viewport.get_texture().get_image(), empty))
+	assert(widths[1] > widths[0] + 0.1 and widths[2] > widths[1] + 0.1,
+		"Rain planes lack distinct distant, middle and soft foreground footprints: %s" % [widths])
+	viewport.queue_free()
 	await process_frame
 
 

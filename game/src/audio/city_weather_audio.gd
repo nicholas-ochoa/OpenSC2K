@@ -34,9 +34,14 @@ func reset() -> void:
 	storm_gain = 0.0
 
 
-func update(delta: float, enabled: bool, rain: float, storm: bool) -> void:
+func update(delta: float, enabled: bool, rain: float, storm: bool, paused := false) -> void:
 	if not enabled or not allowed():
 		reset()
+		return
+	for player in rain_players + thunder_players:
+		if _alive(player):
+			player.stream_paused = paused
+	if paused:
 		return
 	var intensity := clampf(rain, 0.0, 1.0)
 	var blend := smoothstep(0.2, 0.9, intensity)
