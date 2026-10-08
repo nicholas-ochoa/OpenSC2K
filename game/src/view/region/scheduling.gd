@@ -30,7 +30,8 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 
 	if not rect.has_area():
 		cache._changed = cache._changed or not cache.entries.is_empty()
-		cache.entries.clear()
+		if not cache.resident:
+			cache.entries.clear()
 
 		return
 
@@ -57,6 +58,12 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 	cache.wanted.append_array(cache.visible)
 	cache.wanted.append_array(nearby.slice(0, CityRegionCache.GPU_PREFETCH_LIMIT if cache.gpu_enabled else CityRegionCache.OFFSCREEN_LIMIT))
 	_index_wanted(cache)
+	if cache.resident:
+		# Retained offscreen regions also receive edits, before the camera returns.
+		for key in cache.entries:
+			if not cache.wanted_keys.has(key):
+				cache.wanted.append(key)
+				cache.wanted_keys[key] = true
 
 	if cache.gpu_enabled:
 		for key in cache.visible:
@@ -64,7 +71,7 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 				cache.entries[key].last_visible = cache._viewport_serial
 
 		cache._trim_retained_regions()
-	else:
+	elif not cache.resident:
 		for key in cache.entries.keys():
 			if not cache.wanted_keys.has(key):
 				cache.entries.erase(key)
@@ -79,6 +86,8 @@ static func _index_wanted(cache: CityRegionCache) -> void:
 
 
 static func _trim_retained_regions(cache: CityRegionCache) -> void:
+	if cache.resident:
+		return
 	var excess := cache.entries.size() - cache.visible.size() - cache.offscreen_limit()
 
 	if excess <= 0:
@@ -138,6 +147,10 @@ static func _disable_gpu(cache: CityRegionCache, error: String) -> void:
 
 
 static func _tick_gpu(cache: CityRegionCache) -> bool:
+	if cache.gpu_workers.is_empty() and not cache._gpu_has_work:
+		var changed := cache._changed
+		cache._changed = false
+		return changed
 	if cache.gpu_workers.is_empty():
 		for index in mini(CityRegionCache.GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
 			cache.gpu_workers.append(CityRegionCache.RegionWorker.new())
@@ -383,6 +396,8 @@ static func _publish_region(cache: CityRegionCache, worker: CityRegionCache.Regi
 		else (cache.entries[key].last_visible if cache.entries.has(key) else 0))
 	region.gpu_arrays = []
 	region.atlas_image = null
+	if cache.resident and region.water != null:
+		region.water.upload()
 	cache.publish_changes(cache.entries.get(key), region)
 	cache.entries[key] = region
 

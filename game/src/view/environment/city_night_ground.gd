@@ -33,6 +33,8 @@ var fixtures := Node2D.new()
 var signals := Node2D.new()
 var signal_tiles: Array[Vector2i] = []
 var clock := 0.0
+var resident := false
+var prepare_entire_city := false
 
 
 func _init() -> void:
@@ -89,7 +91,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 	# visual_revision also changes when decorative traffic switches at 25/50%.
 	# It must not discard completed receivers. Foreground publications refresh
 	# affected masks in place; replacement artwork still changes archive identity.
-	var archive := app.static_render.sprite_archive_for_view(app.static_render.city_view_size())
+	var archive := app.static_render.original_archive_for_view(app.static_render.city_view_size())
 	var revision := [city.document.get_instance_id(), city.map_size,
 		app.static_render.city_view_size(), city.compass_rotation(), city.visible_altitude_levels,
 		archive.get_instance_id() if archive != null else 0]
@@ -109,6 +111,8 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 			if bounds.grow(64).has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
 				bounds = Rect2i()
 	var next := Rect2i(map.visible_source_rect().grow(BUFFER_MARGIN))
+	if prepare_entire_city:
+		next = Rect2i(Vector2i.ZERO, CityIsometricRenderer.output_size_for_view(2, city.map_size)).grow(160)
 	if not bounds.encloses(next.grow(-BUFFER_MARGIN * 0.5)) or bounds.get_area() > next.get_area() * 2:
 		bounds = next
 		_collect(city)
@@ -134,7 +138,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 			_forget_helpers(tile)
 			built += 1
 		dirty.erase(tile)
-		if Time.get_ticks_usec() - started > 4000:
+		if Time.get_ticks_usec() - started > (20000 if prepare_entire_city else 4000):
 			break
 	if cursor > 0:
 		pending = pending.slice(cursor)
@@ -156,8 +160,9 @@ func _collect(city: CityState) -> void:
 			last_used.erase(tile)
 	visible_tiles.clear()
 	visible_keys.clear()
-	pending.clear()
-	queued.clear()
+	if not resident:
+		pending.clear()
+		queued.clear()
 	cursor = 0
 	var first := Vector2i(city.map_size, city.map_size)
 	var last := Vector2i.ZERO
@@ -236,6 +241,8 @@ func _release(tile: Vector2i) -> void:
 
 
 func _trim_cache() -> void:
+	if resident:
+		return
 	if cache.size() <= MAX_CACHED and texture_bytes <= texture_budget:
 		return
 	# Repeated street patterns share textures. Count their bytes once, rather
@@ -254,7 +261,7 @@ func _trim_cache() -> void:
 
 
 func _enqueue(tile: Vector2i) -> void:
-	if visible_keys.has(tile) and not queued.has(tile):
+	if (resident or visible_keys.has(tile)) and not queued.has(tile):
 		pending.append(tile)
 		queued[tile] = true
 

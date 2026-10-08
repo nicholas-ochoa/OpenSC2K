@@ -122,6 +122,9 @@ func _sync_traffic(enhanced: bool) -> void:
 			archive.visual_revision += 1
 			changed = true
 	if changed and app.document_state.city != null:
+		if app.visual_preparation.ready:
+			app.map_render.refresh_map(false)
+			return
 		app.map_render.close_region_cache()
 		app.static_render.invalidate_rendered_city()
 		app.map_render.refresh_map()

@@ -104,9 +104,9 @@ class ProfileMapRender extends ApplicationMapRender:
 		super.poll_region_cache()
 		app._record("poll_regions", started)
 
-	func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Array[Rect2i]) -> bool:
+	func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Array[Rect2i], lighting_changes: Variant = null) -> bool:
 		var started := Time.get_ticks_usec()
-		var result := super._invalidate_region_foregrounds(changes, occluder_changes)
+		var result := super._invalidate_region_foregrounds(changes, occluder_changes, lighting_changes)
 		app._record("foreground_invalidation", started)
 		return result
 

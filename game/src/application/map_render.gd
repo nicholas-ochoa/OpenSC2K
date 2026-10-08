@@ -43,7 +43,7 @@ func refresh_map(force := true) -> void:
 	app.map_view.clear_data_view()
 	app.map_view.discard_data_geometry_for_other_city(app.document_state.city)
 
-	if ((app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer))
+	if ((app.visual_preparation.ready or app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer))
 			and CityViewMode.is_map(app.view_state.overlay_mode)):
 		refresh_region_map(force)
 
@@ -205,13 +205,20 @@ func close_region_cache() -> void:
 	app.static_render.clear_dynamic_composition_cache()
 	caches.foreground_complete = false
 
-	if caches.region_cache != null:
+	if caches.region_cache != null and not app.visual_preparation.owns(caches.region_cache):
 		caches.region_cache.close()
 
 	caches.region_cache = null
 
 
 func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
+	var prepared := app.visual_preparation.ready and app.view_state.overlay_mode == CityViewMode.Mode.CITY
+	if prepared:
+		app.visual_preparation.refresh(dirty)
+		var selected := app.visual_preparation.selected_cache(app.static_render.city_view_size())
+		if caches.region_cache != selected:
+			close_region_cache()
+			caches.region_cache = selected
 	if caches.region_cache == null:
 		caches.region_cache = CityRegionCache.new()
 		caches.region_cache.gpu_enabled = CityRegionCache.gpu_supported(app.preferences.city_renderer)
@@ -230,7 +237,7 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	var changes_listed := false
 	var previous := caches.region_cache.signature
 
-	if force:
+	if force and not prepared:
 		caches.region_cache.signature = []
 	elif (not dirty.has_area()
 			and previous != signature and app.view_state.overlay_mode == CityViewMode.Mode.CITY and previous.size() == signature.size()
@@ -289,7 +296,9 @@ func poll_region_cache() -> void:
 		return
 
 	caches.static_display_city = caches.region_cache.display_city
-	var foreground_changed := _invalidate_region_foregrounds(caches.region_cache.foreground_changes, caches.region_cache.occluder_changes)
+	var foreground_changed := _invalidate_region_foregrounds(caches.region_cache.foreground_changes,
+		caches.region_cache.occluder_changes,
+		caches.region_cache.lighting_changes if caches.region_cache.resident else caches.region_cache.occluder_changes)
 	var source := caches.region_cache.texture()
 	app.map_view.set_city_view(caches.static_display_city, source, null, true, true, caches.region_cache.sign_layout_token)
 	app.menus.sync_map_style()
@@ -303,13 +312,13 @@ func poll_region_cache() -> void:
 
 # `changes` bound changed static pixels, and `occluder_changes` changed static silhouettes.
 # a moving sprite or overlay that does not sample static pixels depends only on the silhouettes
-func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Array[Rect2i]) -> bool:
+func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Array[Rect2i], lighting_changes: Variant = null) -> bool:
 	var invalidated := false
 	if app.city_life.canvas != null:
 		app.city_life.canvas.invalidate_occlusion(occluder_changes)
 	app.disaster_effects.invalidate_occlusion(occluder_changes)
 	if app.visual_environment != null:
-		app.visual_environment.night_lighting.invalidate_regions(occluder_changes)
+		app.visual_environment.night_lighting.invalidate_regions(occluder_changes if lighting_changes == null else lighting_changes)
 
 	if not occluder_changes.is_empty():
 		for key in caches.dynamic_occluder_cache.keys():

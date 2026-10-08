@@ -16,6 +16,8 @@ func _init(application: CityApplication) -> void:
 # Map keys need the city view with no dialog open. Global keys also work while
 # a text field has focus.
 func camera_keys_allowed(allow_text_focus := false) -> bool:
+	if app.visual_preparation.busy:
+		return false
 	if (app.document_state.city == null
 			or app.map_view == null
 			or not app.map_view.is_visible_in_tree()

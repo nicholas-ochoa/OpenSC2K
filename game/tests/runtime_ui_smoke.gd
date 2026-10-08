@@ -65,6 +65,7 @@ func _run() -> void:
 		main.city_files.call("_load_city_unchecked", city_path)
 		await process_frame
 		await process_frame
+		await AppFixture.wait_for_visuals(main)
 		var document: Sc2File = main.document_state.current_document
 
 		if (
@@ -510,6 +511,8 @@ func _test_regional_edits(main: CityApplication, loaded_city: CityState) -> Vect
 	var expected_signature: Array = main.static_render.call(
 		"static_signature_for_mode", CityViewMode.Mode.CITY, view_size
 	)
+	if main.render_caches.region_cache != null:
+		expected_signature.append(main.static_render.sprite_archive_for_view(view_size).get_instance_id())
 
 	if (
 		patch_command.command_type != "zone"

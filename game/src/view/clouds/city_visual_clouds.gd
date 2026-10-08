@@ -22,6 +22,7 @@ var field: Texture2D
 var parameters: Dictionary = {"cloud_enabled": false}
 var _initialized := false
 var _fog_enabled := false
+var _zoom := -1.0
 
 
 func _init(application: CityApplication) -> void:
@@ -35,6 +36,7 @@ func reset() -> void:
 	fog = 0.0
 	weather_clock = 0.0
 	_initialized = false
+	_zoom = -1.0
 
 
 func process(delta: float, phase_elapsed: float, active: bool, light: Color, darkness: float, weather_kind: int) -> void:
@@ -56,7 +58,9 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 	drift += WIND * maxf(phase_elapsed, 0.0) * speed
 	drift = Vector2(fposmod(drift.x, FIELD_SPAN), fposmod(drift.y, FIELD_SPAN))
 	var target := body_opacity(app.map_view.zoom_factor) if clouds_enabled else 0.0
-	opacity = move_toward(opacity, target, maxf(delta, 0.0) * 3.0) if _initialized else target
+	# A paused weather clock freezes drift, not the camera's cloud visibility.
+	opacity = move_toward(opacity, target, maxf(delta, 0.0) * 3.0) if _initialized and _zoom == app.map_view.zoom_factor else target
+	_zoom = app.map_view.zoom_factor
 	var city := app.document_state.city
 	var edge := city.map_size
 	var rotation := city.compass_rotation()

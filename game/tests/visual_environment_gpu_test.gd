@@ -207,7 +207,28 @@ func _check_night_glow(hdr: bool) -> void:
 			await RenderingServer.frame_post_draw
 			assert(viewport.get_texture().get_image().get_pixel(58, 48).is_equal_approx(marker_pixel), "Night glow covered weather or tool overlays")
 		marker.get_parent().remove_child(marker)
+	# Clouds can appear after the lights, and each artwork size adds a new
+	# receiver node. An opaque cloud patch must cover emission in SDR and HDR.
+	var cloud := ColorRect.new()
+	cloud.color = Color.TRANSPARENT
+	cloud.size = map.size
+	map.add_child(cloud)
+	app.visual_environment.clouds.layer = cloud
+	cloud.add_child(marker)
+	map.move_child(cloud, lighting.output.get_index())
+	for zoom in [0.25, 0.1, 0.25]:
+		map.zoom_factor = zoom
+		lighting.process(true, 1.0, options)
+		for frame in 4:
+			await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_pixel(64, 48).is_equal_approx(Color.GREEN),
+			"Night lights painted over cloud cover at zoom %s, HDR=%s" % [zoom, hdr])
+		assert(lighting.ground.get_index() < cloud.get_index())
+	cloud.remove_child(marker)
 	marker.free()
+	cloud.free()
+	app.visual_environment.clouds.layer = null
+	map.zoom_factor = 1.0
 	app.visual_environment.weather.layer.hide()
 	lighting.process(true, 1.0, options)
 	var cover := Image.create(16, 16, false, Image.FORMAT_RGBA8)

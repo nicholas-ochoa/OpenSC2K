@@ -15,6 +15,16 @@ var _vehicle_atlas := VEHICLE_ATLAS.get_image()
 var _diagonal_atlas := DIAGONAL_ATLAS.get_image()
 
 
+func prepare_frames() -> void:
+	for direction in 8:
+		for variant in VARIANTS:
+			for kind in 3:
+				sprite(false, variant, direction, 0, kind)
+		for variant in COLORS.size():
+			for phase in 2:
+				sprite(true, variant, direction, phase)
+
+
 func sprite(walking: bool, variant: int, direction: int, phase: int, vehicle_kind: int = Vehicle.CAR) -> Image:
 	var key := "%d:%d:%d:%d:%d" % [int(walking), variant, direction, phase if walking else 0, vehicle_kind]
 	if not images.has(key):

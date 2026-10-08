@@ -14,10 +14,12 @@ func _init(application: CityApplication) -> void:
 
 
 func process(delta: float) -> void:
-	app.visual_environment.process(delta)
-	app.city_life.process(delta)
-	app.disaster_effects.process(delta)
-	app.moving_sprites.process(delta)
+	var preparing := app.visual_preparation.process()
+	if not preparing:
+		app.visual_environment.process(delta)
+		app.city_life.process(delta)
+		app.disaster_effects.process(delta)
+		app.moving_sprites.process(delta)
 	app.new_city.poll_new_city_preview()
 	app.current_tool.update_network_preview()
 	app.camera_input.update_keyboard_camera(delta)
@@ -35,15 +37,16 @@ func process(delta: float) -> void:
 	if app.city_status_bar != null:
 		app.city_status_bar.update_report_rotation(delta)
 
-	app.static_render.poll_static_render()
-	app.static_render.start_pending_static_render()
+	if not preparing:
+		app.static_render.poll_static_render()
+		app.static_render.start_pending_static_render()
 	app.city_png_export.poll_export()
 
 	if app.simulation_state.speed_controller == null or app.document_state.city == null:
 		return
 
 	app.simulation_state.simulation_engine.midi_playback_active = app.effects_audio.music_playback_is_active()
-	var interaction_suspended := _simulation_suspended()
+	var interaction_suspended := preparing or _simulation_suspended()
 	var result: SimulationTickResult
 
 	if app.simulation_state.frame_simulation != null:

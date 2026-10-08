@@ -20,6 +20,8 @@ const MAX_PUBLISH_LOG := 512
 
 var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
+# A city preparation bank keeps complete region resources between camera moves.
+var resident := false
 # Shared with CityRegionScheduling; each cache owns its worker lifetime.
 var gpu_workers: Array[RegionWorker] = []
 var entries: Dictionary[Vector2i, CityRegionResult] = {}
@@ -68,6 +70,8 @@ var _viewport_valid := false
 var foreground_changes: Array[Rect2i] = []
 # the parts of `foreground_changes` where the static foreground silhouettes changed
 var occluder_changes: Array[Rect2i] = []
+# Actual silhouette publications, excluding mere camera visibility changes.
+var lighting_changes: Array[Rect2i] = []
 # regions that became visible since the last tick. occlusion reads only visible
 # regions, so a moving sprite cached beside the view lacks their silhouettes
 var _visibility_changes: Array[Rect2i] = []
@@ -179,7 +183,9 @@ func _keep_source_payloads(city: CityState) -> void:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk != null:
-			source_payloads[chunk_id] = chunk.decoded_payload
+			# Native tile setters can mutate borrowed payloads in place. Permanent
+			# banks need an owned before-image to detect later offscreen edits.
+			source_payloads[chunk_id] = chunk.decoded_payload.duplicate() if resident else chunk.decoded_payload
 
 
 func _region_keys(rects: Array[Rect2i]) -> Dictionary[Vector2i, bool]:
@@ -212,7 +218,7 @@ func _needs_reset(
 		_snapshot.map_size != city.map_size
 		or view_size != new_view
 		or mode != new_mode
-		or _snapshot.document.source_path != city.document.source_path
+		or (not resident and _snapshot.document.source_path != city.document.source_path)
 		or _snapshot.compass_rotation() != city.compass_rotation()
 		or _snapshot.visible_altitude_levels != city.visible_altitude_levels
 		or _visibility != visibility
@@ -233,12 +239,14 @@ func _trim_retained_regions() -> void:
 
 
 func tick() -> bool:
+	lighting_changes.clear()
 	foreground_changes.clear()
 	foreground_changes.append_array(_visibility_changes)
 	_visibility_changes.clear()
 
 	if _foreground_reset:
 		foreground_changes.append(Rect2i(Vector2i.ZERO, native_size * divisor))
+		lighting_changes.append(Rect2i(Vector2i.ZERO, native_size * divisor))
 		_foreground_reset = false
 
 	occluder_changes.assign(foreground_changes)
@@ -270,6 +278,8 @@ func tick() -> bool:
 				result.season_texture = ImageTexture.create_from_image(result.season_image)
 				result.season_image = null
 			result.generation = _job_generation
+			if resident and result.water != null:
+				result.water.upload()
 			publish_changes(entries.get(_job_key), result)
 			entries[_job_key] = result
 			completed_regions += 1
@@ -328,11 +338,13 @@ func publish_changes(before: CityRegionResult, after: CityRegionResult) -> void:
 
 	if before == null or changed.size() > MAX_OCCLUDER_CHANGES:
 		occluder_changes.append(region)
+		lighting_changes.append(region)
 
 		return
 
 	for rect in changed:
 		occluder_changes.append(Rect2i(rect.position * divisor, rect.size * divisor))
+		lighting_changes.append(Rect2i(rect.position * divisor, rect.size * divisor))
 
 
 # return the native bounds of the foreground commands that differ between two results of one region
