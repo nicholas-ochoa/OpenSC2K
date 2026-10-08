@@ -15,8 +15,8 @@ const SECTIONS := [
 		["season_enabled", "season_mode", "season_fixed", "season_seconds", "season_transition", "season_lut_strength"]],
 	["Weather & Clouds", "Weather and clouds have separate switches. Fog is part of Clouds. Fixed weather can show snow in any season.",
 		["weather_enabled", "weather_mode", "weather_fixed", "weather_seconds", "weather_transition", "weather_strength", "weather_lut_strength", "cloud_enabled", "cloud_mode", "cloud_density", "cloud_shadow_strength", "cloud_speed"]],
-	["Environment", "Water reflections, waves, coastal surf and underwater terrain. Seasonal water colors require Seasons.",
-		["water_reflections", "water_waves_enabled", "water_topography", "season_water_strength"]],
+	["Environment", "Forests, subtle terrain variation and water appearance. Seasonal water colors require Seasons.",
+		["nature_forests_enabled", "nature_terrain_enabled", "water_reflections", "water_waves_enabled", "water_topography", "season_water_strength"]],
 	["Traffic & Movement", "Decorative cars and pedestrians, plus smoother movement for existing vehicles.",
 		["life_cars_enabled", "life_car_amount", "life_people_enabled", "life_people_amount", "traffic_vehicles_enabled", "traffic_shadows_enabled"]],
 	["Disaster Effects", "Extra effects for disasters and demolition. These settings do not change disaster frequency, damage or emergency response.",
@@ -44,6 +44,8 @@ const LABELS := {
 	"lut_path": "Custom color filter (LUT PNG)", "brightmap_folder": "Custom light masks (brightmaps)",
 }
 const HINTS := {
+	"nature_forests_enabled": "Varied tree shapes and connected forest edges follow the existing tree density. Empty ground and clearings stay open. Does not change tree counts or the simulation.",
+	"nature_terrain_enabled": "Quiet, continuous variations across natural ground. Terrain height, water and zoning markings stay unchanged.",
 	"disaster_blending": "Blend animation frames for power warnings, fire, toxic clouds, floods, tornadoes, smoke, explosion clouds and demolition dust. Fire also fades in and out. Disaster blending requires Enhanced disaster visuals. Power warnings always stay fullbright. The initial explosion flash stays immediate.",
 	"night_daytime_enabled": "Keep building brightmaps, glow, street lamps, junction signals and vehicle lights on at any hour, even with the day-night cycle off. Daylight colors and individual light strengths stay unchanged.",
 	"night_ambient": "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate.",

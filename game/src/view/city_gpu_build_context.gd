@@ -121,10 +121,18 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 		for id: int in sprites.entries_by_id:
 			if id >= configuration.sprite_base and id < configuration.sprite_base + 500:
 				artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
+		if (sprites.visual_nature_enabled or sprites.visual_terrain_enabled) and mode == CityViewMode.Mode.CITY:
+			for id: int in sprites.visual_nature:
+				if (id % CityNatureArtwork.SPAN) / 500 == view:
+					if (id % 500 == 256 and not sprites.visual_terrain_enabled) or (id % 500 != 256 and not sprites.visual_nature_enabled):
+						continue
+					artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
 
 		var request := _snapshot(city)
 		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
 			"individual_traffic": int(sprites.visual_city_life_traffic and not special_overlays),
+			"natural_forests": int(sprites.visual_nature_enabled and mode == CityViewMode.Mode.CITY),
+			"natural_terrain": int(sprites.visual_terrain_enabled and mode == CityViewMode.Mode.CITY),
 			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains), "tunnels": int(tunnels),
 			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge,
 			"atlas": int(pack_atlas), "special_overlays": int(special_overlays), "animation_phase": animation_phase,

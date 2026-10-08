@@ -35,6 +35,7 @@ func configure() -> void:
 	if profiles.atlases.is_empty() or _options.get("lut_folder", "") != options.lut_folder:
 		profiles.reload(options.lut_folder)
 	_configure_water(options)
+	_configure_nature(options)
 	_options = options.duplicate()
 	process(0.0)
 
@@ -103,8 +104,12 @@ func reload_brightmaps(refresh := true) -> void:
 			if app.asset_state.palette != null:
 				CityDispatchLights.prepare(archive, app.asset_state.palette)
 				CitySeasonColors.prepare(archive, app.asset_state.palette)
+				if app.preferences.visual_enhancements.nature_forests_enabled or app.preferences.visual_enhancements.nature_terrain_enabled:
+					CityNatureArtwork.prepare(archive, app.asset_state.palette)
+					archive.visual_seasons.merge(archive.visual_nature_masks)
 			archive.visual_revision += 1
 	_configure_water(app.preferences.visual_enhancements, refresh)
+	_configure_nature(app.preferences.visual_enhancements, refresh)
 	if not refresh:
 		return
 	if app.map_view != null:
@@ -118,6 +123,34 @@ func export_brightmaps() -> void:
 	var folder: String = app.preferences.visual_enhancements.brightmap_folder
 	var error := CityBrightmaps.export_originals(app.asset_state.asset_source.assets, folder)
 	app.assets.show_graphics_source_error(error if not error.is_empty() else "Original PNGs and transparent Brightmap templates exported to:\n" + folder, "Visual Enhancements")
+
+
+func _configure_nature(options: Dictionary, refresh := true) -> void:
+	var changed := false
+	for archive: Sc2SpriteArchive in [app.asset_state.large_sprites, app.asset_state.small_medium_sprites]:
+		if archive == null or app.asset_state.palette == null:
+			continue
+		if options.nature_forests_enabled or options.nature_terrain_enabled:
+			CityNatureArtwork.prepare(archive, app.asset_state.palette)
+			archive.visual_seasons.merge(archive.visual_nature_masks)
+		if archive.visual_nature_enabled != options.nature_forests_enabled or archive.visual_terrain_enabled != options.nature_terrain_enabled:
+			archive.visual_nature_enabled = options.nature_forests_enabled
+			archive.visual_terrain_enabled = options.nature_terrain_enabled
+			archive.visual_revision += 1
+			changed = true
+	if changed and refresh and app.document_state.city != null:
+		app.static_render.invalidate_rendered_city()
+		app.map_render.refresh_map()
+
+
+func _nature_projection() -> Basis:
+	var city := app.document_state.city
+	if city == null:
+		return Basis.IDENTITY
+	var scale := app.map_view.camera._view_scale()
+	var offset := app.map_view.camera._draw_offset(scale)
+	var canvas := app.map_view.get_global_transform() * Transform2D(Vector2(scale, 0), Vector2(0, scale), offset)
+	return CityVisualClouds.shader_basis(CityVisualClouds.source_to_grid(city.map_size, city.compass_rotation()) * canvas.affine_inverse())
 
 
 func process(delta: float) -> void:
@@ -173,6 +206,9 @@ func process(delta: float) -> void:
 	clouds.process(delta, weather_delta * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
 	weather.set_cloud_cover(clouds.precipitation_readiness)
 	var parameters := {
+		"nature_terrain_enabled": active and options.nature_terrain_enabled,
+		"nature_ground": CityNatureArtwork.ground_texture(),
+		"nature_canvas_to_grid": _nature_projection(),
 		"water_enabled": active and VisualEnhancementOptions.water_pass_enabled(options),
 		"water_reflections_enabled": active and options.water_reflections == 1,
 		"water_topography": options.water_topography,
