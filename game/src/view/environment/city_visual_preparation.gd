@@ -19,6 +19,7 @@ var total := 0
 var failure := ""
 var progress := 0.0
 var lighting_started := false
+var preparing_lights: Array[Vector2i] = []
 var light_rescan: Dictionary[int, bool] = {}
 
 
@@ -38,6 +39,7 @@ func reset() -> void:
 	banks.clear()
 	archives.clear()
 	light_rescan.clear()
+	preparing_lights.clear()
 	layout.clear()
 	if app.city_dialogs != null and app.city_dialogs.visual_preparation_progress != null:
 		app.city_dialogs.visual_preparation_progress.hide()
@@ -171,7 +173,9 @@ func _prepare_step() -> void:
 		return
 	var fraction := 0.8 * float(cache.entries.size()) / maxi(cache.wanted.size(), 1)
 	var detail := "%s graphics: %d / %d areas" % [["Small", "Medium", "Large"][preparing_view], cache.entries.size(), cache.wanted.size()]
-	if cache.prefetch_ready():
+	# Ongoing simulation repaints must not starve initial preparation. Every
+	# area must exist; newer generations continue through the normal updater.
+	if cache.covered():
 		if stage % 2 == 0:
 			var lighting := app.visual_environment.night_lighting
 			lighting._select_ground(preparing_view)
@@ -183,12 +187,18 @@ func _prepare_step() -> void:
 				ground.sync(app, 0.0, 0.0, true, 1000)
 				ground.bounds = ground._city_bounds(app.document_state.city)
 				ground._collect(app.document_state.city)
+				preparing_lights.assign(ground.visible_tiles)
 				ground.bounds = Rect2i()
 				lighting_started = true
 			ground.sync(app, 0.0, 0.0, true, 1000)
-			fraction = 0.8 + 0.2 * float(ground.cache.size()) / maxi(ground.cache.size() + ground.pending.size(), 1)
-			detail = "%s lighting: %d streets remaining" % [["Small", "Medium", "Large"][preparing_view], ground.pending.size()]
-			if not ground.pending.is_empty():
+			var built_lights := 0
+			for tile in preparing_lights:
+				built_lights += int(ground.cache.has(tile))
+			fraction = 0.8 + 0.2 * float(built_lights) / maxi(preparing_lights.size(), 1)
+			detail = "%s lighting: %d streets remaining" % [["Small", "Medium", "Large"][preparing_view], preparing_lights.size() - built_lights]
+			# Dirty existing lights may keep arriving while the city is running.
+			# Their refresh must not restart or hold up initial cache completion.
+			if built_lights < preparing_lights.size():
 				_progress((stage + fraction) / VARIANTS, detail)
 				return
 		cache.update_viewport(app.map_view.visible_source_rect())
@@ -198,6 +208,7 @@ func _prepare_step() -> void:
 		stage += 1
 		completed = stage
 		lighting_started = false
+		preparing_lights.clear()
 		fraction = 0.0
 		if stage == VARIANTS:
 			ready = true
