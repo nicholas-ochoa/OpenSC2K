@@ -5,6 +5,7 @@ const State = preload("res://tests/support/document_state.gd")
 
 func _initialize() -> void:
 	_check_roads()
+	_check_fixture_spacing()
 	_check_highways()
 	_check_joins_and_grades()
 	_check_artwork()
@@ -203,3 +204,31 @@ func _check_joins_and_grades() -> void:
 			var b := CityLifePaths.point(city, tile, enter, exit, 1, false)
 			assert(CityLifePaths.point(city, tile, enter, exit, 0.25, false).is_equal_approx(a.lerp(b, 0.25)), "Graded diagonal is not linear")
 			_check_patch(city, tile, enter, CityLifeLights.new())
+
+
+func _check_fixture_spacing() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	for highway in [false, true]:
+		for rotation in 4:
+			for phase in 2:
+				for spacing in [1, 2, 3]:
+					var count := 0
+					var previous := -1
+					for i in 48:
+						var offset := Vector2i((i + 1) / 2, i / 2)
+						for turn in rotation:
+							offset = Vector2i(-offset.y, offset.x)
+						var tile := Vector2i(64 + phase, 64) + offset
+						var first := BuildingTileIds.HIGHWAY_CURVE_1 if highway else BuildingTileIds.ROAD_CURVE_1
+						city.set_building_id(tile.x, tile.y, first + (rotation + (0 if i % 2 == 0 else 2)) % 4)
+						# The occupied half of a highway curve has one carriageway.
+						city.set_building_corners(tile.x, tile.y, [0x10, 0x20, 0x40, 0x80][(rotation + (0 if i % 2 == 0 else 2)) % 4])
+						var layout := CityNightFixtures.street_layout(city, tile, spacing)
+						if layout.is_empty():
+							continue
+						if previous >= 0:
+							assert(i - previous == spacing * 2, "Diagonal lamp intervals changed along the road")
+						previous = i
+						count += 1
+						assert(layout == CityNightFixtures.street_layout(city, tile, spacing))
+					assert(count == 48 / (2 * spacing), "Diagonal lamp grid is too dense or direction-dependent")

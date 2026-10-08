@@ -19,11 +19,20 @@ static func street_layout(city: CityState, tile: Vector2i, spacing: int) -> Arra
 	var ports := CityLifePaths.ports(city, tile)
 	if id >= TILES.ROAD_JUNCTION_1 and id <= TILES.ROAD_CROSSROADS:
 		return [{"offset": Vector2(0.34, 0.34), "enter": 0}, {"offset": Vector2(-0.34, -0.34), "enter": 0}]
-	if posmod(tile.x + tile.y, maxi(1, spacing)) != 0:
+	var diagonal := CityLifePaths.diagonal(city, tile)
+	var coordinate := tile.x + tile.y
+	var period := maxi(1, spacing)
+	if diagonal:
+		# A diagonal crosses two alternating half-tiles per full street step.
+		# Follow its longitudinal axis, including the x-y diagonals.
+		var rotation := id - (TILES.HIGHWAY_CURVE_1 if highway else TILES.ROAD_CURVE_1)
+		coordinate = tile.x + tile.y if rotation % 2 == 0 else tile.x - tile.y
+		period *= 2
+	if posmod(coordinate, period) != 0:
 		return []
 	if id in [TILES.HIGHWAY_ROAD_CROSSING_1, TILES.HIGHWAY_ROAD_CROSSING_2]:
 		return [{"offset": Vector2(0.32, 0), "enter": 0}, {"offset": Vector2(0, 0.32), "enter": 1}]
-	if CityLifePaths.diagonal(city, tile):
+	if diagonal:
 		var result: Array[Dictionary] = []
 		for enter in 4:
 			if not ports & (1 << enter):
