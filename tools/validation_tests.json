@@ -1,5 +1,11 @@
 [
   {
+    "id": "graded_network_lights_test",
+    "script": "tests/graded_network_lights_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "diagonal_network_test",
     "script": "tests/diagonal_network_test.gd",
     "domain": "rendering",

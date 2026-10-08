@@ -6,7 +6,8 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const DIRECTIONS := [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
 const DIAGONAL_FORWARD := [Vector2(1, -1) * 0.7071067811865476, Vector2(1, 1) * 0.7071067811865476,
 	Vector2(-1, 1) * 0.7071067811865476, Vector2(-1, -1) * 0.7071067811865476]
-const ROAD_PORTS := [5, 10, 5, 10, 5, 10, 3, 6, 12, 9, 11, 7, 14, 13, 15]
+# Slope artwork starts on the east/west axis; flat-road artwork starts north/south.
+const ROAD_PORTS := [5, 10, 10, 5, 10, 5, 3, 6, 12, 9, 11, 7, 14, 13, 15]
 const EDGE_CORNERS := [[0, 1], [1, 2], [2, 3], [3, 0]]
 
 
