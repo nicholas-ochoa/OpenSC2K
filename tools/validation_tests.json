@@ -84,6 +84,13 @@
     "requires": ["ext/graphics/pack.json", "ext/data/pack.json"]
   },
   {
+    "id": "street_light_fade_gpu_test",
+    "script": "tests/street_light_fade_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
     "id": "fog_height_gpu_test",
     "script": "tests/fog_height_gpu_test.gd",
     "domain": "rendering",

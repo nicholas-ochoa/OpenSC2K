@@ -5,6 +5,7 @@ extends Node2D
 @warning_ignore_start("integer_division")
 
 const SHADER := preload("res://src/view/environment/night_ground.gdshader")
+const FIXTURE_SHADER := preload("res://src/view/environment/night_fixture.gdshader")
 const PROFILES := "res://src/view/environment/night_light_profiles.json"
 const MAX_CACHED := 32768
 const MAX_TEXTURE_BYTES := 96 * 1024 * 1024
@@ -35,6 +36,9 @@ var signal_tiles: Array[Vector2i] = []
 var clock := 0.0
 var resident := false
 var prepare_entire_city := false
+var fades: CityLightFade
+var fade_edge := 128
+var fade_rotation := 0
 
 
 func _init() -> void:
@@ -46,9 +50,13 @@ func _init() -> void:
 	add_child(masker)
 	masker.hide()
 	fixtures.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var fixture_material := ShaderMaterial.new()
+	fixture_material.shader = FIXTURE_SHADER
+	fixtures.material = fixture_material
 	add_child(fixtures)
 	fixtures.draw.connect(_draw_fixtures)
 	fixtures.add_child(signals)
+	signals.use_parent_material = true
 	signals.draw.connect(_draw_signals)
 
 
@@ -87,6 +95,9 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 	fixtures.modulate.a = smoothstep(0.0, 0.25, strength)
 	var map := app.map_view
 	var city := app.document_state.city
+	fade_edge = city.map_size
+	fade_rotation = city.compass_rotation()
+	sync_fade_clock()
 	# Source publications and traffic repaints do not change world coordinates.
 	# visual_revision also changes when decorative traffic switches at 25/50%.
 	# It must not discard completed receivers. Foreground publications refresh
@@ -402,7 +413,7 @@ func _build(app: CityApplication, tile: Vector2i) -> Dictionary:
 func _draw() -> void:
 	for tile in visible_tiles:
 		if cache.has(tile):
-			draw_texture(cache[tile].texture, cache[tile].origin)
+			draw_texture(cache[tile].texture, cache[tile].origin, _fade_color(tile))
 
 
 func _draw_fixtures() -> void:
@@ -410,7 +421,7 @@ func _draw_fixtures() -> void:
 		if not cache.has(tile):
 			continue
 		var entry: Dictionary = cache[tile]
-		fixtures.draw_texture(entry.fixtures, entry.origin)
+		fixtures.draw_texture(entry.fixtures, entry.origin, _fade_color(tile))
 
 
 func _refresh_signals() -> void:
@@ -425,4 +436,16 @@ func _draw_signals() -> void:
 	for tile in signal_tiles:
 		for signal_light: Dictionary in cache[tile].signals:
 			var lens := CityNightFixtures.signal_lens(tile, signal_light.axis, clock)
-			signals.draw_texture(signal_light.lenses[lens], signal_light.origin)
+			signals.draw_texture(signal_light.lenses[lens], signal_light.origin, _fade_color(tile))
+
+
+func sync_fade_clock() -> void:
+	for shader: ShaderMaterial in [material, fixtures.material]:
+		shader.set_shader_parameter("fade_clock", fades.clock if fades != null else -1.0)
+		shader.set_shader_parameter("fade_duration", CityLightFade.DURATION)
+
+
+func _fade_color(tile: Vector2i) -> Color:
+	# Commands retain their timestamps. Advancing the fade only updates two
+	# uniforms, with no texture rebuild or per-frame redraw of every street.
+	return Color(fades.birth(tile, fade_edge, fade_rotation), 1, 1, 1) if fades != null else Color.WHITE

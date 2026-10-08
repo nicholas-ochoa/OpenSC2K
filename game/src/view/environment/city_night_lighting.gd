@@ -18,6 +18,7 @@ var copies: Array[CanvasItem] = []
 var moving: CityDynamicSpriteCanvas
 var life: LifeEmission
 var moving_revision := -1
+var fades := CityLightFade.new()
 
 
 func _init(application: CityApplication) -> void:
@@ -25,6 +26,7 @@ func _init(application: CityApplication) -> void:
 
 
 func reset() -> void:
+	fades.reset()
 	source = null
 	moving_revision = -1
 	for receiver in ground_views.values():
@@ -32,7 +34,8 @@ func reset() -> void:
 		receiver.clock = 0.0
 
 
-func process(active: bool, night: float, options: Dictionary, elapsed := 0.0) -> void:
+func process(active: bool, night: float, options: Dictionary, elapsed := 0.0, presentation_elapsed := 0.0) -> void:
+	fades.advance(presentation_elapsed)
 	var enabled := active and night > 0.001 and app.map_view.city_source != null
 	var glow := enabled and float(options.night_glow) > 0.0
 	var prepare := active and app.map_view.city_source != null and float(options.night_ground) > 0.0
@@ -86,6 +89,7 @@ func _select_ground(view_size: int) -> void:
 	# finished receivers when zoom switches to another size, rather than reset.
 	if not ground_views.has(view_size):
 		var receiver := CityNightGround.new()
+		receiver.fades = fades
 		receiver.texture_budget = int(CityNightGround.MAX_TEXTURE_BYTES / 3.0)
 		app.map_view.add_child(receiver)
 		ground_views[view_size] = receiver
