@@ -13,6 +13,7 @@ func _run() -> void:
 	dialog.popup_centered()
 	dialog.tabs.current_tab = dialog.visual_tab.get_index()
 	var tab := dialog.visual_tab
+	_check_cloud_settings(tab)
 	var defaults := VisualEnhancementOptions.normalize({})
 	var custom := VisualEnhancementOptions.normalize({"day_mode": 1, "day_hour": 7.5,
 		"night_light_strength": 65.0, "weather_mode": 2, "weather_fixed": 6,
@@ -68,7 +69,7 @@ func _run() -> void:
 	tab._reset_all()
 	(tab.controls.cloud_enabled as CheckBox).button_pressed = false
 	assert(tab.undo_button.disabled, "Undo must not overwrite later edits")
-	assert((tab.dependency_hints.cloud_density as Label).visible)
+	assert((tab.dependency_hints.cloud_mode as Label).visible)
 	assert(not (tab.dependency_hints.weather_mode as Label).visible)
 	(tab.controls.season_enabled as CheckBox).button_pressed = false
 	assert((tab.dependency_hints.season_water_strength as Label).visible)
@@ -100,3 +101,48 @@ func _run() -> void:
 	await process_frame
 	print("PASS: visual settings reset scope, undo, time input, dependencies, single notifications and session navigation")
 	quit()
+
+
+func _check_cloud_settings(tab: VisualEnhancementsTab) -> void:
+	for enabled in [false, true]:
+		var migrated := VisualEnhancementOptions.normalize({"cloud_enabled": enabled, "weather_fog_enabled": not enabled})
+		assert(migrated.cloud_enabled == enabled and migrated.cloud_mode == 0)
+		assert(not migrated.has("weather_fog_enabled"), "Retired fog switch must not survive normalization")
+	assert(VisualEnhancementOptions.normalize({"cloud_mode": -1}).cloud_mode == 0)
+	assert(VisualEnhancementOptions.normalize({"cloud_mode": 9}).cloud_mode == 6)
+	assert(VisualEnhancementOptions.normalize({"cloud_mode": "Fog"}).cloud_mode == 0)
+	assert(not tab.controls.has("weather_fog_enabled"))
+	var choice := tab.controls.cloud_mode as OptionButton
+	assert(choice.item_count == 7)
+	var notifications := [0]
+	var count_change := func() -> void: notifications[0] += 1
+	tab.changed.connect(count_change)
+	for mode in range(7):
+		tab.show_values({"cloud_mode": (mode + 1) % 7, "day_hour": 7.5})
+		notifications[0] = 0
+		choice.select(mode)
+		choice.item_selected.emit(mode)
+		var selected := tab.selected_values()
+		assert(selected.cloud_mode == mode and notifications[0] == 1)
+		tab.show_values(selected)
+		assert(choice.selected == mode, "Cloud selection did not survive reopening")
+		(tab.controls.weather_enabled as CheckBox).button_pressed = false
+		assert(not choice.disabled and tab.selected_values().cloud_mode == mode)
+		assert((tab.dependency_hints.cloud_mode as Label).visible == (mode == 0))
+		(tab.controls.cloud_enabled as CheckBox).button_pressed = false
+		assert(choice.disabled and (tab.dependency_hints.cloud_mode as Label).visible)
+		for key in ["cloud_density", "cloud_shadow_strength", "cloud_speed"]:
+			assert(not (tab.controls[key] as SpinBox).editable)
+		(tab.controls.cloud_enabled as CheckBox).button_pressed = true
+		assert(not choice.disabled and tab.selected_values().cloud_mode == mode)
+		for key in ["cloud_density", "cloud_shadow_strength", "cloud_speed"]:
+			assert((tab.controls[key] as SpinBox).editable)
+	(tab.controls.weather_enabled as CheckBox).button_pressed = true
+	assert((tab.dependency_hints.cloud_mode as Label).visible)
+	tab.select_category(3)
+	var before_reset := tab.selected_values()
+	tab._reset_category()
+	assert(tab.selected_values().cloud_mode == 0 and tab.selected_values().day_hour == 7.5)
+	tab._undo_action()
+	assert(tab.selected_values() == before_reset)
+	tab.changed.disconnect(count_change)

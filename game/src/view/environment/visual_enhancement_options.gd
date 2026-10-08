@@ -14,10 +14,11 @@ const FIELDS := [
 	["water_reflections", "Water reflections", "choice", 1, ["Off", "Subtle"]],
 	["water_topography", "Underwater terrain", "bool", true],
 	["water_waves_enabled", "Waves and coastal surf", "bool", true],
-	["cloud_enabled", "Clouds and cloud shadows", "bool", true],
-	["cloud_density", "Cloud density", "number", 0.4, 0.0, 1.0, 0.05],
+	["cloud_enabled", "Clouds and fog", "bool", true],
+	["cloud_mode", "Cloud type", "choice", 0, ["Automatic (weather)", "Cumulus", "Stratus", "Altostratus", "Cirrus", "Cirrocumulus", "Fog"]],
+	["cloud_density", "Cloud and fog coverage", "number", 0.4, 0.0, 1.0, 0.05],
 	["cloud_shadow_strength", "Cloud shadow strength", "number", 0.4, 0.0, 0.5, 0.02],
-	["cloud_speed", "Cloud movement speed", "number", 1.0, 0.0, 3.0, 0.1],
+	["cloud_speed", "Cloud and fog movement", "number", 1.0, 0.0, 3.0, 0.1],
 	["life_cars_enabled", "Individual cars", "bool", true],
 	["life_car_amount", "Car amount", "number", 1.0, 0.25, 2.0, 0.05],
 	["life_people_enabled", "Pedestrians", "bool", true],
@@ -49,7 +50,6 @@ const FIELDS := [
 	["season_lut_strength", "Season LUT strength", "number", 0.5, 0.0, 1.0, 0.05],
 	["season_water_strength", "Seasonal water color strength", "number", 0.35, 0.0, 1.0, 0.05],
 	["weather_enabled", "Weather", "bool", true],
-	["weather_fog_enabled", "Fog", "bool", true],
 	["weather_mode", "Weather source", "choice", 0, ["Game weather", "Visual automation", "Fixed weather"]],
 	["weather_fixed", "Fixed weather", "choice", 0, ["Sunny", "Light rain", "Heavy rain", "Rain and thunderstorm", "Dry thunderstorm", "Light snow", "Heavy snow"]],
 	["weather_seconds", "Weather interval (seconds at Turtle)", "number", 180.0, 30.0, 3600.0, 15.0],
@@ -61,6 +61,8 @@ const FIELDS := [
 
 static func normalize(source: Variant) -> Dictionary:
 	var input: Dictionary = source if source is Dictionary else {}
+	# The retired weather_fog_enabled flag is ignored. cloud_enabled remains
+	# authoritative, so migration never re-enables clouds the player disabled.
 	var result := {}
 	for field in FIELDS:
 		var value: Variant = input.get(field[0], field[3])
