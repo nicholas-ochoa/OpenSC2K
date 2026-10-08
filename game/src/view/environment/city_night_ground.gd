@@ -174,7 +174,7 @@ func _update_tiles(city: CityState, changed: Dictionary[Vector2i, bool]) -> void
 			visible_keys.erase(tile)
 		if has_fixture and (resident or in_view):
 			last_used[tile] = collection
-			if not cache.has(tile):
+			if not cache.has(tile) or dirty.has(tile):
 				_enqueue(tile)
 	queue_redraw()
 	fixtures.queue_redraw()
