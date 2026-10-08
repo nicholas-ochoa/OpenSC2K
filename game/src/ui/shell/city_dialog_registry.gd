@@ -98,8 +98,8 @@ func _create_file_dialogs() -> void:
 	png_export_progress = ProgressOverlayView.instantiate()
 	_register(png_export_progress, "Files", Modality.BLOCKING)
 	visual_preparation_progress = ProgressOverlayView.instantiate()
-	_register(visual_preparation_progress, "Files", Modality.BLOCKING)
-	(visual_preparation_progress.get_node("Shade") as ColorRect).color = Color("202831")
+	_register(visual_preparation_progress, "Files", Modality.MODELESS)
+	visual_preparation_progress.use_bottom_strip()
 
 
 func _create_tool_dialogs() -> void:

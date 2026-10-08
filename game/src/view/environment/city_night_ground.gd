@@ -76,7 +76,7 @@ func reset() -> void:
 	signals.queue_redraw()
 
 
-func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := false) -> void:
+func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := false, budget_usec := 4000) -> void:
 	visible = strength > 0.001 and app.view_state.surface_visibility.networks and app.view_state.surface_visibility.buildings
 	if not visible and not prepare:
 		return
@@ -139,7 +139,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 			_forget_helpers(tile)
 			built += 1
 		dirty.erase(tile)
-		if Time.get_ticks_usec() - started > (20000 if prepare_entire_city else 4000):
+		if Time.get_ticks_usec() - started > budget_usec:
 			break
 	if cursor > 0:
 		pending = pending.slice(cursor)

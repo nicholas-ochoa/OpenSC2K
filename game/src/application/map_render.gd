@@ -19,6 +19,8 @@ func _init(application: CityApplication) -> void:
 
 
 func refresh_map(force := true) -> void:
+	if app.visual_preparation.busy:
+		app.visual_preparation.refresh()
 	if app.city_status_bar != null:
 		app.city_status_bar.set_compass(app.document_state.city.compass_rotation() if app.document_state.city != null else -1)
 

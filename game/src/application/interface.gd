@@ -92,6 +92,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_dialogs = CityDialogsView.new(original_assets)
 	app.city_dialogs.name = "CityDialogs"
 	app.add_child(app.city_dialogs)
+	app.city_dialogs.visual_preparation_progress.avoid_footer(app.city_status_bar)
 
 	app.city_dialogs.city_open_dialog.file_selected.connect(app.city_files.load_city)
 	app.city_dialogs.city_save_dialog.file_selected.connect(app.city_files.on_save_path_selected)

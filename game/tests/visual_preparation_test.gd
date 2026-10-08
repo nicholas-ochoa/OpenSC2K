@@ -23,23 +23,46 @@ func _run() -> void:
 	main.preferences.visual_enhancements = VisualEnhancementOptions.normalize({"day_mode": 1, "day_hour": 0.0})
 	main.visual_environment.configure()
 	var city := main.document_state.city
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before := DocumentState.capture(city.document)
 	var engine := main.simulation_state.simulation_engine
 	var random_before := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
 	var prepare := main.visual_preparation
-	assert(prepare.process())
-	assert(prepare.busy and main.frame._simulation_suspended())
-	assert(not main.camera_input.camera_keys_allowed())
+	assert(not prepare.process())
+	assert(prepare.busy and not main.frame._simulation_suspended())
+	assert(main.city_dialogs.visual_preparation_progress.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	for window_size in [Vector2i(1280, 800), Vector2i(1024, 720)]:
+		root.size = window_size
+		await process_frame
+		await process_frame
+		var panel := main.city_dialogs.visual_preparation_progress.get_node("Center/Panel") as Control
+		assert(panel.get_global_rect().end.y <= main.city_status_bar.get_global_rect().position.y,
+			"Background progress covers the status bar")
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
+	var edited_during_load := false
 	var progress := 0.0
 	var started := Time.get_ticks_msec()
 	while not prepare.ready:
+		if prepare.stage > 0 and not edited_during_load:
+			edited_during_load = true
+			city.set_building_id(12, 17, BuildingTileIds.EMPTY)
+			before = DocumentState.capture(city.document)
+			var retained := prepare.banks[0]
+			for zoom in [0.25, 0.5]:
+				main.map_view.zoom_factor = zoom
+				main.camera_input.on_city_zoom_changed(roundi(zoom * 100))
+			main.map_render.refresh_map(false)
+			assert(prepare.busy and prepare.banks[0] == retained, "Zoom restarted background preparation")
 		main.frame.process(0.016)
+		assert(prepare.preparing_view == -1 and prepare.preparing_traffic == -1, "Background context leaked into the visible renderer")
 		assert(prepare.failure.is_empty())
 		var value := main.city_dialogs.visual_preparation_progress.bar.value
 		assert(value >= progress, "Preparation progress moved backwards")
 		progress = value
 		assert(Time.get_ticks_msec() - started < 60000, "City preparation did not finish")
 		await process_frame
+	assert(edited_during_load)
+	await _settle(main)
 	assert(not prepare.busy and not main.city_dialogs.visual_preparation_progress.visible)
 	assert(DocumentState.capture(city.document) == before, "Precache advanced or edited the city")
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
@@ -97,6 +120,12 @@ func _run() -> void:
 		assert(ground.cache[Vector2i(64, 64)].texture.get_image().is_invisible(), "Removed street retained its light")
 		assert(ground.cache.has(added) and not ground.cache[added].texture.get_image().is_invisible(), "New offscreen street was not prepared")
 		assert(is_same(snapshots[view][Vector2i(12, 16)], ground.cache[Vector2i(12, 16)]), "Local edit rebuilt a distant light")
+	# A layout change after completion must attach a live renderer immediately.
+	main.view_state.surface_visibility.trees = not main.view_state.surface_visibility.trees
+	prepare.process()
+	assert(prepare.busy and not main.frame._simulation_suspended())
+	assert(main.render_caches.region_cache != null or main.static_render_state.pending
+		or main.static_render_state.task != null or main.render_caches.static_city_image != null)
 	# Teardown cancels in-flight workers; a replacement document cannot inherit banks.
 	var old_banks := prepare.banks.duplicate()
 	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
@@ -104,12 +133,16 @@ func _run() -> void:
 	for cache in old_banks:
 		assert(cache.entries.is_empty() and cache.gpu_workers.is_empty())
 	prepare.process()
-	prepare.process()
+	main.frame.select_speed(GameSpeedController.Speed.CHEETAH)
+	var ticks := main.palette_clock.cycle_ticks
+	main.frame.process(0.25)
+	assert(prepare.busy and not main.frame._simulation_suspended())
+	assert(main.palette_clock.cycle_ticks > ticks, "Background preload froze the game frame")
 	prepare.reset()
 	assert(not prepare.busy and prepare.preparing_view == -1 and prepare.archives.is_empty())
 	main.queue_free()
 	await process_frame
-	print("PASS: full-city visual preparation, all zoom variants, cloud order, local edits, pause and cancellation")
+	print("PASS: full-city visual preparation, all zoom variants, cloud order, edits and zoom during background loading, playable frames and cancellation")
 	quit()
 
 
