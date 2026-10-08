@@ -570,9 +570,18 @@ func _check_light_graphics_caches(main: CityApplication) -> void:
 	main.render_caches.region_cache = null
 	main.preferences.zoom_graphics = [1, 2, 2, 2, 2, 2]
 	var snapshots := {}
+	var old_large := main.asset_state.large_sprites
+	var old_small := main.asset_state.small_medium_sprites
+	main.asset_state.large_sprites = Sc2SpriteArchive.new()
+	main.asset_state.small_medium_sprites = Sc2SpriteArchive.new()
+	var old_traffic := main.asset_state.large_sprites.visual_city_life_traffic
 	for zoom in [0.5, 0.25, 0.5, 1.0, 2.0, 0.25, 0.5]:
 		main.map_view.zoom_factor = zoom
 		main.map_view.center_on_tile(tile)
+		# The real frame switches decorative traffic at 50%, increasing both
+		# archive revisions. A bare lighting call misses this reset regression.
+		main.city_life._sync_traffic(zoom >= 0.5)
+		main.render_caches.region_cache = null
 		var view := main.static_render.city_view_size()
 		assert(view == (1 if zoom == 0.25 else 2))
 		lights.process(true, 0.45, options)
@@ -583,6 +592,9 @@ func _check_light_graphics_caches(main: CityApplication) -> void:
 				lights.process(true, 0.45, options)
 			assert(lights.ground.cache.has(tile))
 			snapshots[view] = lights.ground.cache[tile]
+	main.city_life._sync_traffic(old_traffic)
+	main.asset_state.large_sprites = old_large
+	main.asset_state.small_medium_sprites = old_small
 	main.map_view.city_source = old_source
 	main.preferences.zoom_graphics = old_sizes
 	main.map_view.zoom_factor = old_zoom

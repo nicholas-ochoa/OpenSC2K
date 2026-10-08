@@ -86,10 +86,13 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 	var map := app.map_view
 	var city := app.document_state.city
 	# Source publications and traffic repaints do not change world coordinates.
+	# visual_revision also changes when decorative traffic switches at 25/50%.
+	# It must not discard completed receivers. Foreground publications refresh
+	# affected masks in place; replacement artwork still changes archive identity.
 	var archive := app.static_render.sprite_archive_for_view(app.static_render.city_view_size())
 	var revision := [city.document.get_instance_id(), city.map_size,
 		app.static_render.city_view_size(), city.compass_rotation(), city.visible_altitude_levels,
-		archive.get_instance_id() if archive != null else 0, archive.visual_revision if archive != null else 0]
+		archive.get_instance_id() if archive != null else 0]
 	if signature != revision:
 		reset()
 		signature = revision
