@@ -228,7 +228,7 @@ impl Builder {
             let Some(i) = cell(&self.city, draw.depth) else { continue };
             if draw.shadow
                 || draw.moving
-                || draw.sprite != self.config.base() + i32::from(self.city.buildings[i])
+                || crate::nature::original(draw.sprite) != self.config.base() + i32::from(self.city.buildings[i])
                 || self.city.buildings[i] == 0
                 || draw.image >= 1_u64 << 32
             {
@@ -504,6 +504,8 @@ mod tests {
             redraw_ground: false,
             specials: false,
             individual_traffic: false,
+            natural_forests: false,
+            natural_terrain: false,
             phase: 0,
         };
         let w = config.hw() * 2;

@@ -10,6 +10,7 @@ mod floating;
 mod ids;
 mod index;
 mod minimap;
+mod nature;
 mod painter;
 mod raster;
 mod rect_index;
@@ -233,6 +234,9 @@ pub struct Config {
     pub specials: bool,
     /// Cosmetic cars replace the classic patterns on supported road tiles.
     pub individual_traffic: bool,
+    /// Precomposed tree groups selected only while rebuilding a changed tile.
+    pub natural_forests: bool,
+    pub natural_terrain: bool,
     /// The animation phase of special overlays.
     pub phase: i32,
 }
@@ -356,7 +360,8 @@ impl Builder {
         for (key, sprite) in &images {
             let id = (*key / 2) as i32;
 
-            if *key & 1 == 0 && id >= config.base() && id < config.base() + 500 {
+            let original = nature::original(id);
+            if *key & 1 == 0 && original >= config.base() && original < config.base() + 500 {
                 sprite_limit = (sprite_limit.0.max(sprite.w), sprite_limit.1.max(sprite.h));
                 artwork.push(*key);
             }

@@ -3,6 +3,71 @@ use super::painter::TRAFFIC;
 use super::*;
 
 #[test]
+fn forests_keep_density_clearings_and_local_cache_invalidation() {
+    for view in 0..3 {
+        let mut b = fixture(16, view);
+        b.config.natural_forests = true;
+        for id in 6..=12 {
+            let original = b.sprites.images[&((view * 500 + id) as u64 * 2)].clone();
+            for variant in 0..64 {
+                b.sprites.images.insert(
+                    ((nature::FIRST + variant * nature::SPAN + view * 500 + id) * 2) as u64,
+                    original.clone(),
+                );
+            }
+        }
+        for x in 4..10 {
+            for y in 4..10 {
+                let i = b.city.index(x, y);
+                b.city.buildings[i] = tiles::TREES_7;
+            }
+        }
+        let clearing = b.city.index(7, 7);
+        b.city.buildings[clearing] = 0;
+        let before = b.city.clone();
+        assert_eq!(b.paint(7, 7).unwrap().len(), 1, "empty clearing acquired trees");
+        for density in 6..=12 {
+            b.city.buildings[clearing] = density;
+            let id = b.paint(7, 7).unwrap()[1].sprite;
+            assert_eq!(nature::original(id), view * 500 + i32::from(density));
+            assert_eq!((id - nature::FIRST) / nature::SPAN / 4, 15);
+        }
+        b.city.buildings[clearing] = 0;
+        let full = Rect::new(0, 0, 4096, 4096);
+        let original = b.region(full).unwrap();
+        let total = b.builds;
+        let atlas_revision = b.atlas.revision;
+        let again = b.region(full).unwrap();
+        assert_eq!(b.builds, total);
+        assert_eq!(b.atlas.revision, atlas_revision);
+        assert_eq!(original.vertices, again.vertices);
+        assert_eq!(original.uvs, again.uvs);
+        let old_neighbor = b.forest_sprite(6, 6, view * 500 + 12);
+        let far = b.forest_sprite(9, 9, view * 500 + 12);
+        let mut edited = b.city.clone();
+        let cut = edited.index(6, 5);
+        edited.buildings[cut] = 0;
+        b.update(edited);
+        b.region(full).unwrap();
+        assert_eq!(b.builds - total, 9);
+        assert_ne!(b.forest_sprite(6, 6, view * 500 + 12), old_neighbor);
+        assert_eq!(b.forest_sprite(9, 9, view * 500 + 12), far);
+        assert_eq!(b.city.terrain, before.terrain);
+        assert_eq!(b.city.altitude, before.altitude);
+        assert_eq!(b.city.zones, before.zones);
+        assert_eq!(b.city.flags, before.flags);
+        b.config.natural_forests = false;
+        assert_eq!(b.paint(6, 6).unwrap()[1].sprite, view * 500 + 12);
+        b.config.natural_forests = true;
+        for (x, y) in [(0, 0), (15, 0), (0, 15), (15, 15)] {
+            let i = b.city.index(x, y);
+            b.city.buildings[i] = tiles::TREES_7;
+            assert_eq!((b.forest_sprite(x, y, view * 500 + 12) - nature::FIRST) / nature::SPAN / 4, 0);
+        }
+    }
+}
+
+#[test]
 fn individual_traffic_replaces_supported_patterns_without_changing_the_city() {
     let mut original = fixture(8, 2);
     original.city.traffic = vec![255; 16];
@@ -75,6 +140,8 @@ fn fixture(edge: i32, view: i32) -> Builder {
             redraw_ground: false,
             specials: false,
             individual_traffic: false,
+            natural_forests: false,
+            natural_terrain: false,
             phase: 0,
         },
         images,

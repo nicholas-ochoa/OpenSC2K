@@ -11,6 +11,11 @@ uniform bool dark_underground = false;
 uniform sampler2D dark_underground_palette : source_color, filter_nearest, repeat_disable;
 uniform sampler2D power_warning_palette : source_color, filter_nearest, repeat_disable;
 uniform float power_warning_blend = 0.0;
+// One tiny shared texture, no extra draw pass or per-tile frame updates.
+uniform bool nature_terrain_enabled = false;
+uniform sampler2D nature_ground : filter_linear, repeat_enable;
+uniform mat3 nature_canvas_to_grid = mat3(1.0);
+varying vec2 nature_grid;
 
 varying flat float emission_draw;
 varying flat float indexed_emission_draw;
@@ -23,6 +28,7 @@ varying flat float hazard_draw;
 varying flat float hazard_phase;
 varying flat float hazard_opacity;
 void vertex() {
+	nature_grid = (nature_canvas_to_grid * vec3((MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy, 1.0)).xy;
 	hazard_draw = float(COLOR.b == 0.25 || COLOR.b == 0.5 || COLOR.b == 0.125 || COLOR.b == 0.75);
 	hazard_phase = COLOR.r * 8.0;
 	hazard_opacity = COLOR.g;
@@ -43,7 +49,8 @@ void fragment() {
 	int palette_index = int(round(encoded_index * 255.0));
 	// The auxiliary mask follows sprite silhouettes and painter occlusion.
 	// Its blue channel is reserved for power warnings, not terrain colors.
-	bool power_warning = environment_has_seasons && texture(environment_season_mask, UV).b > 0.5;
+	vec4 natural_mask = environment_has_seasons ? texture(environment_season_mask, UV) : vec4(0.0);
+	bool power_warning = natural_mask.b > 0.5;
 	bool animated_index =
 		(palette_index >= 171 && palette_index <= 198) ||
 		(palette_index >= 200 && palette_index <= 219) ||
@@ -58,6 +65,15 @@ void fragment() {
 	if (power_warning && palette_cycle_enabled && power_warning_blend > 0.0) {
 		vec3 next_color = texture(power_warning_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
 		COLOR.rgb = mix(COLOR.rgb, next_color, power_warning_blend);
+	}
+	if (nature_terrain_enabled && natural_mask.g > 0.5 && !dark_underground) {
+		// Four-tile patches blend continuously across sprite and region borders.
+		// Preserve the original shading and the rock/soil silhouette.
+		vec2 patch = texture(nature_ground, nature_grid / 128.0).rg;
+		float shade = dot(COLOR.rgb, vec3(0.299, 0.587, 0.114));
+		vec3 grass = vec3(0.78, 0.94, 0.61) * shade;
+		COLOR.rgb = mix(COLOR.rgb, grass, (0.08 + patch.r * 0.18) * natural_mask.a);
+		COLOR.rgb *= 0.97 + patch.g * 0.06;
 	}
 	if (hazard_draw > 0.5) {
 		float frame = floor(hazard_phase);

@@ -3,6 +3,8 @@ extends RefCounted
 ## Local presentation preferences. No value is written to a city document.
 
 const FIELDS := [
+	["nature_forests_enabled", "Connected forests and tree variants", "bool", true],
+	["nature_terrain_enabled", "Subtle terrain variation", "bool", true],
 	["disaster_enabled", "Disaster effects", "bool", true],
 	["disaster_strength", "Effect strength", "number", 0.7, 0.0, 1.0, 0.05],
 	["disaster_crowds", "Use city pedestrians for riots", "bool", true],

@@ -216,7 +216,7 @@ impl Builder {
 
         let t = self.city.surface(x, y);
         let b = self.city.buildings[i];
-        let sprite = c.base() + i32::from(b);
+        let sprite = self.forest_sprite(x, y, c.base() + i32::from(b));
         let sx = c.side() + (self.city.edge + x - y) * c.hw();
         let flat = c.top() + (x + y) * c.hh() + c.height();
         let base = flat
@@ -241,7 +241,7 @@ impl Builder {
         let developed = b >= tiles::DEVELOPED_FIRST;
 
         if !developed && !composite {
-            self.add(&mut draws, c.base() + self.ground(i, t), false, sx, base)?;
+            self.add(&mut draws, self.nature_ground(c.base() + self.ground(i, t)), false, sx, base)?;
         }
 
         // Composite highways and buildings draw from one compass-selected corner.
@@ -267,7 +267,8 @@ impl Builder {
             }
 
             // An odd compass rotation mirrors buildings, not networks.
-            let flip = (self.city.flags[i] & flags::FLIPPED != 0) ^ (developed && self.city.rotation & 1 != 0);
+            let flip =
+                sprite < crate::nature::FIRST && ((self.city.flags[i] & flags::FLIPPED != 0) ^ (developed && self.city.rotation & 1 != 0));
             let image = self.sprites.get(sprite, flip)?;
             let width = self.sprites.images[&image].w;
             let offset = if composite {
