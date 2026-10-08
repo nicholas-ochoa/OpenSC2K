@@ -40,9 +40,20 @@ func _run() -> void:
 			"Background progress covers the status bar")
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var edited_during_load := false
+	var continuous_repaints := 0
 	var progress := 0.0
 	var started := Time.get_ticks_msec()
 	while not prepare.ready:
+		if prepare.stage == 0 and prepare.banks[0].covered():
+			# Keep publishing traffic generations while lights are prepared.
+			# Waiting for every region to match the latest generation starves this.
+			continuous_repaints += 1
+			var repaint := city.document.find_chunk("XTRF")
+			var repaint_payload := repaint.decoded_payload.duplicate()
+			repaint_payload.fill(255 if continuous_repaints % 2 else 0)
+			assert(repaint.set_decoded_payload(repaint_payload, true))
+			before = DocumentState.capture(city.document)
+			main.map_render.refresh_map(false)
 		if prepare.stage > 0 and not edited_during_load:
 			edited_during_load = true
 			city.set_building_id(12, 17, BuildingTileIds.EMPTY)
@@ -61,7 +72,7 @@ func _run() -> void:
 		progress = value
 		assert(Time.get_ticks_msec() - started < 60000, "City preparation did not finish")
 		await process_frame
-	assert(edited_during_load)
+	assert(edited_during_load and continuous_repaints > 0)
 	await _settle(main)
 	assert(not prepare.busy and not main.city_dialogs.visual_preparation_progress.visible)
 	assert(DocumentState.capture(city.document) == before, "Precache advanced or edited the city")
@@ -90,9 +101,13 @@ func _run() -> void:
 		assert(main.visual_environment.clouds.layer != null)
 		assert(lights.ground.get_index() < main.visual_environment.clouds.layer.get_index())
 		assert(lights.output.get_index() < main.visual_environment.clouds.layer.get_index())
+	# Finish camera alignment in hidden variants before isolating traffic work.
+	for view in 3:
+		prepare.light_rescan[view] = true
+	await _settle(main)
 	# Traffic repaints must not rediscover every road in each prepared variant.
 	# The first update may align a hidden receiver's viewport after the zooms.
-	for density in [0, 255]:
+	for density in [64, 255]:
 		var collections := []
 		for view in 3:
 			collections.append(lights.ground_views[view].collection)
