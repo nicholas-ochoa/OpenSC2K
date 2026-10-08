@@ -275,6 +275,35 @@ class PackageTest(unittest.TestCase):
                 self.assertEqual((folder / packages.SOUNDFONT[2]).is_file(), linux, platform)
 
 
+class DiskImageTest(unittest.TestCase):
+    # usage lines of `diskutil image create from --help` on the macOS 15 runner and on macOS 27
+    MACOS_15 = ('USAGE: diskutil image create from [--encrypt] [--verbose] [--stdinpassphrase] [--plist] '
+                '[--format <format>] <source> <destination>\n')
+    MACOS_27 = ('USAGE: diskutil image create from [--encrypt] [--verbose] [--stdinpassphrase] [--plist] '
+                '[--format <format>] [--volumeName <volumeName>] [--shadow <shadow> ...] <source> <destination>\n')
+
+    def create_command(self, help_text):
+        commands = []
+
+        def run(command, **_):
+            commands.append(command)
+            return subprocess.CompletedProcess(command, 0, help_text, '')
+
+        with patch.object(packages.subprocess, 'run', run):
+            packages.make_disk_image(Path('/build'), 'OpenSC2K 1.0', Path('/OpenSC2K.dmg'))
+        # the help probe, the create command, then the verify
+        self.assertEqual(commands[2], ['hdiutil', 'verify', '/OpenSC2K.dmg'])
+        return commands[1]
+
+    def test_disk_image_keeps_the_volume_name_with_either_tool(self):
+        command = self.create_command(self.MACOS_15)
+        self.assertEqual(command[:2], ['hdiutil', 'create'])
+        self.assertEqual(command[command.index('-volname') + 1], 'OpenSC2K 1.0')
+        command = self.create_command(self.MACOS_27)
+        self.assertEqual(command[:4], ['diskutil', 'image', 'create', 'from'])
+        self.assertEqual(command[command.index('--volumeName') + 1], 'OpenSC2K 1.0')
+
+
 class SigningTest(unittest.TestCase):
     LISTING = ('  1) 0123456789ABCDEF0123456789ABCDEF01234567 "Apple Development: A B (TEAM1)"\n'
                '  2) 89ABCDEF0123456789ABCDEF0123456789ABCDEF "Developer ID Application: A B (TEAM2)"\n'

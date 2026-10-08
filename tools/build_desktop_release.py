@@ -265,9 +265,10 @@ def add_app_icon(app, icon=APP_ICON, identity=AD_HOC):
 
 
 def has_diskutil_image():
-    """True on macOS 26 and later, where `diskutil image` replaces `hdiutil create`."""
-    probe = subprocess.run(['diskutil', 'image', 'create', 'from', '--help'], capture_output=True)
-    return probe.returncode == 0
+    """True where `diskutil image create from` takes a volume name and can replace `hdiutil create`.
+    macOS 15 has the command, but without --volumeName."""
+    probe = subprocess.run(['diskutil', 'image', 'create', 'from', '--help'], capture_output=True, text=True)
+    return probe.returncode == 0 and '--volumeName' in probe.stdout + probe.stderr
 
 
 def make_disk_image(folder, volume, image):
