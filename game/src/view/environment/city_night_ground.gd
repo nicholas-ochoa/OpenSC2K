@@ -6,9 +6,10 @@ extends Node2D
 
 const SHADER := preload("res://src/view/environment/night_ground.gdshader")
 const PROFILES := "res://src/view/environment/night_light_profiles.json"
-const MAX_CACHED := 4096
+const MAX_CACHED := 32768
+const MAX_TEXTURE_BYTES := 96 * 1024 * 1024
 const BUFFER_MARGIN := 160.0
-const BUILD_BUDGET := 12
+const BUILD_BUDGET := 128
 var profiles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(PROFILES))
 var roads := CityLifeLights.new()
 var masker := CityLifeCanvas.new()
@@ -25,6 +26,8 @@ var geometry: Array = []
 var dirty: Dictionary[Vector2i, bool] = {}
 var last_used: Dictionary[Vector2i, int] = {}
 var collection := 0
+var texture_users: Dictionary[int, Dictionary] = {}
+var texture_bytes := 0
 var fixtures := Node2D.new()
 var signals := Node2D.new()
 var signal_tiles: Array[Vector2i] = []
@@ -48,6 +51,8 @@ func _init() -> void:
 
 func reset() -> void:
 	cache.clear()
+	texture_users.clear()
+	texture_bytes = 0
 	dirty.clear()
 	last_used.clear()
 	geometry.clear()
@@ -68,9 +73,9 @@ func reset() -> void:
 	signals.queue_redraw()
 
 
-func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
+func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := false) -> void:
 	visible = strength > 0.001 and app.view_state.surface_visibility.networks and app.view_state.surface_visibility.buildings
-	if not visible:
+	if not visible and not prepare:
 		return
 	var previous_second := floori(clock)
 	clock = fposmod(clock + maxf(elapsed, 0.0), 14.0)
@@ -116,7 +121,9 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 			continue
 		queued.erase(tile)
 		_forget_helpers(tile)
-		cache[tile] = _build(app, tile)
+		_store(tile, _build(app, tile))
+		# The finished GPU textures own their output; temporary masks are no longer needed.
+		_forget_helpers(tile)
 		dirty.erase(tile)
 		built += 1
 		if Time.get_ticks_usec() - started > 4000:
@@ -125,6 +132,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0) -> void:
 		pending = pending.slice(cursor)
 		cursor = 0
 	if built > 0:
+		_trim_cache()
 		queue_redraw()
 		fixtures.queue_redraw()
 		_refresh_signals()
@@ -169,20 +177,7 @@ func _collect(city: CityState) -> void:
 	collection += 1
 	for tile in visible_tiles:
 		last_used[tile] = collection
-	# Evict only the oldest offscreen receivers. Returning to a recent view reuses them.
-	var retained := cache.keys()
-	retained.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return int(last_used.get(a, 0)) < int(last_used.get(b, 0)))
-	var excess := maxi(0, cache.size() + visible_tiles.filter(func(tile: Vector2i) -> bool: return not cache.has(tile)).size() - MAX_CACHED)
-	for tile: Vector2i in retained:
-		if excess <= 0:
-			break
-		if int(last_used.get(tile, 0)) == collection:
-			continue
-		cache.erase(tile)
-		dirty.erase(tile)
-		last_used.erase(tile)
-		_forget_helpers(tile)
-		excess -= 1
+	_trim_cache()
 	# New visible receivers take priority over the prefetch border.
 	var center := Vector2(bounds.get_center())
 	visible_tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
@@ -193,6 +188,61 @@ func _collect(city: CityState) -> void:
 	queue_redraw()
 	fixtures.queue_redraw()
 	_refresh_signals()
+
+
+func _entry_textures(entry: Dictionary) -> Dictionary:
+	var result := {}
+	for texture: Texture2D in [entry.texture, entry.fixtures]:
+		result[texture.get_instance_id()] = texture
+	for signal_light: Dictionary in entry.signals:
+		for texture: Texture2D in signal_light.lenses:
+			result[texture.get_instance_id()] = texture
+	return result
+
+
+func _store(tile: Vector2i, entry: Dictionary) -> void:
+	_release(tile)
+	cache[tile] = entry
+	var textures := _entry_textures(entry)
+	for id: int in textures:
+		if texture_users.has(id):
+			texture_users[id].count += 1
+		else:
+			var texture: Texture2D = textures[id]
+			var bytes := texture.get_width() * texture.get_height() * 4
+			texture_users[id] = {"count": 1, "bytes": bytes}
+			texture_bytes += bytes
+
+
+func _release(tile: Vector2i) -> void:
+	if not cache.has(tile):
+		return
+	for id: int in _entry_textures(cache[tile]):
+		if not texture_users.has(id):
+			continue
+		texture_users[id].count -= 1
+		if texture_users[id].count == 0:
+			texture_bytes -= int(texture_users[id].bytes)
+			texture_users.erase(id)
+	cache.erase(tile)
+
+
+func _trim_cache() -> void:
+	if cache.size() <= MAX_CACHED and texture_bytes <= MAX_TEXTURE_BYTES:
+		return
+	# Repeated street patterns share textures. Count their bytes once, rather
+	# than discarding thousands of cheap receivers at a fixed 4096-tile limit.
+	var retained := cache.keys()
+	retained.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return int(last_used.get(a, 0)) < int(last_used.get(b, 0)))
+	for tile: Vector2i in retained:
+		if cache.size() <= MAX_CACHED and texture_bytes <= MAX_TEXTURE_BYTES:
+			break
+		if visible_keys.has(tile):
+			continue
+		_release(tile)
+		dirty.erase(tile)
+		last_used.erase(tile)
+		_forget_helpers(tile)
 
 
 func _enqueue(tile: Vector2i) -> void:

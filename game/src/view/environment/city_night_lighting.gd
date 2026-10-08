@@ -34,14 +34,15 @@ func reset() -> void:
 func process(active: bool, night: float, options: Dictionary, elapsed := 0.0) -> void:
 	var enabled := active and night > 0.001 and app.map_view.city_source != null
 	var glow := enabled and float(options.night_glow) > 0.0
-	if output == null and not enabled:
+	var prepare := active and app.map_view.city_source != null and float(options.night_ground) > 0.0
+	if output == null and not enabled and not prepare:
 		return
 	if output == null:
 		_create()
 	output.visible = glow
 	for buffer in buffers:
 		buffer.render_target_update_mode = SubViewport.UPDATE_ALWAYS if glow else SubViewport.UPDATE_DISABLED
-	ground.sync(app, night * float(options.night_ground) / 100.0 if enabled else 0.0, elapsed)
+	ground.sync(app, night * float(options.night_ground) / 100.0 if enabled else 0.0, elapsed, prepare)
 	var before: Control = app.visual_environment.weather.layer
 	if before == null:
 		before = app.map_view.layers.overlay_layer

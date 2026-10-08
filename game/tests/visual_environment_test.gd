@@ -432,6 +432,13 @@ func _check_ground_buffer(main: CityApplication, ground: CityNightGround) -> voi
 	map.set_city_view(main.document_state.city, CityMapTexture.create(Image.create(4160, 2944, false, Image.FORMAT_RGBA8)))
 	ground.reset()
 	map.center_on_tile(Vector2i(64, 64))
+	for frame in 160:
+		ground.sync(main, 0.0, 0.0, true)
+	assert(not ground.visible and not ground.cache.is_empty(), "Daytime failed to prepare hidden night receivers")
+	var daytime := ground.cache.duplicate()
+	ground.sync(main, 0.45)
+	for tile in daytime:
+		assert(ground.cache[tile].texture == daytime[tile].texture, "Night discarded a prepared GPU texture")
 	for i in 160:
 		ground.sync(main, 0.45)
 	assert(ground.cache.size() > 10)
@@ -493,7 +500,35 @@ func _check_ground_buffer(main: CityApplication, ground: CityNightGround) -> voi
 	assert(ground.visible_keys.has(demolished) and not ground.dirty.has(demolished), "Rebuilt road never regained its lighting")
 	map.city_source = old_source
 	main.render_caches.region_cache = regions
+	_check_resident_lights()
 	print("PASS: street light buffer survives source publications and panning; dirty receivers replace atomically")
+
+
+func _check_resident_lights() -> void:
+	var ground := CityNightGround.new()
+	var pixels := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	pixels.fill(Color.WHITE)
+	var texture := ImageTexture.create_from_image(pixels)
+	var entry := {"texture": texture, "fixtures": texture, "signals": [], "origin": Vector2i.ZERO}
+	for i in 5000:
+		ground._store(Vector2i(i, 0), entry)
+	ground._trim_cache()
+	assert(ground.cache.size() == 5000, "Cheap shared light textures were evicted at the old tile limit")
+	assert(ground.texture_bytes == 64 * 64 * 4, "Shared GPU textures were counted repeatedly")
+	ground._release(Vector2i.ZERO)
+	assert(ground.texture_bytes == 64 * 64 * 4)
+	ground.reset()
+	assert(ground.texture_bytes == 0 and ground.texture_users.is_empty())
+	# The real byte cap removes oldest offscreen output, protecting the visible light.
+	for i in 25:
+		var large := ImageTexture.create_from_image(Image.create(1024, 1024, false, Image.FORMAT_RGBA8))
+		ground._store(Vector2i(i, 0), {"texture": large, "fixtures": large, "signals": [], "origin": Vector2i.ZERO})
+		ground.last_used[Vector2i(i, 0)] = i
+	ground.visible_keys[Vector2i.ZERO] = true
+	ground._trim_cache()
+	assert(ground.texture_bytes <= CityNightGround.MAX_TEXTURE_BYTES)
+	assert(ground.cache.has(Vector2i.ZERO) and not ground.cache.has(Vector2i(1, 0)))
+	ground.free()
 
 
 func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
