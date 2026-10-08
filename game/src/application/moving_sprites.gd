@@ -105,8 +105,9 @@ func refresh_moving_things(view_size := -1) -> void:
 		if not app.view_state.show_vehicles and command.record >= 0 and _is_vehicle(int(command.record)):
 			continue
 
-		var transparent_shadow: bool = command.shadow and app.preferences.visual_enhancements.traffic_shadows_enabled \
-			and command.record >= 0 and app.document_state.city.thing(command.record).type in [1, 2]
+		var aircraft_shadow: bool = command.shadow and command.record >= 0 \
+			and app.document_state.city.thing(command.record).type in [1, 2]
+		var transparent_shadow: bool = aircraft_shadow and app.preferences.visual_enhancements.traffic_shadows_enabled
 		var hazard := hazard_animation.observe(command, sprite_archive, view_size)
 		if hazard != null:
 			visuals.append(hazard)
@@ -146,7 +147,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			occluder_mask = _dynamic_occluder_image(
 				sprite_archive, divisor, position, resource.native_size,
 				int(command.depth_order), bool(command.train), factor,
-				resource if command.floating_altitude >= 0 else null, int(command.floating_altitude), command.train_support_orders
+				resource if command.floating_altitude >= 0 else null, int(command.floating_altitude), command.train_support_orders, aircraft_shadow
 			)
 
 		var samples_static: bool = bool(command.shadow) and not transparent_shadow
@@ -291,7 +292,7 @@ func _dynamic_occluder_image(
 	draw_order: int,
 	is_train := false, texture_factor := 1,
 	floating: CitySpriteResource = null, floating_altitude := -1,
-	train_support_orders := PackedInt32Array()
+	train_support_orders := PackedInt32Array(), aircraft_shadow := false
 ) -> Image:
 	if draw_order < 0 or (caches.static_occlusion_commands.is_empty() and caches.region_cache == null):
 		return null
@@ -308,6 +309,7 @@ func _dynamic_occluder_image(
 		floating.get_instance_id() if floating != null else 0, floating_altitude,
 		divisor, sprite_archive.get_instance_id() if sprite_archive != null else 0,
 	]
+	cache_key += ":shadow" if aircraft_shadow else ""
 	if not train_support_orders.is_empty():
 		cache_key += ":" + str(train_support_orders)
 	if caches.dynamic_occluder_cache.has(cache_key):
@@ -331,7 +333,14 @@ func _dynamic_occluder_image(
 	# Bounding boxes include transparent pixels. Combine all later silhouettes
 	# to find the foreground that actually covers the sprite.
 	var train_height := _train_support_height(train_support_orders) if is_train else -1
+	var shadow_height := -1
+	if aircraft_shadow:
+		var city := app.document_state.city
+		var tile := IsometricFloatingOcclusion.depth_tile(draw_order, city.map_size)
+		shadow_height = city.object_altitude(tile.x, tile.y)
 	for command in static_occlusion_candidates(bounds):
+		if shadow_height >= 0 and _shadow_receiver(command, shadow_height):
+			continue
 		if is_train and bool(command.train_ignore):
 			continue
 		if is_train and train_support_orders.has(command.depth_order) and _train_support_surface(command.sprite_id):
@@ -421,6 +430,24 @@ func _ground_below_train(command: CityStaticCommand, height: int) -> bool:
 	# extends into an adjacent tile. Higher ground and cliff faces still can.
 	var flat := id == 256 or (id < 256 and city.terrain_id(tile.x, tile.y) == TerrainTileIds.FLAT)
 	var top := city.land_altitude(tile.x, tile.y) + (0 if flat else 1)
+	return top <= height
+
+
+func _shadow_receiver(command: CityStaticCommand, height: int) -> bool:
+	var id := posmod(command.sprite_id, 500)
+	# Ground and surface transport receive the shadow across tile boundaries.
+	# Never remove trees, structures, raised decks or cliff faces from the mask.
+	var ground := id >= 256 and id <= 268
+	var water := IsometricFloatingOcclusion.is_water_surface(command.sprite_id)
+	var zone := id >= 291 and id <= 299
+	var road := id >= BuildingTileIds.ROAD_STRAIGHT_1 and id <= BuildingTileIds.RAIL_LAST
+	var crossing := id in [BuildingTileIds.ROAD_RAIL_CROSSING_1, BuildingTileIds.ROAD_RAIL_CROSSING_2]
+	if not (ground or water or zone or road or crossing):
+		return false
+	var city := app.document_state.city
+	var tile := IsometricFloatingOcclusion.depth_tile(command.depth_order, city.map_size)
+	var flat := id == 256 or city.terrain_id(tile.x, tile.y) == TerrainTileIds.FLAT
+	var top := city.object_altitude(tile.x, tile.y) if water else city.land_altitude(tile.x, tile.y) + (0 if flat else 1)
 	return top <= height
 
 

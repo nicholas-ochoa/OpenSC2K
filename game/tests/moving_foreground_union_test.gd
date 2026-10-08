@@ -5,6 +5,7 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 func _initialize() -> void:
 	_check_train_support()
+	_check_shadow_receivers()
 	_check_packed_masks()
 	_check_neighbor_masks()
 	var host := CityApplication.new()
@@ -251,6 +252,34 @@ func _check_train_support() -> void:
 	assert(moving.get_pixel(0, 1).a == 0.0 and moving.get_pixel(2, 1).a == 0.0, "Supporting ground and track must not cover a moving train")
 	for index in [1, 3, 4, 5]:
 		assert(moving.get_pixel(index, 1).a > 0.0, "Train support rule removed a building, deck, higher terrain or cliff mask")
+	host.free()
+
+
+func _check_shadow_receivers() -> void:
+	var host := CityApplication.new()
+	host.moving_sprites = TestSprites.new(host)
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	host.document_state.city = city
+	for tile in [Vector2i(64, 64), Vector2i(65, 64)]:
+		city.set_land_altitude(tile.x, tile.y, 0)
+		city.set_terrain_id(tile.x, tile.y, TerrainTileIds.FLAT)
+	city.set_land_altitude(64, 65, 2)
+	var start := 128 * 128 + 64
+	var ids := [1256, 1045, 1291, 1270, 1120, 1077, 1257, 1269, 1006]
+	for i in ids.size():
+		var pixels := Image.create(12, 4, false, Image.FORMAT_RGBA8)
+		pixels.set_pixel(i, 1, Color.WHITE)
+		host.moving_sprites.images[ids[i]] = pixels
+		var command := CityStaticCommand.new()
+		command.sprite_id = ids[i]
+		command.size = pixels.get_size()
+		command.depth_order = start + 129 if i == 6 else start + 128
+		host.render_caches.static_occlusion_commands.append(command)
+	var ordinary := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(12, 4), start)
+	var shadow := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(12, 4), start, false, 1, null, -1, PackedInt32Array(), true)
+	for i in ids.size():
+		assert(ordinary.get_pixel(i, 1).a > 0.0)
+		assert((shadow.get_pixel(i, 1).a > 0.0) == (i >= 4), "Shadow receiver masking lost a surface or foreground structure")
 	host.free()
 
 

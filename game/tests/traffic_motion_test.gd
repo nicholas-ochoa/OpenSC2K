@@ -13,6 +13,7 @@ func _run() -> void:
 	_check_motion()
 	_check_trains()
 	_check_train_pixels()
+	_check_aircraft_pixels()
 	_check_subpixels()
 	_check_lifecycle()
 	_check_shadow()
@@ -384,6 +385,57 @@ static func _check_train_pixels() -> void:
 				assert(composed.occluded_pixels == 0, "Ground cut %d pixels from train %d direction %d frame %d" % [composed.occluded_pixels, type, direction, frame])
 				assert(source.value_signature() == original, "Train interpolation edited the cached source command")
 				motion.advance(0.0125)
+	app.free()
+
+
+static func _check_aircraft_pixels() -> void:
+	var graphics := FixtureGraphics.pack()
+	var app := CityApplication.new()
+	app.asset_state.palette = graphics.palette
+	app.asset_state.palette_index_encoding = Sc2Palette.index_encoding()
+	app.asset_state.large_sprites = graphics.large_sprites
+	var old_clipped := 0
+	for direction in 8:
+		var city := fixture(10)
+		var step: Vector2i = DIRECTIONS[direction]
+		for x in range(60, 69):
+			for y in range(60, 69):
+				city.set_land_altitude(x, y, 0)
+				city.set_terrain_id(x, y, TerrainTileIds.FLAT)
+		for distance in range(-3, 4):
+			var tile := Vector2i(64, 64) + step * distance
+			city.set_building_id(tile.x, tile.y, BuildingTileIds.RAIL_STRAIGHT_1 if direction % 2 == 0 else BuildingTileIds.RAIL_STRAIGHT_2)
+		app.document_state.city = city
+		var context := CityGpuBuildContext.new()
+		assert(context.prepare(city, app.asset_state.palette_index_encoding, graphics.large_sprites,
+			CityIsometricRenderer.VIEW_LARGE, CityViewMode.Mode.CITY, true, true, true, 0, false).is_empty())
+		var drawn := context.draw_records(Rect2i(1980, 1430, 240, 240))
+		app.moving_sprites.set_static_occlusion_commands(CityGpuBuildContext.foreground_commands(drawn.records), CityIsometricRenderer.VIEW_LARGE)
+		for type in [1, 2]:
+			city.set_text_overlay_id(64 + step.x, 64 + step.y, 0)
+			write_thing(city, 1, {"type": type, "x": 64, "y": 64})
+			var motion := CityTrafficMotion.new()
+			motion.observe(city, VisualEnhancementOptions.normalize({}))
+			city.set_text_overlay_id(64, 64, 0)
+			write_thing(city, 1, {"x": 64 + step.x, "y": 64 + step.y})
+			motion.observe(city, VisualEnhancementOptions.normalize({}))
+			var source := CityIsometricRenderer.dynamic_draw_commands(city, graphics.large_sprites)[0]
+			assert(source.shadow)
+			var original := source.value_signature()
+			var resource := app.moving_sprites.dynamic_sprite_resource(graphics.large_sprites, source.sprite_id, source.flip, 1)
+			for frame in 17:
+				var command := motion.draw_command(source, 1, city.map_size)
+				var position := Vector2i((Vector2(source.position) + motion.display_offset(source, 1)).round())
+				var mask := app.moving_sprites._dynamic_occluder_image(graphics.large_sprites, 1, position, resource.native_size,
+					command.depth_order, false, 1, null, -1, PackedInt32Array(), true)
+				var old_mask := app.moving_sprites._dynamic_occluder_image(graphics.large_sprites, 1, position, resource.native_size, command.depth_order)
+				old_clipped += CityIsometricRenderer.occlude_dynamic_with_mask(resource.image, old_mask, position).occluded_pixels
+				var composed := CityIsometricRenderer.occlude_dynamic_with_mask(resource.image, mask, position)
+				assert(composed.occluded_pixels == 0, "Ground cut %d pixels from aircraft shadow %d direction %d frame %d" % [composed.occluded_pixels, type, direction, frame])
+				assert(source.value_signature() == original, "Aircraft interpolation edited the cached source command")
+				motion.advance(0.0125)
+	print("Aircraft shadow baseline removed pixels: ", old_clipped)
+	assert(old_clipped > 0, "Regression scene must exercise the original aircraft shadow clipping")
 	app.free()
 
 
