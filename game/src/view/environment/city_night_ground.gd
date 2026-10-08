@@ -28,6 +28,7 @@ var last_used: Dictionary[Vector2i, int] = {}
 var collection := 0
 var texture_users: Dictionary[int, Dictionary] = {}
 var texture_bytes := 0
+var texture_budget := MAX_TEXTURE_BYTES
 var fixtures := Node2D.new()
 var signals := Node2D.new()
 var signal_tiles: Array[Vector2i] = []
@@ -228,14 +229,14 @@ func _release(tile: Vector2i) -> void:
 
 
 func _trim_cache() -> void:
-	if cache.size() <= MAX_CACHED and texture_bytes <= MAX_TEXTURE_BYTES:
+	if cache.size() <= MAX_CACHED and texture_bytes <= texture_budget:
 		return
 	# Repeated street patterns share textures. Count their bytes once, rather
 	# than discarding thousands of cheap receivers at a fixed 4096-tile limit.
 	var retained := cache.keys()
 	retained.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return int(last_used.get(a, 0)) < int(last_used.get(b, 0)))
 	for tile: Vector2i in retained:
-		if cache.size() <= MAX_CACHED and texture_bytes <= MAX_TEXTURE_BYTES:
+		if cache.size() <= MAX_CACHED and texture_bytes <= texture_budget:
 			break
 		if visible_keys.has(tile):
 			continue

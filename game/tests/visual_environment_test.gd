@@ -501,6 +501,7 @@ func _check_ground_buffer(main: CityApplication, ground: CityNightGround) -> voi
 	map.city_source = old_source
 	main.render_caches.region_cache = regions
 	_check_resident_lights()
+	_check_light_graphics_caches(main)
 	print("PASS: street light buffer survives source publications and panning; dirty receivers replace atomically")
 
 
@@ -529,6 +530,65 @@ func _check_resident_lights() -> void:
 	assert(ground.texture_bytes <= CityNightGround.MAX_TEXTURE_BYTES)
 	assert(ground.cache.has(Vector2i.ZERO) and not ground.cache.has(Vector2i(1, 0)))
 	ground.free()
+
+
+func _check_light_graphics_caches(main: CityApplication) -> void:
+	var lights := main.visual_environment.night_lighting
+	var pixels := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	pixels.fill(Color.WHITE)
+	var texture := ImageTexture.create_from_image(pixels)
+	var tile := Vector2i(64, 64)
+	var original_view := main.static_render.city_view_size()
+	for view in 3:
+		lights._select_ground(view)
+		lights.ground._store(tile, {"texture": texture, "fixtures": texture, "signals": [], "origin": Vector2i.ZERO})
+		lights.ground.visible_keys[tile] = true
+		lights.ground.show()
+	var large := lights.ground_views[2]
+	var entry: Dictionary = large.cache[tile]
+	for view in [1, 2, 0, 2, 1, 2]:
+		var previous := lights.ground
+		lights._select_ground(view)
+		assert(not previous.visible, "An inactive graphics-size light layer stayed visible")
+		assert(lights.ground.cache[tile].texture == texture)
+		assert(is_same(large.cache[tile], entry), "Graphics-size switching discarded a completed light entry")
+	assert(lights.ground_views.size() == 3)
+	lights.invalidate_regions([Rect2i(0, 0, 64, 64)])
+	for receiver in lights.ground_views.values():
+		assert(receiver.dirty.has(tile), "A hidden graphics-size variant missed a local edit")
+	lights.reset()
+	for receiver in lights.ground_views.values():
+		assert(receiver.cache.is_empty() and receiver.texture_bytes == 0)
+	lights._select_ground(original_view)
+	var old_source := main.map_view.city_source
+	main.map_view.set_city_view(main.document_state.city, CityMapTexture.create(Image.create(4160, 2944, false, Image.FORMAT_RGBA8)))
+	var options := main.preferences.visual_enhancements.duplicate()
+	options.night_ground = 45.0
+	var old_sizes := main.preferences.zoom_graphics.duplicate()
+	var old_zoom := main.map_view.zoom_factor
+	var regions := main.render_caches.region_cache
+	main.render_caches.region_cache = null
+	main.preferences.zoom_graphics = [1, 2, 2, 2, 2, 2]
+	var snapshots := {}
+	for zoom in [0.5, 0.25, 0.5, 1.0, 2.0, 0.25, 0.5]:
+		main.map_view.zoom_factor = zoom
+		main.map_view.center_on_tile(tile)
+		var view := main.static_render.city_view_size()
+		assert(view == (1 if zoom == 0.25 else 2))
+		lights.process(true, 0.45, options)
+		if snapshots.has(view):
+			assert(is_same(lights.ground.cache[tile], snapshots[view]), "25/50 zoom transition rebuilt an unchanged receiver")
+		else:
+			for frame in 160:
+				lights.process(true, 0.45, options)
+			assert(lights.ground.cache.has(tile))
+			snapshots[view] = lights.ground.cache[tile]
+	main.map_view.city_source = old_source
+	main.preferences.zoom_graphics = old_sizes
+	main.map_view.zoom_factor = old_zoom
+	main.render_caches.region_cache = regions
+	lights.reset()
+	lights._select_ground(original_view)
 
 
 func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:

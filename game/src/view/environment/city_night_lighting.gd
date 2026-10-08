@@ -11,6 +11,7 @@ var buffers: Array[SubViewport] = []
 var scene: Node2D
 var output: TextureRect
 var ground: CityNightGround
+var ground_views: Dictionary[int, CityNightGround] = {}
 var source: CityMapSource
 var blur_rects: Array[TextureRect] = []
 var copies: Array[CanvasItem] = []
@@ -26,9 +27,9 @@ func _init(application: CityApplication) -> void:
 func reset() -> void:
 	source = null
 	moving_revision = -1
-	if ground != null:
-		ground.reset()
-		ground.clock = 0.0
+	for receiver in ground_views.values():
+		receiver.reset()
+		receiver.clock = 0.0
 
 
 func process(active: bool, night: float, options: Dictionary, elapsed := 0.0) -> void:
@@ -39,6 +40,7 @@ func process(active: bool, night: float, options: Dictionary, elapsed := 0.0) ->
 		return
 	if output == null:
 		_create()
+	_select_ground(app.static_render.city_view_size())
 	output.visible = glow
 	for buffer in buffers:
 		buffer.render_target_update_mode = SubViewport.UPDATE_ALWAYS if glow else SubViewport.UPDATE_DISABLED
@@ -77,9 +79,37 @@ func process(active: bool, night: float, options: Dictionary, elapsed := 0.0) ->
 	shader.set_shader_parameter("sample_offset", Vector2.ONE * PADDING * reduction / Vector2(size))
 
 
+func _select_ground(view_size: int) -> void:
+	# Each original-art size has different foreground silhouettes. Keep its
+	# finished receivers when zoom switches to another size, rather than reset.
+	if not ground_views.has(view_size):
+		var receiver := CityNightGround.new()
+		receiver.texture_budget = int(CityNightGround.MAX_TEXTURE_BYTES / 3.0)
+		app.map_view.add_child(receiver)
+		ground_views[view_size] = receiver
+	var next: CityNightGround = ground_views[view_size]
+	if ground == next:
+		return
+	if ground != null:
+		next.clock = ground.clock
+		ground.hide()
+	ground = next
+	ground.signals.queue_redraw()
+
+
+func invalidate_regions(changes: Array[Rect2i]) -> void:
+	# An edit must also reach the currently hidden artwork-size variants.
+	for receiver in ground_views.values():
+		receiver.invalidate_regions(changes)
+
+
+func invalidate_all() -> void:
+	for receiver in ground_views.values():
+		receiver.invalidate_all()
+
+
 func _create() -> void:
-	ground = CityNightGround.new()
-	app.map_view.add_child(ground)
+	_select_ground(app.static_render.city_view_size())
 	for i in 3:
 		var buffer := SubViewport.new()
 		buffer.disable_3d = true
