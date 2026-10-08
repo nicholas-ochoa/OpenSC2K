@@ -478,7 +478,11 @@ func _check_ground_buffer(main: CityApplication, ground: CityNightGround) -> voi
 	assert(ground.dirty.has(tile) and ground.cache[tile].texture == saved[tile].texture, "Refresh blanked a complete receiver")
 	for i in 160:
 		ground.sync(main, 0.45)
-	assert(not is_same(ground.cache[tile], saved[tile]) and not ground.dirty.has(tile), "Changed foreground never refreshed")
+	assert(is_same(ground.cache[tile], saved[tile]) and not ground.dirty.has(tile), "Unchanged foreground rebuilt completed lighting")
+	ground.invalidate_all()
+	for i in 160:
+		ground.sync(main, 0.45)
+	assert(not is_same(ground.cache[tile], saved[tile]), "Forced geometry refresh reused an incompatible receiver")
 	assert(ground.pending.is_empty() and ground.queued.is_empty(), "Stable receivers kept pending work")
 	for frame in 8:
 		ground.sync(main, 0.45, 1.0)
@@ -498,11 +502,61 @@ func _check_ground_buffer(main: CityApplication, ground: CityNightGround) -> voi
 	for frame in 160:
 		ground.sync(main, 0.45)
 	assert(ground.visible_keys.has(demolished) and not ground.dirty.has(demolished), "Rebuilt road never regained its lighting")
+	_check_changed_light_occlusion(main, ground, demolished)
 	map.city_source = old_source
 	main.render_caches.region_cache = regions
 	_check_resident_lights()
 	_check_light_graphics_caches(main)
 	print("PASS: street light buffer survives source publications and panning; dirty receivers replace atomically")
+
+
+func _check_changed_light_occlusion(main: CityApplication, ground: CityNightGround, tile: Vector2i) -> void:
+	var old_large := main.asset_state.large_sprites
+	var old_small := main.asset_state.small_medium_sprites
+	var old_commands := main.render_caches.static_occlusion_commands.duplicate()
+	var old_grid := main.render_caches.static_occlusion_grid
+	var archive := Sc2SpriteArchive.new()
+	main.asset_state.large_sprites = archive
+	main.asset_state.small_medium_sprites = archive
+	for frame in 160:
+		ground.sync(main, 0.45)
+	var original: Dictionary = ground.cache[tile]
+	var pixels: PackedByteArray = original.texture.get_image().get_data()
+	var divisor := CityIsometricRenderer.view_configuration(main.static_render.city_view_size()).divisor
+	var cover := CityStaticCommand.new()
+	cover.sprite_id = 42
+	cover.position = (original.origin - Vector2i(32, 32)) / divisor
+	cover.size = Vector2i(128, 128) / divisor
+	cover.depth_order = 10000000
+	var resource := CitySpriteResource.new()
+	resource.image = Image.create(128, 128, false, Image.FORMAT_RGBA8)
+	resource.image.fill(Color.WHITE)
+	var resource_key := "42:0:%d:1:%d" % [divisor, archive.get_instance_id()]
+	main.render_caches.dynamic_sprite_cache[resource_key] = resource
+	var changed: Array[Rect2i] = [Rect2i(original.origin, Vector2i(64, 64))]
+	# Streamed publications report possible changes. A new actual silhouette
+	# must replace the complete receiver, while repeat publications retain it.
+	main.render_caches.static_occlusion_commands.assign([cover])
+	main.render_caches.static_occlusion_grid = CityIsometricRenderer.build_occlusion_grid(main.render_caches.static_occlusion_commands, divisor)
+	ground.invalidate_regions(changed)
+	for frame in 160:
+		ground.sync(main, 0.45)
+	var hidden: Dictionary = ground.cache[tile]
+	assert(not is_same(hidden, original) and hidden.texture.get_image().get_data() != pixels)
+	assert(hidden.fixtures.get_image().is_invisible(), "Reused lights leaked through a new foreground building")
+	ground.invalidate_regions(changed)
+	for frame in 160:
+		ground.sync(main, 0.45)
+	assert(is_same(ground.cache[tile], hidden), "Identical silhouettes rebuilt their mask")
+	main.render_caches.static_occlusion_commands.assign(old_commands)
+	main.render_caches.static_occlusion_grid = old_grid
+	ground.invalidate_regions(changed)
+	for frame in 160:
+		ground.sync(main, 0.45)
+	assert(ground.cache[tile].texture.get_image().get_data() == pixels, "Removed building left stale light occlusion")
+	main.render_caches.dynamic_sprite_cache.erase(resource_key)
+	main.asset_state.large_sprites = old_large
+	main.asset_state.small_medium_sprites = old_small
 
 
 func _check_resident_lights() -> void:

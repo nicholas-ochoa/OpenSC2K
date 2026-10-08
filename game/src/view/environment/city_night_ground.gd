@@ -105,7 +105,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 	elif not changed.is_empty():
 		for tile in changed:
 			if cache.has(tile):
-				_mark_dirty(tile)
+				_mark_dirty(tile, true)
 			if bounds.grow(64).has_point(Vector2i(CityLifePaths.point(city, tile, 0, 2, 0.5, false))):
 				bounds = Rect2i()
 	var next := Rect2i(map.visible_source_rect().grow(BUFFER_MARGIN))
@@ -124,12 +124,16 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 			pending.append(tile)
 			continue
 		queued.erase(tile)
-		_forget_helpers(tile)
-		_store(tile, _build(app, tile))
-		# The finished GPU textures own their output; temporary masks are no longer needed.
-		_forget_helpers(tile)
+		var occlusion := _occlusion_inputs(app, tile)
+		if not cache.has(tile) or cache[tile].get("occlusion") != occlusion:
+			_forget_helpers(tile)
+			var entry := _build(app, tile)
+			entry.occlusion = occlusion
+			_store(tile, entry)
+			# Finished textures own their output; release temporary masks.
+			_forget_helpers(tile)
+			built += 1
 		dirty.erase(tile)
-		built += 1
 		if Time.get_ticks_usec() - started > 4000:
 			break
 	if cursor > 0:
@@ -255,14 +259,16 @@ func _enqueue(tile: Vector2i) -> void:
 		queued[tile] = true
 
 
-func _mark_dirty(tile: Vector2i) -> void:
+func _mark_dirty(tile: Vector2i, geometry_changed := false) -> void:
+	if geometry_changed and cache.has(tile):
+		cache[tile].erase("occlusion")
 	dirty[tile] = true
 	_enqueue(tile)
 
 
 func invalidate_all() -> void:
 	for tile in cache:
-		_mark_dirty(tile)
+		_mark_dirty(tile, true)
 
 
 func invalidate_regions(changes: Array[Rect2i]) -> void:
@@ -293,6 +299,27 @@ func _regions_ready(app: CityApplication, tile: Vector2i) -> bool:
 		if not regions.entries.has(key):
 			return false
 	return true
+
+
+func _occlusion_inputs(app: CityApplication, tile: Vector2i) -> PackedInt64Array:
+	# Region publications also happen after zoom/traffic repaints. Compare the
+	# actual silhouettes before rebuilding masks, with exact values rather than
+	# a hash. Cover every approach used by the shared foreground-mask helper.
+	var city := app.document_state.city
+	var area := Rect2i()
+	for enter in 4:
+		var center := CityLifePaths.point(city, tile, enter, (enter + 2) % 4, 0.5, false)
+		var bounds_for_axis := Rect2i(Vector2i(center) - Vector2i(32, 28), Vector2i(64, 48))
+		area = area.merge(bounds_for_axis) if area.has_area() else bounds_for_axis
+	var regions := app.render_caches.region_cache
+	var commands := (regions.occlusion_candidates(area, true) if regions != null
+		else app.moving_sprites.static_occlusion_candidates(area))
+	var result := PackedInt64Array()
+	for command in commands:
+		result.append_array(PackedInt64Array([command.sprite_id, int(command.flip), command.position.x,
+			command.position.y, command.depth_order, command.train_foreground_reference_sprite_id,
+			command.train_deck_thickness, command.train_deck_reference_sprite_id, int(command.train_foreground_requires_depth)]))
+	return result
 
 
 func sources(city: CityState, tile: Vector2i) -> Array[Dictionary]:
