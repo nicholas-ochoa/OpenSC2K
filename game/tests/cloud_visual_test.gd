@@ -106,6 +106,19 @@ func _run() -> void:
 	clouds.reset()
 	main.visual_environment.process(0.0)
 	assert(clouds.fog > 0.0 and clouds.fog_overlay.layer.visible, "Fog must be a cloud situation")
+	main.preferences.visual_enhancements.weather_enabled = true
+	for mode in range(1, 7):
+		main.preferences.visual_enhancements.cloud_mode = mode
+		for kind in range(1, 7):
+			main.preferences.visual_enhancements.weather_fixed = kind
+			clouds.reset()
+			main.visual_environment.process(0.0)
+			assert(clouds.situations.current == mode - 1, "Weather replaced a fixed cloud type")
+			assert(clouds.precipitation_readiness == 1.0, "A fixed cloud type suppressed precipitation")
+			var weather := main.visual_environment.weather
+			if weather.layer != null and weather.layer.visible:
+				assert(is_equal_approx(weather.material.get_shader_parameter("rain"), weather.rain))
+				assert(is_equal_approx(weather.material.get_shader_parameter("snow"), weather.snow))
 	main.preferences.visual_enhancements.cloud_mode = 0
 	clouds.reset()
 	main.preferences.visual_enhancements.cloud_enabled = true
@@ -151,7 +164,10 @@ func _check_situations() -> void:
 	for mode in range(7):
 		for kind in range(1, 7):
 			var chosen := CityCloudSituations.choose(mode, kind, -1)
-			assert(chosen in [CityCloudSituations.Type.CUMULUS, CityCloudSituations.Type.STRATUS, CityCloudSituations.Type.ALTOSTRATUS])
+			if mode == 0:
+				assert(chosen in [CityCloudSituations.Type.CUMULUS, CityCloudSituations.Type.STRATUS, CityCloudSituations.Type.ALTOSTRATUS])
+			else:
+				assert(chosen == mode - 1, "Fixed types must take precedence over wet weather")
 			assert(CityVisualClouds.weather_density(0.0, kind, -1, 0.0) >= 0.4,
 				"Wet weather must retain cloud cover even with zero preferred coverage")
 	assert(CityCloudSituations.choose(0, 0, 3) == CityCloudSituations.Type.FOG)

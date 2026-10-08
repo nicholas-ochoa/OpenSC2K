@@ -36,8 +36,9 @@ static func wet(kind: int) -> bool:
 
 
 static func choose(mode: int, kind: int, game_weather: int, epoch := 0) -> int:
-	# Precipitation and thunder need an appropriate body, even with a manual
-	# high-cloud selection. Manual selection returns after the front clears.
+	# A fixed type is authoritative. Only Automatic follows weather fronts.
+	if mode > 0:
+		return clampi(mode - 1, Type.CUMULUS, Type.FOG)
 	match kind:
 		CityVisualWeather.Kind.LIGHT_RAIN, CityVisualWeather.Kind.LIGHT_SNOW, CityVisualWeather.Kind.HEAVY_SNOW:
 			return Type.ALTOSTRATUS
@@ -45,8 +46,6 @@ static func choose(mode: int, kind: int, game_weather: int, epoch := 0) -> int:
 			return Type.STRATUS
 		CityVisualWeather.Kind.RAIN_STORM, CityVisualWeather.Kind.DRY_STORM:
 			return Type.CUMULUS
-	if mode > 0:
-		return clampi(mode - 1, Type.CUMULUS, Type.FOG)
 	if game_weather == 3:
 		return Type.FOG
 	if game_weather == 5:

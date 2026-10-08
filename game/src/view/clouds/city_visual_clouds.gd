@@ -119,9 +119,9 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 		fog = move_toward(fog, target_fog, step * (0.04 if _manual_preview else 0.004))
 	if situations.current == situations.target and is_equal_approx(density, target_density) and is_equal_approx(fog, target_fog) and is_equal_approx(storminess, storm_target):
 		_manual_preview = false
-	# A zero-density/high-cloud scene first develops its cover, then admits
-	# precipitation. This affects display only, never the city's actual weather.
-	precipitation_readiness = smoothstep(0.08, 0.3, density) * situations.rain_cover() if CityCloudSituations.wet(kind) else 1.0
+	# Automatic develops suitable cover before admitting precipitation. A fixed
+	# high-cloud or fog choice must never suppress the chosen weather effects.
+	precipitation_readiness = smoothstep(0.08, 0.3, density) * situations.rain_cover() if int(options.get("cloud_mode", 0)) == 0 and CityCloudSituations.wet(kind) else 1.0
 	_initialized = true
 	parameters.merge({
 		"cloud_field": field,

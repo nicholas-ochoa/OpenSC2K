@@ -70,8 +70,8 @@ const HINTS := {
 	"weather_lut_strength": "Strength of weather color filters. 0% disables these filters.",
 	"season_water_strength": "Strength of the seasonal water tint. Enable Seasons to use this setting.",
 	"cloud_enabled": "Enable clouds, their shadows and ground-level fog together. Weather effects have their own switch.",
-	"cloud_mode": "Automatic follows the weather. Choose Cumulus for puffy clouds, Stratus for low sheets, Altostratus for higher sheets, Cirrus for wisps, Cirrocumulus for small cloudlets, or Fog for ground-level clouds. Fog fades above low terrain, leaving hilltops clear. Rain, snow and storms can override this choice.",
-	"cloud_density": "Amount of decorative cloud and fog coverage. With Clouds and fog enabled, rain, snow and storms keep suitable minimum cloud cover, even at 0%.",
+	"cloud_mode": "Automatic follows the weather. Choose Cumulus for puffy clouds, Stratus for low sheets, Altostratus for higher sheets, Cirrus for wisps, Cirrocumulus for small cloudlets, or Fog for ground-level clouds. Fog fades above low terrain, leaving hilltops clear. Fixed types stay selected during rain, snow and storms.",
+	"cloud_density": "Amount of decorative cloud and fog coverage. With aerial clouds enabled, rain, snow and storms keep minimum cloud coverage, even at 0%.",
 	"cloud_speed": "Multiplier for cloud and fog movement. 1× is the standard speed; 0× stops movement.",
 	"life_car_amount": "Decorative car density. 1× is the standard amount; does not change simulated traffic.",
 	"life_people_amount": "Decorative pedestrian density. 1× is the standard amount; does not change population.",
@@ -432,7 +432,7 @@ func _update_availability() -> void:
 		hint.text = _dependency_reason(key, values) if not available else ""
 		if key == "cloud_mode" and available:
 			if values.weather_enabled:
-				hint.text = "Rain, snow and storms can override the selected type and keep minimum cloud cover."
+				hint.text = "Automatic follows rain, snow and storms." if values.cloud_mode == 0 else "This cloud type stays fixed during rain, snow and storms."
 			elif values.cloud_mode == 0:
 				hint.text = "Weather is off. Automatic shows calm Cumulus clouds."
 		hint.visible = relevant and not hint.text.is_empty()
