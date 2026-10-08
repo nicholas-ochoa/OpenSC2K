@@ -9,7 +9,7 @@ fn forests_keep_density_clearings_and_local_cache_invalidation() {
         b.config.natural_forests = true;
         for id in 6..=12 {
             let original = b.sprites.images[&((view * 500 + id) as u64 * 2)].clone();
-            for variant in 0..64 {
+            for variant in 0..128 {
                 b.sprites.images.insert(
                     ((nature::FIRST + variant * nature::SPAN + view * 500 + id) * 2) as u64,
                     original.clone(),
@@ -30,7 +30,7 @@ fn forests_keep_density_clearings_and_local_cache_invalidation() {
             b.city.buildings[clearing] = density;
             let id = b.paint(7, 7).unwrap()[1].sprite;
             assert_eq!(nature::original(id), view * 500 + i32::from(density));
-            assert_eq!((id - nature::FIRST) / nature::SPAN / 4, 15);
+            assert_eq!((id - nature::FIRST) / nature::SPAN / 8, 15);
         }
         b.city.buildings[clearing] = 0;
         let full = Rect::new(0, 0, 4096, 4096);
@@ -62,7 +62,7 @@ fn forests_keep_density_clearings_and_local_cache_invalidation() {
         for (x, y) in [(0, 0), (15, 0), (0, 15), (15, 15)] {
             let i = b.city.index(x, y);
             b.city.buildings[i] = tiles::TREES_7;
-            assert_eq!((b.forest_sprite(x, y, view * 500 + 12) - nature::FIRST) / nature::SPAN / 4, 0);
+            assert_eq!((b.forest_sprite(x, y, view * 500 + 12) - nature::FIRST) / nature::SPAN / 8, 0);
         }
     }
 }

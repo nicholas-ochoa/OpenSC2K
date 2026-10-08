@@ -73,6 +73,10 @@ func _run() -> void:
 		assert(Time.get_ticks_msec() - started < 60000, "City preparation did not finish")
 		await process_frame
 	assert(edited_during_load and continuous_repaints > 0)
+	for archive in prepare.archives:
+		assert(archive.visual_nature_enabled and archive.visual_terrain_enabled, "Prepared view dropped nature options")
+		assert(not archive.visual_nature.is_empty(), "Prepared view dropped nature artwork")
+		assert(not archive.visual_nature_masks.is_empty(), "Prepared view dropped nature masks")
 	await _settle(main)
 	assert(not prepare.busy and not main.city_dialogs.visual_preparation_progress.visible)
 	assert(DocumentState.capture(city.document) == before, "Precache advanced or edited the city")
@@ -135,6 +139,10 @@ func _run() -> void:
 		assert(ground.cache[Vector2i(64, 64)].texture.get_image().is_invisible(), "Removed street retained its light")
 		assert(ground.cache.has(added) and not ground.cache[added].texture.get_image().is_invisible(), "New offscreen street was not prepared")
 		assert(is_same(snapshots[view][Vector2i(12, 16)], ground.cache[Vector2i(12, 16)]), "Local edit rebuilt a distant light")
+	var old_layout := prepare._layout()
+	main.asset_state.large_sprites.visual_nature_enabled = false
+	assert(prepare._layout() != old_layout, "Nature switch retained stale prepared views")
+	main.asset_state.large_sprites.visual_nature_enabled = true
 	# A layout change after completion must attach a live renderer immediately.
 	main.view_state.surface_visibility.trees = not main.view_state.surface_visibility.trees
 	prepare.process()

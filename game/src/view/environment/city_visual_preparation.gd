@@ -56,7 +56,9 @@ func _layout() -> Array:
 	var city := app.document_state.city
 	return [city.document.get_instance_id(), city.map_size, city.compass_rotation(), city.visible_altitude_levels,
 		app.asset_state.large_sprites, app.asset_state.small_medium_sprites,
-		app.view_state.surface_visibility.duplicate(), app.preferences.city_renderer]
+		app.view_state.surface_visibility.duplicate(), app.preferences.city_renderer,
+		app.asset_state.large_sprites.visual_nature_enabled, app.asset_state.large_sprites.visual_terrain_enabled,
+		app.asset_state.small_medium_sprites.visual_nature_enabled, app.asset_state.small_medium_sprites.visual_terrain_enabled]
 
 
 func _index(view: int) -> int:
@@ -95,6 +97,10 @@ func begin() -> void:
 		archive.entries_by_id = original.entries_by_id
 		archive.visual_emission = original.visual_emission
 		archive.visual_seasons = original.visual_seasons
+		archive.visual_nature = original.visual_nature
+		archive.visual_nature_masks = original.visual_nature_masks
+		archive.visual_nature_enabled = original.visual_nature_enabled
+		archive.visual_terrain_enabled = original.visual_terrain_enabled
 		archive.visual_revision = original.visual_revision
 		archive.water_reflections = original.water_reflections
 		archive.water_indices = original.water_indices

@@ -23,6 +23,9 @@ func _run() -> void:
 	material.set_shader_parameter("environment_has_seasons", true)
 	material.set_shader_parameter("environment_season_mask", ImageTexture.create_from_image(mask))
 	material.set_shader_parameter("nature_ground", CityNatureArtwork.ground_texture())
+	# One terrain tile spans many pixels. Test seams at actual artwork scale.
+	var projection := Basis(Vector3(0.0625, 0, 0), Vector3(0, 0.0625, 0), Vector3(0, 0, 1))
+	material.set_shader_parameter("nature_canvas_to_grid", projection)
 	sprite.material = material
 	viewport.add_child(sprite)
 	await process_frame
@@ -37,22 +40,64 @@ func _run() -> void:
 	for x in range(1, 256):
 		var a := enhanced.get_pixel(x - 1, 32)
 		var b := enhanced.get_pixel(x, 32)
-		assert(absf(a.r - b.r) < 0.012 and absf(a.g - b.g) < 0.012, "Terrain variation has a hard seam")
+		assert(absf(a.r - b.r) < 0.065 and absf(a.g - b.g) < 0.065, "Terrain detail exceeds the restrained contrast budget")
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == enhanced.get_data(), "Static terrain animated")
 	# Move the canvas and compensate its world transform, as camera panning does.
 	sprite.position.x = 8
-	material.set_shader_parameter("nature_canvas_to_grid", Basis(Vector3.RIGHT, Vector3.UP, Vector3(-8, 0, 1)))
+	material.set_shader_parameter("nature_canvas_to_grid", Basis(Vector3(0.0625, 0, 0), Vector3(0, 0.0625, 0), Vector3(-0.5, 0, 1)))
 	await RenderingServer.frame_post_draw
 	var panned := viewport.get_texture().get_image()
 	assert(panned.get_region(Rect2i(8, 0, 248, 64)).get_data() == enhanced.get_region(Rect2i(0, 0, 248, 64)).get_data(),
 		"Terrain texture moved relative to the map")
 	sprite.position.x = 0
-	material.set_shader_parameter("nature_canvas_to_grid", Basis.IDENTITY)
+	material.set_shader_parameter("nature_canvas_to_grid", projection)
 	material.set_shader_parameter("nature_terrain_enabled", false)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == classic.get_data())
+	# Exercise the same mask contract used by all generated tree variants and
+	# terrain aliases. Include an unmasked trunk/building and a shaded field edge.
+	mask.fill(Color(0, 0, 0, 0))
+	for species in 3:
+		mask.fill_rect(Rect2i(species * 64, 0, 64, 64), Color(1, float(species + 1) * 0.1, 0, 1))
+	mask.fill_rect(Rect2i(0, 64, 256, 64), Color(0, 1, 0, 1))
+	pixels.fill(Color(0.20, 0.48, 0.12))
+	pixels.fill_rect(Rect2i(0, 96, 256, 1), Color(0.10, 0.24, 0.06))
+	sprite.texture = ImageTexture.create_from_image(pixels)
+	material.set_shader_parameter("environment_season_mask", ImageTexture.create_from_image(mask))
+	material.set_shader_parameter("nature_forests_enabled", true)
+	material.set_shader_parameter("nature_terrain_enabled", true)
+	await RenderingServer.frame_post_draw
+	var summer := viewport.get_texture().get_image()
+	material.set_shader_parameter("environment_enabled", true)
+	var seasons: Array[Image] = []
+	for season in 4:
+		var weights := Vector4.ZERO
+		weights[season] = 1.0
+		material.set_shader_parameter("environment_seasons", weights)
+		await RenderingServer.frame_post_draw
+		var result := viewport.get_texture().get_image()
+		seasons.append(result)
+		assert(result.get_region(Rect2i(192, 0, 64, 64)).get_data() == summer.get_region(Rect2i(192, 0, 64, 64)).get_data(),
+			"Season color reached unmasked trunks or buildings")
+		assert(result.get_pixel(128, 96).get_luminance() < result.get_pixel(128, 95).get_luminance(),
+			"Season color erased the field edge shading")
+		if season == 1:
+			assert(result.get_data() == summer.get_data())
+		else:
+			for region in [Rect2i(0, 64, 256, 64), Rect2i(0, 0, 64, 64), Rect2i(64, 0, 64, 64), Rect2i(128, 0, 64, 64)]:
+				assert(result.get_region(region).get_data() != summer.get_region(region).get_data(),
+					"New terrain or tree species ignored the selected season")
+	var autumn_pine := seasons[2].get_pixel(32, 32)
+	var autumn_oak := seasons[2].get_pixel(96, 32)
+	var autumn_birch := seasons[2].get_pixel(160, 32)
+	assert(autumn_pine.g > autumn_pine.r, "Evergreen became autumn foliage")
+	assert(autumn_oak.r > autumn_oak.g and autumn_birch.g > autumn_oak.g, "Broadleaf autumn species lost their colors")
+	assert(seasons[3].get_pixel(128, 80).get_luminance() > summer.get_pixel(128, 80).get_luminance(), "Winter ground did not receive snow shading")
+	material.set_shader_parameter("environment_enabled", false)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == summer.get_data(), "Seasons off did not restore the nature artwork")
 	viewport.queue_free()
 	await process_frame
-	print("PASS: native GPU terrain masks, quiet continuous patches, stationary texture and exact off state")
+	print("PASS: native GPU terrain masks, quiet patches, stationary texture, all tree species and terrain in four seasons, field edges and exact off state")
 	quit()

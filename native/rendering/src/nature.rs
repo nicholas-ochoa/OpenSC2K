@@ -39,8 +39,8 @@ impl Builder {
             _ => (x, y),
         };
         let hash = (cx as u32).wrapping_mul(374_761_393) ^ (cy as u32).wrapping_mul(668_265_263);
-        let variant = ((hash ^ (hash >> 13)) & 3) as i32;
-        let selected = FIRST + (neighbors * 4 + variant) * SPAN + id;
+        let variant = ((hash ^ (hash >> 13)) & 7) as i32;
+        let selected = FIRST + (neighbors * 8 + variant) * SPAN + id;
         if self.sprites.images.contains_key(&(selected as u64 * 2)) {
             selected
         } else {
@@ -49,8 +49,8 @@ impl Builder {
     }
 
     pub(super) fn nature_ground(&self, id: i32) -> i32 {
-        let selected = FIRST + 64 * SPAN + id;
-        if self.config.natural_terrain && id % 500 == 256 && self.sprites.images.contains_key(&(selected as u64 * 2)) {
+        let selected = FIRST + 128 * SPAN + id;
+        if self.config.natural_terrain && (256..=268).contains(&(id % 500)) && self.sprites.images.contains_key(&(selected as u64 * 2)) {
             selected
         } else {
             id

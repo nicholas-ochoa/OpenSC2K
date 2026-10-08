@@ -78,6 +78,17 @@ vec3 season_color(vec3 base, vec2 uv) {
 	vec3 spring = mix(vec3(0.49, 0.59, 0.29), vec3(0.34, 0.72, 0.16), mask.r) * (0.35 + shade);
 	vec3 autumn = mix(vec3(0.65, 0.43, 0.23), mix(vec3(0.86, 0.42, 0.12), vec3(0.71, 0.57, 0.18), base.g), mask.r) * (0.35 + shade);
 	vec3 winter = vec3(0.86, 0.92, 0.97) * (0.56 + shade * 0.55);
+	// Authored nature foliage stores species in green below the ground range.
+	// Original masks (red only) retain their existing seasonal treatment.
+	if (mask.r > 0.5 && mask.g > 0.05 && mask.g < 0.35) {
+		if (mask.g < 0.15) {
+			spring = base * vec3(1.03, 1.12, 1.02);
+			autumn = base * vec3(0.96, 0.94, 0.93);
+			winter = mix(base * vec3(0.82, 0.90, 0.95), winter, 0.60);
+		} else if (mask.g > 0.25) {
+			autumn = vec3(0.77, 0.65, 0.22) * (0.35 + shade);
+		}
+	}
 	vec3 colored = spring * environment_seasons.x + base * environment_seasons.y + autumn * environment_seasons.z + winter * environment_seasons.w;
 	colored = mix(colored, winter, environment_frost);
 	colored = lut_four(environment_season_luts, colored, environment_season_lut_weights, environment_season_lut_strength);

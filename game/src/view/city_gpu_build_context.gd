@@ -124,7 +124,7 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 		if (sprites.visual_nature_enabled or sprites.visual_terrain_enabled) and mode == CityViewMode.Mode.CITY:
 			for id: int in sprites.visual_nature:
 				if (id % CityNatureArtwork.SPAN) / 500 == view:
-					if (id % 500 == 256 and not sprites.visual_terrain_enabled) or (id % 500 != 256 and not sprites.visual_nature_enabled):
+					if (id % 500 >= 256 and not sprites.visual_terrain_enabled) or (id % 500 < 256 and not sprites.visual_nature_enabled):
 						continue
 					artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
 

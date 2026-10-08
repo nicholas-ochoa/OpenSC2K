@@ -1,13 +1,16 @@
 class_name CityNatureArtwork
 extends RefCounted
-## Small variations of the active artwork, composed once per archive. City data stays read-only.
+## Compact mixed woodland sprites and terrain masks, composed once. City data stays read-only.
 
 @warning_ignore_start("integer_division")
 
 const FIRST := 6000
 const SPAN := 1500
-const VARIANTS := 4
-const GROUND_VARIANT := 64
+const VARIANTS := 8
+const GROUND_VARIANT := 128
+# Tree roots are local to the original 32x16 diamond. No tree is placed on an empty tile.
+const ROOTS := [Vector2i(16, 25), Vector2i(8, 24), Vector2i(24, 24),
+	Vector2i(16, 19), Vector2i(9, 19), Vector2i(23, 19), Vector2i(16, 30)]
 static var _ground: ImageTexture
 
 
@@ -18,7 +21,7 @@ static func ground_texture() -> ImageTexture:
 			for x in 32:
 				var value := ((x * 374761393 + y * 668265263) ^ 1274126177) & 0x7fffffff
 				value = ((value ^ (value >> 13)) * 1274126177) & 0x7fffffff
-				pixels.set_pixel(x, y, Color(float(value & 255) / 255.0, float((value >> 8) & 255) / 255.0, 0))
+				pixels.set_pixel(x, y, Color(float(value & 255) / 255.0, float((value >> 8) & 255) / 255.0, float((value >> 16) & 255) / 255.0))
 		_ground = ImageTexture.create_from_image(pixels)
 	return _ground
 
@@ -30,6 +33,9 @@ static func sprite_id(view: int, density: int, neighbors: int, variant: int) -> 
 static func prepare(archive: Sc2SpriteArchive, palette: Sc2Palette) -> void:
 	if not archive.visual_nature.is_empty():
 		return
+	var colors: Array[int] = []
+	for color in [Color(0.03, 0.21, 0), Color(0.03, 0.34, 0), Color(0.03, 0.46, 0), Color(0.03, 0.59, 0), Color(0.03, 0.72, 0), Color("655032"), Color("978466")]:
+		colors.append(_nearest(palette, color))
 	for view in 3:
 		if not archive.entries_by_id.has(view * 500 + 6):
 			continue
@@ -39,87 +45,119 @@ static func prepare(archive: Sc2SpriteArchive, palette: Sc2Palette) -> void:
 					var source := archive.find_sprite(view * 500 + 5 + density)
 					if source == null:
 						continue
-					var pixels := _group(source, palette, density, neighbors, variant)
-					var mask := Image.create(source.width, source.height, false, Image.FORMAT_RGBA8)
+					var size := Vector2i(32 >> (2 - view), 36 >> (2 - view))
+					var group := _group(size, colors, density, neighbors, variant)
+					var pixels: PackedInt32Array = group.pixels
+					var mask := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+					# Red marks foliage; green 0.1/0.2/0.3 identifies pine/oak/birch.
+					# Ground uses green 1; blue remains reserved for power warnings.
 					for at in pixels.size():
-						if pixels[at] >= 0 and _foliage(palette.color(pixels[at])):
-							mask.set_pixel(at % source.width, at / source.width, Color(1, 0, 0, 1))
+						if group.species[at] > 0:
+							mask.set_pixel(at % size.x, at / size.x, Color(1, float(group.species[at]) * 0.1, 0, 1))
 					var id := sprite_id(view, density, neighbors, variant)
-					archive.visual_nature[id] = Sc2SpriteArchive.entry_from_indices(id, source.width, source.height, pixels)
+					archive.visual_nature[id] = Sc2SpriteArchive.entry_from_indices(id, size.x, size.y, pixels)
 					archive.visual_nature_masks[id] = mask
 
-		var ground := archive.find_sprite(view * 500 + 256)
-		if ground != null:
-			var id := FIRST + GROUND_VARIANT * SPAN + view * 500 + 256
-			archive.visual_nature[id] = _ground_entry(ground, id)
-			if archive.visual_seasons.has(ground.sprite_id):
-				archive.visual_nature_masks[id] = archive.visual_seasons[ground.sprite_id]
-
-
-static func _ground_entry(source: Sc2SpriteArchive.SpriteEntry, id: int) -> Sc2SpriteArchive.SpriteEntry:
-	var original: PackedInt32Array = source.decode_indices().pixels
-	var pixels := original.duplicate()
-	if source.width < 8 or source.height < 5:
-		return Sc2SpriteArchive.entry_from_indices(id, source.width, source.height, pixels)
-	var inset := maxi(1, source.width / 16)
-	for y in source.height:
-		var left := source.width
-		var right := -1
-		for x in source.width:
-			if original[y * source.width + x] >= 0:
-				left = mini(left, x)
-				right = x
-		if right < left:
-			continue
-		for x in range(left, right + 1):
-			if mini(x - left, right - x) >= inset and y < source.height - inset:
+		for offset in range(256, 269):
+			var ground := archive.find_sprite(view * 500 + offset)
+			if ground == null:
 				continue
-			# Keep the exact terrain silhouette. Only replace the dark drawn
-			# grid edge with an existing interior soil pixel of the same tile.
-			var sx := clampi(x, left + inset, maxi(left + inset, right - inset))
-			var sy := y
-			if right - left < inset * 3 or y >= source.height - inset:
-				sx = source.width / 2
-				sy = clampi(y, inset * 2, source.height - inset * 2 - 1)
-			var value := original[sy * source.width + mini(sx, source.width - 1)]
-			if value >= 0:
-				pixels[y * source.width + x] = value
-	return Sc2SpriteArchive.entry_from_indices(id, source.width, source.height, pixels)
+			var id := FIRST + GROUND_VARIANT * SPAN + view * 500 + offset
+			var entry := ground
+			archive.visual_nature[id] = Sc2SpriteArchive.entry_from_indices(id, entry.width, entry.height, entry.decode_indices().pixels)
+			var mask := Image.create(entry.width, entry.height, false, Image.FORMAT_RGBA8)
+			var pixels: PackedInt32Array = entry.decode_indices().pixels
+			for at in pixels.size():
+				if pixels[at] < 0:
+					continue
+				var color := palette.color(pixels[at])
+				# Alpha distinguishes original rock faces from soil. Other mask
+				# channels retain their shared foliage/ground/power contracts.
+				var rock := offset != 256 and color.g < color.r * 0.76
+				mask.set_pixel(at % entry.width, at / entry.width, Color(0, 1, 0, 0.55 if rock else (1.0 if offset == 256 else 0.92)))
+			archive.visual_nature_masks[id] = mask
 
 
-static func _foliage(color: Color) -> bool:
-	return color.g > color.r * 0.9 and color.g > color.b * 1.25
+static func _nearest(palette: Sc2Palette, target: Color) -> int:
+	var best := 0
+	var distance := INF
+	# Avoid the animated palette ranges and preserve the imported palette.
+	for index in 170:
+		var color := palette.color(index)
+		var next := Vector3(color.r - target.r, color.g - target.g, color.b - target.b).length_squared()
+		if next < distance:
+			distance = next
+			best = index
+	return best
 
 
-static func _group(source: Sc2SpriteArchive.SpriteEntry, palette: Sc2Palette,
-		density: int, neighbors: int, variant: int) -> PackedInt32Array:
-	var original: PackedInt32Array = source.decode_indices().pixels
-	var pixels := original.duplicate()
-	var width := source.width
-	var height := source.height
-	# Mirror complete groups, preserving every original trunk, tree and shade.
-	if variant & 1 != 0:
-		for y in height:
-			for x in width:
-				pixels[y * width + x] = original[y * width + width - 1 - x]
-	var base := pixels.duplicate()
-	# At the smallest size, preserve the few original silhouette pixels.
-	if width < 16:
-		return pixels
-	for y in range(1, height - 2):
-		for x in range(1, width - 1):
-			var at := y * width + x
-			var index := base[at]
-			if index < 0 or not _foliage(palette.color(index)):
-				continue
-			# Extend existing needles by at most one pixel near a shared dense
-			# edge. Open sides and tree roots retain the original outline.
-			var side := (0 if y < height / 2 else 1) if x > width / 2 else (3 if y < height / 2 else 2)
-			var shared := density >= 4 and neighbors & (1 << side) != 0
-			var accent := variant >= 2 and (x * 7 + y * 11) % 9 == 0
-			if not shared and not accent:
-				continue
-			var step := 1 if x > width / 2 else -1
-			if base[at + step] < 0 and base[at + width] >= 0:
-				pixels[at + step] = index
-	return pixels
+static func _group(size: Vector2i, colors: Array[int], density: int, neighbors: int, variant: int) -> Dictionary:
+	var pixels := PackedInt32Array()
+	pixels.resize(32 * 36)
+	pixels.fill(-1)
+	var species := PackedByteArray()
+	species.resize(pixels.size())
+	var roots: Array[Vector3i] = []
+	for tree in density:
+		var root: Vector2i = ROOTS[tree]
+		if density == 1:
+			root = Vector2i(16, 27)
+		var seed := tree * 29 + variant * 47 + density * 13
+		root.x += seed % 5 - 2
+		root.y += (seed / 5) % 3 - 1
+		var side := (0 if root.y < 25 else 1) if root.x > 16 else (3 if root.y < 25 else 2)
+		var shared := density >= 4 and neighbors & (1 << side) != 0
+		if shared:
+			root.x += 1 if root.x > 16 else -1
+		roots.append(Vector3i(root.x, root.y, seed + (1000 if shared else 0)))
+	roots.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return a.y < b.y)
+	for root in roots:
+		_tree(pixels, species, root, colors)
+	if size == Vector2i(32, 36):
+		return {"pixels": pixels, "species": species}
+	var reduced := PackedInt32Array()
+	reduced.resize(size.x * size.y)
+	var reduced_species := PackedByteArray()
+	reduced_species.resize(reduced.size())
+	for y in size.y:
+		for x in size.x:
+			var source := (y * 36 / size.y) * 32 + x * 32 / size.x
+			reduced[y * size.x + x] = pixels[source]
+			reduced_species[y * size.x + x] = species[source]
+	return {"pixels": reduced, "species": reduced_species}
+
+
+static func _tree(pixels: PackedInt32Array, foliage: PackedByteArray, root: Vector3i, colors: Array[int]) -> void:
+	# Hand-shaped clusters at the original artwork's pixel scale. The conifer
+	# uses stepped branch tiers; oak and birch have unequal leafy lobes.
+	const CROWNS := [
+		[".....3.....", ".....43....", "....432....", "....443....", "...34421...",
+		 "....432....", "...44321...", "..344322...", "...44321...", "..3443321..",
+		 "..4543321..", ".34432321..", "..343221...", ".344332211.", "34443322211", ".33322211.."],
+		["....443....", "..344532...", ".34545332..", ".455343221.", "34543443221",
+		 "34454333221", "45343432311", "34434323221", ".343223221.", "..3323211..", "...2211...."],
+		["....43...", "...4542..", "..454432.", "..543332.", ".45434321", "345443321",
+		 ".43453221", "344343321", ".34343221", "..433221.", ".343321..", "..33211..", "...21...."]]
+	var seed := root.z % 1000
+	var species := seed % 3
+	var shape: Array = CROWNS[species]
+	var width: int = shape[0].length()
+	var height := shape.size() + seed % 3
+	var spread := 1 if root.z >= 1000 and species != 2 else 0
+	for y in range(root.y - 7, root.y + 1):
+		_put(pixels, foliage, root.x, y, colors[6 if species == 2 and y % 3 != 0 else 5], 0)
+	for y in height:
+		var row: String = shape[mini(shape.size() - 1, y * shape.size() / height)]
+		for x in range(width + spread):
+			var sx := mini(width - 1, x * width / (width + spread))
+			if seed & 1 != 0:
+				sx = width - 1 - sx
+			var value := row.substr(sx, 1)
+			if value != ".":
+				_put(pixels, foliage, root.x + x - (width + spread) / 2, root.y - height - 3 + y, colors[value.to_int() - 1], species + 1)
+
+
+static func _put(pixels: PackedInt32Array, foliage: PackedByteArray, x: int, y: int, index: int, species: int) -> void:
+	if x >= 0 and x < 32 and y >= 0 and y < 36:
+		pixels[y * 32 + x] = index
+		foliage[y * 32 + x] = species

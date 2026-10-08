@@ -47,6 +47,10 @@ static func copy_graphics(source: Sc2SpriteArchive) -> Sc2SpriteArchive:
 	copy.redraw_small_highway_ground = source.redraw_small_highway_ground
 	copy.visual_emission.assign(source.visual_emission)
 	copy.visual_seasons.assign(source.visual_seasons)
+	copy.visual_nature.assign(source.visual_nature)
+	copy.visual_nature_masks.assign(source.visual_nature_masks)
+	copy.visual_nature_enabled = source.visual_nature_enabled
+	copy.visual_terrain_enabled = source.visual_terrain_enabled
 	copy.visual_revision = source.visual_revision
 	copy.water_reflections = source.water_reflections
 	copy.water_indices = source.water_indices

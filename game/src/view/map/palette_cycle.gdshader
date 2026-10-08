@@ -13,6 +13,7 @@ uniform sampler2D power_warning_palette : source_color, filter_nearest, repeat_d
 uniform float power_warning_blend = 0.0;
 // One tiny shared texture, no extra draw pass or per-tile frame updates.
 uniform bool nature_terrain_enabled = false;
+uniform bool nature_forests_enabled = false;
 uniform sampler2D nature_ground : filter_linear, repeat_enable;
 uniform mat3 nature_canvas_to_grid = mat3(1.0);
 varying vec2 nature_grid;
@@ -66,14 +67,37 @@ void fragment() {
 		vec3 next_color = texture(power_warning_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
 		COLOR.rgb = mix(COLOR.rgb, next_color, power_warning_blend);
 	}
+	if (nature_forests_enabled && natural_mask.r > 0.5 && !dark_underground) {
+		// Keep the original indexed foliage shades, with the restrained greens
+		// of the woodland concept. Trunks and non-natural artwork stay intact.
+		float leaf = clamp((COLOR.g - 0.15) / 0.62, 0.0, 1.0);
+		float broadleaf = step(0.15, natural_mask.g);
+		float birch = step(0.25, natural_mask.g);
+		vec3 shade = mix(vec3(0.07, 0.18, 0.14), vec3(0.15, 0.25, 0.12), broadleaf);
+		vec3 light = mix(vec3(0.31, 0.48, 0.29), vec3(0.48, 0.58, 0.27), broadleaf);
+		light += vec3(0.035, 0.025, 0.0) * birch;
+		COLOR.rgb = mix(shade, light, leaf);
+	}
 	if (nature_terrain_enabled && natural_mask.g > 0.5 && !dark_underground) {
-		// Four-tile patches blend continuously across sprite and region borders.
-		// Preserve the original shading and the rock/soil silhouette.
-		vec2 patch = texture(nature_ground, nature_grid / 128.0).rg;
-		float shade = dot(COLOR.rgb, vec3(0.299, 0.587, 0.114));
-		vec3 grass = vec3(0.78, 0.94, 0.61) * shade;
-		COLOR.rgb = mix(COLOR.rgb, grass, (0.08 + patch.r * 0.18) * natural_mask.a);
-		COLOR.rgb *= 0.97 + patch.g * 0.06;
+		// Broad related meadow/dry-soil patches, with narrow pixel-dither
+		// boundaries and sparse detail. World-fixed: no per-frame randomness.
+		vec3 patch = texture(nature_ground, nature_grid / 160.0).rgb;
+		vec3 grain = texture(nature_ground, (floor(nature_grid * 16.0) + 0.5) / 32.0).rgb;
+		float field = patch.r + (grain.r - 0.5) * 0.035;
+		float dry = smoothstep(0.56, 0.70, field);
+		float earth = smoothstep(0.73, 0.85, field);
+		vec3 meadow = mix(vec3(0.32, 0.42, 0.23), vec3(0.43, 0.50, 0.28), smoothstep(0.22, 0.68, patch.g));
+		vec3 ground = mix(meadow, vec3(0.55, 0.49, 0.32), dry);
+		ground = mix(ground, vec3(0.43, 0.36, 0.26), earth);
+		float rock = 1.0 - smoothstep(0.6, 0.9, natural_mask.a);
+		ground = mix(ground, vec3(0.43, 0.44, 0.39), rock);
+		float original_shade = dot(COLOR.rgb, vec3(0.299, 0.587, 0.114));
+		float slope = 1.0 - step(0.97, natural_mask.a);
+		float surface_shade = mix(0.72 + original_shade * 0.45, clamp(0.10 + original_shade * 1.55, 0.28, 1.22), slope);
+		float shading = mix(surface_shade, clamp(0.25 + original_shade * 1.6, 0.28, 1.2), rock);
+		float detail = (step(0.91, grain.g) - step(grain.g, 0.07)) * 0.012;
+		COLOR.rgb = ground * shading + vec3(detail);
+
 	}
 	if (hazard_draw > 0.5) {
 		float frame = floor(hazard_phase);

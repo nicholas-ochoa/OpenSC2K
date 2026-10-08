@@ -27,14 +27,18 @@ func _run() -> void:
 		archive.visual_seasons.merge(archive.visual_nature_masks)
 		assert(archive.entries_by_id.size() == originals, "Generated art replaced imported artwork")
 		for density in range(1, 8):
-			var faithful := archive.find_sprite(CityNatureArtwork.sprite_id(view, density, 0, 0))
-			assert(faithful.decode_indices().pixels == archive.find_sprite(view * 500 + 5 + density).decode_indices().pixels,
-				"Base forest variant no longer matches the original artwork")
+			var original := archive.entries_by_id[view * 500 + 5 + density]
+			assert(archive.find_sprite(original.sprite_id) == original, "Imported original tree was replaced")
+			var silhouettes := {}
+			for variant in CityNatureArtwork.VARIANTS:
+				var entry := archive.find_sprite(CityNatureArtwork.sprite_id(view, density, 0, variant))
+				silhouettes[entry.decode_indices().pixels] = true
+			assert(silhouettes.size() > 1, "Tree variants have identical silhouettes")
 		var ground_id := CityNatureArtwork.FIRST + CityNatureArtwork.GROUND_VARIANT * CityNatureArtwork.SPAN + view * 500 + 256
-		var ground: PackedInt32Array = archive.find_sprite(ground_id).decode_indices().pixels
-		var old_ground: PackedInt32Array = archive.find_sprite(view * 500 + 256).decode_indices().pixels
-		for at in ground.size():
-			assert((ground[at] < 0) == (old_ground[at] < 0), "Soft terrain altered the terrain silhouette")
+		for offset in 13:
+			var ground: PackedInt32Array = archive.find_sprite(ground_id + offset).decode_indices().pixels
+			var old_ground: PackedInt32Array = archive.find_sprite(view * 500 + 256 + offset).decode_indices().pixels
+			assert(ground == old_ground, "Original field boundaries, slope shading or terrain silhouette were lost")
 		var id := CityNatureArtwork.sprite_id(view, 7, 15, 0)
 		var entry := archive.find_sprite(id)
 		assert(entry != null)
