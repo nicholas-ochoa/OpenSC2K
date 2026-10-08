@@ -8,13 +8,14 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_check_situations()
 	var sunny := CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.SUNNY, 1, 0.0)
 	var overcast := CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.SUNNY, 5, 0.0)
 	var storm := CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.RAIN_STORM, -1, 0.0)
 	assert(sunny < overcast and overcast < storm, "Cloud coverage must follow the actual weather")
 	assert(not is_equal_approx(sunny, CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.SUNNY, 1, 75.0)))
 	assert(is_equal_approx(sunny, CityVisualClouds.weather_density(0.4, CityVisualWeather.Kind.SUNNY, 1, 900.0)))
-	assert(CityVisualClouds.weather_density(0.0, CityVisualWeather.Kind.RAIN_STORM, -1, 75.0) == 0.0)
+	assert(CityVisualClouds.weather_density(0.0, CityVisualWeather.Kind.RAIN_STORM, -1, 75.0) >= 0.58)
 	assert(CityVisualClouds.weather_fog(CityVisualWeather.Kind.SUNNY, 3, 0.0) > 0.15)
 	assert(CityVisualClouds.weather_fog(CityVisualWeather.Kind.SUNNY, 1, 0.0) == 0.0)
 	for pair in [[0.1, 1.0], [0.25, 1.0], [1.0, 0.0], [2.0, 0.0], [4.0, 0.0]]:
@@ -85,25 +86,28 @@ func _run() -> void:
 	main.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.HEAVY_RAIN
 	var before_front := clouds.density
 	main.visual_environment.process(1.0)
-	assert(absf(clouds.density - before_front) <= 0.0061, "A weather change jumped the cloud coverage")
+	assert(absf(clouds.density - before_front) <= 0.081, "An explicit weather preview jumped the cloud coverage")
 	assert(clouds.parameters.cloud_formation > 0.0 and clouds.fog > 0.0)
+	for _frame in 20:
+		main.visual_environment.process(1.0)
 	main.preferences.visual_enhancements.pause_freezes = true
 	main.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
 	var frozen := [clouds.density, clouds.fog, clouds.weather_clock]
 	main.visual_environment.process(60.0)
 	assert([clouds.density, clouds.fog, clouds.weather_clock] == frozen, "Paused weather coverage or mist moved")
-	main.preferences.visual_enhancements.weather_fog_enabled = false
-	main.visual_environment.process(0.0)
-	assert(clouds.fog == 0.0 and clouds.parameters.cloud_enabled and main.visual_environment.weather.rain > 0.0,
-		"Disabling fog must leave clouds and precipitation enabled, including while paused")
-	main.preferences.visual_enhancements.weather_fog_enabled = true
-	main.visual_environment.process(0.0)
-	assert(clouds.parameters.cloud_fog_density > 0.0, "Enabling fog while paused must take effect immediately")
 	main.preferences.visual_enhancements.cloud_enabled = false
-	main.preferences.visual_enhancements.pause_freezes = false
-	main.visual_environment.process(1.0)
-	assert(not clouds.parameters.cloud_enabled and clouds.parameters.cloud_fog_density > 0.0,
-		"Fog must remain available with clouds disabled")
+	main.visual_environment.process(0.0)
+	assert(not clouds.parameters.cloud_enabled and clouds.parameters.cloud_fog_density == 0.0,
+		"The cloud master must also disable ground fog, including while paused")
+	assert(clouds.fog_overlay.layer == null or not clouds.fog_overlay.layer.visible)
+	main.preferences.visual_enhancements.cloud_enabled = true
+	main.preferences.visual_enhancements.weather_enabled = false
+	main.preferences.visual_enhancements.cloud_mode = 6
+	clouds.reset()
+	main.visual_environment.process(0.0)
+	assert(clouds.fog > 0.0 and clouds.fog_overlay.layer.visible, "Fog must be a cloud situation")
+	main.preferences.visual_enhancements.cloud_mode = 0
+	clouds.reset()
 	main.preferences.visual_enhancements.cloud_enabled = true
 	main.preferences.visual_enhancements.weather_enabled = false
 	main.visual_environment.process(0.0)
@@ -122,3 +126,34 @@ func _run() -> void:
 	await process_frame
 	print("PASS: cloud zoom variants, canonical rotation, camera anchoring, pause/speed, disable and unchanged city/RNG")
 	quit()
+
+
+func _check_situations() -> void:
+	var state := CityCloudSituations.new()
+	state.advance(4, 0, -1, 0.0, 0.0, false)
+	assert(state.current == CityCloudSituations.Type.CIRRUS)
+	state.advance(1, 0, -1, 1.0, 1.0, false)
+	assert(state.current == CityCloudSituations.Type.CIRRUS and state.target == CityCloudSituations.Type.CUMULUS)
+	assert(state.weight() > 0.0 and state.weight() < 0.001, "Cloud front started abruptly")
+	var frozen := state.blend
+	state.advance(2, 0, -1, 60.0, 0.0, false)
+	assert(state.blend == frozen and state.target == CityCloudSituations.Type.CUMULUS,
+		"Paused/interrupted fronts must retain their two silhouettes")
+	var previous := state.weight()
+	for frame in 88:
+		state.advance(1, 0, -1, 1.0, 1.0, false)
+		assert(absf(state.weight() - previous) < 0.018, "A front jumped its silhouette weight")
+		previous = state.weight()
+	state.advance(1, 0, -1, 1.0, 1.0, false)
+	assert(state.current == state.target and state.current == CityCloudSituations.Type.CUMULUS)
+	state.advance(6, 0, -1, 1.0, 0.0, true)
+	assert(state.blend > 0.0, "An explicit paused menu preview must progress")
+	for mode in range(7):
+		for kind in range(1, 7):
+			var chosen := CityCloudSituations.choose(mode, kind, -1)
+			assert(chosen in [CityCloudSituations.Type.CUMULUS, CityCloudSituations.Type.STRATUS, CityCloudSituations.Type.ALTOSTRATUS])
+			assert(CityVisualClouds.weather_density(0.0, kind, -1, 0.0) >= 0.4,
+				"Wet weather must retain cloud cover even with zero preferred coverage")
+	assert(CityCloudSituations.choose(0, 0, 3) == CityCloudSituations.Type.FOG)
+	assert(CityCloudSituations.choose(0, 0, 1) != CityCloudSituations.Type.FOG)
+	assert(CityCloudSituations.choose(0, 0, 5) == CityCloudSituations.Type.STRATUS)

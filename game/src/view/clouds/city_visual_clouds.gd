@@ -21,12 +21,18 @@ var material: ShaderMaterial
 var field: Texture2D
 var parameters: Dictionary = {"cloud_enabled": false}
 var _initialized := false
-var _fog_enabled := false
+var situations := CityCloudSituations.new()
+var fog_overlay: CityVisualFog
+var precipitation_readiness := 1.0
+var storminess := 0.0
+var _preview_signature: Array = []
+var _manual_preview := false
 var _zoom := -1.0
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	fog_overlay = CityVisualFog.new(application)
 
 
 func reset() -> void:
@@ -34,22 +40,30 @@ func reset() -> void:
 	opacity = 0.0
 	density = 0.0
 	fog = 0.0
+	storminess = 0.0
 	weather_clock = 0.0
 	_initialized = false
 	_zoom = -1.0
+	situations.reset()
+	fog_overlay.reset()
+	_preview_signature.clear()
+	_manual_preview = false
 
 
 func process(delta: float, phase_elapsed: float, active: bool, light: Color, darkness: float, weather_kind: int) -> void:
 	var options := app.preferences.visual_enhancements
 	var clouds_enabled: bool = options.get("cloud_enabled", true)
-	var fog_enabled: bool = options.weather_enabled and options.get("weather_fog_enabled", true)
-	var enabled: bool = active and (clouds_enabled or fog_enabled) and app.map_view.city_source != null
+	var enabled: bool = active and clouds_enabled and app.map_view.city_source != null
 	parameters = {"cloud_enabled": enabled and clouds_enabled}
 	if not enabled:
 		parameters["cloud_fog_density"] = 0.0
 		if layer != null:
 			layer.hide()
 		opacity = 0.0
+		fog = 0.0
+		precipitation_readiness = 1.0
+		fog_overlay.process(0.0, false, 0.0, light)
+		situations.reset()
 		_initialized = false
 		return
 	if field == null:
@@ -72,34 +86,55 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 	var grid_to_source := projection.affine_inverse()
 	var base_density := float(options.get("cloud_density", 0.4))
 	var target_density := base_density
-	var target_fog := 0.0
+	var game_weather := (city.weather_type() if options.weather_mode == 0 else -1) if options.weather_enabled else -2
+	var kind := weather_kind if options.weather_enabled else CityVisualWeather.Kind.SUNNY
+	# Keep the outgoing rain/snow front covered until its last visible drops.
+	if kind == CityVisualWeather.Kind.SUNNY and options.weather_enabled:
+		if app.visual_environment.weather.snow > 0.001:
+			kind = CityVisualWeather.Kind.LIGHT_SNOW
+		elif app.visual_environment.weather.rain > 0.001:
+			kind = CityVisualWeather.Kind.LIGHT_RAIN
+	var signature := [options.get("cloud_mode", 0), options.weather_enabled, options.weather_mode, options.weather_fixed, base_density, options.weather_strength]
+	var manual := _initialized and signature != _preview_signature
+	_preview_signature = signature
+	_manual_preview = _manual_preview or manual
+	situations.advance(int(options.get("cloud_mode", 0)), kind, game_weather, delta, phase_elapsed, manual)
+	field = CityCloudSituations.ATLASES[situations.current]
+	var appearance := situations.appearance()
 	if options.weather_enabled:
 		weather_clock = fposmod(weather_clock + maxf(phase_elapsed, 0.0), 900.0)
-		var game_weather := city.weather_type() if options.weather_mode == 0 else -1
-		target_density = weather_density(base_density, weather_kind, game_weather, weather_clock)
-		if fog_enabled:
-			target_fog = weather_fog(weather_kind, game_weather, weather_clock) * float(options.weather_strength)
-	# Weather fronts form over many seconds, even at high simulation speed.
-	# Paused weather cycles retain their exact coverage. Manual disable/zero
-	# density still takes effect immediately.
-	if not _initialized or not options.weather_enabled or base_density <= 0.0:
+		target_density = weather_density(base_density, kind, game_weather, weather_clock)
+	var moisture := weather_fog(kind, -1, weather_clock) * float(options.weather_strength) if options.weather_enabled else 0.0
+	var bank_fog := situations.fog_weight() * 0.24 * clampf(base_density / 0.4, 0.0, 1.0)
+	var target_fog := maxf(moisture, bank_fog)
+	var step := maxf(delta, 0.0) if _manual_preview else minf(maxf(delta, 0.0), maxf(phase_elapsed, 0.0))
+	var storm_target := 1.0 if kind in [CityVisualWeather.Kind.RAIN_STORM, CityVisualWeather.Kind.DRY_STORM] else 0.0
+	storminess = storm_target if not _initialized else move_toward(storminess, storm_target, step / (8.0 if _manual_preview else 60.0))
+	appearance.x = lerpf(appearance.x, maxf(appearance.x, 0.7), storminess)
+	if not _initialized or (base_density <= 0.0 and not CityCloudSituations.wet(kind)):
 		density = target_density
-	elif phase_elapsed > 0.0:
-		density = move_toward(density, target_density, minf(maxf(delta, 0.0), phase_elapsed) * 0.006)
-	if not _initialized or not fog_enabled or fog_enabled != _fog_enabled:
 		fog = target_fog
-	elif phase_elapsed > 0.0:
-		fog = move_toward(fog, target_fog, minf(maxf(delta, 0.0), phase_elapsed) * 0.004)
+	else:
+		density = move_toward(density, target_density, step * (0.08 if _manual_preview else 0.006))
+		fog = move_toward(fog, target_fog, step * (0.04 if _manual_preview else 0.004))
+	if situations.current == situations.target and is_equal_approx(density, target_density) and is_equal_approx(fog, target_fog) and is_equal_approx(storminess, storm_target):
+		_manual_preview = false
+	# A zero-density/high-cloud scene first develops its cover, then admits
+	# precipitation. This affects display only, never the city's actual weather.
+	precipitation_readiness = smoothstep(0.08, 0.3, density) * situations.rain_cover() if CityCloudSituations.wet(kind) else 1.0
 	_initialized = true
-	_fog_enabled = fog_enabled
 	parameters.merge({
 		"cloud_field": field,
+		"cloud_field_next": CityCloudSituations.ATLASES[situations.target],
+		"cloud_type_blend": situations.weight(),
+		"cloud_appearance": appearance,
 		"cloud_span": FIELD_SPAN,
 		"cloud_drift": drift,
 		"cloud_density": density,
 		"cloud_formation": 0.18 if options.weather_enabled else 0.0,
-		"cloud_fog_density": minf(fog, 0.3),
-		"cloud_fog_drift": Vector2.ONE * (weather_clock / 900.0 * FIELD_SPAN),
+		# All mist uses the terrain-aware overlay, including damp weather haze.
+		"cloud_fog_density": 0.0,
+		"cloud_fog_drift": drift,
 		"cloud_shadow_strength": float(options.get("cloud_shadow_strength", 0.4)) * (1.0 - darkness * 0.85),
 		"cloud_canvas_to_grid": shader_basis(canvas_to_grid),
 		"cloud_projection": Vector4(grid_to_source.x.x, grid_to_source.x.y, grid_to_source.y.x, grid_to_source.y.y) / 16.0,
@@ -110,6 +145,7 @@ func process(delta: float, phase_elapsed: float, active: bool, light: Color, dar
 		"cloud_light": Vector3(light.r, light.g, light.b),
 	})
 	_sync_layer(source_to_canvas, edge, rotation)
+	fog_overlay.process(phase_elapsed * speed, enabled, fog, light)
 
 
 func _sync_layer(source_to_canvas: Transform2D, edge: int, rotation: int) -> void:
@@ -151,7 +187,12 @@ static func weather_density(base: float, kind: int, game_weather: int, clock: fl
 	# Both waves meet exactly at the 900-second wrap; no simulation random
 	# numbers are consumed and fixed weather still has gentle passing fronts.
 	var variation := 1.0 + 0.12 * sin(clock * TAU / 180.0) + 0.07 * sin(clock * TAU / 300.0 + 0.7)
-	return clampf(base * coverage * variation, 0.0, 1.0)
+	var minimum := 0.0
+	if kind in [CityVisualWeather.Kind.LIGHT_RAIN, CityVisualWeather.Kind.LIGHT_SNOW]:
+		minimum = 0.4
+	elif kind != CityVisualWeather.Kind.SUNNY:
+		minimum = 0.58
+	return clampf(maxf(base * coverage * variation, minimum), 0.0, 1.0)
 
 
 static func weather_fog(kind: int, game_weather: int, clock: float) -> float:

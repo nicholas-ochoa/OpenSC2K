@@ -170,14 +170,15 @@ func process(delta: float) -> void:
 	# Artificial lights can stay on without changing daylight, grading or cloud shadows.
 	var light_level := 1.0 if daytime_lights else ambient_night
 	night = light_level * float(options.night_light_strength) / 100.0 if options.brightmaps else 0.0
-	clouds.process(weather_delta, weather_delta * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
+	clouds.process(delta, weather_delta * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
+	weather.set_cloud_cover(clouds.precipitation_readiness)
 	var parameters := {
 		"water_enabled": active and VisualEnhancementOptions.water_pass_enabled(options),
 		"water_reflections_enabled": active and options.water_reflections == 1,
 		"water_topography": options.water_topography,
 		"water_waves_enabled": options.water_waves_enabled,
 		"water_season_strength": options.season_water_strength if active and options.season_enabled else 0.0,
-		"water_rain": weather.rain,
+		"water_rain": weather.rain * clouds.precipitation_readiness,
 		"water_frozen": options.pause_freezes and (speed == 1 or app.frame._simulation_suspended()),
 		"environment_enabled": active and (options.day_enabled or options.season_enabled or options.weather_enabled or daytime_lights),
 		"environment_weather": Vector3(weather.tint.r, weather.tint.g, weather.tint.b),

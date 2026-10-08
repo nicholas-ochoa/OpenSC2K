@@ -2,6 +2,9 @@
 // projection turns billboard artwork with the camera without stretching it.
 uniform bool cloud_enabled = false;
 uniform sampler2D cloud_field : source_color, filter_linear_mipmap, repeat_disable;
+uniform sampler2D cloud_field_next : source_color, filter_linear_mipmap, repeat_disable;
+uniform float cloud_type_blend = 0.0;
+uniform vec4 cloud_appearance = vec4(0.0, 1.0, 1.0, 1.0);
 uniform mat3 cloud_canvas_to_grid = mat3(1.0);
 uniform vec4 cloud_projection = vec4(1.0, 0.5, -1.0, 0.5);
 uniform vec2 cloud_drift = vec2(0.0);
@@ -44,7 +47,8 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 	float footprint = max(length(sky_dx), length(sky_dy));
 	float atlas_side = float(textureSize(cloud_field, 0).x) * 0.5;
 	float base_lod = log2(max(footprint * atlas_side / (cloud_span / 3.0), 0.001));
-	if (!cloud_enabled || cloud_density <= 0.0) { return vec4(0.0); }
+	if (!cloud_enabled || cloud_density <= 0.0
+		|| (softness < 0.0 ? cloud_appearance.z : cloud_appearance.w) <= 0.0) { return vec4(0.0); }
 	vec2 wrapped_drift = mod(cloud_drift, vec2(cloud_span));
 	vec2 point = grid_position - wrapped_drift;
 	float spacing = cloud_span * 0.25;
@@ -71,7 +75,7 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 			}
 			vec2 delta = point - center;
 			vec2 sky = delta.x * cloud_projection.xy + delta.y * cloud_projection.zw;
-			float size_factor = cloud_size(id);
+			float size_factor = mix(cloud_size(id), mix(1.1, 1.35, cloud_hash(id + vec2(7.0, 11.0))), cloud_appearance.x);
 			// Weather changes grow/shrink the authored silhouette rather than
 			// fading its solid core or switching an entire cloud in one frame.
 			if (cloud_formation > 0.0) {
@@ -79,7 +83,7 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 				size_factor *= max(sqrt(growth), 0.001);
 			}
 			float size = cloud_span / 3.0 * size_factor;
-			vec2 uv = sky / size + vec2(0.5);
+			vec2 uv = sky / (size * vec2(1.0, cloud_appearance.y)) + vec2(0.5);
 			if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { continue; }
 			// Mirror within the atlas cell, with one stable choice shared by the
 			// cloud body, its shadow and reflections throughout drift and zoom.
@@ -89,6 +93,16 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 			vec2 atlas_uv = (quadrant + uv) * 0.5;
 			float lod = softness < 0.0 ? max(base_lod - log2(size_factor), 0.0) : softness;
 			vec4 cloud = textureLod(cloud_field, atlas_uv, lod);
+			// A uniform branch keeps steady weather at one atlas lookup. Blend
+			// premultiplied silhouettes only during a coherent two-type front.
+			if (cloud_type_blend > 0.0) {
+				vec4 incoming = textureLod(cloud_field_next, atlas_uv, lod);
+				float alpha = mix(cloud.a, incoming.a, cloud_type_blend);
+				cloud.rgb = mix(cloud.rgb * cloud.a, incoming.rgb * incoming.a, cloud_type_blend) / max(alpha, 0.001);
+				cloud.a = alpha;
+				if (cloud_type_blend >= 1.0) { cloud = incoming; }
+			}
+			cloud.a *= softness < 0.0 ? cloud_appearance.z : cloud_appearance.w;
 			if (cloud_formation > 0.0) {
 				// A newly forming speck covers only part of a screen pixel. Fade
 				// that subpixel footprint before it grows into a solid cloud.

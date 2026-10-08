@@ -70,7 +70,7 @@ const HINTS := {
 	"weather_lut_strength": "Strength of weather color filters. 0% disables these filters.",
 	"season_water_strength": "Strength of the seasonal water tint. Enable Seasons to use this setting.",
 	"cloud_enabled": "Enable clouds, their shadows and ground-level fog together. Weather effects have their own switch.",
-	"cloud_mode": "Automatic follows the weather. Choose Cumulus for puffy clouds, Stratus for low sheets, Altostratus for higher sheets, Cirrus for wisps, Cirrocumulus for small cloudlets, or Fog for ground-level clouds. Rain, snow and storms can override this choice.",
+	"cloud_mode": "Automatic follows the weather. Choose Cumulus for puffy clouds, Stratus for low sheets, Altostratus for higher sheets, Cirrus for wisps, Cirrocumulus for small cloudlets, or Fog for ground-level clouds. Fog fades above low terrain, leaving hilltops clear. Rain, snow and storms can override this choice.",
 	"cloud_density": "Amount of decorative cloud and fog coverage. With Clouds and fog enabled, rain, snow and storms keep suitable minimum cloud cover, even at 0%.",
 	"cloud_speed": "Multiplier for cloud and fog movement. 1× is the standard speed; 0× stops movement.",
 	"life_car_amount": "Decorative car density. 1× is the standard amount; does not change simulated traffic.",

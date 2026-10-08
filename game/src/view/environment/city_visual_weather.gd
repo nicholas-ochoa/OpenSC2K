@@ -177,3 +177,12 @@ func _sync_layer(enabled: bool) -> void:
 	material.set_shader_parameter("flash_origin", lightning.origin)
 	material.set_shader_parameter("flash_spread", lightning.spread)
 	material.set_shader_parameter("flash_color", Vector3(lightning.color.r, lightning.color.g, lightning.color.b))
+
+
+func set_cloud_cover(readiness: float) -> void:
+	# Called after the cloud front advances; wet effects cannot lead its cover.
+	if material == null or layer == null or not layer.visible:
+		return
+	material.set_shader_parameter("rain", rain * readiness)
+	material.set_shader_parameter("snow", snow * readiness)
+	material.set_shader_parameter("flash", flash * readiness)

@@ -129,6 +129,7 @@ func _run() -> void:
 	viewport.queue_free()
 	await process_frame
 	await _check_overview_stability()
+	await _check_type_fronts()
 	print("PASS: GPU cloud tops/shadows, sunny gaps, movement, frozen clock, region seams, transparency, foreground and exact disable")
 	quit()
 
@@ -227,3 +228,57 @@ func _check_overview_stability() -> void:
 func _cloud_hash(cell: Vector2) -> float:
 	var p := Vector2(fposmod(cell.x * 0.1031, 1.0), fposmod(cell.y * 0.0973, 1.0))
 	return fposmod(19.19 * (p.x + 0.37) * (p.y + 0.71), 1.0)
+
+
+func _check_type_fronts() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(256, 256)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var body := ColorRect.new()
+	body.size = Vector2(256, 256)
+	var material := ShaderMaterial.new()
+	material.shader = CityVisualClouds.BODIES
+	body.material = material
+	viewport.add_child(body)
+	for pair in [["cloud_enabled", true], ["cloud_density", 0.7], ["cloud_map_edge", 256.0],
+		["cloud_projection", Vector4(1, 0, 0, 1)], ["cloud_canvas_to_body_grid", CityVisualClouds.shader_basis(
+			Transform2D(Vector2(0.75, 0), Vector2(0, 0.75), Vector2.ZERO))]]:
+		material.set_shader_parameter(pair[0], pair[1])
+	await process_frame
+	var signatures: Array[int] = []
+	for kind in 5:
+		material.set_shader_parameter("cloud_field", CityCloudSituations.ATLASES[kind])
+		material.set_shader_parameter("cloud_appearance", CityCloudSituations.APPEARANCE[kind])
+		material.set_shader_parameter("cloud_drift", Vector2.ZERO)
+		await RenderingServer.frame_post_draw
+		var pixels := viewport.get_texture().get_image()
+		var alpha_sum := 0.0
+		for y in range(0, 256, 4):
+			for x in range(0, 256, 4):
+				alpha_sum += pixels.get_pixel(x, y).a
+		assert(alpha_sum > 5.0 and alpha_sum < 3500.0, "A cloud type is missing or hides the entire map")
+		signatures.append(hash(pixels.get_data()))
+		material.set_shader_parameter("cloud_drift", Vector2.ONE * CityVisualClouds.FIELD_SPAN)
+		await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_data() == pixels.get_data(), "A cloud type jumps at drift wrap")
+	for left in 5:
+		for right in range(left + 1, 5):
+			assert(signatures[left] != signatures[right], "Cloud situations must look distinct")
+	material.set_shader_parameter("cloud_appearance", CityCloudSituations.APPEARANCE[CityCloudSituations.Type.FOG])
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().is_invisible(), "Ground fog must not leave an unbounded aerial cloud layer")
+	material.set_shader_parameter("cloud_field", CityCloudSituations.ATLASES[0])
+	material.set_shader_parameter("cloud_field_next", CityCloudSituations.ATLASES[3])
+	material.set_shader_parameter("cloud_appearance", Vector4(0, 1, 1, 1))
+	material.set_shader_parameter("cloud_type_blend", 1.0)
+	await RenderingServer.frame_post_draw
+	var incoming := viewport.get_texture().get_image().get_data()
+	material.set_shader_parameter("cloud_field", CityCloudSituations.ATLASES[3])
+	material.set_shader_parameter("cloud_type_blend", 0.0)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == incoming, "Committing a cloud front changes its pixels")
+	viewport.queue_free()
+	await process_frame
+	print("PASS: five aerial cloud types, ground-only fog, seamless drift and continuous two-atlas front commit")
