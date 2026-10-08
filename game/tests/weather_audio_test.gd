@@ -53,7 +53,13 @@ func _run() -> void:
 	assert(audio.rain_players[1] == rain_player and not rain_player.stream_paused, "Resume restarted rain ambience")
 	assert(is_equal_approx(weather.clock, float(frozen_rain[0]) + 0.1))
 	app.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.DRY_STORM
+	weather.snow = 0.6
+	weather.process(0.016, 0.0, true, 1.0)
+	assert(weather.rain == 0.0 and weather.snow == 0.0, "Dry lightning retained precipitation during a transition")
 	weather.process(5.0, 0.0, true, 1.0)
+	assert(audio.wind_player != null and audio.wind_player.playing and audio.wind_player.volume_linear > 0.1)
+	assert((audio.wind_player.stream as AudioStreamOggVorbis).loop)
+	var wind_player := audio.wind_player
 	assert(audio.rain_players.is_empty(), "Dry storm retained rain ambience")
 	assert(weather.lightning.thunder_wait > 0.0)
 	assert(audio.thunder_players.is_empty(), "Thunder preceded its travel delay")
@@ -61,8 +67,10 @@ func _run() -> void:
 	weather.process(60.0, 60.0, true, 1.0, true)
 	assert([weather.lightning.thunder_wait, weather.lightning.wait, weather.lightning.age, weather.flash, weather.lightning.random.state] == frozen_storm)
 	assert(audio.thunder_players.is_empty(), "Paused storm emitted pending thunder")
+	assert(wind_player.stream_paused)
 	weather.process(weather.lightning.thunder_wait + 0.01, 0.0, true, 1.0)
 	assert(audio.thunder_players.size() == 1 and audio.thunder_players[0].playing)
+	assert(audio.wind_player == wind_player and not wind_player.stream_paused)
 	var thunder_player := audio.thunder_players[0]
 	weather.process(60.0, 60.0, true, 1.0, true)
 	assert(thunder_player.stream_paused)
@@ -74,15 +82,17 @@ func _run() -> void:
 	controller.effects_volume = 0.2
 	weather.process(0.0, 0.0, true, 1.0)
 	assert(is_equal_approx(audio.thunder_players.back().volume_linear, weather.lightning.gain * 0.2))
+	assert(is_equal_approx(wind_player.volume_linear, audio.wind_gain * 0.2))
 	controller.application_has_focus = false
 	weather.process(0.0, 0.0, true, 1.0)
 	assert(audio.thunder_players.is_empty() and weather.lightning.thunder_wait < 0.0)
+	assert(audio.wind_player == null)
 	app.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.RAIN_STORM
 	weather.process(5.0, 0.0, true, 1.0)
 	assert(audio.rain_players.is_empty())
 	controller.background_audio = true
 	weather.process(5.0, 0.0, true, 1.0)
-	assert(audio.rain_players.size() == 2)
+	assert(audio.rain_players.size() == 2 and audio.wind_player == null)
 	# The general effects controller can dispose our players between frames.
 	controller.stop_sound_effects()
 	await process_frame
@@ -101,6 +111,7 @@ func _run() -> void:
 	app.preferences.visual_enhancements.weather_enabled = false
 	weather.process(0.0, 0.0, true, 1.0)
 	assert(audio.thunder_players.is_empty() and weather.lightning.thunder_wait < 0.0)
+	assert(audio.wind_player == null)
 	app.preferences.visual_enhancements.weather_enabled = true
 	weather.process(1.0, 0.0, true, 1.0)
 	weather.process(0.0, 0.0, false, 1.0)

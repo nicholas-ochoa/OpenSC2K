@@ -111,13 +111,17 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float, pa
 	frost = move_toward(frost, (0.18 if kind == Kind.LIGHT_SNOW else (0.85 if kind == Kind.HEAVY_SNOW else 0.0)) * strength, weight)
 	rain = move_toward(rain, (0.28 if kind == Kind.LIGHT_RAIN else (1.0 if kind in [Kind.HEAVY_RAIN, Kind.RAIN_STORM] else 0.0)) * strength, weight)
 	snow = move_toward(snow, (0.24 if kind == Kind.LIGHT_SNOW else (1.0 if kind == Kind.HEAVY_SNOW else 0.0)) * strength, weight)
+	if kind == Kind.DRY_STORM:
+		# A dry discharge must never reveal a residual precipitation front.
+		rain = 0.0
+		snow = 0.0
 	if not snow_allowed:
 		# Automatic weather clears out-of-season flakes even while paused.
 		snow = 0.0
 		frost = 0.0
 	clock = fposmod(clock + elapsed, 3600.0)
 	var storm := enabled and kind in [Kind.RAIN_STORM, Kind.DRY_STORM]
-	audio.update(elapsed, enabled and strength > 0.0, rain, storm, paused)
+	audio.update(elapsed, enabled and strength > 0.0, rain, storm, paused, strength if kind == Kind.DRY_STORM else 0.0)
 	var thunder_due := false
 	if not paused or not storm or strength <= 0.0:
 		thunder_due = lightning.advance(elapsed, storm, strength)

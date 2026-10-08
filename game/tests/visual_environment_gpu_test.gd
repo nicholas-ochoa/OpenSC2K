@@ -502,6 +502,12 @@ func _check_weather_layer() -> void:
 	assert(discharge.get_pixel(30, 30).r > sunny.get_pixel(30, 30).r, "Lightning was hidden behind the city")
 	assert(discharge.get_pixel(30, 30).r > discharge.get_pixel(220, 160).r, "Lightning lost its spatial origin")
 	assert(discharge.get_pixel(104, 84).is_equal_approx(sunny.get_pixel(104, 84)), "Lightning covered the tool overlay")
+	# With fixed illumination, a dry storm has no moving particle pixels.
+	for time in [0.37, 5.9, 28.1]:
+		weather.clock = time
+		weather._sync_layer(true)
+		await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_data() == discharge.get_data(), "Dry lightning revealed moving precipitation")
 	weather.flash = 0.0
 	app.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.SUNNY
 	weather.process(5.0, 0.0, true, 1.0)

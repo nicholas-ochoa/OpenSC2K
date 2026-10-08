@@ -1,11 +1,12 @@
 class_name CityWeatherAudio
 extends RefCounted
-## Two streaming rain beds and at most three thunder tails. No simulation state.
+## Streaming rain/wind ambience and at most three thunder tails. No simulation state.
 
 const RAIN := [preload("res://assets/audio/weather/rain_light.ogg"), preload("res://assets/audio/weather/rain_heavy.ogg")]
 const THUNDER := [preload("res://assets/audio/weather/thunder_0.ogg"), preload("res://assets/audio/weather/thunder_1.ogg"),
 	preload("res://assets/audio/weather/thunder_2.ogg"), preload("res://assets/audio/weather/thunder_3.ogg"),
 	preload("res://assets/audio/weather/thunder_4.ogg")]
+const WIND := preload("res://assets/audio/weather/storm_wind.ogg")
 const MAX_THUNDER := 3
 
 var app: CityApplication
@@ -13,6 +14,8 @@ var rain_players: Array[AudioStreamPlayer] = []
 var thunder_players: Array[AudioStreamPlayer] = []
 var rain_gains := Vector2.ZERO
 var storm_gain := 0.0
+var wind_gain := 0.0
+var wind_player: AudioStreamPlayer
 
 
 func _init(application: CityApplication) -> void:
@@ -26,19 +29,21 @@ func allowed() -> bool:
 
 
 func reset() -> void:
-	for player in rain_players + thunder_players:
+	for player in rain_players + thunder_players + [wind_player]:
 		_dispose(player)
 	rain_players.clear()
 	thunder_players.clear()
 	rain_gains = Vector2.ZERO
 	storm_gain = 0.0
+	wind_gain = 0.0
+	wind_player = null
 
 
-func update(delta: float, enabled: bool, rain: float, storm: bool, paused := false) -> void:
+func update(delta: float, enabled: bool, rain: float, storm: bool, paused := false, dry_storm_strength := 0.0) -> void:
 	if not enabled or not allowed():
 		reset()
 		return
-	for player in rain_players + thunder_players:
+	for player in rain_players + thunder_players + [wind_player]:
 		if _alive(player):
 			player.stream_paused = paused
 	if paused:
@@ -50,7 +55,17 @@ func update(delta: float, enabled: bool, rain: float, storm: bool, paused := fal
 	var target := Vector2(sqrt(1.0 - blend) * 0.34, sqrt(blend) * 0.58) * level
 	rain_gains = rain_gains.move_toward(target, maxf(delta, 0.0) * 0.45)
 	storm_gain = move_toward(storm_gain, 1.0 if storm else 0.0, maxf(delta, 0.0) * 2.0)
+	wind_gain = move_toward(wind_gain, clampf(dry_storm_strength, 0.0, 1.0) * 0.7, maxf(delta, 0.0) * 0.45)
 	var audio := app.audio_controller
+	if wind_gain > 0.0001:
+		if not _alive(wind_player):
+			wind_player = _player(WIND)
+			wind_player.volume_linear = 0.0
+			wind_player.play()
+		wind_player.volume_linear = wind_gain * audio.effects_volume
+	else:
+		_dispose(wind_player)
+		wind_player = null
 	if rain_gains.length_squared() > 0.000001:
 		while rain_players.size() < RAIN.size():
 			rain_players.append(null)

@@ -68,5 +68,13 @@
     "source_sha256": "d5169a7dd88d266751b81dda28bdeb933bd20441d456b221fd861aa0d3724412",
     "sha256": "ce9f4695cf20c3824b062b4cb1a079aaf0cbb4882de2a7aa5d4ca7bfbfd8d29e",
     "processing": "highpass=f=35,lowpass=f=1800,afftdn=nf=-35,afade=t=in:d=0.015,areverse,afade=t=in:d=1.5,areverse,alimiter=limit=0.75:level=false"
+  },
+  {
+    "file": "storm_wind.ogg",
+    "author": "OpenSC2K visual enhancements contributors",
+    "source": "Original procedural wind recording; no third-party samples",
+    "license": "CC0-1.0",
+    "sha256": "87bec58074383fd342a07830ca511c647411f44e40df9cfc26603eeed335baa5",
+    "processing": "Stereo filtered noise with slow gust modulation, 3-second seam crossfade, Vorbis quality 5; no precipitation or impact sounds"
   }
 ]
