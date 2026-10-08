@@ -48,7 +48,7 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	if not supports_view(map.visible_source_rect()):
 		hide()
 		return
-	var light_active := app.visual_environment.night > 0.0
+	var light_active := app.visual_environment.night > 0.0 and VisualEnhancementOptions.detail_lights_visible(app.preferences.visual_enhancements, map.zoom_factor)
 	if road_layer == null:
 		road_layer = CityLifeHeadlights.new()
 		road_layer.show_behind_parent = true
@@ -58,7 +58,8 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 		(material as ShaderMaterial).set_shader_parameter("vehicle_has_emission", light_active)
 	source_bounds = bounds
 	var city := app.document_state.city
-	lights.sync_geometry(city)
+	if light_active:
+		lights.sync_geometry(city)
 	if lights.roads.size() > 4096:
 		lights.roads.clear()
 		lights.clear_surfaces()
@@ -112,8 +113,12 @@ func sync_view(app: CityApplication) -> void:
 	position = Vector2(source_bounds.position) * view_scale + app.map_view.camera._draw_offset(view_scale)
 	scale = Vector2(view_scale, view_scale)
 	app.map_view.layers._apply_environment(material as ShaderMaterial)
-	if road_layer != null and app.visual_environment.night != _light_night:
-		_light_night = app.visual_environment.night
+	var allowed := VisualEnhancementOptions.detail_lights_visible(app.preferences.visual_enhancements, app.map_view.zoom_factor)
+	(material as ShaderMaterial).set_shader_parameter("vehicle_has_emission", allowed and _emission_active)
+	if road_layer != null:
+		road_layer.visible = allowed and app.visual_environment.night > 0.0
+	if road_layer != null and (app.visual_environment.night if allowed else 0.0) != _light_night:
+		_light_night = app.visual_environment.night if allowed else 0.0
 		(road_layer as CityLifeHeadlights).set_night(_light_night)
 
 

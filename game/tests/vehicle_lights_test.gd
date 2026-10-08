@@ -137,7 +137,21 @@ func _check_moving_masks() -> void:
 			assert(bodies[0].water_reflection != null and bodies[0].water_reflection.emission != null,
 				"Ship brightmap did not reach the reflection source")
 		assert(DocumentState.capture(city.document) == before)
+	# Changing the shared cutoff must rebuild moving masks while paused,
+	# including reflected ship lights, without advancing the vehicle itself.
+	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+	var cutoff_before := DocumentState.capture(city.document)
+	for cutoff in [5, 2]:
+		app.preferences.visual_enhancements.detail_lights_min_zoom = cutoff
+		app.visual_environment.process(0.0)
+		var bodies := app.map_view.dynamic_sprites.filter(func(v: CityDynamicVisual) -> bool: return not v.shadow)
+		assert(not bodies.is_empty() and bodies[0].vehicle_light)
+		assert((bodies[0].emission_texture != null) == (cutoff == 2), "Paused cutoff left stale vehicle lights")
+		assert((bodies[0].water_reflection.emission != null) == (cutoff == 2), "Reflected lights ignored cutoff")
+	assert(DocumentState.capture(city.document) == cutoff_before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
+	# Disaster emission must remain independent of the vehicle-only cutoff.
+	app.preferences.visual_enhancements.detail_lights_min_zoom = 5
 	traffic_test.write_thing(city, 1, {"type": 5, "z": 0, "dx": 0, "dy": 0})
 	var monster_before := DocumentState.capture(city.document)
 	for view_size in [CityIsometricRenderer.VIEW_SMALL, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_LARGE]:

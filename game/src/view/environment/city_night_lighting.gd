@@ -19,6 +19,8 @@ var moving: CityDynamicSpriteCanvas
 var life: LifeEmission
 var moving_revision := -1
 var fades := CityLightFade.new()
+var detail_enabled := true
+var moving_detail_enabled := true
 
 
 func _init(application: CityApplication) -> void:
@@ -36,9 +38,10 @@ func reset() -> void:
 
 func process(active: bool, night: float, options: Dictionary, elapsed := 0.0, presentation_elapsed := 0.0) -> void:
 	fades.advance(presentation_elapsed)
+	detail_enabled = VisualEnhancementOptions.detail_lights_visible(options, app.map_view.zoom_factor)
 	var enabled := active and night > 0.001 and app.map_view.city_source != null
 	var glow := enabled and float(options.night_glow) > 0.0
-	var prepare := active and app.map_view.city_source != null and float(options.night_ground) > 0.0
+	var prepare := active and detail_enabled and app.map_view.city_source != null and float(options.night_ground) > 0.0
 	if output == null and not enabled and not prepare:
 		return
 	if output == null:
@@ -47,7 +50,7 @@ func process(active: bool, night: float, options: Dictionary, elapsed := 0.0, pr
 	output.visible = glow
 	for buffer in buffers:
 		buffer.render_target_update_mode = SubViewport.UPDATE_ALWAYS if glow else SubViewport.UPDATE_DISABLED
-	ground.sync(app, night * float(options.night_ground) / 100.0 if enabled else 0.0, elapsed, prepare)
+	ground.sync(app, night * float(options.night_ground) / 100.0 if enabled and detail_enabled else 0.0, elapsed, prepare)
 	var before: Control = app.visual_environment.clouds.layer
 	if before == null:
 		before = app.visual_environment.weather.layer
@@ -206,14 +209,15 @@ func _rebuild(value: CityMapSource) -> void:
 func _sync_moving() -> void:
 	var canvas := app.map_view.layers.dynamic_canvas
 	moving.visible = canvas != null and canvas.visible
-	if moving.visible and moving_revision != canvas.visual_revision:
+	if moving.visible and (moving_revision != canvas.visual_revision or moving_detail_enabled != detail_enabled):
+		moving_detail_enabled = detail_enabled
 		moving_revision = canvas.visual_revision
 		var visible_art: Array[CityDynamicVisual] = canvas.visuals.filter(func(visual: CityDynamicVisual) -> bool:
-			return not visual.shadow and not visual.transparent_shadow)
+			return not visual.shadow and not visual.transparent_shadow and (detail_enabled or not visual.vehicle_light))
 		moving.set_visuals(visible_art, 1.0, Vector2.ZERO)
 	var figures := app.city_life.canvas
 	life.figures = figures
-	life.visible = figures != null and figures.visible and figures.texture != null
+	life.visible = detail_enabled and figures != null and figures.visible and figures.texture != null
 	if life.visible:
 		life.queue_redraw()
 

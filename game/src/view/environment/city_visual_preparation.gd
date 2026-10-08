@@ -176,7 +176,7 @@ func _prepare_step() -> void:
 	# Ongoing simulation repaints must not starve initial preparation. Every
 	# area must exist; newer generations continue through the normal updater.
 	if cache.covered():
-		if stage % 2 == 0:
+		if stage % 2 == 0 and VisualEnhancementOptions.detail_lights_visible(app.preferences.visual_enhancements, app.map_view.zoom_factor):
 			var lighting := app.visual_environment.night_lighting
 			lighting._select_ground(preparing_view)
 			var ground := lighting.ground
@@ -252,6 +252,8 @@ func _background() -> void:
 	if not cache.lighting_changes.is_empty():
 		app.visual_environment.night_lighting.invalidate_regions(cache.lighting_changes)
 	var view := background_cursor / 2
+	if not VisualEnhancementOptions.detail_lights_visible(app.preferences.visual_enhancements, app.map_view.zoom_factor):
+		return
 	var lighting := app.visual_environment.night_lighting
 	if not lighting.ground_views.has(view):
 		return

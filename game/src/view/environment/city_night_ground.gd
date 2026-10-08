@@ -39,6 +39,10 @@ var prepare_entire_city := false
 var fades: CityLightFade
 var fade_edge := 128
 var fade_rotation := 0
+var unseen: Dictionary[Vector2i, bool] = {}
+var fade_view := Rect2()
+var fade_revision := -1
+var fade_pending := false
 
 
 func _init() -> void:
@@ -61,6 +65,8 @@ func _init() -> void:
 
 
 func reset() -> void:
+	unseen.clear()
+	fade_revision = -1
 	cache.clear()
 	texture_users.clear()
 	texture_bytes = 0
@@ -164,6 +170,7 @@ func sync(app: CityApplication, strength: float, elapsed := 0.0, prepare := fals
 	position = map.camera._draw_offset(scale_value)
 	scale = Vector2.ONE * scale_value
 	(material as ShaderMaterial).set_shader_parameter("strength", strength)
+	start_visible_fades(map.visible_source_rect())
 
 
 func _city_bounds(city: CityState) -> Rect2i:
@@ -254,6 +261,9 @@ func _entry_textures(entry: Dictionary) -> Dictionary:
 func _store(tile: Vector2i, entry: Dictionary) -> void:
 	_release(tile)
 	cache[tile] = entry
+	if fades != null and fades.peek(tile, fade_edge, fade_rotation) == CityLightFade.UNSEEN:
+		unseen[tile] = true
+		fade_pending = true
 	var textures := _entry_textures(entry)
 	for id: int in textures:
 		if texture_users.has(id):
@@ -266,6 +276,7 @@ func _store(tile: Vector2i, entry: Dictionary) -> void:
 
 
 func _release(tile: Vector2i) -> void:
+	unseen.erase(tile)
 	if not cache.has(tile):
 		return
 	for id: int in _entry_textures(cache[tile]):
@@ -448,4 +459,29 @@ func sync_fade_clock() -> void:
 func _fade_color(tile: Vector2i) -> Color:
 	# Commands retain their timestamps. Advancing the fade only updates two
 	# uniforms, with no texture rebuild or per-frame redraw of every street.
-	return Color(fades.birth(tile, fade_edge, fade_rotation), 1, 1, 1) if fades != null else Color.WHITE
+	return Color(fades.peek(tile, fade_edge, fade_rotation), 1, 1, 1) if fades != null else Color.WHITE
+
+
+func start_visible_fades(view: Rect2) -> void:
+	# Hidden banks and the prefetch border must not consume a light's fade.
+	# Only unseen entries need examination; stable frames never redraw lights.
+	if fades == null or not is_visible_in_tree() or unseen.is_empty():
+		return
+	if not fade_pending and fade_view == view and fade_revision == fades.revision:
+		return
+	fade_view = view
+	fade_pending = false
+	var started := false
+	for tile: Vector2i in unseen.keys():
+		if fades.peek(tile, fade_edge, fade_rotation) != CityLightFade.UNSEEN:
+			unseen.erase(tile)
+			started = true
+		elif Rect2(cache[tile].origin, Vector2(64, 64)).intersects(view):
+			fades.birth(tile, fade_edge, fade_rotation)
+			unseen.erase(tile)
+			started = true
+	if started:
+		queue_redraw()
+		fixtures.queue_redraw()
+		signals.queue_redraw()
+	fade_revision = fades.revision
