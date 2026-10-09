@@ -139,7 +139,7 @@ func _add_group(parent: VBoxContainer, category: int) -> void:
 		var check := CheckBox.new()
 		check.name = "Ordinance%d" % ordinance_id
 		check.text = Ordinances.NAMES[ordinance_id]
-		check.tooltip_text = EFFECTS[ordinance_id] + "\nThe adjacent amount shows the estimated annual budget effect."
+		check.tooltip_text = _effect_tooltip(ordinance_id)
 		check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		check.custom_minimum_size = Vector2(0, 27)
 		check.toggled.connect(_on_ordinance_toggled.bind(ordinance_id))
@@ -254,3 +254,13 @@ func _refresh_controls() -> void:
 		else:
 			field.remove_theme_color_override("font_uneditable_color")
 	refreshing = false
+
+
+func _effect_tooltip(ordinance_id: int) -> String:
+	return tr(EFFECTS[ordinance_id]) + "\n" + tr("The adjacent amount shows the estimated annual budget effect.")
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		for ordinance_id in ordinance_checks.size():
+			ordinance_checks[ordinance_id].tooltip_text = _effect_tooltip(ordinance_id)

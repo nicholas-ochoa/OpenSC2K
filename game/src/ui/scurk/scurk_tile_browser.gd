@@ -74,7 +74,7 @@ func _filter_cards() -> void:
 		cards[index].visible = category_checks[entry.category].button_pressed and (query.is_empty() or searchable.to_lower().contains(query))
 		if cards[index].visible:
 			count += 1
-	results.text = "%d tiles" % count if count > 0 else "No matching tiles"
+	results.text = tr("%d tiles") % count if count > 0 else "No matching tiles"
 	scroll.scroll_vertical = 0
 
 

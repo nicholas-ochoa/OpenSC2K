@@ -1,9 +1,10 @@
 extends SceneTree
-## The interface language: translated text, Hangul glyphs, the setting, and
+## The interface language: translated text, language glyphs, the setting, and
 ## translations whose format placeholders match their source text.
 
 # a literal percent sign (%%) can move; the other placeholders fill in order
-const FORMAT := "%[-+0-9.*]*[sdifxXc]"
+# The original German text uses "1%ige" as prose, not a %i placeholder.
+const FORMAT := "%[-+0-9.*]*[sdifxXc](?![A-Za-z])"
 
 
 func _initialize() -> void:
@@ -63,12 +64,54 @@ func _run() -> void:
 	assert(button.text.begins_with(tr("Water Pipes")))
 	assert(button.tooltip_text.contains(tr("Cost: %s").get_slice("%s", 0)))
 
+	AppLocalization.select("de")
+	await process_frame
+	assert(TranslationServer.get_locale() == "de")
+	assert(tr("Water Pipes") != "Water Pipes")
+	assert(button.text.begins_with(tr("Water Pipes")), "The existing palette updates to German")
+	assert(button.tooltip_text.contains(tr("Cost: %s").get_slice("%s", 0)))
+	assert(tr("Fire", "budget") != tr("Fire"), "German distinguishes fire spending from a fire disaster")
+	assert((tr("Population: %s") % "12,345").contains("12,345"))
+	assert(tr("{city} · {month} {year}").format({ "city": "Köln", "month": "März", "year": 2000 }) == "Köln · März 2000")
+
+	for font in fonts:
+		for character in "ÄÖÜäöüß":
+			assert(_has_char(font, character.unicode_at(0)), "%s has no German glyphs" % font)
+
+	preferences.ui_language = "de"
+	preferences.default_mayor_name = "Bürgermeister"
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, preferences.save_options()) == OK)
+	saved = AppSettingsStore.load_values(path)
+	assert(saved.ui_language == "de" and saved.default_mayor_name == "Bürgermeister")
+
+	var city := CityState.from_document(EmptyCityTemplate.create())
+	var before := city.document.serialize().data
+	var budget := preload("res://src/ui/city_windows/budget_dialog.tscn").instantiate() as BudgetDialog
+	root.add_child(budget)
+	budget.set_city(city)
+	budget.open_budget(BudgetPhase.funding_values(city), false, false)
+	assert(budget.get_node("Margin/Content/Heading").text.contains(tr("January")))
+	for label in budget.budget_labels:
+		if label.get_meta("budget_source") == "Fire":
+			assert(label.text == tr("Fire", "budget"))
+	var ordinance_tooltip := budget.ordinance_control.ordinance_checks[0].tooltip_text
+	assert(ordinance_tooltip.begins_with(tr(OrdinanceWindowControl.EFFECTS[0])))
+	budget.hide()
+
 	AppLocalization.select("en")
 	await process_frame
 	assert(button.text.begins_with("Water Pipes"), "The tool buttons change with the language")
 	assert(tr("Population: %s") % "12,345" == "Population: 12,345")
 	assert(ToolCatalog.tool(CityToolIds.Group.WATER, CityToolIds.Water.PIPES).id == "pipes")
 
+	assert(budget.get_node("Margin/Content/Heading").text.contains("January"))
+	for label in budget.budget_labels:
+		if label.get_meta("budget_source") == "Fire":
+			assert(label.text == "Fire")
+	assert(budget.ordinance_control.ordinance_checks[0].tooltip_text.begins_with(OrdinanceWindowControl.EFFECTS[0]))
+	assert(budget.ordinance_control.ordinance_checks[0].tooltip_text != ordinance_tooltip)
+	assert(city.document.serialize().data == before, "Changing the display language leaves the city unchanged")
+	budget.queue_free()
 	TranslationServer.set_locale(previous)
 	dialog.queue_free()
 	palette.queue_free()

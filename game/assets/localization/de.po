@@ -1,0 +1,3941 @@
+# German interface translation for OpenSC2K.
+# Existing text follows the German SimCity 2000 1.10 / SCURK 1.0 release.
+# New OpenSC2K strings are translated only where no original counterpart exists.
+# Original game assets and newspaper story resources are imported separately.
+msgid ""
+msgstr ""
+"Language: de\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid " %d buildings still need records; the table is full."
+msgstr " Für %d Gebäude fehlen noch Datensätze; die Tabelle ist voll."
+
+msgid " %d links or records that SC2X cannot describe were kept unchanged."
+msgstr " %d Verknüpfungen oder Datensätze, die SC2X nicht abbilden kann, wurden unverändert beibehalten."
+
+msgid " (oldest)"
+msgstr " (älteste)"
+
+msgid " Restored facility records for %d buildings."
+msgstr " Anlagendatensätze für %d Gebäude wiederhergestellt."
+
+msgid " Route stopped: %s."
+msgstr " Strecke beendet: %s."
+
+msgid " The bridge was not built: %s."
+msgstr " Die Brücke wurde nicht gebaut: %s."
+
+msgid "% of CITY"
+msgstr "% der STADT"
+
+msgid "%d eq"
+msgstr "%d BQ"
+
+msgid "%d yrs"
+msgstr "%d Jahre"
+
+msgid "%s\n$%s total\n$%s for each %s"
+msgstr "%s\nInsgesamt $%s\n$%s je %s"
+
+msgid "%s\nFree in Place & Print"
+msgstr "%s\nKostenlos in Plazieren und Drucken"
+
+msgid "%s %s."
+msgstr "%s %s."
+
+msgid "%s advisor"
+msgstr "Berater: %s"
+
+msgid "%s counts %d residents"
+msgstr "%s zählt %d Einwohner"
+
+msgid "%s has a recorded population of %d. City services and transport must keep pace as new neighborhoods develop. Residents need connections to employment, electricity and water. This edition records conditions on %s."
+msgstr "%s hat eine erfasste Bevölkerung von %d. Öffentliche Einrichtungen und Verkehr müssen mit den neuen Wohnvierteln Schritt halten. Die Einwohner brauchen Zugang zu Arbeitsplätzen, Strom und Wasser. Diese Ausgabe beschreibt die Lage am %s."
+
+msgid "%s is not available in this city."
+msgstr "%s ist in dieser Stadt nicht verfügbar."
+
+msgid "%s pack saved, but could not be loaded. The previous pack is still active."
+msgstr "Paket %s gespeichert, konnte aber nicht geladen werden. Das bisherige Paket bleibt aktiv."
+
+msgid "%s placement was rejected by nearby residents."
+msgstr "Die Anwohner haben den Bau von %s abgelehnt."
+
+msgid "%s preview: %d charged %s for $%s."
+msgstr "Vorschau %s: %d kostenpflichtige %s für $%s."
+
+msgid "%s preview: %d tiles; free in SCURK."
+msgstr "Vorschau %s: %d Felder; kostenlos in SCURK."
+
+msgid "%s speed selected."
+msgstr "Geschwindigkeit %s gewählt."
+
+msgid "%s started."
+msgstr "%s ausgelöst."
+
+msgid "... (continued on pg %d)"
+msgstr "… (Fortsetzung auf Seite %d)"
+
+msgid "1 Year"
+msgstr "1 Jahr"
+
+msgid "10 Years"
+msgstr "10 Jahre"
+
+msgid "100 Yrs"
+msgstr "100 Jahre"
+
+msgid "11 demand tiles"
+msgstr "11 Bedarfsfelder"
+
+msgid "111 demand tiles"
+msgstr "111 Bedarfsfelder"
+
+msgid "1x - Small"
+msgstr "1× – Klein"
+
+msgid "2 by 2 water section"
+msgstr "Wasserabschnitt von 2 × 2 Feldern"
+
+msgid "2 by 2 water sections"
+msgstr "Wasserabschnitte von 2 × 2 Feldern"
+
+msgid "2x - Medium"
+msgstr "2× – Mittel"
+
+msgid "355 demand tiles"
+msgstr "355 Bedarfsfelder"
+
+msgid "40 demand tiles"
+msgstr "40 Bedarfsfelder"
+
+msgid "44 demand tiles"
+msgstr "44 Bedarfsfelder"
+
+msgid "48 demand tiles"
+msgstr "48 Bedarfsfelder"
+
+msgid "4x - Large"
+msgstr "4× – Groß"
+
+msgid "5 to 14 demand tiles; varies with rain"
+msgstr "5 bis 14 Bedarfsfelder; abhängig vom Regen"
+
+msgid "50 years"
+msgstr "50 Jahre"
+
+msgid "555 demand tiles"
+msgstr "555 Bedarfsfelder"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "A Single Penny"
+msgstr "Ein roter Einser"
+
+msgid "A closer look at city services"
+msgstr "Öffentliche Einrichtungen unter der Lupe"
+
+msgid "A microwave disaster can start at this plant."
+msgstr "In diesem Kraftwerk kann eine Mikrowellenkatastrophe entstehen."
+
+msgid "ACRES"
+msgstr "ACRES"
+
+msgid "About"
+msgstr "Über"
+
+msgid "About OpenSC2K"
+msgstr "Über OpenSC2K"
+
+msgid "Above Ground"
+msgstr "Oberirdisch"
+
+msgid "Actual"
+msgstr "Ist"
+
+msgid "Add layer"
+msgstr "Ebene hinzufügen"
+
+msgid "Advisor"
+msgstr "Berater"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Aerospace"
+msgstr "Luft- und Raumfahrtind."
+
+msgid "African Swallow"
+msgstr "Afrikanische Schwalbe"
+
+msgid "After copy: source graphics"
+msgstr "Nach dem Kopieren: Quellgrafik"
+
+msgid "Air Crash"
+msgstr "Flugzeugabsturz"
+
+msgid "Airport"
+msgstr "Flughafen"
+
+msgid "Airport or Seaport"
+msgstr "Flughafen oder Seehafen"
+
+msgid "All"
+msgstr "Alle"
+
+msgid "All keyboard and mouse bindings will return to their default values. Your custom bindings will be lost."
+msgstr "Alle Tasten- und Mausbelegungen werden auf die Standardwerte zurückgesetzt. Eigene Belegungen gehen dabei verloren."
+
+msgid "Allow different destination"
+msgstr "Anderes Ziel zulassen"
+
+msgid "An empty value removes the sign."
+msgstr "Ein leeres Textfeld entfernt das Schild."
+
+msgid "An open-source SimCity 2000 remake"
+msgstr "Eine quelloffene Neuauflage von SimCity 2000"
+
+#. Wording from the German original (MUNGE.EXE).
+msgid "Animating I"
+msgstr "Animiert I"
+
+#. Wording from the German original (MUNGE.EXE).
+msgid "Animating II"
+msgstr "Animiert II"
+
+msgid "Apply"
+msgstr "Übernehmen"
+
+msgid "Arcologies"
+msgstr "Arkologien"
+
+msgid "Ask advisor"
+msgstr "Berater fragen"
+
+msgid "Ask the %s advisor"
+msgstr "Berater für %s fragen"
+
+msgid "Assigned %s to the new stadium."
+msgstr "Dem neuen Stadion wurde %s zugewiesen."
+
+msgid "At full funding, each college supplies 50 units of capacity to the education phase. Serves the college-age population group."
+msgstr "Bei voller Finanzierung trägt jede Hochschule 50 Kapazitätseinheiten zur Bildungsberechnung bei. Versorgt die Bevölkerung im Hochschulalter."
+
+msgid "At full funding, each hospital supplies 25 units of capacity to the health phase. Funding cuts reduce capacity proportionally."
+msgstr "Bei voller Finanzierung trägt jedes Krankenhaus 25 Kapazitätseinheiten zur Gesundheitsberechnung bei. Kürzungen verringern die Kapazität im gleichen Verhältnis."
+
+msgid "At full funding, each school supplies 15 units of capacity to the education phase. Serves younger population groups."
+msgstr "Bei voller Finanzierung trägt jede Schule 15 Kapazitätseinheiten zur Bildungsberechnung bei. Versorgt die jüngeren Bevölkerungsgruppen."
+
+msgid "Audio"
+msgstr "Audio"
+
+msgid "Author"
+msgstr "Autor"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Auto-Budget"
+msgstr "Autom. Budget"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Auto-Goto"
+msgstr "Autom. Gehe zu"
+
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgid "Automatic (%s)"
+msgstr "Automatisch (%s)"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Automotive"
+msgstr "Automobilindustrie"
+
+msgid "Background"
+msgstr "Hintergrund"
+
+msgid "Balance"
+msgstr "Saldo"
+
+msgid "Before: current working graphics"
+msgstr "Vorher: aktuelle Arbeitsgrafik"
+
+msgid "Below Ground"
+msgstr "Unterirdisch"
+
+msgid "Big Park"
+msgstr "Großer Park"
+
+msgid "Black and White"
+msgstr "Schwarzweiß"
+
+msgid "Blizzard"
+msgstr "Schneesturm"
+
+msgid "Bond"
+msgstr "Anleihe"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Bond payments"
+msgstr "Zinsanleihen-Zahlungen"
+
+msgid "Bonds"
+msgstr "Anleihen"
+
+msgid "Box"
+msgstr "Rechteck"
+
+msgid "Braun Llama Dome"
+msgstr "Braun Lama-Kuppel"
+
+msgid "Browse"
+msgstr "Durchsuchen"
+
+msgid "Browse tiles"
+msgstr "Grafiken durchsuchen"
+
+msgid "Browse..."
+msgstr "Durchsuchen..."
+
+msgid "Browse…"
+msgstr "Durchsuchen…"
+
+msgid "Brush"
+msgstr "Pinsel"
+
+msgid "Brush size"
+msgstr "Pinselgröße"
+
+msgid "Brush size in tiles (1–15)"
+msgstr "Pinselgröße in Feldern (1–15)"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Budget"
+msgstr "Budget"
+
+msgid "Build %s"
+msgstr "%s bauen"
+
+msgid "Build a %s connection to a neighboring city for $%s?\nThe %d-tile route costs $%s and remains if you cancel."
+msgstr "Eine Verbindung (%s) zur Nachbarstadt für $%s bauen?\nDie Strecke mit %d Feldern kostet $%s und bleibt beim Abbrechen erhalten."
+
+msgid "Build a %s connection to a neighboring city?\nThe route and connection are free in Place & Print."
+msgstr "Eine Verbindung (%s) zur Nachbarstadt bauen?\nStrecke und Verbindung sind in Plazieren und Drucken kostenlos."
+
+msgid "Building Zone"
+msgstr "Baugebiet"
+
+msgid "Buildings"
+msgstr "Gebäude"
+
+msgid "Built %d %s tiles and %d bridges for $%s."
+msgstr "%d Felder (%s) und %d Brücken für $%s gebaut."
+
+msgid "Built %d %s tiles and a %s across %d water tiles for $%s."
+msgstr "%d Felder (%s) und eine Brücke (%s) über %d Wasserfelder für $%s gebaut."
+
+msgid "Built %d %s tiles and a neighboring-city connection for $%s."
+msgstr "%d Felder (%s) und eine Verbindung zur Nachbarstadt für $%s gebaut."
+
+msgid "Built %d %s tiles for $%s."
+msgstr "%d Felder (%s) für $%s gebaut."
+
+msgid "Built %d highway sections and %d bridges for $%s."
+msgstr "%d Schnellstraßenabschnitte und %d Brücken für $%s gebaut."
+
+msgid "Built %d highway sections and a %s across %d water sections for $%s."
+msgstr "%d Schnellstraßenabschnitte und eine Brücke (%s) über %d Wasserabschnitte für $%s gebaut."
+
+msgid "Built %d highway sections and a neighboring-city connection for $%s."
+msgstr "%d Schnellstraßenabschnitte und eine Verbindung zur Nachbarstadt für $%s gebaut."
+
+msgid "Built %d highway sections for $%s."
+msgstr "%d Schnellstraßenabschnitte für $%s gebaut."
+
+msgid "Built %s for $%s."
+msgstr "%s für $%s gebaut."
+
+msgid "Built a %d-tile tunnel for $%s."
+msgstr "Tunnel mit %d Feldern für $%s gebaut."
+
+msgid "Built a %s across %d water sections for $%s."
+msgstr "Brücke (%s) über %d Wasserabschnitte für $%s gebaut."
+
+msgid "Built a %s across %d water tiles for $%s."
+msgstr "Brücke (%s) über %d Wasserfelder für $%s gebaut."
+
+msgid "Bulldozer"
+msgstr "Planierraupe"
+
+msgid "Bus Depot"
+msgstr "Bushaltestelle"
+
+msgid "Can be blocked by nearby residential zones."
+msgstr "Kann von benachbarten Wohngebieten abgelehnt werden."
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Cancel Dispatch"
+msgstr "Einsatz abbrechen"
+
+msgid "Cannot analyze city: %s"
+msgstr "Stadt kann nicht analysiert werden: %s"
+
+msgid "Cannot apply the annual budget: %s"
+msgstr "Jahresbudget kann nicht übernommen werden: %s"
+
+msgid "Cannot assign stadium team: %s"
+msgstr "Stadionmannschaft kann nicht zugewiesen werden: %s"
+
+msgid "Cannot build %s: %s"
+msgstr "%s kann nicht gebaut werden: %s"
+
+msgid "Cannot build highway: %s"
+msgstr "Schnellstraße kann nicht gebaut werden: %s"
+
+msgid "Cannot build tunnel: %s"
+msgstr "Tunnel kann nicht gebaut werden: %s"
+
+msgid "Cannot calculate mayor approval: %s"
+msgstr "Zustimmung zum Bürgermeister kann nicht berechnet werden: %s"
+
+msgid "Cannot change sign: %s"
+msgstr "Schild kann nicht geändert werden: %s"
+
+msgid "Cannot convert %s to SC2X version 4: %s"
+msgstr "%s kann nicht in SC2X Version 4 umgewandelt werden: %s"
+
+msgid "Cannot convert the city to SC2X: %s"
+msgstr "Stadt kann nicht in SC2X umgewandelt werden: %s"
+
+msgid "Cannot create a new city: %s"
+msgstr "Neue Stadt kann nicht erstellt werden: %s"
+
+msgid "Cannot dispatch unit: %s"
+msgstr "Einheit kann nicht eingesetzt werden: %s"
+
+msgid "Cannot export the city: %s"
+msgstr "Stadt kann nicht exportiert werden: %s"
+
+msgid "Cannot finish the military proposal: %s"
+msgstr "Militärvorschlag kann nicht abgeschlossen werden: %s"
+
+msgid "Cannot generate terrain: %s"
+msgstr "Gelände kann nicht erzeugt werden: %s"
+
+msgid "Cannot issue a bond: %s"
+msgstr "Anleihe kann nicht ausgegeben werden: %s"
+
+msgid "Cannot open ordinances: %s"
+msgstr "Verordnungen können nicht geöffnet werden: %s"
+
+msgid "Cannot prepare the city for export: %s"
+msgstr "Stadt kann nicht für den Export vorbereitet werden: %s"
+
+msgid "Cannot query tile: %s"
+msgstr "Feld kann nicht abgefragt werden: %s"
+
+msgid "Cannot rename facility: %s"
+msgstr "Einrichtung kann nicht umbenannt werden: %s"
+
+msgid "Cannot repay a bond: %s"
+msgstr "Anleihe kann nicht zurückgezahlt werden: %s"
+
+msgid "Cannot resolve the military proposal: %s"
+msgstr "Militärvorschlag kann nicht entschieden werden: %s"
+
+msgid "Cannot rotate city: %s"
+msgstr "Stadt kann nicht gedreht werden: %s"
+
+msgid "Cannot save the budget: %s"
+msgstr "Budget kann nicht gespeichert werden: %s"
+
+msgid "Cannot start the PNG export: %s"
+msgstr "PNG-Export kann nicht gestartet werden: %s"
+
+msgid "Cannot start the disaster: %s"
+msgstr "Katastrophe kann nicht ausgelöst werden: %s"
+
+msgid "Cannot start zone selection: %s"
+msgstr "Gebietsauswahl kann nicht gestartet werden: %s"
+
+msgid "Cannot undo the last edit: %s"
+msgstr "Letzte Bearbeitung kann nicht rückgängig gemacht werden: %s"
+
+msgid "Cannot update bonds: %s"
+msgstr "Anleihen können nicht aktualisiert werden: %s"
+
+msgid "Cannot update the %s option."
+msgstr "Die Option %s kann nicht aktualisiert werden."
+
+msgid "Capacity"
+msgstr "Kapazität"
+
+msgid "Cash Flow"
+msgstr "Geldfluss"
+
+msgid "Center"
+msgstr "Zentrieren"
+
+msgid "Center View"
+msgstr "Ansicht zentrieren"
+
+msgid "Center the map view on the active disaster."
+msgstr "Die Kartenansicht auf die aktuelle Katastrophe zentrieren."
+
+msgid "Centered the map on tile %d, %d."
+msgstr "Karte auf Feld %d, %d zentriert."
+
+msgid "Changed pixels (pink)"
+msgstr "Geänderte Pixel (rosa)"
+
+msgid "Check GitHub for a newer release now."
+msgstr "Jetzt auf GitHub nach einer neueren Version suchen."
+
+msgid "Check for updates"
+msgstr "Nach Updates suchen"
+
+msgid "Check for updates periodically"
+msgstr "Regelmäßig nach Updates suchen"
+
+msgid "Check now"
+msgstr "Jetzt prüfen"
+
+msgid "Checking..."
+msgstr "Prüfung läuft..."
+
+msgid "Cheetah"
+msgstr "Gepard"
+
+msgid "Chilly"
+msgstr "Kühl"
+
+msgid "Choose File…"
+msgstr "Datei wählen…"
+
+msgid "Choose Folder…"
+msgstr "Ordner wählen…"
+
+msgid "Choose the graphics size for each zoom level. Larger graphics show more detail. Higher zoom levels cannot use a smaller size."
+msgstr "Die Grafikgröße für jede Zoomstufe wählen. Größere Grafiken zeigen mehr Details. Höhere Zoomstufen können keine kleinere Grafikgröße verwenden."
+
+msgid "Chronicle"
+msgstr "Chronik"
+
+msgid "City"
+msgstr "Stadt"
+
+msgid "City Analysis"
+msgstr "Stadtanalyse"
+
+msgid "City Budget"
+msgstr "Stadtbudget"
+
+msgid "City Details"
+msgstr "Stadtdetails"
+
+msgid "City Hall"
+msgstr "Rathaus"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "City Industry"
+msgstr "Stadt-Industrie"
+
+msgid "City Map"
+msgstr "Stadtkarte"
+
+msgid "City Map: %s"
+msgstr "Stadtkarte: %s"
+
+msgid "City Name"
+msgstr "Stadtname"
+
+msgid "City Name:"
+msgstr "Stadtname:"
+
+msgid "City Services"
+msgstr "Öffentliche Einrichtungen"
+
+msgid "City Size"
+msgstr "Stadtgröße"
+
+msgid "City Size graph (S)"
+msgstr "Stadtgröße – Diagramm (S)"
+
+msgid "City Sounds"
+msgstr "Stadtgeräusche"
+
+msgid "City View"
+msgstr "Stadtansicht"
+
+msgid "City artwork"
+msgstr "Stadtgrafiken"
+
+msgid "City budget"
+msgstr "Stadtbudget"
+
+msgid "City renamed to %s."
+msgstr "Stadt in %s umbenannt."
+
+msgid "City report"
+msgstr "Stadtbericht"
+
+msgid "City view centered at %d, %d."
+msgstr "Stadtansicht auf %d, %d zentriert."
+
+msgid "Clear"
+msgstr "Leeren"
+
+msgid "Clear All"
+msgstr "Alles leeren"
+
+#. Wording from the German original (MUNGE.EXE).
+msgid "Clear Object"
+msgstr "Objekt löschen"
+
+msgid "Clear ramp"
+msgstr "Farbverlauf leeren"
+
+msgid "Clip to tile"
+msgstr "Auf Feld begrenzen"
+
+msgid "Close"
+msgstr "Schließen"
+
+msgid "Close SCURK"
+msgstr "SCURK schließen"
+
+msgid "Close article"
+msgstr "Artikel schließen"
+
+msgid "Close newspaper"
+msgstr "Zeitung schließen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Coal Power Plant"
+msgstr "Kohlekraft"
+
+msgid "Cold"
+msgstr "Kalt"
+
+msgid "College"
+msgstr "Hochschule"
+
+msgid "Color"
+msgstr "Farbe"
+
+msgid "Commentary"
+msgstr "Kommentar"
+
+msgid "Commerce"
+msgstr "Handel"
+
+msgid "Commerce graph (C)"
+msgstr "Handel – Diagramm (C)"
+
+msgid "Commercial"
+msgstr "Gewerbe"
+
+msgid "Compare"
+msgstr "Vergleichen"
+
+msgid "Confirmed bond actions take effect immediately. Cancel does not undo them."
+msgstr "Bestätigte Anleiheaktionen werden sofort wirksam. Abbrechen macht sie nicht rückgängig."
+
+msgid "Connections keep the city moving"
+msgstr "Verbindungen halten die Stadt in Bewegung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Construction"
+msgstr "Bauindustrie"
+
+msgid "Continue City"
+msgstr "Stadt fortsetzen"
+
+msgid "Continue to play music and sounds when OpenSC2K is not the active window."
+msgstr "Musik und Geräusche auch wiedergeben, wenn OpenSC2K nicht das aktive Fenster ist."
+
+msgid "Controls"
+msgstr "Steuerung"
+
+msgid "Converted %s to SC2X version 4. Save a new copy; the original file stays unchanged."
+msgstr "%s in SC2X Version 4 umgewandelt. Als neue Kopie speichern; die Originaldatei bleibt unverändert."
+
+msgid "Copy"
+msgstr "Kopieren"
+
+msgid "Copy All"
+msgstr "Alles kopieren"
+
+msgid "Copy Object Group"
+msgstr "Objektgruppe kopieren"
+
+msgid "Copy Selected"
+msgstr "Auswahl kopieren"
+
+msgid "Copy from All Layers"
+msgstr "Aus allen Ebenen kopieren"
+
+msgid "Cost: %s"
+msgstr "Kosten: %s"
+
+msgid "Courier"
+msgstr "Kurier"
+
+msgid "Created %s in %d on %s difficulty with generated terrain. Map view: %s."
+msgstr "%s im Jahr %d mit Schwierigkeit %s und erzeugtem Gelände gegründet. Kartenansicht: %s."
+
+msgid "Crime"
+msgstr "Kriminalität"
+
+msgid "Crime graph (X)"
+msgstr "Kriminalität – Diagramm (X)"
+
+msgid "Current city date"
+msgstr "Aktuelles Stadtdatum"
+
+msgid "Current city date: %s"
+msgstr "Aktuelles Stadtdatum: %s"
+
+msgid "Current city funds"
+msgstr "Aktueller Kassenbestand"
+
+msgid "Current city funds: %s"
+msgstr "Aktueller Kassenbestand: %s"
+
+msgid "Current city population is not available."
+msgstr "Aktuelle Einwohnerzahl ist nicht verfügbar."
+
+msgid "Current city population: %s"
+msgstr "Aktuelle Einwohnerzahl: %s"
+
+msgid "Current demand readings are %d for homes, %d for commerce and %d for industry. Positive readings indicate room for growth. Tax rates, transport access and city conditions affect development. Zoned land still needs suitable services before it can grow."
+msgstr "Die aktuelle Nachfrage beträgt %d für Wohnungen, %d für Gewerbe und %d für Industrie. Positive Werte zeigen Wachstumsmöglichkeiten an. Steuersätze, Verkehrsanbindung und die Lage der Stadt beeinflussen die Entwicklung. Ausgewiesene Gebiete brauchen eine geeignete Versorgung, bevor sie wachsen können."
+
+msgid "Current rendered frames per second"
+msgstr "Aktuell dargestellte Bilder pro Sekunde"
+
+msgid "Current simulation speed: %s."
+msgstr "Aktuelle Simulationsgeschwindigkeit: %s."
+
+msgid "Current weather: %s."
+msgstr "Aktuelles Wetter: %s."
+
+msgid "Cut"
+msgstr "Ausschneiden"
+
+msgid "Cut from All Layers"
+msgstr "Aus allen Ebenen ausschneiden"
+
+#. Wording from the German original (MUNGE.EXE).
+msgid "Cycle colors"
+msgstr "Farbzyklus"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Darco Arcology"
+msgstr "Eurak"
+
+msgid "Dark Theme"
+msgstr "Dunkles Design"
+
+msgid "Dark underground view"
+msgstr "Dunkle Untergrundansicht"
+
+msgid "Data"
+msgstr "Daten"
+
+msgid "Data pack"
+msgstr "Datenpaket"
+
+msgid "Data view: off"
+msgstr "Datenansicht: aus"
+
+msgid "De-zone"
+msgstr "Gebietszuordnung aufheben"
+
+msgid "Debug"
+msgstr "Debug"
+
+msgid "Decimal"
+msgstr "Dezimal"
+
+msgid "Default"
+msgstr "Standard"
+
+msgid "Delete"
+msgstr "Löschen"
+
+msgid "Delete Selection"
+msgstr "Auswahl löschen"
+
+msgid "Delete layer"
+msgstr "Ebene löschen"
+
+msgid "Demand"
+msgstr "Nachfrage"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Demolish"
+msgstr "Demolieren/Räumen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Dense Commercial"
+msgstr "Hohes Gewerbeaufkommen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Dense Industrial"
+msgstr "Hohes Industrieaufkommen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Dense Residential"
+msgstr "Hohe Bevölkerungsdichte"
+
+msgid "Deployed %s unit %d of %d."
+msgstr "%s: Einheit %d von %d eingesetzt."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Desalinization Plant"
+msgstr "Entsalzung"
+
+msgid "Deselect"
+msgstr "Auswahl aufheben"
+
+msgid "Destination group"
+msgstr "Zielgruppe"
+
+msgid "Development demand in focus"
+msgstr "Nachfrage nach Baugebieten im Blick"
+
+msgid "Diamond"
+msgstr "Raute"
+
+msgid "Difficulty"
+msgstr "Schwierigkeit"
+
+msgid "Disasters"
+msgstr "Katastrophen"
+
+msgid "Dispatch"
+msgstr "Einsetzen"
+
+msgid "Done"
+msgstr "Fertig"
+
+msgid "Drier weather increases grid capacity."
+msgstr "Trockeneres Wetter erhöht die Netzkapazität."
+
+msgid "Duplicate Selection"
+msgstr "Auswahl duplizieren"
+
+msgid "Earthquake"
+msgstr "Erdbeben"
+
+msgid "Easy — $20,000"
+msgstr "Leicht – $20,000"
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+msgid "Edit Tools"
+msgstr "Bearbeitungswerkzeuge"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Editor's Corner"
+msgstr "Ansicht des Redakteurs"
+
+msgid "Education"
+msgstr "Bildung"
+
+msgid "Education graph (e)"
+msgstr "Bildung – Diagramm (e)"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Electronics"
+msgstr "Elektronikindustrie"
+
+msgid "Ellipse"
+msgstr "Ellipse"
+
+msgid "Enter a new name for the city."
+msgstr "Einen neuen Namen für die Stadt eingeben."
+
+msgid "Enter sign text..."
+msgstr "Schildtext eingeben..."
+
+msgid "Entire City"
+msgstr "Gesamte Stadt"
+
+msgid "Eraser"
+msgstr "Radierer"
+
+msgid "Exit"
+msgstr "Beenden"
+
+msgid "Expenses"
+msgstr "Ausgaben"
+
+msgid "Export City as PNG"
+msgstr "Stadt als PNG exportieren"
+
+msgid "Export Image"
+msgstr "Bild exportieren"
+
+msgid "Export Tile Set"
+msgstr "Grafik-Set exportieren"
+
+msgid "Export folder"
+msgstr "Exportordner"
+
+msgid "Export image"
+msgstr "Bild exportieren"
+
+msgid "Exported a %d by %d city image to %s."
+msgstr "Stadtbild mit %d × %d Pixeln nach %s exportiert."
+
+msgid "Exporting %s"
+msgstr "%s wird exportiert"
+
+msgid "Exporting the city to %s…"
+msgstr "Stadt wird nach %s exportiert…"
+
+msgid "Extra! Extra!"
+msgstr "Extrablatt! Extrablatt!"
+
+msgid "Extra!!!"
+msgstr "Extrablatt!!!"
+
+msgid "Features"
+msgstr "Funktionen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Fed Rate"
+msgstr "Bankrate"
+
+msgid "Fed Rate graph (%)"
+msgstr "Leitzins – Diagramm (%)"
+
+msgid "Field"
+msgstr "Feld"
+
+msgid "File"
+msgstr "Datei"
+
+msgid "File name"
+msgstr "Dateiname"
+
+msgid "Fill"
+msgstr "Füllen"
+
+msgid "Filled shapes"
+msgstr "Gefüllte Formen"
+
+msgid "Filter tiles"
+msgstr "Grafiken filtern"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Finance"
+msgstr "Finanzsektor"
+
+msgid "Fire"
+msgstr "Feuer"
+
+msgid "Fire Station"
+msgstr "Feuerwache"
+
+msgid "Fire coverage scales with funding. Unpowered stations have half strength. Supports emergency fire dispatch."
+msgstr "Der Brandschutz hängt von der Finanzierung ab. Wachen ohne Strom arbeiten mit halber Stärke. Ermöglicht Feuerwehreinsätze im Notfall."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Firestorm"
+msgstr "Großbrand"
+
+msgid "Fit canvas"
+msgstr "Zeichenfläche einpassen"
+
+msgid "Five Cents"
+msgstr "Fünf Cent"
+
+msgid "Five Dollars"
+msgstr "Fünf Dollar"
+
+msgid "Flood"
+msgstr "Überschwemmung"
+
+msgid "Foggy"
+msgstr "Neblig"
+
+msgid "Folder"
+msgstr "Ordner"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Food"
+msgstr "Nahrungsmittelindustrie"
+
+msgid "Footprint: %d x %d tiles"
+msgstr "Grundfläche: %d × %d Felder"
+
+msgid "Forest"
+msgstr "Wald"
+
+msgid "Forest Arcology"
+msgstr "Wald-Arkologie"
+
+msgid "Format"
+msgstr "Format"
+
+msgid "Fred's Opinion"
+msgstr "Freds Meinung"
+
+msgid "Free"
+msgstr "Kostenlos"
+
+msgid "From palette index"
+msgstr "Von Palettenindex"
+
+msgid "Fullscreen"
+msgstr "Vollbild"
+
+msgid "Funding"
+msgstr "Finanzierung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Fusion Power Plant"
+msgstr "Fusionsenergie"
+
+msgid "GNP"
+msgstr "BSP"
+
+msgid "GNP graph (g)"
+msgstr "BSP – Diagramm (g)"
+
+msgid "GPU (recommended)"
+msgstr "GPU (empfohlen)"
+
+msgid "Game data"
+msgstr "Spieldaten"
+
+msgid "Game folder or file"
+msgstr "Spielordner oder Datei"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Gas Power Plant"
+msgstr "Erdgas"
+
+msgid "General"
+msgstr "Allgemein"
+
+msgid "Generating terrain..."
+msgstr "Gelände wird erzeugt..."
+
+msgid "Graph Window"
+msgstr "Diagrammfenster"
+
+msgid "Graphics"
+msgstr "Grafik"
+
+msgid "Graphics Size"
+msgstr "Grafikgröße"
+
+msgid "Graphics pack"
+msgstr "Grafikpaket"
+
+msgid "Graphs"
+msgstr "Diagramme"
+
+msgid "Grid capacity: %s"
+msgstr "Netzkapazität: %s"
+
+msgid "Grid height"
+msgstr "Rasterhöhe"
+
+msgid "Grid width"
+msgstr "Rasterbreite"
+
+msgid "Hard — $10,000 bond at 3%"
+msgstr "Schwer – $10,000 Anleihe zu 3%"
+
+msgid "Health"
+msgstr "Gesundheit"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Health & welfare"
+msgstr "Gesundheits/Wohlfahrt"
+
+msgid "Health graph (h)"
+msgstr "Gesundheit – Diagramm (h)"
+
+msgid "Height"
+msgstr "Höhe"
+
+msgid "Height Map"
+msgstr "Höhenkarte"
+
+msgid "Helicopter Crash"
+msgstr "Hubschrauberabsturz"
+
+msgid "Help"
+msgstr "Hilfe"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Herald"
+msgstr "Bote"
+
+msgid "Hex"
+msgstr "Hexadezimal"
+
+msgid "Higher land and stronger wind increase grid capacity."
+msgstr "Höheres Gelände und stärkerer Wind erhöhen die Netzkapazität."
+
+msgid "Highlight differences"
+msgstr "Unterschiede hervorheben"
+
+msgid "Highway"
+msgstr "Schnellstraße"
+
+msgid "Hills"
+msgstr "Hügel"
+
+msgid "Hospital"
+msgstr "Krankenhaus"
+
+msgid "Hot"
+msgstr "Heiß"
+
+msgid "Hurricane"
+msgstr "Orkan"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Hydroelectric Power Plant"
+msgstr "Wasserkraft"
+
+msgid "Illustrated"
+msgstr "Illustrierte"
+
+msgid "Image size"
+msgstr "Bildgröße"
+
+msgid "Import"
+msgstr "Importieren"
+
+msgid "Import Assets"
+msgstr "Spieldateien importieren"
+
+msgid "Import Image"
+msgstr "Bild importieren"
+
+msgid "Import Original Assets"
+msgstr "Originalspieldateien importieren"
+
+msgid "Import SimCity 2000 assets"
+msgstr "SimCity-2000-Spieldateien importieren"
+
+msgid "Import image"
+msgstr "Bild importieren"
+
+msgid "Import only a %s pack from your copy of SimCity 2000."
+msgstr "Nur ein Paket vom Typ %s aus Ihrer SimCity-2000-Kopie importieren."
+
+msgid "Import your SimCity 2000 game files again to update them. The import keeps your other packs."
+msgstr "Die SimCity-2000-Spieldateien erneut importieren, um sie zu aktualisieren. Andere Pakete bleiben beim Import erhalten."
+
+msgid "Import..."
+msgstr "Importieren..."
+
+msgid "In Tax Rates view, drag a bar to set its surcharge. Hold Alt to set all industries."
+msgstr "In der Ansicht Steuersätze einen Balken ziehen, um den Zuschlag festzulegen. Alt gedrückt halten, um alle Industriezweige einzustellen."
+
+msgid "Include"
+msgstr "Einbeziehen"
+
+msgid "Income"
+msgstr "Einnahmen"
+
+msgid "Industrial"
+msgstr "Industrie"
+
+msgid "Industry"
+msgstr "Industrie"
+
+msgid "Industry graph (I)"
+msgstr "Industrie – Diagramm (I)"
+
+msgid "Infrastructure"
+msgstr "Infrastruktur"
+
+msgid "Isometric guides"
+msgstr "Isometrische Hilfslinien"
+
+msgid "Issue $10,000 bond…"
+msgstr "Anleihe über $10,000 ausgeben…"
+
+msgid "Issue a $10,000 bond at %d%%?"
+msgstr "Eine Anleihe über $10,000 zu %d%% ausgeben?"
+
+msgid "Issued a $10,000 bond at %d%%."
+msgstr "Anleihe über $10,000 zu %d%% ausgegeben."
+
+msgid "Journal"
+msgstr "Journal"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Just A Dollar"
+msgstr "Bloß eine Mark"
+
+msgid "Keep %s"
+msgstr "%s beibehalten"
+
+msgid "LAND USE"
+msgstr "FLÄCHENNUTZUNG"
+
+msgid "Land value"
+msgstr "Grundstückswert"
+
+msgid "Landscape"
+msgstr "Landschaft"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "Large"
+msgstr "Groß"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Launch Arcology"
+msgstr "Launch-Arkologien"
+
+msgid "Layer name"
+msgstr "Ebenenname"
+
+msgid "Layers"
+msgstr "Ebenen"
+
+msgid "Left wall"
+msgstr "Linke Wand"
+
+msgid "Level Terrain"
+msgstr "Gelände einebnen"
+
+msgid "Library"
+msgstr "Bibliothek"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Light Commercial"
+msgstr "Geringes Gewerbeaufkommen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Light Industrial"
+msgstr "Geringes Industrieaufkommen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Light Residential"
+msgstr "Geringe Bevölkerungsdichte"
+
+msgid "Light Theme"
+msgstr "Helles Design"
+
+msgid "Line"
+msgstr "Linie"
+
+msgid "Llama"
+msgstr "Lama"
+
+msgid "Load Tile Set"
+msgstr "Grafik-Set laden"
+
+msgid "Loaded %s. Map view: %s."
+msgstr "%s geladen. Kartenansicht: %s."
+
+msgid "Locate"
+msgstr "Anzeigen"
+
+msgid "Location"
+msgstr "Ort"
+
+msgid "Lock transparent pixels"
+msgstr "Transparente Pixel sperren"
+
+msgid "Locked"
+msgstr "Gesperrt"
+
+msgid "Lower Sea Level"
+msgstr "Meeresspiegel senken"
+
+msgid "Lower Terrain"
+msgstr "Gelände absenken"
+
+msgid "Magnification"
+msgstr "Vergrößerung"
+
+msgid "Main Menu"
+msgstr "Hauptmenü"
+
+msgid "Make a random city name."
+msgstr "Einen zufälligen Stadtnamen erzeugen."
+
+msgid "Make new terrain with the same settings."
+msgstr "Neues Gelände mit denselben Einstellungen erzeugen."
+
+msgid "Map"
+msgstr "Karte"
+
+msgid "Map Size"
+msgstr "Kartengröße"
+
+msgid "Map view: %s"
+msgstr "Kartenansicht: %s"
+
+msgid "Marina"
+msgstr "Jachthafen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Mass Floods"
+msgstr "Flutkatastrophe"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Mass Riots"
+msgstr "Massenaufruhr"
+
+msgid "Mayor"
+msgstr "Bürgermeister"
+
+msgid "Mayor Name"
+msgstr "Bürgermeistername"
+
+msgid "Mayor Name:"
+msgstr "Bürgermeistername:"
+
+msgid "Mayor name"
+msgstr "Bürgermeistername"
+
+msgid "Mayor's House"
+msgstr "Bürgermeisterhaus"
+
+msgid "Media"
+msgstr "Medien"
+
+msgid "Medium"
+msgstr "Mittel"
+
+msgid "Medium — $10,000"
+msgstr "Mittel – $10,000"
+
+msgid "Meltdown"
+msgstr "Kernschmelze"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Merely Five Bucks"
+msgstr "Nur ein Fünfer"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Microwave"
+msgstr "Mikrowelle"
+
+msgid "Microwave Power Plant"
+msgstr "Mikrowellenempfänger"
+
+msgid "Military"
+msgstr "Militär"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "MisSim's Advice"
+msgstr "MisSims Ratgeber"
+
+msgid "Misc"
+msgstr "Sonstiges"
+
+msgid "Mixed rates stay unchanged until you edit the group. History shows recorded and projected months."
+msgstr "Unterschiedliche Sätze bleiben erhalten, bis die Gruppe bearbeitet wird. Der Verlauf zeigt erfasste und prognostizierte Monate."
+
+msgid "Monster"
+msgstr "Monster"
+
+msgid "Move layer down"
+msgstr "Ebene nach unten"
+
+msgid "Move layer up"
+msgstr "Ebene nach oben"
+
+msgid "Moving things"
+msgstr "Bewegte Objekte"
+
+msgid "Museum"
+msgstr "Museum"
+
+msgid "Music"
+msgstr "Musik"
+
+msgid "Music SoundFont"
+msgstr "Musik-SoundFont"
+
+msgid "Music pack"
+msgstr "Musikpaket"
+
+msgid "Must be built on an unused waterfall tile."
+msgstr "Muss auf einem unbebauten Wasserfallfeld errichtet werden."
+
+msgid "Nat'n Pop."
+msgstr "Landesbev."
+
+msgid "Nat'n Pop. graph (n)"
+msgstr "Landesbevölkerung – Diagramm (n)"
+
+msgid "Nat. Pop: %d000"
+msgstr "Landesbev.: %d000"
+
+msgid "Neighbors"
+msgstr "Nachbarn"
+
+msgid "Networks"
+msgstr "Verkehrs- und Leitungsnetze"
+
+msgid "New City"
+msgstr "Neue Stadt"
+
+msgid "Newspaper"
+msgstr "Zeitung"
+
+msgid "Newspaper %s %s."
+msgstr "Zeitung %s %s."
+
+msgid "Next"
+msgstr "Weiter"
+
+msgid "No"
+msgstr "Nein"
+
+msgid "No Disasters"
+msgstr "Keine Katastrophen"
+
+msgid "No Disasters %s."
+msgstr "Keine Katastrophen %s."
+
+msgid "No age limit"
+msgstr "Keine Altersgrenze"
+
+msgid "No city loaded"
+msgstr "Keine Stadt geladen"
+
+msgid "Nominal output: %d MW"
+msgstr "Nennleistung: %d MW"
+
+msgid "None"
+msgstr "Keine"
+
+msgid "Not yet available."
+msgstr "Noch nicht verfügbar."
+
+msgid "Notes"
+msgstr "Hinweise"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Nuclear Power Plant"
+msgstr "Kernkraft"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Object Group"
+msgstr "Objektgruppe"
+
+msgid "Object Selector"
+msgstr "Objektauswahl"
+
+msgid "Object details"
+msgstr "Objektdetails"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Ocean"
+msgstr "Ozean"
+
+msgid "Off"
+msgstr "Aus"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Oil Power Plant"
+msgstr "Ölkraft"
+
+msgid "On"
+msgstr "Ein"
+
+msgid "On-ramp"
+msgstr "Auffahrt"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "One Cent"
+msgstr "Ein Pfennig"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "One Dollar"
+msgstr "Eine Mark"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Only A Nickel"
+msgstr "Nur ein Fünfpfennigstück"
+
+msgid "Open"
+msgstr "Öffnen"
+
+msgid "Open City"
+msgstr "Stadt öffnen"
+
+msgid "Open the %s tab"
+msgstr "Registerkarte %s öffnen"
+
+msgid "OpenSC2K Settings"
+msgstr "OpenSC2K-Einstellungen"
+
+msgid "Opinion"
+msgstr "Meinung"
+
+msgid "Opinion Poll"
+msgstr "Meinungsumfrage"
+
+msgid "Optional tile name"
+msgstr "Optionaler Grafikname"
+
+msgid "Options"
+msgstr "Optionen"
+
+msgid "Ordinance changes take effect immediately. Cancel does not undo them."
+msgstr "Änderungen an Verordnungen werden sofort wirksam. Abbrechen macht sie nicht rückgängig."
+
+msgid "Ordinances"
+msgstr "Verordnungen"
+
+msgid "Original"
+msgstr "Original"
+
+msgid "Output"
+msgstr "Ausgabe"
+
+msgid "Outstanding: %s   ·   Credit: %s   ·   Bank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s"
+msgstr "Schulden: %s   ·   Kredit: %s   ·   Bankzins: %d%%   ·   Nächste Anleihe: %d%%   ·   Stadtwert: %s"
+
+msgid "Overcast"
+msgstr "Bedeckt"
+
+msgid "Overview"
+msgstr "Übersicht"
+
+msgid "Packs active. Imported %d cities and %d scenarios."
+msgstr "Pakete aktiv. %d Städte und %d Szenarien importiert."
+
+msgid "Paste"
+msgstr "Einfügen"
+
+msgid "Paste on New Layer"
+msgstr "Auf neuer Ebene einfügen"
+
+msgid "Pause"
+msgstr "Pause"
+
+msgid "Petrochemical"
+msgstr "Petrochemie"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Picayune"
+msgstr "Allgemeine"
+
+msgid "Pipes"
+msgstr "Leitungen"
+
+msgid "Pixel resolution"
+msgstr "Pixelauflösung"
+
+msgid "Pixel-perfect pencil"
+msgstr "Pixelgenauer Stift"
+
+msgid "Place & Print Work Area"
+msgstr "Arbeitsbereich Plazieren und Drucken"
+
+msgid "Place Forest"
+msgstr "Wald anlegen"
+
+msgid "Place Sign"
+msgstr "Schild platzieren"
+
+msgid "Place Stream"
+msgstr "Bach anlegen"
+
+msgid "Plane Crash"
+msgstr "Flugzeugabsturz"
+
+msgid "Play Scenario"
+msgstr "Szenario spielen"
+
+msgid "Play a click sound when you select a toolbar or main menu button."
+msgstr "Beim Auswählen einer Schaltfläche in Werkzeugleiste oder Hauptmenü einen Klickton abspielen."
+
+msgid "Play all 19 tracks, including menu and special music, once per shuffle cycle."
+msgstr "Alle 19 Stücke einschließlich Menü- und Sondermusik pro Zufallsrunde einmal abspielen."
+
+msgid "Play interface sounds"
+msgstr "Bediengeräusche abspielen"
+
+msgid "Play music and sounds in background"
+msgstr "Musik und Geräusche im Hintergrund abspielen"
+
+msgid "Plymouth Arcology"
+msgstr "Goliath-Arkologie"
+
+msgid "Police"
+msgstr "Polizei"
+
+msgid "Police Station"
+msgstr "Polizeirevier"
+
+msgid "Police coverage scales with funding and the prison bonus. Unpowered stations have half strength. Coverage reduces local crime."
+msgstr "Die Polizeistärke hängt von der Finanzierung und dem Gefängnisbonus ab. Reviere ohne Strom arbeiten mit halber Stärke. Polizeischutz verringert die Kriminalität vor Ort."
+
+msgid "Police, fire protection, schools and health services depend on facilities and their funding. The city maps show local coverage. The Budget window lets the mayor review service spending, while Query provides details for individual facilities."
+msgstr "Polizei, Brandschutz, Schulen und Gesundheitsversorgung hängen von ihren Einrichtungen und deren Finanzierung ab. Die Stadtkarten zeigen die örtliche Versorgung. Im Budgetfenster kann der Bürgermeister die Ausgaben prüfen; das Abfrage-Werkzeug zeigt Details einzelner Einrichtungen."
+
+msgid "Pollution"
+msgstr "Umweltverschmutzung"
+
+msgid "Pollution factor: %d"
+msgstr "Verschmutzungsfaktor: %d"
+
+msgid "Pollution graph (P)"
+msgstr "Umweltverschmutzung – Diagramm (P)"
+
+msgid "Population"
+msgstr "Bevölkerung"
+
+msgid "Population: %s"
+msgstr "Bevölkerung: %s"
+
+msgid "Population: --"
+msgstr "Bevölkerung: --"
+
+msgid "Ports"
+msgstr "Häfen"
+
+msgid "Power"
+msgstr "Strom"
+
+msgid "Power %"
+msgstr "Strom %"
+
+msgid "Power % graph (p)"
+msgstr "Strom % – Diagramm (p)"
+
+msgid "Power Lines"
+msgstr "Stromleitungen"
+
+msgid "Power Plants"
+msgstr "Kraftwerke"
+
+msgid "Powered"
+msgstr "Mit Strom versorgt"
+
+msgid "Preview in Context..."
+msgstr "Im Zusammenhang ansehen..."
+
+msgid "Preview in context"
+msgstr "Vorschau im Zusammenhang"
+
+msgid "Preview size"
+msgstr "Vorschaugröße"
+
+msgid "Previous"
+msgstr "Zurück"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Price $1"
+msgstr "Preis DM 1"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Price $5"
+msgstr "Preis DM 5"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Price 1¢"
+msgstr "Preis 1 Pf"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Price 25¢"
+msgstr "Preis 10 Pf"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Price 5¢"
+msgstr "Preis 5 Pf"
+
+msgid "Print City..."
+msgstr "Stadt drucken..."
+
+msgid "Print What"
+msgstr "Druckauswahl"
+
+msgid "Prints of the City"
+msgstr "Stadtansichten"
+
+msgid "Prison"
+msgstr "Gefängnis"
+
+msgid "Prison facilities contribute to the police-strength bonus. Query shows annual prison statistics."
+msgstr "Gefängnisse tragen zum Polizeistärkebonus bei. Die Abfrage zeigt jährliche Gefängnisstatistiken."
+
+msgid "Project title"
+msgstr "Projekttitel"
+
+msgid "Projected"
+msgstr "Prognose"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Property Taxes"
+msgstr "Vermögenssteuer"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Property taxes"
+msgstr "Vermögenssteuer"
+
+msgid "Query"
+msgstr "Abfrage"
+
+msgid "Query — %s"
+msgstr "Abfrage – %s"
+
+msgid "Rail"
+msgstr "S-Bahn"
+
+msgid "Rail Depot"
+msgstr "S-Bahnstation"
+
+msgid "Rain"
+msgstr "Regen"
+
+msgid "Raise Sea Level"
+msgstr "Meeresspiegel anheben"
+
+msgid "Raise Terrain"
+msgstr "Gelände anheben"
+
+msgid "Rate: %d%%"
+msgstr "Satz: %d%%"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Ratios"
+msgstr "Relationen"
+
+msgid "Ready."
+msgstr "Bereit."
+
+msgid "Recorded months use saved costs and rates. Projected months use the proposed budget."
+msgstr "Erfasste Monate verwenden gespeicherte Kosten und Sätze. Prognostizierte Monate verwenden das vorgeschlagene Budget."
+
+msgid "Recover Autosave"
+msgstr "Automatische Speicherung wiederherstellen"
+
+msgid "Recover SCURK project"
+msgstr "SCURK-Projekt wiederherstellen"
+
+msgid "Recreation"
+msgstr "Freizeit"
+
+msgid "Recreation facility. Choose the team name after placement. Query shows annual attendance and financial statistics."
+msgstr "Freizeiteinrichtung. Nach dem Bau den Mannschaftsnamen wählen. Die Abfrage zeigt jährliche Besucher- und Finanzstatistiken."
+
+msgid "Redo"
+msgstr "Wiederherstellen"
+
+msgid "Reduced"
+msgstr "Reduziert"
+
+msgid "Regenerate Terrain"
+msgstr "Gelände neu erzeugen"
+
+msgid "Removed the last building and restored %d tiles."
+msgstr "Letztes Gebäude entfernt und %d Felder wiederhergestellt."
+
+msgid "Rename"
+msgstr "Umbenennen"
+
+msgid "Rename City"
+msgstr "Stadt umbenennen"
+
+msgid "Rename Tile"
+msgstr "Grafik umbenennen"
+
+msgid "Renderer"
+msgstr "Renderer"
+
+msgid "Repaid the oldest $10,000 bond at %d%%."
+msgstr "Älteste Anleihe über $10,000 zu %d%% zurückgezahlt."
+
+msgid "Repay oldest bond…"
+msgstr "Älteste Anleihe zurückzahlen…"
+
+msgid "Repay the oldest $10,000 bond at %d%%?"
+msgstr "Die älteste Anleihe über $10,000 zu %d%% zurückzahlen?"
+
+msgid "Replace Color"
+msgstr "Farbe ersetzen"
+
+msgid "Replace color"
+msgstr "Farbe ersetzen"
+
+msgid "Requires power and pipes. Each adjacent salt-water tile adds 20 supply units. Coastal placement improves output."
+msgstr "Benötigt Strom und Leitungen. Jedes angrenzende Salzwasserfeld liefert 20 zusätzliche Versorgungseinheiten. Küstennähe erhöht die Leistung."
+
+msgid "Requires power and pipes. Output depends on weather and nearby water; each adjacent fresh-water tile adds 10 supply units."
+msgstr "Benötigt Strom und Leitungen. Die Leistung hängt vom Wetter und nahen Gewässern ab; jedes angrenzende Süßwasserfeld liefert 10 zusätzliche Versorgungseinheiten."
+
+msgid "Reset Controls"
+msgstr "Steuerung zurücksetzen"
+
+msgid "Reset all controls?"
+msgstr "Gesamte Steuerung zurücksetzen?"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Resident Age"
+msgstr "Einwohner-Alter"
+
+msgid "Residential"
+msgstr "Wohnen"
+
+msgid "Residents"
+msgstr "Einwohner"
+
+msgid "Residents are concerned about %s. The mayor can review current city conditions in the graphs and city maps."
+msgstr "Die Einwohner machen sich Sorgen wegen %s. Der Bürgermeister kann die aktuelle Lage in den Diagrammen und Stadtkarten prüfen."
+
+msgid "Residents graph (R)"
+msgstr "Einwohner – Diagramm (R)"
+
+msgid "Restore Original Tile Set"
+msgstr "Original-Grafik-Set wiederherstellen"
+
+msgid "Restored %d demolished tiles and the previous funds value."
+msgstr "%d abgerissene Felder und vorherigen Kassenbestand wiederhergestellt."
+
+msgid "Restored %d landscape actions and the previous funds value."
+msgstr "%d Landschaftsänderungen und vorherigen Kassenbestand wiederhergestellt."
+
+msgid "Restored %d terrain tiles and the previous funds value."
+msgstr "%d Geländefelder und vorherigen Kassenbestand wiederhergestellt."
+
+msgid "Restored %d tiles and the previous funds value."
+msgstr "%d Felder und vorherigen Kassenbestand wiederhergestellt."
+
+msgid "Restored the previous highway route across %d tiles."
+msgstr "Vorherige Schnellstraßenstrecke über %d Felder wiederhergestellt."
+
+msgid "Restored the previous route across %d tiles."
+msgstr "Vorherige Strecke über %d Felder wiederhergestellt."
+
+msgid "Return every keyboard and mouse binding to its default"
+msgstr "Alle Tasten- und Mausbelegungen auf Standard zurücksetzen"
+
+msgid "Revert Object"
+msgstr "Objekt zurücksetzen"
+
+msgid "Revert name"
+msgstr "Namen zurücksetzen"
+
+msgid "Review income, services and the year-end forecast."
+msgstr "Einnahmen, öffentliche Einrichtungen und Jahresendprognose prüfen."
+
+msgid "Rewards"
+msgstr "Belohnungen"
+
+msgid "Right wall"
+msgstr "Rechte Wand"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Riot"
+msgstr "Randalierer"
+
+msgid "River"
+msgstr "Fluss"
+
+msgid "Road"
+msgstr "Straße"
+
+msgid "Roads"
+msgstr "Straßen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Roads & transit"
+msgstr "Verkehrsbehörde"
+
+msgid "Roads, rail and subway routes connect neighborhoods with jobs. Gaps and disconnected stations can prevent trips. The City Map transport views show where the network is busy and where better connections may help."
+msgstr "Straßen, S-Bahn und U-Bahn verbinden Wohnviertel mit Arbeitsplätzen. Lücken und unverbundene Haltestellen können Fahrten verhindern. Die Verkehrsansichten der Stadtkarte zeigen die Netzauslastung und mögliche Verbesserungen der Anbindung."
+
+msgid "Rotate Clockwise"
+msgstr "Im Uhrzeigersinn drehen"
+
+msgid "Rotate Counter-Clockwise"
+msgstr "Gegen den Uhrzeigersinn drehen"
+
+msgid "Round"
+msgstr "Rund"
+
+msgid "Round brush"
+msgstr "Runder Pinsel"
+
+msgid "Run the game in full screen mode when enabled, otherwise run in a resizable window."
+msgstr "Wenn aktiviert, läuft das Spiel im Vollbildmodus, ansonsten in einem Fenster mit veränderbarer Größe."
+
+msgid "SCURK Place & Print"
+msgstr "SCURK Plazieren und Drucken"
+
+msgid "Save"
+msgstr "Speichern"
+
+msgid "Save As"
+msgstr "Speichern unter"
+
+msgid "Save City"
+msgstr "Stadt speichern"
+
+msgid "Save City As"
+msgstr "Stadt speichern unter"
+
+msgid "Save Printable PDF..."
+msgstr "Druckfertiges PDF speichern..."
+
+msgid "Save SCURK project"
+msgstr "SCURK-Projekt speichern"
+
+msgid "Save selection"
+msgstr "Auswahl speichern"
+
+msgid "Save tile set"
+msgstr "Grafik-Set speichern"
+
+msgid "Saved city: %s"
+msgstr "Stadt gespeichert: %s"
+
+msgid "Saved reports are unavailable."
+msgstr "Gespeicherte Berichte sind nicht verfügbar."
+
+msgid "Saving city: %s"
+msgstr "Stadt wird gespeichert: %s"
+
+msgid "Scenario"
+msgstr "Szenario"
+
+msgid "Scenario Goals"
+msgstr "Szenarioziele"
+
+msgid "School"
+msgstr "Schule"
+
+msgid "Seaport"
+msgstr "Seehafen"
+
+msgid "Select %s"
+msgstr "%s auswählen"
+
+msgid "Select %s pack.json"
+msgstr "pack.json für %s auswählen"
+
+msgid "Select All"
+msgstr "Alles auswählen"
+
+#. Wording from the German original (MUNGE.EXE).
+msgid "Select Bridge"
+msgstr "Brückentyp auswählen"
+
+msgid "Select Building"
+msgstr "Gebäude wählen"
+
+msgid "Select Stadium Team"
+msgstr "Stadionmannschaft wählen"
+
+#. Wording from the German original (MUNGE.EXE).
+msgid "Select Tile"
+msgstr "Kachel auswählen"
+
+msgid "Select a SoundFont"
+msgstr "SoundFont wählen"
+
+msgid "Select a bridge for %d %s."
+msgstr "Eine Brücke für %d %s wählen."
+
+msgid "Select a bridge type."
+msgstr "Einen Brückentyp wählen."
+
+msgid "Select a building type."
+msgstr "Einen Gebäudetyp wählen."
+
+msgid "Select an object."
+msgstr "Ein Objekt wählen."
+
+msgid "Select an unused team and edit its name."
+msgstr "Eine noch nicht verwendete Mannschaft wählen und ihren Namen bearbeiten."
+
+msgid "Select the print options."
+msgstr "Die Druckoptionen wählen."
+
+msgid "Selected Group"
+msgstr "Ausgewählte Gruppe"
+
+msgid "Selected Pages"
+msgstr "Ausgewählte Seiten"
+
+msgid "Service life: %s"
+msgstr "Lebensdauer: %s"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Settings applied, but the settings file could not be saved."
+msgstr "Einstellungen übernommen, aber die Einstellungsdatei konnte nicht gespeichert werden."
+
+msgid "Settings saved."
+msgstr "Einstellungen gespeichert."
+
+msgid "Show Buildings"
+msgstr "Gebäude anzeigen"
+
+msgid "Show Networks"
+msgstr "Verkehrs- und Leitungsnetze anzeigen"
+
+msgid "Show Pipes"
+msgstr "Leitungen anzeigen"
+
+msgid "Show Scenario Goals"
+msgstr "Szenarioziele anzeigen"
+
+msgid "Show Signs"
+msgstr "Schilder anzeigen"
+
+msgid "Show Subways"
+msgstr "U-Bahnen anzeigen"
+
+msgid "Show Trees"
+msgstr "Bäume anzeigen"
+
+msgid "Show Tunnels"
+msgstr "Tunnel anzeigen"
+
+msgid "Show Vehicles"
+msgstr "Fahrzeuge anzeigen"
+
+msgid "Show Water"
+msgstr "Wasser anzeigen"
+
+msgid "Show Water Mains"
+msgstr "Hauptwasserleitungen anzeigen"
+
+msgid "Show all views"
+msgstr "Alle Ansichten anzeigen"
+
+msgid "Show clip region"
+msgstr "Ausschnitt anzeigen"
+
+msgid "Show differences only"
+msgstr "Nur Unterschiede anzeigen"
+
+#. Wording from the German original (MUNGE.EXE).
+msgid "Show grid"
+msgstr "Rasteranzeige"
+
+msgid "Show individual tax and funding rates"
+msgstr "Einzelne Steuer- und Finanzierungssätze anzeigen"
+
+msgid "Show monthly history for %s"
+msgstr "Monatsverlauf für %s anzeigen"
+
+msgid "Show or hide airplanes, helicopters, ships, boats and trains. Hidden vehicles make no sound and cannot crash."
+msgstr "Flugzeuge, Hubschrauber, Schiffe, Boote und Züge ein- oder ausblenden. Ausgeblendete Fahrzeuge sind lautlos und können nicht verunglücken."
+
+msgid "Show or hide buildings in the city view."
+msgstr "Gebäude in der Stadtansicht ein- oder ausblenden."
+
+msgid "Show or hide networks in the city view."
+msgstr "Verkehrs- und Leitungsnetze in der Stadtansicht ein- oder ausblenden."
+
+msgid "Show or hide pipes beneath buildings in the underground view."
+msgstr "Leitungen unter Gebäuden in der Untergrundansicht ein- oder ausblenden."
+
+msgid "Show or hide road tunnels in the underground view."
+msgstr "Straßentunnel in der Untergrundansicht ein- oder ausblenden."
+
+msgid "Show or hide signs in the city view."
+msgstr "Schilder in der Stadtansicht ein- oder ausblenden."
+
+msgid "Show or hide subways in the underground view."
+msgstr "U-Bahnen in der Untergrundansicht ein- oder ausblenden."
+
+msgid "Show or hide trees in the city view."
+msgstr "Bäume in der Stadtansicht ein- oder ausblenden."
+
+msgid "Show or hide water in the city view."
+msgstr "Wasser in der Stadtansicht ein- oder ausblenden."
+
+msgid "Show or hide water mains in the underground view."
+msgstr "Hauptwasserleitungen in der Untergrundansicht ein- oder ausblenden."
+
+msgid "Show terrain"
+msgstr "Gelände anzeigen"
+
+msgid "Show terrain height and transparent water."
+msgstr "Geländehöhe und durchsichtiges Wasser anzeigen."
+
+msgid "Show the city isometric view."
+msgstr "Die isometrische Stadtansicht anzeigen."
+
+msgid "Show the underground isometric view."
+msgstr "Die isometrische Untergrundansicht anzeigen."
+
+msgid "Shuffle all music"
+msgstr "Alle Musikstücke mischen"
+
+msgid "Sign saved as label %d."
+msgstr "Schild als Beschriftung %d gespeichert."
+
+msgid "Signs"
+msgstr "Schilder"
+
+msgid "SimNation"
+msgstr "SimNation"
+
+msgid "Simulation stopped: %s"
+msgstr "Simulation angehalten: %s"
+
+msgid "Size"
+msgstr "Größe"
+
+msgid "Size of menus, windows, and text. 2.0 is the standard size. Smaller values show more of the city. The city map keeps its own sharp pixel size."
+msgstr "Größe von Menüs, Fenstern und Text. 2.0 ist die Standardgröße. Kleinere Werte zeigen mehr von der Stadt. Die Stadtkarte behält ihre eigene scharfe Pixelgröße."
+
+msgid "Small"
+msgstr "Klein"
+
+msgid "Small Park"
+msgstr "Kleiner Park"
+
+msgid "Snap lines"
+msgstr "Linien einrasten"
+
+msgid "Snap shapes"
+msgstr "Formen einrasten"
+
+msgid "Snow"
+msgstr "Schnee"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Solar Power Plant"
+msgstr "Sonnenenergie"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Sound Effects"
+msgstr "Toneffekte"
+
+msgid "Sound pack"
+msgstr "Geräuschpaket"
+
+msgid "Sounds"
+msgstr "Geräusche"
+
+msgid "Spacing"
+msgstr "Abstand"
+
+msgid "Spacing (pixels)"
+msgstr "Abstand (Pixel)"
+
+msgid "Special"
+msgstr "Spezial"
+
+msgid "Speed"
+msgstr "Geschwindigkeit"
+
+msgid "Speed: %s"
+msgstr "Tempo: %s"
+
+msgid "Speed: --"
+msgstr "Tempo: --"
+
+msgid "Square"
+msgstr "Quadratisch"
+
+msgid "Stadium"
+msgstr "Stadion"
+
+msgid "Stamp name"
+msgstr "Stempelname"
+
+msgid "Start City"
+msgstr "Stadt starten"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Start New City"
+msgstr "Neue Stadt beginnen"
+
+msgid "Starting Year"
+msgstr "Startjahr"
+
+msgid "Statue"
+msgstr "Statue"
+
+msgid "Status: Not available in this city."
+msgstr "Status: In dieser Stadt nicht verfügbar."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Steel/Mining"
+msgstr "Stahlindustrie/Bergbau"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Still A Quarter"
+msgstr "Immer noch ein Zehnpfennigstück"
+
+msgid "Stores 100 water units per tower tile. Stores surplus supply and releases stored water when needed. Requires a pipe connection."
+msgstr "Speichert 100 Wassereinheiten pro Turmfeld. Nimmt Überschüsse auf und gibt gespeichertes Wasser bei Bedarf ab. Benötigt einen Leitungsanschluss."
+
+msgid "Stretch Terrain"
+msgstr "Gelände strecken"
+
+msgid "Subscription"
+msgstr "Abonnement"
+
+msgid "Subway"
+msgstr "U-Bahn"
+
+msgid "Subway Station"
+msgstr "U-Bahnstation"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Subway-to-Rail Connection"
+msgstr "U-Bahn<-->S-Bahn"
+
+msgid "Subways"
+msgstr "U-Bahnen"
+
+msgid "Supports education and city services. Query shows the annual museum statistic."
+msgstr "Unterstützt Bildung und öffentliche Einrichtungen. Die Abfrage zeigt die jährliche Museumsstatistik."
+
+msgid "Supports education. Query shows its annual education statistic. Ruminate opens the library reports."
+msgstr "Unterstützt die Bildung. Die Abfrage zeigt die jährliche Bildungsstatistik. Nachdenken öffnet die Bibliotheksberichte."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Survey"
+msgstr "Statistik"
+
+msgid "Tax Rates"
+msgstr "Steuersätze"
+
+msgid "Taxes"
+msgstr "Steuern"
+
+msgid "Team name"
+msgstr "Mannschaftsname"
+
+msgid "Technical details"
+msgstr "Technische Details"
+
+msgid "Terrain"
+msgstr "Gelände"
+
+msgid "Terrain Preview"
+msgstr "Geländevorschau"
+
+msgid "Text"
+msgstr "Text"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Textiles"
+msgstr "Textilindustrie"
+
+msgid "Textures"
+msgstr "Texturen"
+
+msgid "The Nuclear-Free ordinance disables this plant."
+msgstr "Die Verordnung Kernkraftfreie Zone legt dieses Kraftwerk still."
+
+msgid "The city treasury holds $%d. Construction draws from this balance, while taxes and service spending affect the annual budget. The Budget window contains current funding levels and projected totals."
+msgstr "Die Stadtkasse enthält $%d. Baukosten werden davon abgezogen; Steuern und Ausgaben für öffentliche Einrichtungen beeinflussen das Jahresbudget. Das Budgetfenster zeigt die aktuelle Finanzierung und die prognostizierten Summen."
+
+msgid "The first year of the city. The year sets the buildings and inventions that you can use."
+msgstr "Das erste Jahr der Stadt. Das Jahr bestimmt, welche Gebäude und Erfindungen verfügbar sind."
+
+msgid "The mayor name for new cities."
+msgstr "Der Bürgermeistername für neue Städte."
+
+msgid "The money at the start. Difficulty also sets the national economy."
+msgstr "Das Startkapital. Die Schwierigkeit bestimmt auch die Wirtschaftslage des Landes."
+
+msgid "The name of the city."
+msgstr "Der Name der Stadt."
+
+msgid "The name of the mayor."
+msgstr "Der Name des Bürgermeisters."
+
+msgid "The volume of the music."
+msgstr "Die Lautstärke der Musik."
+
+msgid "The volume of the sound effects."
+msgstr "Die Lautstärke der Geräuscheffekte."
+
+msgid "Theme"
+msgstr "Design"
+
+msgid "These imported packs are missing or out of date: %s.\n\n"
+msgstr "Diese importierten Pakete fehlen oder sind veraltet: %s.\n\n"
+
+msgid "This plant becomes available after its invention."
+msgstr "Dieses Kraftwerk wird nach seiner Erfindung verfügbar."
+
+msgid "Tile Inspector"
+msgstr "Grafikinspektor"
+
+msgid "Tile name"
+msgstr "Grafikname"
+
+msgid "Time Scale"
+msgstr "Zeitraum"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Times"
+msgstr "Zeit"
+
+msgid "To palette index"
+msgstr "Bis Palettenindex"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Today's Weather"
+msgstr "Das Wetter von heute"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Tornado"
+msgstr "Wirbelsturm"
+
+msgid "Total"
+msgstr "Gesamt"
+
+msgid "Tourism"
+msgstr "Tourismus"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Toxic Spill"
+msgstr "Chemikalienkatastrophe"
+
+msgid "Traffic"
+msgstr "Verkehr"
+
+msgid "Traffic graph (T)"
+msgstr "Verkehr – Diagramm (T)"
+
+msgid "Translucent interface"
+msgstr "Durchscheinende Oberfläche"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Transportation"
+msgstr "Verkehrsbehörde"
+
+msgid "Treasury"
+msgstr "Stadtkasse"
+
+msgid "Treasury reports $%d"
+msgstr "Stadtkasse meldet $%d"
+
+msgid "Treats 2,000 watered consumers per plant. Sufficient treatment improves the pollution calculation. It does not generate water."
+msgstr "Bereitet das Wasser für 2.000 versorgte Verbraucher pro Anlage auf. Ausreichende Aufbereitung verbessert die Verschmutzungsberechnung. Erzeugt kein Wasser."
+
+msgid "Trees"
+msgstr "Bäume"
+
+msgid "Trip Query"
+msgstr "Wegabfrage"
+
+msgid "Tunnel"
+msgstr "Tunnel"
+
+msgid "Tunnels"
+msgstr "Tunnel"
+
+msgid "Tunnels %s."
+msgstr "Tunnel %s."
+
+msgid "Turn to pg %d for the full column"
+msgstr "Die ganze Kolumne auf Seite %d"
+
+msgid "Turn to pg %d for the full forecast"
+msgstr "Die vollständige Vorhersage auf Seite %d"
+
+msgid "Turn to pg %d for the full story"
+msgstr "Den ganzen Artikel lesen Sie auf Seite %d"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Turtle"
+msgstr "Schnecke"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Twenty-Five Cents"
+msgstr "Zehn Pfennig"
+
+msgid "UI scale"
+msgstr "Oberflächengröße"
+
+msgid "Unavailable"
+msgstr "Nicht verfügbar"
+
+msgid "Underground"
+msgstr "Untergrund"
+
+msgid "Underground View"
+msgstr "Untergrundansicht"
+
+msgid "Underground pipes %s."
+msgstr "Unterirdische Leitungen %s."
+
+msgid "Underground subways %s."
+msgstr "Unterirdische U-Bahnen %s."
+
+#. Wording from the German original (MUNGE.EXE).
+msgid "Undo"
+msgstr "Rückgängig machen"
+
+msgid "Unemployment"
+msgstr "Arbeitslosigkeit"
+
+msgid "Unemployment graph (u)"
+msgstr "Arbeitslosigkeit – Diagramm (u)"
+
+msgid "Unsaved SCURK changes"
+msgstr "Ungespeicherte SCURK-Änderungen"
+
+msgid "Use Defaults"
+msgstr "Standardwerte verwenden"
+
+msgid "Use cool slate colors, clean greens, and softer shading while keeping the original shapes."
+msgstr "Kühle Schiefertöne, klare Grüntöne und weichere Schattierungen verwenden; die Originalformen bleiben erhalten."
+
+msgid "Use light or dark colors for menus and windows."
+msgstr "Helle oder dunkle Farben für Menüs und Fenster verwenden."
+
+msgid "Use this budget automatically next year"
+msgstr "Dieses Budget nächstes Jahr automatisch verwenden"
+
+msgid "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
+msgstr "Diesen Renderer jetzt und für neue Städte verwenden. Wenn die GPU-Einrichtung fehlschlägt, wird der CPU-Renderer verwendet."
+
+msgid "Use translucent backgrounds with a frosted glass effect."
+msgstr "Durchscheinende Hintergründe mit Milchglaseffekt verwenden."
+
+msgid "Value"
+msgstr "Wert"
+
+msgid "Value graph (V)"
+msgstr "Wert – Diagramm (V)"
+
+msgid "Varies with altitude and wind"
+msgstr "Abhängig von Höhe und Wind"
+
+msgid "Vehicles"
+msgstr "Fahrzeuge"
+
+msgid "Vehicles %s."
+msgstr "Fahrzeuge %s."
+
+msgid "View"
+msgstr "Ansicht"
+
+msgid "View layers"
+msgstr "Ansichtsebenen"
+
+msgid "Visible Layers"
+msgstr "Sichtbare Ebenen"
+
+msgid "Volcano"
+msgstr "Vulkan"
+
+msgid "Water"
+msgstr "Wasser"
+
+msgid "Water %"
+msgstr "Wasser %"
+
+msgid "Water % graph (w)"
+msgstr "Wasser % – Diagramm (w)"
+
+msgid "Water Pipes"
+msgstr "Wasserleitungen"
+
+msgid "Water Pump"
+msgstr "Wasserpumpe"
+
+msgid "Water Tower"
+msgstr "Wasserturm"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Water Treatment Plant"
+msgstr "Aufbereitung"
+
+msgid "Water mains"
+msgstr "Hauptwasserleitungen"
+
+msgid "Water mains %s."
+msgstr "Hauptwasserleitungen %s."
+
+msgid "Water: %s tiles   Trees: %s tiles   Height: %s–%s"
+msgstr "Wasser: %s Felder   Bäume: %s Felder   Höhe: %s–%s"
+
+msgid "Watered"
+msgstr "Mit Wasser versorgt"
+
+msgid "Weather"
+msgstr "Wetter"
+
+msgid "Weather Corner"
+msgstr "Wetterecke"
+
+msgid "Weather Forecast"
+msgstr "Wettervorhersage"
+
+msgid "Weather Report"
+msgstr "Wetterbericht"
+
+msgid "Weather Talk"
+msgstr "Wettergespräch"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Weather with Merle"
+msgstr "Wetter mit Mario"
+
+msgid "Weather: %s"
+msgstr "Wetter: %s"
+
+msgid "Weather: --"
+msgstr "Wetter: --"
+
+msgid "Width"
+msgstr "Breite"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Wind Power Plant"
+msgstr "Windenergie"
+
+msgid "Windows"
+msgstr "Fenster"
+
+msgid "Windy"
+msgstr "Windig"
+
+msgid "Work Force %% = %d"
+msgstr "Erwerbsbevölkerung %% = %d"
+
+msgid "Work Force EQ = %d"
+msgstr "Bildungsquotient der Erwerbsbevölkerung = %d"
+
+msgid "Work Force LE = %d"
+msgstr "Lebenserwartung der Erwerbsbevölkerung = %d"
+
+msgid "Workspace"
+msgstr "Arbeitsbereich"
+
+msgid "X offset"
+msgstr "X-Versatz"
+
+msgid "Y offset"
+msgstr "Y-Versatz"
+
+msgid "Yes"
+msgstr "Ja"
+
+msgid "Zones"
+msgstr "Gebiete"
+
+msgid "Zoo"
+msgstr "Zoo"
+
+msgid "Zoom In (E / +)"
+msgstr "Vergrößern (E / +)"
+
+msgid "Zoom Out (Q / -)"
+msgstr "Verkleinern (Q / -)"
+
+msgid "Zoom: %d%%"
+msgstr "Zoom: %d%%"
+
+msgid "Zoom: 100%"
+msgstr "Zoom: 100%"
+
+msgid "crime"
+msgstr "Kriminalität"
+
+msgid "data"
+msgstr "Daten"
+
+msgid "disabled"
+msgstr "deaktiviert"
+
+msgid "education"
+msgstr "Bildung"
+
+msgid "enabled"
+msgstr "aktiviert"
+
+msgid "extra editions"
+msgstr "Sonderausgaben"
+
+msgid "graphics"
+msgstr "Grafik"
+
+msgid "health"
+msgstr "Gesundheit"
+
+msgid "hidden"
+msgstr "ausgeblendet"
+
+msgid "music"
+msgstr "Musik"
+
+msgid "pollution"
+msgstr "Umweltverschmutzung"
+
+msgid "shown"
+msgstr "eingeblendet"
+
+msgid "sound"
+msgstr "Geräusche"
+
+msgid "subscription"
+msgstr "Abonnement"
+
+msgid "taxes"
+msgstr "Steuern"
+
+msgid "tile"
+msgstr "Feld"
+
+msgid "tiles"
+msgstr "Felder"
+
+msgid "traffic"
+msgstr "Verkehr"
+
+msgid "unemployment"
+msgstr "Arbeitslosigkeit"
+
+msgid "water tile"
+msgstr "Wasserfeld"
+
+msgid "water tiles"
+msgstr "Wasserfelder"
+
+#. Wording from the German original (SC2000.EXE).
+msgctxt "budget"
+msgid "Police"
+msgstr "Polizeirevier"
+
+msgctxt "budget"
+msgid "Fire"
+msgstr "Feuerwehr"
+
+#. Wording from the German original (SC2000.EXE).
+msgctxt "budget"
+msgid "Health"
+msgstr "Krankenhaus"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "A neighborhood watch program would take a bite out of crime."
+msgstr "Nachbarschafts Schutzprogramme verringern die Kriminalitätsrate."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "A public smoking ban would benefit everyone."
+msgstr "Von einem Rauchverbot würden alle profitieren."
+
+msgid "Annual Budget"
+msgstr "Jahresbudget"
+
+msgid "Annual interest"
+msgstr "Jahreszinsen"
+
+msgid "April"
+msgstr "April"
+
+msgid "Ask the bond advisor"
+msgstr "Anleiheberater fragen"
+
+msgid "August"
+msgstr "August"
+
+msgid "Bridge"
+msgstr "Brücke"
+
+msgid "Category"
+msgstr "Kategorie"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Crime is out of control.  We need more police stations."
+msgstr "Kriminalität ist außer Kontrolle. Wir brauchen mehr Polizeireviere."
+
+msgid "Current funds"
+msgstr "Aktueller Kassenbestand"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Current health care is adequate to our needs."
+msgstr "Der Stand des Gesundheitswesens ist jedoch ausreichend."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Cut back on City Services to cover the budget deficit."
+msgstr "Verringern Sie die städtischen Dienste, um das Budget-Defizit zu verringern."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Cut back on services until our funds increase."
+msgstr "Verringern Sie Dienstleitungen, bis unsere Geldmittel steigen."
+
+msgid "December"
+msgstr "Dezember"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Educational services are adequate to our city's need."
+msgstr "Das Bildungsangebot in unserer Stadt ist ausreichend."
+
+msgid "February"
+msgstr "Februar"
+
+msgid "Funds after settlement"
+msgstr "Kassenbestand nach Abrechnung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "General CPR training will assuredly save lives."
+msgstr "Erste-Hilfe Training rettet Leben."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Hospital services are trim, efficient and responsive."
+msgstr "Krankenhäuser arbeiten kostengünstig, effizient und schnell."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "I have no advice at this time."
+msgstr "Ich kann leider keinen Rat geben."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "I'm proud to report that crime is at an all time low."
+msgstr "Die Kriminalitätsrate ist auf ihrem niedrigsten Stand."
+
+msgid "Interest"
+msgstr "Zinsen"
+
+msgid "Interest rate"
+msgstr "Zinssatz"
+
+msgid "Issue Bond"
+msgstr "Anleihe ausgeben"
+
+msgid "January"
+msgstr "Januar"
+
+msgid "July"
+msgstr "Juli"
+
+msgid "June"
+msgstr "Juni"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Legalized Gambling has attracted an upleasant element."
+msgstr "Legales Glücksspiel zieht unerwünschte Subjekte an."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Let's raise taxes to increase total funds."
+msgstr "Eine Steuererhöhung würde unsere Geldmittel aufstocken."
+
+msgid "March"
+msgstr "März"
+
+msgid "May"
+msgstr "Mai"
+
+msgid "Mixed"
+msgstr "Gemischt"
+
+msgid "Mixed rates"
+msgstr "Unterschiedliche Sätze"
+
+msgid "Month"
+msgstr "Monat"
+
+msgid "Monthly history"
+msgstr "Monatsverlauf"
+
+msgid "November"
+msgstr "November"
+
+msgid "October"
+msgstr "Oktober"
+
+msgid "Ordinance income and costs"
+msgstr "Einnahmen und Kosten aus Verordnungen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Our crime rate is comparable to the national average."
+msgstr "Unsere Kriminalitätsrate entspricht dem Landesdurchschnitt."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Our fire coverage is excellent."
+msgstr "Unser Brandschutz ist ausgezeichnet."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Our fire response is adequate."
+msgstr "Unsere Reaktionszeit für Brände ist ausreichend."
+
+msgid "Principal"
+msgstr "Nennbetrag"
+
+msgid "Projected annual flow"
+msgstr "Prognostizierter Jahresgeldfluss"
+
+msgid "Rate"
+msgstr "Satz"
+
+msgid "Rate / funding"
+msgstr "Satz / Finanzierung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Rates are good right now.  Float a bond to take advantage."
+msgstr "Die Zinsraten sind günstig. Wir sollten eine Anleihe aufnehmen."
+
+msgid "Recorded"
+msgstr "Erfasst"
+
+msgid "Repay Bond"
+msgstr "Anleihe zurückzahlen"
+
+msgid "Review income, service funding and the year-end forecast."
+msgstr "Einnahmen, Finanzierung öffentlicher Einrichtungen und Jahresendprognose prüfen."
+
+msgid "Review last year’s totals."
+msgstr "Die Summen des Vorjahres prüfen."
+
+msgid "Running total"
+msgstr "Laufende Summe"
+
+msgid "September"
+msgstr "September"
+
+msgid "Status"
+msgstr "Status"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "The people are asking for a pollution ordinance."
+msgstr "Die Bewohner verlangen Umweltschutzbestimmungen."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "The power plants are overworked.  Let's push energy conservation."
+msgstr "Die Arbeiter im Kraftwerk sind überarbeitet. Wir brauchen Energiesparmaßnahmen."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "The transit lanes are inadequate.  Float a bond and build more."
+msgstr "Die Verkehrwege sind mangelhaft. Nehmen Sie ein Anleihe auf."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "These outstanding bonds are killing us.  Raise taxes to pay them off."
+msgstr "Die offenen Anleihen ruinieren uns. Erhöhen Sie die Steuern."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "This city needs more firemen."
+msgstr "Die Stadt braucht mehr Feuerwehrleute."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "We could use more hospitals."
+msgstr "Wir brauchen mehr Krankenhäuser."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "We have too many roads.  Remove some to save on maintenance."
+msgstr "Wir haben zuviele Straßen. Wenn wir ein paar loswerden, sparen wir Kosten."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "We need an Anti-Drug campaign to help our kids."
+msgstr "Eine Anti-Drogen Kampagne schützt unsere Kinder."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "We need more adequately funded colleges."
+msgstr "Wir brauchen mehr ausreichend finanzierte Hochschulen."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "We need more adequately funded grade schools."
+msgstr "Wir brauchen mehr ausreichend finanzierte Grundschulen."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "We should float a bond to pay for city expansion."
+msgstr "Wir sollten durch eine Anleihe den Ausbau der Stadt finanzieren."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "While expensive, Free Clinics will make you popular."
+msgstr "Kostenlose Kliniken würden Ihre Popularität steigern -"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "YOU CAN'T CUT BACK ON FUNDING!  YOU WILL REGRET THIS!"
+msgstr "SIE KÖNNEN DIE FINANZMITTEL NICHT STREICHEN! ES WIRD IHNEN LEID TUN!"
+
+msgid "Year to date"
+msgstr "Bisheriges Jahr"
+
+msgid "Year-end cash flow"
+msgstr "Geldfluss zum Jahresende"
+
+msgid "Year-end estimate"
+msgstr "Jahresendprognose"
+
+msgid "Year-end funds"
+msgstr "Kassenbestand zum Jahresende"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "You should drop the 1% income tax to give Residents a break."
+msgstr "Streichen Sie die 1%ige Einkommensteuer zugunsten unserer Einwohner."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "You should drop the 1% sales tax to give Commerce a break."
+msgstr "Streichen Sie die 1%ige Umsatzsteuer zugunsten des Handels."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "You should lower taxes to encourage growth."
+msgstr "Senken Sie die Steuern, um Wachstum anzukurbeln."
+
+msgid "{city} · {month} {year}"
+msgstr "{city} · {month} {year}"
+
+msgid "Cannot build here: %s"
+msgstr "Hier kann nicht gebaut werden: %s"
+
+msgid "Clear the existing structure first."
+msgstr "Zuerst das vorhandene Bauwerk entfernen."
+
+msgid "Hydroelectric power requires a waterfall tile."
+msgstr "Wasserkraft benötigt ein Wasserfallfeld."
+
+msgid "Insufficient funds for this tunnel."
+msgstr "Nicht genügend Geld für diesen Tunnel."
+
+msgid "Insufficient funds."
+msgstr "Nicht genügend Geld."
+
+msgid "Select a tile inside the map."
+msgstr "Ein Feld innerhalb der Karte wählen."
+
+msgid "The 2 by 2 highway section extends outside the map."
+msgstr "Der Schnellstraßenabschnitt von 2 × 2 Feldern reicht über den Kartenrand hinaus."
+
+msgid "The object footprint extends outside the map."
+msgstr "Die Grundfläche des Objekts reicht über den Kartenrand hinaus."
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Raised Wires"
+msgstr "Hochkabel"
+
+msgid "Rail Bridge"
+msgstr "S-Bahnbrücke"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Causeway"
+msgstr "Stelzenbrücke"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Raising Bridge"
+msgstr "Hebebrücke"
+
+msgid "Suspension Bridge"
+msgstr "Hängebrücke"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Highway Bridge"
+msgstr "Autobahnbrücke"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Reinforced Bridge"
+msgstr "Verstärkt"
+
+msgid "Unknown Bridge"
+msgstr "Unbekannte Brücke"
+
+msgid "Meandering River"
+msgstr "Gewundener Fluss"
+
+msgid "River Delta"
+msgstr "Flussdelta"
+
+msgid "Peninsula"
+msgstr "Halbinsel"
+
+msgid "Intersecting rivers"
+msgstr "Sich kreuzende Flüsse"
+
+msgid "Forked River"
+msgstr "Verzweigter Fluss"
+
+msgid "Split and rejoin river"
+msgstr "Geteilter und wieder vereinter Fluss"
+
+msgid "Ocean bay"
+msgstr "Meeresbucht"
+
+msgid "Single Island"
+msgstr "Einzelne Insel"
+
+msgid "Two islands"
+msgstr "Zwei Inseln"
+
+msgid "Plateau"
+msgstr "Hochfläche"
+
+msgid "Mountain Ridge"
+msgstr "Gebirgskamm"
+
+msgid "River Valley"
+msgstr "Flusstal"
+
+msgid "Rolling Hills"
+msgstr "Hügelland"
+
+msgid "Basin"
+msgstr "Becken"
+
+msgid "Canyon"
+msgstr "Schlucht"
+
+msgid "Coastal Cliffs"
+msgstr "Steilküste"
+
+msgid "Single Lake"
+msgstr "Einzelner See"
+
+msgid "Two Lakes"
+msgstr "Zwei Seen"
+
+msgid "Maintain SimCity 2000 Compatibility"
+msgstr "SimCity-2000-Kompatibilität beibehalten"
+
+msgid "Hold the right mouse button to hide this dialog."
+msgstr "Die rechte Maustaste gedrückt halten, um diesen Dialog auszublenden."
+
+msgid "This patch requires complete imported graphics, game data, sound and music.\n\n%s\n\nChoose OK to import your original game resources."
+msgstr "Diese Version benötigt vollständig importierte Grafiken, Spieldaten, Geräusche und Musik.\n\n%s\n\nOK wählen, um die Originalspieldateien zu importieren."
+
+msgid "NEWSPAPER"
+msgstr "ZEITUNG"
+
+msgid "Zoom: %s%%"
+msgstr "Zoom: %s%%"
+
+msgid "HD sprite"
+msgstr "HD-Grafik"
+
+msgid "HD sprite pack"
+msgstr "HD-Grafikpaket"
+
+msgid "The language of menus and windows. Original game text, such as newspapers, uses the language of the imported game."
+msgstr "Die Sprache von Menüs und Fenstern. Originalspieltexte, etwa Zeitungen, verwenden die Sprache des importierten Spiels."
+
+msgid "The pack.json file of an HD sprite pack. It replaces the look of the city sprites with full-color art. The GPU renderer shows it. Leave this empty to show the sprites of the graphics pack."
+msgstr "Die Datei pack.json eines HD-Grafikpakets. Es ersetzt die Stadtgrafiken durch Echtfarbgrafiken. Diese werden vom GPU-Renderer angezeigt. Leer lassen, um die Grafiken des Grafikpakets zu verwenden."
+
+msgid "Unused"
+msgstr "Unbenutzt"
+
+msgid "Filter records, fields, or values…"
+msgstr "Datensätze, Felder oder Werte filtern…"
+
+msgid "Include empty"
+msgstr "Leere einbeziehen"
+
+msgid "Live refresh"
+msgstr "Laufend aktualisieren"
+
+msgid "Refresh now"
+msgstr "Jetzt aktualisieren"
+
+msgid "Console"
+msgstr "Konsole"
+
+msgid "Large x2"
+msgstr "Groß ×2"
+
+msgid "Show the background terrain beneath the artwork."
+msgstr "Das Hintergrundgelände unter der Grafik anzeigen."
+
+msgid "Compare with saved artwork. Hold Backslash for a quick view of the saved artwork."
+msgstr "Mit der gespeicherten Grafik vergleichen. Rückwärtsschrägstrich gedrückt halten, um die gespeicherte Grafik kurz anzuzeigen."
+
+msgid "Open SCURK project or tile set"
+msgstr "SCURK-Projekt oder Grafik-Set öffnen"
+
+msgid "Import indexed PNG, GIF, or BMP"
+msgstr "Indizierte PNG-, GIF- oder BMP-Datei importieren"
+
+msgid "SCURK error"
+msgstr "SCURK-Fehler"
+
+msgid "Indexed formats keep the palette indices. The animated GIF shows the palette color cycle."
+msgstr "Indizierte Formate erhalten die Palettenindizes. Das animierte GIF zeigt den Farbzyklus der Palette."
+
+msgid "Generate smaller sizes"
+msgstr "Kleinere Größen erzeugen"
+
+msgid "Generate from the Large artwork:"
+msgstr "Aus der großen Grafik erzeugen:"
+
+msgid "Medium (half size)"
+msgstr "Mittel (halbe Größe)"
+
+msgid "Small (quarter size)"
+msgstr "Klein (Viertelgröße)"
+
+msgid "Replaces artwork and layers in the selected sizes.\nYou can edit the results or undo generation."
+msgstr "Ersetzt Grafiken und Ebenen der gewählten Größen.\nDie Ergebnisse können bearbeitet oder die Erzeugung rückgängig gemacht werden."
+
+msgid "Pencil: [ / ] size, hold Alt/Option to pick a color"
+msgstr "Stift: [ / ] Größe, Alt/Option zum Aufnehmen einer Farbe gedrückt halten"
+
+msgid "Pick color: hold Alt/Option with any painting tool"
+msgstr "Farbe aufnehmen: Alt/Option bei einem beliebigen Malwerkzeug gedrückt halten"
+
+msgid "Shade along the palette ramp: click to lighten, Shift-click to darken"
+msgstr "Entlang des Farbverlaufs schattieren: Klicken hellt auf, Umschalt-Klicken dunkelt ab"
+
+msgid "Stamp brush: choose a stamp in the Stamps tab"
+msgstr "Stempelpinsel: einen Stempel auf der Registerkarte Stempel wählen"
+
+msgid "Rectangle selection: Shift adds, Ctrl/Cmd subtracts"
+msgstr "Rechteckauswahl: Umschalt fügt hinzu, Strg/Cmd zieht ab"
+
+msgid "Lasso selection: Shift adds, Ctrl/Cmd subtracts"
+msgstr "Lassoauswahl: Umschalt fügt hinzu, Strg/Cmd zieht ab"
+
+msgid "Magic wand: select connected palette colors"
+msgstr "Zauberstab: verbundene Palettenfarben auswählen"
+
+msgid "Move selection: drag or use arrow keys; Shift moves 10 pixels"
+msgstr "Auswahl bewegen: ziehen oder Pfeiltasten verwenden; Umschalt bewegt um 10 Pixel"
+
+msgid "Rotate selection counterclockwise"
+msgstr "Auswahl gegen den Uhrzeigersinn drehen"
+
+msgid "Rotate selection clockwise"
+msgstr "Auswahl im Uhrzeigersinn drehen"
+
+msgid "Flip selection horizontally"
+msgstr "Auswahl waagerecht spiegeln"
+
+msgid "Flip selection vertically"
+msgstr "Auswahl senkrecht spiegeln"
+
+msgid "Fit canvas; Space-drag or middle-drag pans; wheel zooms at the cursor"
+msgstr "Zeichenfläche einpassen; mit Leertaste oder mittlerer Maustaste ziehen zum Verschieben; Mausrad zoomt am Zeiger"
+
+msgid "Constrain lines to horizontal, vertical, or 2:1 isometric directions."
+msgstr "Linien auf waagerechte, senkrechte oder isometrische 2:1-Richtungen begrenzen."
+
+msgid "Preserve the active layer silhouette when painting, erasing, or editing a selection. New-layer paste is not affected."
+msgstr "Die Silhouette der aktiven Ebene beim Malen, Radieren oder Bearbeiten einer Auswahl erhalten. Einfügen auf einer neuen Ebene ist davon nicht betroffen."
+
+msgid "Remove extra corner pixels from a 1-pixel pencil stroke."
+msgstr "Zusätzliche Eckpixel aus einem 1 Pixel breiten Stiftstrich entfernen."
+
+msgid "Shift-click palette colors from dark to light to build a shade ramp."
+msgstr "Palettenfarben von dunkel nach hell mit Umschalt anklicken, um einen Farbverlauf anzulegen."
+
+msgid "Choose all, used, recent, or favorite colors, or the ordered shade ramp.\nShift-click colors from dark to light to build a ramp.\nCtrl/Cmd-click a color to add or remove a favorite."
+msgstr "Alle, verwendete, zuletzt verwendete oder bevorzugte Farben oder den geordneten Farbverlauf wählen.\nFarben von dunkel nach hell mit Umschalt anklicken, um einen Verlauf anzulegen.\nMit Strg/Cmd auf eine Farbe klicken, um sie zu den Favoriten hinzuzufügen oder daraus zu entfernen."
+
+msgid "Clear the shade ramp. Shift-click palette colors from dark to light to build a new ramp."
+msgstr "Den Farbverlauf leeren. Palettenfarben von dunkel nach hell mit Umschalt anklicken, um einen neuen Verlauf anzulegen."
+
+msgid "Step"
+msgstr "Schritt"
+
+msgid "Uses the selection when one is active. Locked layers stay unchanged."
+msgstr "Verwendet die Auswahl, sofern eine aktiv ist. Gesperrte Ebenen bleiben unverändert."
+
+msgid "Pick & Copy..."
+msgstr "Auswählen und Kopieren..."
+
+msgid "Generate Smaller Sizes..."
+msgstr "Kleinere Größen erzeugen..."
+
+msgid "Open a source MIF file. Its graphics are copied into the working set."
+msgstr "Eine MIF-Quelldatei öffnen. Ihre Grafiken werden in den Arbeits-Grafik-Set kopiert."
+
+msgid "Open Source Tileset"
+msgstr "Quell-Grafik-Set öffnen ..."
+
+msgid "Off: copy matching tile IDs. On: choose one source and any destination with the same map footprint, such as 3×3."
+msgstr "Aus: passende Grafik-IDs kopieren. Ein: eine Quelle und ein beliebiges Ziel mit gleicher Grundfläche wählen, zum Beispiel 3 × 3."
+
+msgid "Compare matching tile IDs in both tilesets. Show tiles whose graphics differ in Large, Medium, or Small."
+msgstr "Passende Grafik-IDs beider Grafik-Sets vergleichen. Grafiken anzeigen, die sich in großer, mittlerer oder kleiner Größe unterscheiden."
+
+msgid "Show changed pixels in pink in the bottom comparison. Compare palette indices and transparency, with sprites aligned at their bottom center."
+msgstr "Geänderte Pixel im unteren Vergleich rosa anzeigen. Palettenindizes und Transparenz vergleichen; die Grafiken sind unten mittig ausgerichtet."
+
+msgid "1. Source — select graphics to copy"
+msgstr "1. Quelle – zu kopierende Grafiken wählen"
+
+msgid "2. Working — matching objects to replace"
+msgstr "2. Arbeits-Grafik-Set – passende Objekte ersetzen"
+
+msgid "Select source objects to preview their matching replacements."
+msgstr "Quellobjekte wählen, um eine Vorschau ihrer passenden Ersetzungen anzuzeigen."
+
+msgid "Preview the previous selected object."
+msgstr "Vorschau des vorherigen ausgewählten Objekts."
+
+msgid "Preview the next selected object."
+msgstr "Vorschau des nächsten ausgewählten Objekts."
+
+msgid "Differences found in other tile sizes."
+msgstr "Unterschiede in anderen Grafikgrößen gefunden."
+
+msgid "Replace the matching working objects in all three sizes. You can undo this change."
+msgstr "Die passenden Arbeitsobjekte in allen drei Größen ersetzen. Diese Änderung kann rückgängig gemacht werden."
+
+msgid "Replace all matching objects in this group, in all three sizes."
+msgstr "Alle passenden Objekte dieser Gruppe in allen drei Größen ersetzen."
+
+msgid "Open Source Graphics (MIF)"
+msgstr "Quellgrafiken öffnen (MIF)"
+
+msgid "Select an object. Then click its anchor tile in the city. SCURK placement does not use city funds or normal development gates."
+msgstr "Ein Objekt wählen und dann auf sein Ankerfeld in der Stadt klicken. Das Platzieren in SCURK verbraucht kein Stadtgeld und unterliegt nicht den normalen Entwicklungsvoraussetzungen."
+
+msgid "Select the saved zone type for transitional Residential, Commercial, or Industrial objects. Other objects use their fixed zone type."
+msgstr "Den gespeicherten Gebietstyp für übergehende Wohn-, Gewerbe- oder Industrieobjekte wählen. Andere Objekte verwenden ihren festen Gebietstyp."
+
+msgid "Orientation"
+msgstr "Ausrichtung"
+
+msgid "Place the object as a mirror image."
+msgstr "Das Objekt spiegelverkehrt platzieren."
+
+msgid "Flip"
+msgstr "Spiegeln"
+
+msgid "Export BMP..."
+msgstr "BMP exportieren..."
+
+msgid "Choose the city pages, detail, view, layers, and output color."
+msgstr "Stadtseiten, Detailgrad, Ansicht, Ebenen und Ausgabefarbe wählen."
+
+msgid "Import the original game files\nto see the scene."
+msgstr "Die Originalspieldateien importieren,\num die Szene zu sehen."
+
+msgid "Keep autosaves of the last 10 minutes"
+msgstr "Automatische Sicherungen der letzten 10 Minuten behalten"
+
+msgid "An SF2, SF3 or DLS General MIDI SoundFont file. OpenSC2K reads it in place and does not copy or change it."
+msgstr "Eine General-MIDI-SoundFont-Datei im Format SF2, SF3 oder DLS. OpenSC2K liest die Datei an ihrem Speicherort, ohne sie zu kopieren oder zu ändern."
+
+msgid "SF2, SF3 or DLS file"
+msgstr "SF2-, SF3- oder DLS-Datei"
+
+msgid "Show the art of the HD graphics pack. Load an HD graphics pack in the Data tab to use it."
+msgstr "Die Grafiken des HD-Grafikpakets anzeigen. Dazu auf der Registerkarte Daten ein HD-Grafikpaket laden."
+
+msgid "HD graphics"
+msgstr "HD-Grafiken"
+
+msgid "sc2kfix sprite corrections"
+msgstr "sc2kfix-Grafikkorrekturen"
+
+msgid "The pack.json file of a data pack. The data pack supplies text, newspapers, the city template, cities, and scenarios. Leave this empty to use the imported data pack."
+msgstr "Die Datei pack.json eines Datenpakets. Es liefert Texte, Zeitungen, Stadtvorlage, Städte und Szenarien. Leer lassen, um das importierte Datenpaket zu verwenden."
+
+msgid "Automatic (user://packs/data/pack.json)"
+msgstr "Automatisch (user://packs/data/pack.json)"
+
+msgid "The pack.json file of a graphics pack. Leave this empty to use the imported graphics pack."
+msgstr "Die Datei pack.json eines Grafikpakets. Leer lassen, um das importierte Grafikpaket zu verwenden."
+
+msgid "Automatic (user://packs/graphics/pack.json)"
+msgstr "Automatisch (user://packs/graphics/pack.json)"
+
+msgid "The pack.json file of a sound pack. Leave this empty to use the imported sound pack."
+msgstr "Die Datei pack.json eines Geräuschpakets. Leer lassen, um das importierte Geräuschpaket zu verwenden."
+
+msgid "Automatic (user://packs/sound/pack.json)"
+msgstr "Automatisch (user://packs/sound/pack.json)"
+
+msgid "The pack.json file of a music pack. Leave this empty to use the imported music pack."
+msgstr "Die Datei pack.json eines Musikpakets. Leer lassen, um das importierte Musikpaket zu verwenden."
+
+msgid "Automatic (user://packs/music/pack.json)"
+msgstr "Automatisch (user://packs/music/pack.json)"
+
+msgid "Import graphics, sounds, music, and game data from your copy of SimCity 2000."
+msgstr "Grafiken, Geräusche, Musik und Spieldaten aus Ihrer SimCity-2000-Kopie importieren."
+
+msgid "Choose an installed game folder, a macOS .app, extracted game files, or a mounted game disc. Install GOG downloads first. Select all asset types or only those you want. Each import creates separate packs. Other packs stay active."
+msgstr "Einen installierten Spielordner, eine macOS-.app, entpackte Spieldateien oder einen eingebundenen Spieldatenträger wählen. GOG-Downloads zuerst installieren. Alle oder nur die gewünschten Dateitypen auswählen. Jeder Import erzeugt eigene Pakete. Andere Pakete bleiben aktiv."
+
+msgid "Text, newspapers, the city template, cities, and scenarios."
+msgstr "Texte, Zeitungen, Stadtvorlage, Städte und Szenarien."
+
+msgid "Importing… Please keep this window open."
+msgstr "Import läuft… Dieses Fenster bitte geöffnet lassen."
+
+msgid "Imported packs and any missing assets will be listed here."
+msgstr "Importierte Pakete und fehlende Spieldateien werden hier aufgelistet."
+
+msgid "Update Available"
+msgstr "Update verfügbar"
+
+msgid "Save Changes"
+msgstr "Änderungen speichern"
+
+msgid "Detail"
+msgstr "Detailgrad"
+
+msgid "Original sprites, or the art of the HD sprite pack at 1, 2 or 4 image pixels for each pixel of the graphics size."
+msgstr "Originalgrafiken oder HD-Grafiken mit 1, 2 oder 4 Bildpixeln pro Pixel der Grafikgröße."
+
+msgid "North points lower-right."
+msgstr "Norden zeigt nach rechts unten."
+
+msgid "Replace structures with current tile values."
+msgstr "Bauwerke durch die aktuellen Feldwerte ersetzen."
+
+msgid "Map compass: no city loaded."
+msgstr "Kartenkompass: keine Stadt geladen."
+
+msgid "Scenario: %s"
+msgstr "Szenario: %s"
+
+msgid "Portable data folder"
+msgstr "Portabler Datenordner"
+
+msgid "Graphics source"
+msgstr "Grafikquelle"
+
+msgid "Cannot import SimCity 2000"
+msgstr "SimCity 2000 kann nicht importiert werden"
+
+msgid "Update imported packs"
+msgstr "Importierte Pakete aktualisieren"
+
+msgid "Later"
+msgstr "Später"
+
+msgid "Imported packs saved."
+msgstr "Importierte Pakete gespeichert."
+
+msgid "Bond action canceled. No bond balance changed."
+msgstr "Anleiheaktion abgebrochen. Der Anleihestand wurde nicht verändert."
+
+msgid "Annual budget applied. The simulation can continue."
+msgstr "Jahresbudget übernommen. Die Simulation kann fortgesetzt werden."
+
+msgid "Budget funding saved."
+msgstr "Budgetfinanzierung gespeichert."
+
+msgid "The Army base site is reserved."
+msgstr "Das Gelände für den Heeresstützpunkt ist reserviert."
+
+msgid "The Air Force base site is reserved."
+msgstr "Das Gelände für den Luftwaffenstützpunkt ist reserviert."
+
+msgid "The Navy base site is reserved."
+msgstr "Das Gelände für den Marinestützpunkt ist reserviert."
+
+msgid "The missile silo sites are reserved."
+msgstr "Die Gelände für die Raketensilos sind reserviert."
+
+msgid "Review the scenario briefing before the simulation starts."
+msgstr "Vor dem Simulationsstart die Szenariobeschreibung lesen."
+
+msgid "Scenario started."
+msgstr "Szenario gestartet."
+
+msgid "Rotated counterclockwise"
+msgstr "Gegen den Uhrzeigersinn gedreht"
+
+msgid "Placement stopped. Use Undo to remove the last placement."
+msgstr "Platzieren beendet. Mit Rückgängig die letzte Platzierung entfernen."
+
+msgid "The disaster could not be located."
+msgstr "Die Katastrophe konnte nicht gefunden werden."
+
+msgid "Stretch Terrain applied for $0."
+msgstr "Gelände für $0 gestreckt."
+
+msgid "Restored the previous sign."
+msgstr "Vorheriges Schild wiederhergestellt."
+
+msgid "Removed the last hydroelectric plant."
+msgstr "Letztes Wasserkraftwerk entfernt."
+
+msgid "Removed the last subway-to-rail connection."
+msgstr "Letzte U-Bahn-/S-Bahn-Verbindung entfernt."
+
+msgid "Removed the last on-ramp."
+msgstr "Letzte Auffahrt entfernt."
+
+msgid "Removed the last tunnel."
+msgstr "Letzten Tunnel entfernt."
+
+msgid "Restored the previous dispatched unit."
+msgstr "Vorherige eingesetzte Einheit wiederhergestellt."
+
+msgid "Upgrade City to SC2X"
+msgstr "Stadt auf SC2X umstellen"
+
+msgid "Upgrade city to SC2X?"
+msgstr "Stadt auf SC2X umstellen?"
+
+msgid "Upgrade to SC2X"
+msgstr "Auf SC2X umstellen"
+
+msgid "Return to Main Menu"
+msgstr "Zum Hauptmenü zurückkehren"
+
+msgid "All emergency services recalled."
+msgstr "Alle Einsatzkräfte zurückgerufen."
+
+msgid "Save Check"
+msgstr "Speicherprüfung"
+
+msgid "The simulation paused on the target date."
+msgstr "Die Simulation wurde am Zieldatum angehalten."
+
+msgid "Main menu."
+msgstr "Hauptmenü."
+
+msgid "City ready."
+msgstr "Stadt bereit."
+
+msgid "Show Underground Pipes"
+msgstr "Unterirdische Leitungen anzeigen"
+
+msgid "Map view: Zones"
+msgstr "Kartenansicht: Gebiete"
+
+msgid "Bridge selection canceled. No action was taken."
+msgstr "Brückenauswahl abgebrochen. Es wurde nichts verändert."
+
+msgid "Terrain preview is not available."
+msgstr "Geländevorschau ist nicht verfügbar."
+
+msgid "Cannot start terrain generation."
+msgstr "Geländeerzeugung kann nicht gestartet werden."
+
+msgid "Landscape editor: terrain changes are free. Select Start City when ready."
+msgstr "Landschaftseditor: Geländeänderungen sind kostenlos. Wenn alles bereit ist, Stadt starten wählen."
+
+msgid "City started. Build zones, roads, and services."
+msgstr "Stadt gestartet. Bauen Sie Gebiete, Straßen und öffentliche Einrichtungen."
+
+msgid "The stadium was built without a team."
+msgstr "Das Stadion wurde ohne Mannschaft gebaut."
+
+msgid "Sign removed."
+msgstr "Schild entfernt."
+
+msgid "Ordinance selection saved."
+msgstr "Verordnungsauswahl gespeichert."
+
+msgid "Industry tax rates saved."
+msgstr "Industriesteuersätze gespeichert."
+
+msgid "Game Over"
+msgstr "Spiel vorbei"
+
+msgid "Tunnel construction canceled. No action was taken."
+msgstr "Tunnelbau abgebrochen. Es wurde nichts verändert."
+
+msgid "Run Script File"
+msgstr "Skriptdatei ausführen"
+
+msgid "Closed SCURK Place & Print."
+msgstr "SCURK Plazieren und Drucken geschlossen."
+
+msgid "Loaded tile set %s: %d graphic replacements and %d names."
+msgstr "Grafik-Set %s geladen: %d Grafikersetzungen und %d Namen."
+
+msgid "%s Loaded %d of %d sc2kfix tile sets."
+msgstr "%s %d von %d sc2kfix-Grafik-Sets geladen."
+
+msgid "Restored the original tile set."
+msgstr "Original-Grafik-Set wiederhergestellt."
+
+msgid "Show Tile Values"
+msgstr "Feldwerte anzeigen"
+
+msgid "Tile Grid and Coordinates"
+msgstr "Feldraster und Koordinaten"
+
+msgid "Take Change Snapshot"
+msgstr "Änderungsaufnahme erstellen"
+
+msgid "Region Bounds"
+msgstr "Bereichsgrenzen"
+
+msgid "Region Repaints"
+msgstr "Bereichsneuzeichnungen"
+
+msgid "Occlusion Rectangles"
+msgstr "Verdeckungsrechtecke"
+
+msgid "Sprite Bounds"
+msgstr "Grafikgrenzen"
+
+msgid "Draw Order"
+msgstr "Zeichenreihenfolge"
+
+msgid "Moving Thing Paths"
+msgstr "Wege bewegter Objekte"
+
+msgid "Freeze Palette Cycling"
+msgstr "Palettenzyklen einfrieren"
+
+msgid "Check Missing Artwork"
+msgstr "Fehlende Grafiken prüfen"
+
+msgid "Repair Bad Terrain"
+msgstr "Fehlerhaftes Gelände reparieren"
+
+msgid "Find Orphaned Labels"
+msgstr "Verwaiste Beschriftungen suchen"
+
+msgid "Remove Orphaned Labels"
+msgstr "Verwaiste Beschriftungen entfernen"
+
+msgid "Advance One Phase"
+msgstr "Eine Phase weiterschalten"
+
+msgid "Advance One Day"
+msgstr "Einen Tag weiterschalten"
+
+msgid "Verify Save"
+msgstr "Speicherung prüfen"
+
+msgid "Undo Debug Edit"
+msgstr "Debug-Bearbeitung rückgängig"
+
+msgid "Performance HUD"
+msgstr "Leistungsanzeige"
+
+msgid "Capture Screenshot and State"
+msgstr "Bildschirm und Zustand aufnehmen"
+
+msgid "Debug Window"
+msgstr "Debug-Fenster"
+
+msgid "Reset Script Runtime"
+msgstr "Skriptlaufzeit zurücksetzen"
+
+msgid "Script Inspector"
+msgstr "Skriptinspektor"
+
+msgid "Detailed per-tile timing"
+msgstr "Detaillierte Laufzeiten pro Feld"
+
+msgid "Enable debug mode"
+msgstr "Debug-Modus aktivieren"
+
+msgid "%s of the date to pause on. Days run from 1 to 25 in each month."
+msgstr "%s des Zieldatums zum Anhalten. Jeder Monat hat 25 Tage."
+
+msgid "The amount for Set funds. It can be 0 or negative."
+msgstr "Der Betrag für Geldbestand setzen. Er kann 0 oder negativ sein."
+
+msgid "The moving thing to add."
+msgstr "Das hinzuzufügende bewegte Objekt."
+
+msgid "The kind of moving thing to delete."
+msgstr "Die Art des zu löschenden bewegten Objekts."
+
+msgid "The disaster to start."
+msgstr "Die auszulösende Katastrophe."
+
+msgid "Disable random disasters"
+msgstr "Zufällige Katastrophen deaktivieren"
+
+msgid "Visible terrain levels"
+msgstr "Sichtbare Geländestufen"
+
+msgid "32 shows all terrain levels. Lower values hide higher terrain."
+msgstr "32 zeigt alle Geländestufen. Niedrigere Werte blenden höheres Gelände aus."
+
+msgid "No target date"
+msgstr "Kein Zieldatum"
+
+msgid "File: %s"
+msgstr "Datei: %s"
+
+msgid "Undo edit"
+msgstr "Bearbeitung rückgängig"
+
+msgid "Put back the record bytes from before the last debug edit."
+msgstr "Die Datensatzbytes vor der letzten Debug-Bearbeitung wiederherstellen."
+
+msgid "The city can hold %d records. Record 0 is not used."
+msgstr "Die Stadt kann %d Datensätze speichern. Datensatz 0 wird nicht verwendet."
+
+msgid "Isometric View"
+msgstr "Isometrische Ansicht"
+
+msgid "Show the selected map in the isometric city view."
+msgstr "Die ausgewählte Karte in der isometrischen Stadtansicht anzeigen."
+
+msgid "Estimated Annual Cost"
+msgstr "Geschätzte Jahreskosten"
+
+msgid "Estimated annual amount"
+msgstr "Geschätzter Jahresbetrag"
+
+msgid "Offset"
+msgstr "Versatz"
+
+msgid "Select a chunk."
+msgstr "Einen Datenblock wählen."
+
+msgid "%s: %d bytes, %s"
+msgstr "%s: %d Bytes, %s"
+
+msgid "Filter fields…"
+msgstr "Felder filtern…"
+
+msgid "Disaster preview"
+msgstr "Katastrophenvorschau"
+
+msgid "Ticks"
+msgstr "Ticks"
+
+msgid "Disaster ticks to run in the copy. The first tick runs with the start."
+msgstr "Katastrophen-Ticks, die in der Kopie ausgeführt werden. Der erste Tick läuft beim Start."
+
+msgid "This city has no active scenario."
+msgstr "Diese Stadt hat kein aktives Szenario."
+
+msgid "%d months left. Scenario disaster: %s%s. %s"
+msgstr "Noch %d Monate. Szenariokatastrophe: %s%s. %s"
+
+msgid "Next step: "
+msgstr "Nächster Schritt: "
+
+msgid "Filter"
+msgstr "Filter"
+
+msgid "Show only the entries that contain this text."
+msgstr "Nur Einträge anzeigen, die diesen Text enthalten."
+
+msgid "Type a command. Type help to list the commands. Shift+Enter starts a new line."
+msgstr "Einen Befehl eingeben. help listet die Befehle auf. Umschalt+Eingabe beginnt eine neue Zeile."
+
+msgid "Save Console"
+msgstr "Konsole speichern"
+
+msgid "Sprite %d is missing."
+msgstr "Grafik %d fehlt."
+
+msgid "Color %d (0x%02X)"
+msgstr "Farbe %d (0x%02X)"
+
+msgid "Selected color: %d (0x%02X)"
+msgstr "Ausgewählte Farbe: %d (0x%02X)"
+
+msgid "Select color %d"
+msgstr "Farbe %d auswählen"
+
+msgid "Favorite"
+msgstr "Favorit"
+
+msgid "Shade ramp step"
+msgstr "Farbverlaufsschritt"
+
+msgid "Clear shade ramp"
+msgstr "Farbverlauf leeren"
+
+msgid "Move up"
+msgstr "Nach oben"
+
+msgid "Move down"
+msgstr "Nach unten"
+
+msgid "Visible"
+msgstr "Sichtbar"
+
+msgid "Earlier state"
+msgstr "Früherer Zustand"
+
+msgid "SCURK Pick & Copy"
+msgstr "SCURK Auswählen und Kopieren"
+
+msgid "Source group"
+msgstr "Quellgruppe"
+
+msgid "%d changed pixels (pink)"
+msgstr "%d geänderte Pixel (rosa)"
+
+msgid "%d of %d selected · %s (object %03d) · %s preview"
+msgstr "%d von %d ausgewählt · %s (Objekt %03d) · Vorschau %s"
+
+msgid "Select one source tile, then choose its destination on the right."
+msgstr "Eine Quellgrafik wählen, dann rechts ihr Ziel auswählen."
+
+msgid "No compatible tiles in this destination group. Choose another group."
+msgstr "Keine passenden Grafiken in dieser Zielgruppe. Eine andere Gruppe wählen."
+
+msgid "This sprite has no map footprint. Choose the same tile ID as its destination."
+msgstr "Diese Grafik hat keine Kartengrundfläche. Dieselbe Grafik-ID als Ziel wählen."
+
+msgid "Source %03d · Choose a %s destination on the right."
+msgstr "Quelle %03d · Rechts ein Ziel mit %s wählen."
+
+msgid "Source %03d (%s) → Working %03d (%s) · %s"
+msgstr "Quelle %03d (%s) → Arbeitsgrafik %03d (%s) · %s"
+
+msgid "Copy Selected (%d) →"
+msgstr "Auswahl kopieren (%d) →"
+
+msgid "Copy to Destination →"
+msgstr "Zum Ziel kopieren →"
+
+msgid "Copy All in %s…"
+msgstr "Alle in %s kopieren…"
+
+msgid "%d tiles"
+msgstr "%d Grafiken"
+
+msgid "Version %s"
+msgstr "Version %s"
+
+msgid "Binding in use"
+msgstr "Belegung bereits verwendet"
+
+msgid "%s (fixed)"
+msgstr "%s (fest)"
+
+msgid "Add a key or mouse button for %s"
+msgstr "Taste oder Maustaste für %s hinzufügen"
+
+msgid "Remove %s"
+msgstr "%s entfernen"
+
+msgid "Open Mods Folder"
+msgstr "Mod-Ordner öffnen"
+
+msgid "Reload Mods"
+msgstr "Mods neu laden"
+
+msgid "Stop all mods, find the mods in the folder again, and start the enabled ones."
+msgstr "Alle Mods stoppen, den Ordner erneut durchsuchen und die aktivierten Mods starten."
+
+msgid "Open %s. Each folder in it with an info.json file is a mod."
+msgstr "%s öffnen. Jeder Unterordner mit einer Datei info.json ist eine Mod."
+
+msgid "No mods installed. To add a mod, copy its folder into the mods folder, then click Reload Mods."
+msgstr "Keine Mods installiert. Zum Hinzufügen den Mod-Ordner in den Mods-Ordner kopieren, dann Mods neu laden wählen."
+
+msgid "Select SimCity 2000 game files"
+msgstr "SimCity-2000-Spieldateien auswählen"
+
+msgid "The import did not return a result."
+msgstr "Der Import hat kein Ergebnis geliefert."
+
+msgid "Choose a game folder or file and at least one asset type."
+msgstr "Einen Spielordner oder eine Datei und mindestens einen Dateityp wählen."
+
+msgid "Reading game files and creating packs…"
+msgstr "Spieldateien werden gelesen und Pakete erzeugt…"
+
+msgid "Cannot start the import: "
+msgstr "Import kann nicht gestartet werden: "
+
+msgid "Download"
+msgstr "Herunterladen"
+
+msgid "Notice"
+msgstr "Hinweis"
+
+msgid "Military Base Proposal"
+msgstr "Vorschlag für Militärstützpunkt"
+
+msgid "Accept"
+msgstr "Annehmen"
+
+msgid "Decline"
+msgstr "Ablehnen"
+
+msgid "FPS: --"
+msgstr "FPS: --"
+
+msgid "FPS: %d"
+msgstr "FPS: %d"
+
+msgid "Select Export Folder"
+msgstr "Exportordner wählen"
+
+msgid "The height of the hills."
+msgstr "Die Höhe der Hügel."
+
+msgid "The sea level and the number of streams. With terrain features, rivers are wider and there is more ocean."
+msgstr "Meeresspiegel und Anzahl der Bäche. Bei Geländeformen werden Flüsse breiter und der Meeresanteil größer."
+
+msgid "The number of tree groups."
+msgstr "Die Anzahl der Baumgruppen."
+
+msgid "Settings changed. Click Regenerate Terrain."
+msgstr "Einstellungen geändert. Gelände neu erzeugen wählen."
+
+msgid "Generating…"
+msgstr "Wird erzeugt…"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "1% Sales Tax"
+msgstr "1% Umsatzsteuer"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "1% Income Tax"
+msgstr "1% Einkommensteuer"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Legalized Gambling"
+msgstr "Legalisiertes Glücksspiel"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Parking Fines"
+msgstr "Strafzettel"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Volunteer Fire Dept."
+msgstr "Freiwillige Feuerwehr"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Public Smoking Ban"
+msgstr "Rauchverbot"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Free Clinics"
+msgstr "Kostenlose ärztliche Betreuung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Junior Sports"
+msgstr "Jugendsport"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Pro-Reading Campaign"
+msgstr "Kampagne gegen Analphabetentum"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Anti-Drug Campaign"
+msgstr "Anti-Drogenkampagne"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "CPR Training"
+msgstr "Erste-Hilfe-Kurse"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Neighborhood Watch"
+msgstr "Nachbarschaftswache"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Tourist Advertising"
+msgstr "Tourismuswerbung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Business Advertising"
+msgstr "Business-Werbung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "City Beautification"
+msgstr "Stadtverschönerung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Annual Carnival"
+msgstr "Jährliches Stadtfest"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Energy Conservation"
+msgstr "Energiesparprogramm"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Nuclear Free Zone"
+msgstr "Kernkraftfreie Zone"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Homeless Shelter"
+msgstr "Obdachlosenasyl"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Pollution Controls"
+msgstr "Umweltschutzverordnungen"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Safety & Health"
+msgstr "Sicherheits/Gesundheit"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Promotional"
+msgstr "Eigenwerbung"
+
+#. Wording from the German original (SC2000.EXE).
+msgid "Other"
+msgstr "Sonstige"
+
+msgid "Raises revenue. Adds one point to the commercial tax rate used by demand, which reduces commercial demand."
+msgstr "Bringt Einnahmen. Erhöht den für die Nachfrage verwendeten Gewerbesteuersatz um einen Punkt und senkt damit die Gewerbenachfrage."
+
+msgid "Raises revenue. Adds one point to the residential tax rate used by demand, which reduces residential demand."
+msgstr "Bringt Einnahmen. Erhöht den für die Nachfrage verwendeten Wohngebietssteuersatz um einen Punkt und senkt damit die Wohnungsnachfrage."
+
+msgid "Raises revenue. Adds 16 to the local crime calculation before smoothing."
+msgstr "Bringt Einnahmen. Erhöht die örtliche Kriminalitätsberechnung vor der Glättung um 16."
+
+msgid "Raises revenue. No additional traffic or demand effect is implemented."
+msgstr "Bringt Einnahmen. Es ist keine zusätzliche Wirkung auf Verkehr oder Nachfrage implementiert."
+
+msgid "Costs money. Adds fire coverage around developed residential, commercial and industrial tiles."
+msgstr "Kostet Geld. Verbessert den Brandschutz rund um bebaute Wohn-, Gewerbe- und Industriegebiete."
+
+msgid "Costs money. Adds five years to the newborn life-expectancy input."
+msgstr "Kostet Geld. Erhöht den Ausgangswert der Lebenserwartung Neugeborener um fünf Jahre."
+
+msgid "Costs money. Adds health capacity based on the residential budget base."
+msgstr "Kostet Geld. Erhöht die Gesundheitskapazität auf Grundlage der Budgetbasis für Wohngebiete."
+
+msgid "Costs money. No additional health or education effect is implemented."
+msgstr "Kostet Geld. Es ist keine zusätzliche Wirkung auf Gesundheit oder Bildung implementiert."
+
+msgid "Costs money. Prevents the education loss applied when population moves between age groups."
+msgstr "Kostet Geld. Verhindert den Bildungsverlust beim Wechsel der Bevölkerung zwischen Altersgruppen."
+
+msgid "Costs money. Adds police coverage around developed residential, commercial and industrial tiles, reducing crime."
+msgstr "Kostet Geld. Verbessert den Polizeischutz rund um bebaute Wohn-, Gewerbe- und Industriegebiete und senkt damit die Kriminalität."
+
+msgid "Costs money. Reduces the effective commercial tax rate by one point, increasing commercial demand."
+msgstr "Kostet Geld. Senkt den effektiven Gewerbesteuersatz um einen Punkt und steigert damit die Gewerbenachfrage."
+
+msgid "Costs money. Reduces the effective industrial tax rate by one point, increasing industrial demand."
+msgstr "Kostet Geld. Senkt den effektiven Industriesteuersatz um einen Punkt und steigert damit die Industrienachfrage."
+
+msgid "Costs money. Reduces the effective residential tax rate by one point, increasing residential demand."
+msgstr "Kostet Geld. Senkt den effektiven Wohngebietssteuersatz um einen Punkt und steigert damit die Wohnungsnachfrage."
+
+msgid "Costs money. Adds one twelfth to available power-grid capacity, allowing more consumers to be supplied."
+msgstr "Kostet Geld. Erhöht die verfügbare Stromnetzkapazität um ein Zwölftel, sodass mehr Verbraucher versorgt werden können."
+
+msgid "Costs money. Prevents new nuclear power plants from being selected."
+msgstr "Kostet Geld. Verhindert die Auswahl neuer Kernkraftwerke."
+
+msgid "Costs money. Reduces pollution and demand from polluting industries. Adds one point to the effective industrial tax rate, reducing industrial demand."
+msgstr "Kostet Geld. Verringert Verschmutzung und Nachfrage umweltschädlicher Industriezweige. Erhöht den effektiven Industriesteuersatz um einen Punkt und senkt damit die Industrienachfrage."
+
+#. Wording from the German original (SC2000.EXE).
+msgctxt "budget"
+msgid "Residential"
+msgstr "Einwohner"
+
+#. Wording from the German original (SC2000.EXE).
+msgctxt "budget"
+msgid "Commercial"
+msgstr "Handel"
+
+#. Wording from the German original (SC2000.EXE).
+msgctxt "budget"
+msgid "Highway"
+msgstr "Autobahn"
+
+#. Wording from the German original (SC2000.EXE).
+msgctxt "budget"
+msgid "Rail"
+msgstr "Schiene"
+
+#. Wording from the German original (SC2000.EXE).
+msgctxt "budget"
+msgid "Ordinances"
+msgstr "Stadtverordnungen"
+
+msgid "The adjacent amount shows the estimated annual budget effect."
+msgstr "Der danebenstehende Betrag zeigt die geschätzte jährliche Auswirkung auf das Budget."

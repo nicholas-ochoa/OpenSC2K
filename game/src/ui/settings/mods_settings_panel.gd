@@ -74,7 +74,7 @@ func _init() -> void:
 func show_mods(rows: Array[Dictionary], folder: String) -> void:
 	_showing = true
 	_rows = rows
-	open_folder_button.tooltip_text = "Open %s. Each folder in it with an info.json file is a mod." % folder
+	open_folder_button.tooltip_text = tr("Open %s. Each folder in it with an info.json file is a mod.") % folder
 	tree.clear()
 	var root := tree.create_item()
 	var selected: TreeItem = null

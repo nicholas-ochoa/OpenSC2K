@@ -1255,7 +1255,7 @@ func _refresh_sprite() -> void:
 	if entry == null:
 		pixel_canvas.clear_sprite()
 		_refresh_view_previews()
-		sprite_status_label.text = "Sprite %d is missing." % sprite_id
+		sprite_status_label.text = tr("Sprite %d is missing.") % sprite_id
 
 		return
 

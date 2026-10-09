@@ -11,8 +11,11 @@ extends RefCounted
 const DEFAULT := "en"
 # language code -> name in that language. Each code other than English has a
 # translation in res://assets/localization
-const LANGUAGES: Dictionary[String, String] = { "en": "English", "ko": "한국어" }
-const TRANSLATIONS: Dictionary[String, String] = { "ko": "res://assets/localization/ko.po" }
+const LANGUAGES: Dictionary[String, String] = { "en": "English", "de": "Deutsch", "ko": "한국어" }
+const TRANSLATIONS: Dictionary[String, String] = {
+	"de": "res://assets/localization/de.po",
+	"ko": "res://assets/localization/ko.po",
+}
 const REGULAR_FONT = preload("res://assets/fonts/pretendard/Pretendard-Regular.otf")
 const BOLD_FONT = preload("res://assets/fonts/pretendard/Pretendard-Bold.otf")
 

@@ -15,7 +15,7 @@ func _ready() -> void:
 	# keep the scene visible in the editor, but closed until requested in game
 	hide()
 	get_label().hide()
-	$Content/Version.text = "Version %s" % ProjectSettings.get_setting("application/config/version")
+	$Content/Version.text = tr("Version %s") % ProjectSettings.get_setting("application/config/version")
 	artwork = $Content/Tabs/About/Scene/Artwork
 	project_text = $Content/Tabs/About/Summary
 	var body_font := SystemFont.new()

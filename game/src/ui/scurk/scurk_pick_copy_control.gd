@@ -476,7 +476,7 @@ func _refresh_difference_preview() -> void:
 	var difference := ScurkCopyDifference.compare(before, after, palette)
 	if difference.image != null:
 		artwork.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(difference.image))
-		label.text = "%d changed pixels (pink)" % difference.changed_pixels
+		label.text = tr("%d changed pixels (pink)") % difference.changed_pixels
 		if difference.changed_pixels == 0:
 			for view in ScurkSpriteIds.VIEW_COUNT:
 				if view != current_view and _view_differs(source_id, destination_id, view):
@@ -505,7 +505,7 @@ func _refresh_artwork_preview() -> void:
 		preview_large_id = selected[0]
 	var index := selected.find(preview_large_id)
 	var tile_id := ScurkEditorRules.object_tile_id(preview_large_id)
-	preview_label.text = "%d of %d selected · %s (object %03d) · %s preview" % [
+	preview_label.text = tr("%d of %d selected · %s (object %03d) · %s preview") % [
 		index + 1, selected.size(), ScurkEditorRules.tile_name(tile_id, working_set.names), tile_id,
 		["Large", "Medium", "Small"][current_view],
 	]
@@ -530,13 +530,13 @@ func _refresh_destination_preview() -> void:
 		if PickCopy.footprint_size(source_id) == 0:
 			preview_label.text = "This sprite has no map footprint. Choose the same tile ID as its destination."
 			return
-		preview_label.text = "Source %03d · Choose a %s destination on the right." % [
+		preview_label.text = tr("Source %03d · Choose a %s destination on the right.") % [
 			ScurkEditorRules.object_tile_id(source_id), _footprint_label(source_id),
 		]
 		return
 	var destination_id := destinations[0]
 	preview_before.texture = _object_icon(working_set, destination_id, false, false)
-	preview_label.text = "Source %03d (%s) → Working %03d (%s) · %s" % [
+	preview_label.text = tr("Source %03d (%s) → Working %03d (%s) · %s") % [
 		ScurkEditorRules.object_tile_id(source_id), _footprint_label(source_id),
 		ScurkEditorRules.object_tile_id(destination_id), _footprint_label(destination_id),
 		["Large", "Medium", "Small"][current_view] + " preview" if PickCopy.can_copy_to(source_id, destination_id)
@@ -569,14 +569,14 @@ func _update_buttons() -> void:
 
 	if copy_selected_button != null:
 		copy_selected_button.disabled = not sets_ready or source_list.selected_large_ids().is_empty()
-		copy_selected_button.text = "Copy Selected (%d) →" % source_list.selected_large_ids().size()
+		copy_selected_button.text = tr("Copy Selected (%d) →") % source_list.selected_large_ids().size()
 		if _remapping():
 			copy_selected_button.disabled = not sets_ready or not _destination_ready()
 			copy_selected_button.text = "Copy to Destination →"
 
 	if copy_all_button != null:
 		copy_all_button.disabled = not sets_ready or source_list.item_count == 0
-		copy_all_button.text = "Copy All in %s…" % PickCopy.GROUP_NAMES[current_group]
+		copy_all_button.text = tr("Copy All in %s…") % PickCopy.GROUP_NAMES[current_group]
 
 
 func _request_copy_selected() -> void:
