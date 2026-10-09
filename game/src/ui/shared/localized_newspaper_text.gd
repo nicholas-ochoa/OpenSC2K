@@ -319,4 +319,3 @@ const TABLES := {
 	179: Vector2i(1708, 24),
 	180: Vector2i(1732, 5),
 }
-
