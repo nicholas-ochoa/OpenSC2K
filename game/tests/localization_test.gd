@@ -68,6 +68,7 @@ func _run() -> void:
 	await process_frame
 	assert(TranslationServer.get_locale() == "de")
 	_check_original_texts()
+	await _check_toolbar_layout()
 	assert(tr("Water Pipes") != "Water Pipes")
 	assert(button.text.begins_with(tr("Water Pipes")), "The existing palette updates to German")
 	assert(button.tooltip_text.contains(tr("Cost: %s").get_slice("%s", 0)))
@@ -227,4 +228,47 @@ func _check_original_texts() -> void:
 	assert(not LocalizedNewspaperText.has_data(null))
 	var english := LocalizedNewspaperText.render_story(imported, literal_record, 1, "Town", "Mayor", PackedStringArray())
 	assert(english.ok and english.headline == "English Headline")
+	AppLocalization.select("de")
+
+
+# Long translations and artwork must stay inside the toolbar at each UI scale.
+func _check_toolbar_layout() -> void:
+	var old_size := root.size
+	var old_factor := root.content_scale_factor
+	root.size = Vector2i(1600, 1000)
+	var row := HBoxContainer.new()
+	root.add_child(row)
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var toolbar := preload("res://src/ui/shell/city_toolbar.tscn").instantiate() as CityToolbar
+	row.add_child(toolbar)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
+	var pixels := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	pixels.fill(Color.WHITE)
+	var icon := ImageTexture.create_from_image(pixels)
+	var provider := func(_group: int, _tool: int) -> Texture2D: return icon
+	for theme_name in ["light", "dark"]:
+		row.theme = AppUiThemeDefinitions.build(theme_name)
+		for language in ["en", "de", "ko"]:
+			AppLocalization.select(language)
+			for ui_scale in AppUiScale.OPTIONS:
+				AppUiScale.apply(root, ui_scale)
+				for group in [CityToolIds.Group.POWER, CityToolIds.Group.WATER, CityToolIds.Group.REWARDS]:
+					toolbar.show_tool_group(group, null, provider)
+					for frame in 6:
+						await process_frame
+					var bounds := toolbar.get_global_rect().grow(0.5)
+					for path in ["Margin", "Margin/Column", "Margin/Column/Layers", "Margin/Column/DataViewInput"]:
+						var control := toolbar.get_node(path) as Control
+						assert(bounds.encloses(control.get_global_rect()), "%s overflows the %s toolbar at scale %s" % [path, language, ui_scale])
+					for button: Button in toolbar.child_tool_buttons.values():
+						var rect := button.get_global_rect()
+						assert(rect.position.x >= bounds.position.x and rect.end.x <= bounds.end.x,
+							"Translated tool buttons must fit the sidebar horizontally")
+						assert(button.size.x >= button.get_minimum_size().x,
+							"Tool text and artwork must have their requested width")
+	row.free()
+	root.size = old_size
+	root.content_scale_factor = old_factor
 	AppLocalization.select("de")

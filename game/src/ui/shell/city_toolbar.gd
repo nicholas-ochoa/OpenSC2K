@@ -1,5 +1,5 @@
 class_name CityToolbar
-extends Panel
+extends PanelContainer
 
 
 @warning_ignore_start("integer_division")
