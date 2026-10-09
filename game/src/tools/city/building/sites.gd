@@ -1,7 +1,7 @@
 class_name BuildingSites
 extends BuildingConstants
 ## The building of each tool and its footprint. The site rules run in the
-## native simulation library; see native/simulation/src/sim/tools/commands/building.rs.
+## native simulation library; see native/core/sim/src/sim/tools/commands/building.rs.
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:

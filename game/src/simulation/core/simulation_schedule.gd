@@ -25,6 +25,21 @@ func copy() -> SimulationSchedule:
 	return result
 
 
+# the schedule of the actions after `completed_action`
+func after(completed_action: String) -> SimulationSchedule:
+	var remaining := copy()
+	remaining.actions = PackedStringArray()
+	var found := false
+
+	for action in actions:
+		if found:
+			remaining.actions.append(action)
+		elif action == completed_action:
+			found = true
+
+	return remaining
+
+
 # value snapshot for detecting changes while a worker owns a private copy
 func stamp() -> Array:
 	return [city_days, elapsed_years, month, month_day, season,

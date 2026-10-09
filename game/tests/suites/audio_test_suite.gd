@@ -6,8 +6,6 @@ const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
-const SequenceRandom = TestRandoms.SequenceRandom
-const SequenceModuloRandom = TestRandoms.SequenceModuloRandom
 
 var check_callback: Callable
 
@@ -43,36 +41,8 @@ func _test_music_director() -> void:
 		]),
 		"General music follows the executable's five-track cycle",
 	)
-	var monthly_random := SequenceRandom.new([0, 18])
-	_check(
-		Music.monthly_track(1, false, monthly_random) == 10018
-		and monthly_random.position == 2,
-		"Paused monthly music uses the Turtle divisor and selects one of all 19 tracks",
-	)
-	monthly_random = SequenceRandom.new([25])
-	_check(
-		Music.monthly_track(2, false, monthly_random) == -1
-		and monthly_random.position == 1,
-		"Turtle monthly music rejects a nonzero modulo-24 gate",
-	)
-	monthly_random = SequenceRandom.new([0, 0])
-	_check(
-		Music.monthly_track(5, true, monthly_random) == -1
-		and monthly_random.position == 0,
-		"Active music prevents a monthly selection without consuming random state",
-	)
-	var indexed_random := SequenceModuloRandom.new([0, 1, 2, 3, 4])
-	_check(
-		Music.budget_track(indexed_random) == 10016
-		and Music.budget_track(indexed_random) == 10005
-		and Music.budget_track(indexed_random) == 10002
-		and Music.budget_track(indexed_random) == 10010,
-		"Budget music follows the executable's four-track table",
-	)
-	_check(
-		Music.newspaper_track(indexed_random) == 10002,
-		"Newspaper music uses its five-track table",
-	)
+	# the monthly, budget, and newspaper tracks are native unit tests of
+	# sc2k_sim::sim::reports::music
 	_check(
 		Music.DISASTER_TRACK == 10004 and Music.RECREATION_TRACK == 10010,
 		"Mode and Recreation music use the executable's fixed tracks",
@@ -294,7 +264,7 @@ func _test_tool_sound_rules() -> void:
 		ToolSounds.success_events(0, 0).is_empty()
 		and ToolSounds.success_events(2, 0) == [506]
 		and ToolSounds.success_events(2, 1) == [509]
-		and ToolSounds.success_events(2, 2) == [506]
+		and ToolSounds.success_events(2, 2) == [525]
 		and ToolSounds.success_events(3, 1).is_empty()
 		and ToolSounds.success_events(5, 4).is_empty()
 		and ToolSounds.success_events(16, 0).is_empty(),
@@ -393,6 +363,15 @@ func _test_simulation_sound_gate() -> void:
 	_check(not gate.request(520, false, true), "Other simulation sounds wait the full replay delay")
 	gate.advance(1.0)
 	_check(gate.request(520, false, true), "A simulation sound can repeat at exactly the replay delay")
+	gate.stop()
+	_check(gate.request(WaveSounds.SOUND_EXPLODE, true) and gate.request(510, true),
+		"A tornado demolition and a vehicle sound can start together")
+	gate.advance(WaveSounds.event_replay_msec(WaveSounds.SOUND_EXPLODE) - 1.0)
+	_check(not gate.request(WaveSounds.SOUND_EXPLODE, true) and not gate.request(WaveSounds.SOUND_EXPLODE, false, true),
+		"A tornado demolition shares the disaster explosion delay")
+	gate.advance(1.0)
+	_check(gate.request(WaveSounds.SOUND_EXPLODE, true) and not gate.request(510, true),
+		"A tornado demolition repeats after the explosion delay, not the ambient delay")
 	gate.stop()
 	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound starts again")
 	gate.advance(3000.0)

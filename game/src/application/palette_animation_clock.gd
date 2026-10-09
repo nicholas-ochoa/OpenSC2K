@@ -61,7 +61,7 @@ func update_textures(palette: Sc2Palette, fraction: float, underground := true, 
 
 static func _blend_colors(target: Image, first: Image, second: Image, fraction: float) -> void:
 	# Stationary entries stay byte-identical, including those within the ranges.
-	for index in range(Sc2Palette.FAST_CYCLE_START, Sc2Palette.FAST_CYCLE_START + Sc2Palette.FAST_CYCLE_TABLE.size()):
+	for index in range(Sc2Palette.FAST_CYCLE_START, Sc2Palette.FAST_CYCLE_START + Sc2Palette.FAST_CYCLE_COUNT):
 		target.set_pixel(index, 0, first.get_pixel(index, 0).lerp(second.get_pixel(index, 0), fraction))
-	for index in range(Sc2Palette.SLOW_CYCLE_START, Sc2Palette.SLOW_CYCLE_START + Sc2Palette.SLOW_CYCLE_TABLE.size()):
+	for index in range(Sc2Palette.SLOW_CYCLE_START, Sc2Palette.SLOW_CYCLE_START + Sc2Palette.SLOW_CYCLE_COUNT):
 		target.set_pixel(index, 0, first.get_pixel(index, 0).lerp(second.get_pixel(index, 0), fraction))

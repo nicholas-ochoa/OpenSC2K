@@ -12,6 +12,7 @@ const Highways = preload("res://src/tools/city/highway_command.gd")
 const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const Dispatch = preload("res://src/tools/city/dispatch_command.gd")
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
+const NO_TOOL := Vector2i(-1, -1)
 const LEVEL_BRUSH_SIZE := 1
 const EDITOR_LEVEL_BRUSH_SIZE := 5
 
@@ -60,7 +61,59 @@ func reset_prompts() -> void:
 	app.tool_state.pending_building_objection_subtool = -1
 
 
+# Give the map a tool while a key is down, or NO_TOOL to give back the chosen
+# tool. The toolbar does not change. A change waits for the end of a drag
+func hold_tool(tool: Vector2i) -> void:
+	var state := app.tool_state
+
+	if app.map_view != null and app.map_view.is_left_drag_active():
+		state.held_tool_pending = tool != state.held_tool
+		state.pending_held_tool = tool
+
+		return
+
+	state.held_tool_pending = false
+
+	if tool == state.held_tool:
+		return
+
+	_give_back_chosen_tool()
+
+	if tool != NO_TOOL:
+		state.chosen_tool = Vector2i(state.selected_group, state.selected_subtool)
+		state.selected_group = tool.x
+		state.selected_subtool = tool.y
+		state.held_tool = tool
+
+	update_edit_state()
+
+
+# run the held tool change that waited for a drag
+func finish_held_tool() -> void:
+	if app.tool_state.held_tool_pending:
+		hold_tool(app.tool_state.pending_held_tool)
+
+
+func _give_back_chosen_tool() -> void:
+	var state := app.tool_state
+
+	if state.held_tool == NO_TOOL:
+		return
+
+	state.selected_group = state.chosen_tool.x
+	state.selected_subtool = state.chosen_tool.y
+	state.held_tool = NO_TOOL
+
+
+# a tool that the player chooses ends a held tool
+func _drop_held_tool() -> void:
+	app.tool_state.held_tool_pending = false
+	_give_back_chosen_tool()
+
+
 func select_tool_group(index: int) -> void:
+	_drop_held_tool()
+
 	if app.tool_state.terrain_stretch.active:
 		app.map_view.cancel_active_selection()
 
@@ -71,14 +124,14 @@ func select_tool_group(index: int) -> void:
 	if index < 0 or index >= Tools.GROUPS.size():
 		return
 
+	if index == CityToolIds.Group.DISPATCH and not ToolAvailability.is_dispatch_enabled(app.document_state.city):
+		return
+
 	if index != app.tool_state.selected_group:
 		app.tool_state.previous_group = app.tool_state.selected_group
 
+	# the original resets the dispatch slots when a disaster starts, not here
 	app.tool_state.selected_group = index
-
-	if app.tool_state.selected_group == CityToolIds.Group.DISPATCH:
-		app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
-		app.tool_state.dispatch_initialized = false
 
 	app.tool_state.selected_subtool = app.city_toolbar.show_tool_group(
 		app.tool_state.selected_group, app.document_state.city, app.camera_input.tool_button_icon,
@@ -87,6 +140,13 @@ func select_tool_group(index: int) -> void:
 	_auto_select_underground()
 	_sync_child_tool_selection()
 	update_edit_state()
+	_emit_selected()
+
+
+func _emit_selected() -> void:
+	app.scripting.emit("tool.selected", {
+		"tool": ApplicationScriptingApi.tool_info(app.tool_state.selected_group, app.tool_state.selected_subtool),
+	})
 
 
 func _auto_select_underground() -> void:
@@ -109,6 +169,8 @@ func _auto_select_underground() -> void:
 
 
 func select_subtool(index: int) -> void:
+	_drop_held_tool()
+
 	if app.tool_state.terrain_stretch.active:
 		app.map_view.cancel_active_selection()
 
@@ -131,10 +193,8 @@ func select_subtool(index: int) -> void:
 
 		if recalled.ok:
 			recalled.dispatch_cycles_before = app.tool_state.dispatch_cycles.duplicate()
-			recalled.dispatch_initialized_before = app.tool_state.dispatch_initialized
 			app.tool_state.last_edit_command = recalled
 			app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
-			app.tool_state.dispatch_initialized = false
 			app.static_render.refresh_after_city_edit(recalled)
 			app.status_label.text = "All emergency services recalled."
 
@@ -147,6 +207,7 @@ func select_subtool(index: int) -> void:
 	_auto_select_underground()
 	_sync_child_tool_selection()
 	update_edit_state()
+	_emit_selected()
 
 	if (app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
 			and index in [CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]):
@@ -161,6 +222,11 @@ func _sync_child_tool_selection() -> void:
 func refresh_tool_availability() -> bool:
 	if app.document_state.city == null or app.city_toolbar == null:
 		return false
+
+	# the original moves the Emergency tool to Center when the disaster ends
+	if (app.tool_state.selected_group == CityToolIds.Group.DISPATCH
+			and not ToolAvailability.is_dispatch_enabled(app.document_state.city)):
+		select_tool_group(CityToolIds.Group.CENTERING)
 
 	return app.city_toolbar.refresh_tool_availability(
 		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, app.tool_state.selected_tool_available
@@ -188,7 +254,7 @@ func update_edit_state() -> void:
 			var cursor_tool := app.scurk_place_print.selected_edit_tool()
 			app.map_view.desktop_cursor_role = DesktopCursorRules.city_tool(cursor_tool.group, cursor_tool.subtool)
 			state = ToolEditState.scurk_tool(
-				app.document_state.city, app.scurk_place_print.selected_edit_tool()
+				app.document_state.city, app.view_state.overlay_mode, app.scurk_place_print.selected_edit_tool()
 			)
 	else:
 		state = ToolEditState.normal(
@@ -227,14 +293,15 @@ func update_edit_state() -> void:
 				and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH else "Free landscape editor tool.")
 
 	var level_brush := app.new_city.level_brush_active()
-	app.map_view.landscape_brush = ((level_brush or app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
+	app.map_view.landscape_brush = (level_brush or app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
 			and app.tool_state.selected_subtool in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER, CityToolIds.Landscape.FOREST])
-			and not (app.scurk_place_print != null and app.scurk_place_print.visible))
 	app.map_view.demolish_brush = (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
-		and app.tool_state.selected_subtool == CityToolIds.Bulldozer.DEMOLISH
-			and not app.tool_state.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible))
+		and app.tool_state.selected_subtool == CityToolIds.Bulldozer.DEMOLISH and not app.tool_state.landscape_editor)
 	app.map_view.bulldozer_visual_provider = (app.moving_sprites.demolish_brush_visual
 		if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable())
+	app.map_view.placement_ghost_provider = (app.scurk_workspace.place_ghost
+		if app.scurk_place_print != null and app.scurk_place_print.visible and app.scurk_place_print.is_object_mode()
+		else Callable())
 	app.city_toolbar.brush_controls.visible = app.tool_state.landscape_editor and app.map_view.landscape_brush and not level_brush
 
 	if level_brush:
@@ -261,7 +328,6 @@ func update_edit_state() -> void:
 			CityToolIds.Bulldozer.STRETCH])
 	app.map_view.highway_preview = (app.tool_state.selected_group == CityToolIds.Group.ROADS
 		and app.tool_state.selected_subtool == CityToolIds.Roads.HIGHWAY)
-	app.map_view.query_footprint_preview = app.tool_state.selected_group == CityToolIds.Group.QUERY
 
 	if app.tool_state.selected_group != CityToolIds.Group.QUERY or app.tool_state.selected_subtool != CityToolIds.Query.TRIP_REACH:
 		app.map_view.clear_trip_reach()
@@ -273,7 +339,6 @@ func update_edit_state() -> void:
 		bool(state.enabled),
 		str(state.selection),
 		int(state.area),
-		bool(state.landscape),
 	)
 
 	app.interface.refresh_status_summary()
@@ -308,13 +373,16 @@ func _placement_preview_error(point: Vector2i) -> String:
 			else String(NativeCityTools.scurk_site_error(app.document_state.city.buildings, app.document_state.city.terrain,
 				app.document_state.city.tile_flags, site, tile_id, map_edge)))
 
+	# Place & Print edit tools are free
+	var free := app.scurk_workspace.scurk_edit_tool_active()
+
 	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		return Buildings.preview_error(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point)
 
 	if Hydro.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		var index := app.document_state.city.index_of(point.x, point.y)
 
-		if app.document_state.city.funds() < int(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).cost):
+		if not free and app.document_state.city.funds() < int(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).cost):
 			return "Insufficient funds."
 
 		if app.document_state.city.buildings[index] != BuildingTileIds.EMPTY:
@@ -329,7 +397,7 @@ func _placement_preview_error(point: Vector2i) -> String:
 			app.tool_state.selected_group,
 			app.tool_state.selected_subtool,
 			point,
-			false,
+			free,
 			true,
 		).error
 
@@ -348,7 +416,7 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if not proposal.confirmation_required:
 			return proposal.error
 
-		return "" if app.document_state.city.funds() >= proposal.cost else "Insufficient funds for this tunnel."
+		return "" if free or app.document_state.city.funds() >= proposal.cost else "Insufficient funds for this tunnel."
 
 	if Highways.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		return Highways.preview_error(app.document_state.city, point)
@@ -360,7 +428,7 @@ func update_network_preview() -> void:
 	if app.network_preview == null:
 		return
 
-	if (app.document_state.city == null or not app.camera_input.camera_keys_allowed() or not app.map_view.edit_enabled
+	if (app.document_state.city == null or not app.camera_input.camera_keys_allowed(false, true) or not app.map_view.edit_enabled
 			or app.map_view.is_panning()
 			or not NetworkPlacementPreview.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool)):
 		app.network_preview.clear()
@@ -380,6 +448,8 @@ func update_network_preview() -> void:
 	var sprites := app.asset_state.large_sprites if view == IsometricRenderer.VIEW_LARGE else app.asset_state.small_medium_sprites
 
 	if sprites != null and app.asset_state.palette != null:
+		# the region views show HD art
+		app.network_preview.show_artwork = app.render_caches.region_cache != null
 		app.network_preview.request(
 			app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, view,
 			app.asset_state.palette, sprites,

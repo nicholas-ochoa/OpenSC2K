@@ -46,96 +46,30 @@ tooltip_text = "The mayor name for new cities."
 placeholder_text = "Mayor"
 max_length = 23
 
-[node name="ThemeLabel" type="Label" parent="Tabs/General/Fields"]
+[node name="LanguageLabel" type="Label" parent="Tabs/General/Fields"]
 custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 vertical_alignment = 1
-text = "Theme"
+text = "Language"
 
-[node name="ThemeSelector" type="OptionButton" parent="Tabs/General/Fields"]
+[node name="LanguageSelector" type="OptionButton" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-tooltip_text = "Use light or dark colors for menus and windows."
-item_count = 2
-selected = 0
-popup/item_0/text = "Light Theme"
-popup/item_0/id = 0
-popup/item_1/text = "Dark Theme"
-popup/item_1/id = 1
+tooltip_text = "The language of menus and windows. Original game text, such as newspapers, uses the language of the imported game."
 
-[node name="TranslucentMenusSpacer" type="Control" parent="Tabs/General/Fields"]
+[node name="RecentAutosavesSpacer" type="Control" parent="Tabs/General/Fields"]
 custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 
-[node name="TranslucentMenusCheck" type="CheckBox" parent="Tabs/General/Fields"]
+[node name="RecentAutosavesCheck" type="CheckBox" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-tooltip_text = "Use translucent backgrounds with a frosted glass effect."
-button_pressed = true
-text = "Translucent interface"
-
-[node name="DarkUndergroundSpacer" type="Control" parent="Tabs/General/Fields"]
-custom_minimum_size = Vector2(150, 32)
-layout_mode = 2
-
-[node name="DarkUndergroundCheck" type="CheckBox" parent="Tabs/General/Fields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-tooltip_text = "Show the underground view on a dark background,
-with brighter lines for pipes, water mains, and subways."
-text = "Dark underground view"
-
-[node name="UiScaleLabel" type="Label" parent="Tabs/General/Fields"]
-custom_minimum_size = Vector2(150, 32)
-layout_mode = 2
-vertical_alignment = 1
-text = "UI scale"
-
-[node name="UiScaleSelector" type="OptionButton" parent="Tabs/General/Fields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-tooltip_text = "Size of menus, windows, and text. 2.0 is the standard size. Smaller values show more of the city. The city map keeps its own sharp pixel size."
-item_count = 3
-selected = 2
-popup/item_0/text = "1.0"
-popup/item_0/id = 0
-popup/item_1/text = "1.5"
-popup/item_1/id = 1
-popup/item_2/text = "2.0"
-popup/item_2/id = 2
-
-[node name="RendererLabel" type="Label" parent="Tabs/General/Fields"]
-custom_minimum_size = Vector2(150, 32)
-layout_mode = 2
-vertical_alignment = 1
-text = "Renderer"
-
-[node name="RendererSelector" type="OptionButton" parent="Tabs/General/Fields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
-selected = 0
-item_count = 2
-popup/item_0/text = "GPU (recommended)"
-popup/item_0/id = 0
-popup/item_1/text = "CPU"
-popup/item_1/id = 1
-
-[node name="FullscreenSpacer" type="Control" parent="Tabs/General/Fields"]
-custom_minimum_size = Vector2(150, 32)
-layout_mode = 2
-
-[node name="FullscreenCheck" type="CheckBox" parent="Tabs/General/Fields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-tooltip_text = "Run the game in full screen mode when enabled, otherwise run in a resizable window."
-text = "Fullscreen"
+tooltip_text = "Save a copy of the open city each minute to the OpenSC2K Autosaves folder
+in the temporary folder, and keep the copies of the last 10 minutes.
+File > Open Autosave Folder shows them. The city file does not change."
+text = "Keep autosaves of the last 10 minutes"
 
 [node name="UpdatesSpacer" type="Control" parent="Tabs/General/Fields"]
 custom_minimum_size = Vector2(150, 32)
@@ -174,11 +108,86 @@ vertical_alignment = 1
 autowrap_mode = 2
 theme_type_variation = &"HelpLabel"
 
+[node name="UI" type="ScrollContainer" parent="Tabs"]
+visible = false
+horizontal_scroll_mode = 0
+layout_mode = 2
+theme_override_constants/separation = 16
+metadata/_tab_index = 1
+
+[node name="Fields" type="GridContainer" parent="Tabs/UI"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="ThemeLabel" type="Label" parent="Tabs/UI/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+vertical_alignment = 1
+text = "Theme"
+
+[node name="ThemeSelector" type="OptionButton" parent="Tabs/UI/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Use light or dark colors for menus and windows."
+item_count = 2
+selected = 0
+popup/item_0/text = "Light Theme"
+popup/item_0/id = 0
+popup/item_1/text = "Dark Theme"
+popup/item_1/id = 1
+
+[node name="TranslucentMenusSpacer" type="Control" parent="Tabs/UI/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+
+[node name="TranslucentMenusCheck" type="CheckBox" parent="Tabs/UI/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Use translucent backgrounds with a frosted glass effect."
+button_pressed = true
+text = "Translucent interface"
+
+[node name="UiScaleLabel" type="Label" parent="Tabs/UI/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+vertical_alignment = 1
+text = "UI scale"
+
+[node name="UiScaleSelector" type="OptionButton" parent="Tabs/UI/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Size of menus, windows, and text. 2.0 is the standard size. Smaller values show more of the city. The city map keeps its own sharp pixel size."
+item_count = 3
+selected = 2
+popup/item_0/text = "1.0"
+popup/item_0/id = 0
+popup/item_1/text = "1.5"
+popup/item_1/id = 1
+popup/item_2/text = "2.0"
+popup/item_2/id = 2
+
+[node name="FullscreenSpacer" type="Control" parent="Tabs/UI/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+
+[node name="FullscreenCheck" type="CheckBox" parent="Tabs/UI/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Run the game in full screen mode when enabled, otherwise run in a resizable window."
+text = "Fullscreen"
+
 [node name="Audio" type="ScrollContainer" parent="Tabs"]
 visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
-metadata/_tab_index = 1
+metadata/_tab_index = 2
 
 [node name="Content" type="VBoxContainer" parent="Tabs/Audio"]
 layout_mode = 2
@@ -324,7 +333,7 @@ theme_type_variation = &"HelpLabel"
 visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
-metadata/_tab_index = 2
+metadata/_tab_index = 3
 
 [node name="Content" type="VBoxContainer" parent="Tabs/Graphics"]
 layout_mode = 2
@@ -337,6 +346,24 @@ size_flags_horizontal = 3
 theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 8
 columns = 2
+
+[node name="RendererLabel" type="Label" parent="Tabs/Graphics/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+vertical_alignment = 1
+text = "Renderer"
+
+[node name="RendererSelector" type="OptionButton" parent="Tabs/Graphics/Content/PackFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
+selected = 0
+item_count = 2
+popup/item_0/text = "GPU (recommended)"
+popup/item_0/id = 0
+popup/item_1/text = "CPU"
+popup/item_1/id = 1
 
 [node name="GraphicsSizeLabel" type="Label" parent="Tabs/Graphics/Content/PackFields"]
 custom_minimum_size = Vector2(150, 32)
@@ -523,11 +550,48 @@ theme_override_font_sizes/font_size = 12
 text = "Choose the graphics size for each zoom level. Larger graphics show more detail. Higher zoom levels cannot use a smaller size."
 autowrap_mode = 2
 
+[node name="HdGraphicsSpacer" type="Control" parent="Tabs/Graphics/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+
+[node name="HdGraphicsCheck" type="CheckBox" parent="Tabs/Graphics/Content/PackFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Show the art of the HD graphics pack. Load an HD graphics pack in the Data tab to use it."
+button_pressed = true
+text = "HD graphics"
+
+[node name="SpriteCorrectionsSpacer" type="Control" parent="Tabs/Graphics/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+
+[node name="SpriteCorrectionsCheck" type="CheckBox" parent="Tabs/Graphics/Content/PackFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Use the sc2kfix corrections of the original Windows sprites:
+aligned buildings and the animated colours of the DOS and Macintosh versions.
+They do not apply while a SCURK tile set is loaded or HD graphics show."
+text = "sc2kfix sprite corrections"
+
+[node name="DarkUndergroundSpacer" type="Control" parent="Tabs/Graphics/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+
+[node name="DarkUndergroundCheck" type="CheckBox" parent="Tabs/Graphics/Content/PackFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Show the underground view on a dark background,
+with brighter lines for pipes, water mains, and subways."
+text = "Dark underground view"
+
 [node name="Controls" type="ScrollContainer" parent="Tabs"]
 visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
-metadata/_tab_index = 3
+metadata/_tab_index = 4
 
 [node name="ControlsMargin" type="MarginContainer" parent="Tabs/Controls"]
 layout_mode = 2
@@ -545,7 +609,7 @@ horizontal_scroll_mode = 0
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 16
-metadata/_tab_index = 4
+metadata/_tab_index = 5
 
 [node name="Content" type="VBoxContainer" parent="Tabs/Data"]
 layout_mode = 2
@@ -634,6 +698,43 @@ layout_mode = 2
 text = "Browse..."
 
 [node name="GraphicsPackName" type="Label" parent="Tabs/Data/Content/Fields/GraphicsPackControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+clip_text = true
+text_overrun_behavior = 3
+theme_type_variation = "HelpLabel"
+
+[node name="HdPackLabel" type="Label" parent="Tabs/Data/Content/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+size_flags_vertical = 0
+vertical_alignment = 1
+text = "HD sprite pack"
+
+[node name="HdPackControls" type="VBoxContainer" parent="Tabs/Data/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Data/Content/Fields/HdPackControls"]
+layout_mode = 2
+
+[node name="HdPackEdit" type="LineEdit" parent="Tabs/Data/Content/Fields/HdPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The pack.json file of an HD sprite pack. It replaces the look of the city sprites with full-color art. The GPU renderer shows it. Leave this empty to show the sprites of the graphics pack."
+placeholder_text = "None"
+
+[node name="HdBrowse" type="Button" parent="Tabs/Data/Content/Fields/HdPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Browse..."
+
+[node name="HdPackName" type="Label" parent="Tabs/Data/Content/Fields/HdPackControls"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2

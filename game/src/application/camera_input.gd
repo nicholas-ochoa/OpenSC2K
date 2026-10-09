@@ -5,6 +5,8 @@ const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const CityRotation = preload("res://src/tools/city/city_rotation_command.gd")
+# pixels of an HD tool icon for each interface pixel
+const ARTWORK_ICON_DENSITY := 4
 
 var app: CityApplication
 
@@ -14,8 +16,9 @@ func _init(application: CityApplication) -> void:
 
 
 # Map keys need the city view with no dialog open. Global keys also work while
-# a text field has focus.
-func camera_keys_allowed(allow_text_focus := false) -> bool:
+# a text field has focus. Map previews also work under Place & Print, whose
+# tools edit the map.
+func camera_keys_allowed(allow_text_focus := false, allow_place_print := false) -> bool:
 	if (app.document_state.city == null
 			or app.map_view == null
 			or not app.map_view.is_visible_in_tree()
@@ -29,7 +32,7 @@ func camera_keys_allowed(allow_text_focus := false) -> bool:
 
 	for overlay in [app.main_menu, app.city_dialogs.new_city_dialog, app.city_dialogs.query_dialog, app.scurk_editor, app.scurk_place_print,
 		app.scurk_print, app.main_overlays.settings_dialog, app.main_overlays.save_changes_dialog]:
-		if overlay != null and overlay.visible:
+		if overlay != null and overlay.visible and not (allow_place_print and overlay == app.scurk_place_print):
 			return false
 
 	if app.city_dialogs != null:
@@ -41,7 +44,11 @@ func camera_keys_allowed(allow_text_focus := false) -> bool:
 				return false
 
 	for window in app.get_viewport().get_embedded_subwindows():
-		if window.visible:
+		# the console can stay open beside the city. it takes the keys only while it has focus
+		if window == app.console_window and not window.has_focus():
+			continue
+
+		if window.visible and not (allow_place_print and window == app.scurk_place_print):
 			return false
 
 	return true
@@ -68,10 +75,13 @@ func update_keyboard_camera(delta: float) -> void:
 
 
 func input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and app.controls.handle_music_key(event):
+	if event is InputEventKey and event.pressed and not event.echo and (app.controls.handle_music_key(event)
+			or app.controls.handle_console_key(event)):
 		app.get_viewport().set_input_as_handled()
 
 		return
+
+	app.controls.update_held_tool(event)
 
 	# A focused control can consume the release event. Stop camera movement anyway.
 	if event is InputEventKey and not event.pressed:
@@ -150,7 +160,9 @@ func choose_tool_group(group_index: int) -> void:
 
 
 func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
-	return PixelArtTexture.wrap(_tool_button_icon(group_index, subtool_index))
+	var icon := _tool_button_icon(group_index, subtool_index)
+
+	return icon if icon is HdArtworkTexture else PixelArtTexture.wrap(icon)
 
 
 func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
@@ -201,6 +213,10 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if entry == null:
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
+	if app.asset_state.large_sprites.high_resolution.has(sprite_id):
+		return _artwork_tool_icon(app.asset_state.large_sprites.high_resolution[sprite_id], Vector2i(entry.width, entry.height),
+			group_index == CityToolIds.Group.ROADS and subtool_index == CityToolIds.Roads.HIGHWAY)
+
 	var rendered := entry.create_image(app.palette_clock.toolbar_palette if app.palette_clock.toolbar_palette != null
 		else app.asset_state.palette)
 
@@ -230,9 +246,30 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	return ImageTexture.create_from_image(image)
 
 
+# A tool icon with HD art, at the size of the indexed icon. The icon has
+# ARTWORK_ICON_DENSITY pixels for each interface pixel, for scaled interfaces.
+func _artwork_tool_icon(art: HdSprite, sprite_size: Vector2i, highway: bool) -> Texture2D:
+	# a highway icon shows a 2 by 2 highway piece, as the indexed icon does
+	var logical := sprite_size + (Vector2i(32, 16) if highway else Vector2i.ZERO)
+	var scale := minf(1.0, minf(48.0 / logical.x, 44.0 / logical.y))
+	var size := Vector2i(maxi(1, roundi(logical.x * scale)), maxi(1, roundi(logical.y * scale)))
+	var density := float(ARTWORK_ICON_DENSITY) * scale
+	var piece := HdSprite.scaled(art.image, Vector2i((Vector2(sprite_size) * density).round()))
+	var image := piece
+
+	if highway:
+		image = Image.create(roundi(logical.x * density), roundi(logical.y * density), false, Image.FORMAT_RGBA8)
+		image.fill(Color.TRANSPARENT)
+
+		for offset in [Vector2(16, 0), Vector2(0, 8), Vector2(32, 8), Vector2(16, 16)]:
+			image.blend_rect(piece, Rect2i(Vector2i.ZERO, piece.get_size()), Vector2i((offset * density).round()))
+
+	return HdArtworkTexture.create(image, size)
+
+
 func refresh_child_tool_icons() -> void:
 	if app.city_toolbar != null:
-		app.city_toolbar.refresh_child_tool_icons(app.tool_state.selected_group, tool_button_icon)
+		app.city_toolbar.refresh_child_tool_icons(tool_button_icon)
 
 
 func zoom_in() -> void:
@@ -260,7 +297,7 @@ func rotate_city(counter_clockwise: bool) -> void:
 	var result := CityRotation.apply(app.document_state.city, counter_clockwise)
 
 	if not result.ok:
-		app.interface.show_error("Cannot rotate city: %s" % result.error)
+		app.interface.show_error(tr("Cannot rotate city: %s") % result.error)
 		return
 
 	if app.simulation_state.simulation_engine != null:
@@ -280,7 +317,7 @@ func rotate_city(counter_clockwise: bool) -> void:
 
 func update_zoom_controls(percent: int) -> void:
 	if app.city_workspace != null and app.city_workspace.status_bar != null:
-		app.city_workspace.status_bar.set_zoom(percent)
+		app.city_workspace.status_bar.set_zoom(app.map_view.zoom_factor)
 
 	if app.zoom_in_button != null:
 		app.zoom_in_button.disabled = not app.map_view.can_zoom_in()
@@ -330,6 +367,7 @@ func on_map_selection_canceled() -> void:
 
 func on_map_selection_started() -> void:
 	app.tool_state.landscape_brush_command = null
+	app.scurk_state.brush_stroke = null
 	app.tool_state.level_brush_altitude = -1
 
 	if app.new_city.level_brush_active() and app.document_state.city != null:
@@ -358,6 +396,7 @@ func on_map_selection_finished() -> void:
 		app.tool_state.terrain_stretch.finish()
 
 	app.effects_audio.stop_tool_loop_sound()
+	app.current_tool.finish_held_tool()
 
 
 func on_terrain_stretch_changed(levels: int, deferred: bool) -> void:
@@ -382,39 +421,8 @@ func on_map_selection_changed(
 	_path: Array[Vector2i],
 	dragged: bool
 ) -> void:
-	if app.scurk_place_print != null and app.scurk_place_print.visible:
-		if app.scurk_place_print.is_object_mode():
-			app.map_view.clear_selection_price()
-			return
-
-		var scurk_tool := app.scurk_place_print.selected_edit_tool()
-		var zone_type := scurk_tool.zone if scurk_tool != null else -1
-
-		if zone_type < 0:
-			app.map_view.clear_selection_price()
-			return
-
-		var scurk_preview := Zones.preview_rectangle(
-			app.document_state.city,
-			int(scurk_tool.group),
-			int(scurk_tool.subtool),
-			start,
-			finish,
-			dragged,
-			true,
-			zone_type
-		)
-
-		if not scurk_preview.ok:
-			app.map_view.clear_selection_price()
-			return
-
-		app.map_view.set_selection_price(0, true)
-		app.status_label.theme_type_variation = ""
-		app.status_label.text = "%s preview: %d tiles; free in SCURK." % [
-			scurk_tool.name, int(scurk_preview.changed_tiles),
-		]
-
+	if app.scurk_place_print != null and app.scurk_place_print.visible and app.scurk_place_print.is_object_mode():
+		app.map_view.clear_selection_price()
 		return
 
 	if app.document_state.city != null and NetworkPlacementPreview.supports_tool(
@@ -428,25 +436,35 @@ func on_map_selection_changed(
 		app.map_view.clear_selection_price()
 		return
 
+	# a Place & Print zone tool is free and can save another zone type
+	var free := app.scurk_workspace.scurk_edit_tool_active()
+	var scurk_tool := app.scurk_place_print.selected_edit_tool() if free else null
 	var preview := Zones.preview_rectangle(
-		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, dragged
+		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, dragged,
+		free, scurk_tool.zone if scurk_tool != null else -1
 	)
 
 	if not preview.ok:
 		app.map_view.clear_selection_price()
 		app.status_label.theme_type_variation = "ErrorLabel"
-		app.status_label.text = "Cannot start zone selection: %s" % preview.error
+		app.status_label.text = tr("Cannot start zone selection: %s") % preview.error
 		return
 
 	var cost := int(preview.cost)
 	var affordable := bool(preview.affordable)
+	var tool_name: String = scurk_tool.name if scurk_tool != null else Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name
 
 	app.map_view.set_selection_price(cost, affordable)
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "%s preview: %d charged %s for $%s." % [
-		Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name,
+
+	if free:
+		app.status_label.text = tr("%s preview: %d tiles; free in SCURK.") % [tr(tool_name), int(preview.changed_tiles)]
+		return
+
+	app.status_label.text = tr("%s preview: %d charged %s for $%s.") % [
+		tr(tool_name),
 		int(preview.charged_tiles),
-		"tile" if int(preview.charged_tiles) == 1 else "tiles",
+		tr("tile" if int(preview.charged_tiles) == 1 else "tiles"),
 		app.interface.format_number(cost),
 	]
 
@@ -459,7 +477,7 @@ func center_map_on_tile(point: Vector2i) -> void:
 	if app.map_view.center_on_tile(point):
 		app.effects_audio.play_tool_success_sound(CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER)
 		app.status_label.theme_type_variation = ""
-		app.status_label.text = "Centered the map on tile %d, %d." % [point.x, point.y]
+		app.status_label.text = tr("Centered the map on tile %d, %d.") % [point.x, point.y]
 
 
 func center_map_on_disaster() -> void:

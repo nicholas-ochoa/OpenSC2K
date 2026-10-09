@@ -222,6 +222,7 @@ static func _dark_theme() -> Theme:
 	var result := ThemeDB.get_default_theme().duplicate() as Theme
 	result.set_stylebox("panel", "PanelContainer", create_box(Color("30353b"), Color("69727e"), 1, 8, 8))
 	result.default_font_size = 13
+	result.default_font = _interface_font()
 
 	for type_name in result.get_type_list():
 		for size_name in result.get_font_size_list(type_name):
@@ -489,6 +490,7 @@ static func create_box(
 static func _base_light_controls() -> Theme:
 	var result := Theme.new()
 	result.default_font_size = 13
+	result.default_font = _interface_font()
 
 	result.set_color("font_color", "Label", Color("101010"))
 	result.set_color("font_color", "Button", Color("101010"))
@@ -536,3 +538,11 @@ static func _base_light_theme() -> Theme:
 	result.set_stylebox("panel", "AcceptDialog", create_box(Color("c0c0c0"), Color("808080"), 2, 12, 12))
 
 	return result
+
+
+# The default font, with Hangul glyphs from the fallback font of AppLocalization.
+static func _interface_font() -> Font:
+	var font := FontVariation.new()
+	font.base_font = ThemeDB.fallback_font
+
+	return AppLocalization.with_fallback(font)

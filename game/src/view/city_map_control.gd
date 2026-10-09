@@ -66,6 +66,9 @@ var city: CityState:
 var city_source: CityMapSource
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
+# seconds of HD sprite animation. They advance with the palette animation, so
+# a pause or a blocking dialog keeps the current frame
+var artwork_animation_seconds := 0.0
 var dark_underground_palette_texture: Texture2D
 var dark_underground := false:
 	set(value):
@@ -77,7 +80,6 @@ var edit_enabled := false
 var shift_rectangle_enabled := false
 var selection_mode := "rectangle"
 var point_footprint_area := 1
-var shift_query_enabled := false
 # the mouse buttons for map actions. the left button always uses the tool
 var control_bindings := ControlBindings.defaults()
 var context_menu: ContextMenu
@@ -116,7 +118,6 @@ var stretch_terrain := false
 var stretch_height_delta := 0
 var network_preview_active := false
 var highway_preview := false
-var query_footprint_preview := false
 var scurk_stamp_visuals: Array[CityDynamicVisual] = []
 var trip_reach: TripReachOverlay
 var _legend: CityMapLegend
@@ -129,6 +130,8 @@ var repeat_placement := false
 var landscape_brush := false
 var demolish_brush := false
 var bulldozer_visual_provider := Callable()
+# a translucent preview of the object that a click at a tile places
+var placement_ghost_provider := Callable()
 var bulldozer_direction := 0
 var brush_box_selection := false
 var brush_size := 1
@@ -186,6 +189,11 @@ func _input(event: InputEvent) -> void:
 	interaction._input(event)
 
 
+func advance_artwork_animation(delta: float) -> void:
+	artwork_animation_seconds += maxf(delta, 0.0)
+	layers.sync_artwork_animation()
+
+
 func _process(delta: float) -> void:
 	interaction._process(delta)
 
@@ -234,9 +242,8 @@ func set_edit_enabled(
 	value: bool,
 	mode := "rectangle",
 	footprint_area := 1,
-	shift_queries := false
 ) -> void:
-	selection.set_edit_enabled(value, mode, footprint_area, shift_queries)
+	selection.set_edit_enabled(value, mode, footprint_area)
 
 
 func zoom_percent() -> int:
@@ -295,6 +302,11 @@ func cancel_active_selection() -> bool:
 	return selection.cancel_active_selection()
 
 
+# ends a held stroke as a release does. its edits stay
+func end_held_selection() -> void:
+	selection._end_held_placement()
+
+
 func center_on_tile(point: Vector2i) -> bool:
 	return camera.center_on_tile(point)
 
@@ -319,8 +331,8 @@ func show_transient_effects(effects: Array[CityTransientEffectVisual], duration 
 	presentation.show_transient_effects(effects, duration)
 
 
-func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
-	presentation.shake_view(frames, frame_duration, distance)
+func shake_view(offsets: Array[Vector2], frame_duration: float, distance: float) -> void:
+	presentation.shake_view(offsets, frame_duration, distance)
 
 
 func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
@@ -360,6 +372,6 @@ func _show_transient_effect_frame(
 
 # bind timers to this node so they stop with it
 func _show_shake_frame(
-	frame: int, frames: int, duration: float, distance: float, generation: int
+	frame: int, offsets: Array[Vector2], duration: float, distance: float, generation: int
 ) -> void:
-	presentation._show_shake_frame(frame, frames, duration, distance, generation)
+	presentation._show_shake_frame(frame, offsets, duration, distance, generation)

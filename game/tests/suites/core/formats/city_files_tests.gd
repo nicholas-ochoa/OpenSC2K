@@ -241,3 +241,130 @@ func test_modified_save(reference_root: String) -> void:
 		not CityFileStore.save_copy(null, save_base, reference_root).ok,
 		"City file store rejects a missing city document",
 	)
+
+
+func test_zero_form_length(reference_root: String) -> void:
+	var source := FileAccess.get_file_as_bytes(reference_root.path_join("DEFAULT.SC2"))
+	var damaged := source.duplicate()
+	BinaryData.write_u32_be(damaged, 4, 0)
+	var document := Sc2Document.new()
+	_check(document.parse(damaged), "A city with a zero FORM length loads: %s" % document.parse_error)
+	_check(document.repaired_form_length, "The loader reports the repaired FORM length")
+	_check(document.serialize().data == source, "An unchanged save writes the repaired FORM length")
+
+	var intact := Sc2Document.new()
+	_check(intact.parse(source) and not intact.repaired_form_length, "An intact city reports no repair")
+
+
+func test_sc2kfix_archive(reference_root: String) -> void:
+	for name in ["DEFAULT.SC2", "CITIES/CAPEQUES.SC2", "CITIES/STARTER.SC2"]:
+		var path := reference_root.path_join(name)
+		var source := Sc2Document.load_path(path)
+		var encoded := Sc2kfixArchive.encode(source, 1234)
+		_check(encoded.ok, "%s encodes as an sc2kfix city: %s" % [name, encoded.error])
+
+		if not encoded.ok:
+			continue
+
+		var bytes := encoded.bytes
+		_check(Sc2kfixArchive.is_archive(bytes) and not Sc2kfixArchive.is_archive(FileAccess.get_file_as_bytes(path)),
+			"%s sc2kfix detection uses the first archive member" % name)
+		var reloaded := Sc2Document.new()
+		_check(reloaded.parse(bytes) and reloaded.source_format == "sc2kfix", "%s loads as an sc2kfix city: %s" % [name, reloaded.parse_error])
+		var same := reloaded.chunks.size() == source.chunks.size()
+
+		for index in mini(reloaded.chunks.size(), source.chunks.size()):
+			same = same and reloaded.chunks[index].chunk_id == source.chunks[index].chunk_id
+			same = same and reloaded.chunks[index].decoded_payload == source.chunks[index].decoded_payload
+
+		_check(same, "%s keeps every chunk, in order, through an OpenSC2K sc2kfix save" % name)
+		_check(reloaded.city_name() == source.city_name(), "%s keeps its city name" % name)
+
+		# sc2kfix rewrites a file without the OpenSC2K entries
+		var archive := ZipArchive.decode(bytes, Sc2kfixArchive.MAX_ARCHIVE_BYTES, Sc2kfixArchive.MAX_DATA_BYTES)
+		var names := PackedStringArray()
+		var members: Dictionary[String, PackedByteArray] = {}
+
+		for member in archive.order:
+			if not member.begins_with("opensc2k/"):
+				names.append(member)
+				members[member] = archive.members[member]
+
+		_check(names[0] == "META.json" and names.has("current/XFIX.json"), "%s has the members that sc2kfix requires" % name)
+		var plain := ZipArchive.encode(names, members, Sc2kfixArchive.MAX_ARCHIVE_BYTES, Sc2kfixArchive.MAX_DATA_BYTES, true)
+		var plain_city := Sc2Document.new()
+		_check(plain.ok and plain_city.parse(plain.bytes), "%s loads without the OpenSC2K entries: %s" % [name, plain_city.parse_error])
+
+		if not plain_city.is_valid():
+			continue
+
+		var misc := source.find_chunk("MISC").decoded_payload
+		var plain_misc := plain_city.find_chunk("MISC").decoded_payload
+		var words_match := true
+
+		for word: int in [1, 4, 5, 9, 22, 30, 124 + 0x1d, 388, 438, 479, 479 + 26 * 3, 911, 916, 946, 1000, 1018, 1034, 1043]:
+			words_match = words_match and (BinaryData.read_u32_be(misc, word * 4) & 0xffff) == (BinaryData.read_u32_be(plain_misc, word * 4) & 0xffff)
+
+		_check(words_match, "%s MISC.json holds the original MISC words" % name)
+		_check(BinaryData.read_u32_be(plain_misc, 0) == 290, "%s MISC.json load writes the MISC version" % name)
+
+		for id in ["ALTM", "XBLD", "XMIC", "XTHG", "XGRP", "XTXT"]:
+			_check(plain_city.find_chunk(id).decoded_payload == source.find_chunk(id).decoded_payload,
+				"%s %s converts from the sc2kfix runtime layout" % [name, id])
+
+		var altm := source.find_chunk("ALTM").decoded_payload
+		var runtime_altm: PackedByteArray = members["current/ALTM"]
+		_check(runtime_altm[0] == altm[1] and runtime_altm[1] == altm[0], "%s ALTM is little-endian at run time" % name)
+
+		var misc_json: Dictionary = JSON.parse_string(members["current/MISC.json"].get_string_from_utf8())
+		_check(misc_json.city.funds == BinaryData.read_i32_be(misc, 5 * 4) and misc_json.city.budget.has("raods"),
+			"%s MISC.json uses the sc2kfix keys" % name)
+
+	var target := OS.get_user_data_dir().path_join("sc2kfix_save_test.sc2x")
+	var city := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var saved := CityFileStore.save_copy(city, target, reference_root)
+	var loaded := Sc2Document.load_path(target)
+	_check(saved.ok and loaded.is_valid() and loaded.source_format == "sc2kfix",
+		"An original city saved to an .sc2x file uses the sc2kfix format: %s" % saved.error)
+	_check(CityFileStore.uses_sc2kfix_format(city, "a.SC2X") and not CityFileStore.uses_sc2kfix_format(city, "a.sc2"),
+		"Only the .sc2x extension selects the sc2kfix format")
+	DirAccess.remove_absolute(target)
+
+
+func test_sc2kfix_xfix(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var text := '{"meta":{"creator":"sc2kfix r12","porntipsguzzardo":false},"map":{"terrain_cosmetic_mode":0,"tilesets":["C:\\\\SC2K\\\\SCURKART\\\\XFIXTEST.MIF","D:\\\\missing.mif"]}}'
+	var payload := text.to_utf8_buffer()
+	payload.append(0)
+	var chunk := Sc2Chunk.new()
+	chunk.chunk_id = "XFIX"
+	chunk.expected_decoded_size = document.decoded_size("XFIX")
+	chunk.decoded_payload = payload
+	chunk.is_dirty = true
+	document.chunks.append(chunk)
+	document.rebuild_chunk_cache()
+	var saved := document.serialize()
+	var reloaded := Sc2Document.new()
+	_check(saved.ok and reloaded.parse(saved.data), "A city with an XFIX chunk saves and loads")
+	_check(reloaded.chunks[-1].chunk_id == "XFIX" and reloaded.chunks[-1].decoded_payload == payload
+		and not reloaded.chunks[-1].is_compressed, "The XFIX chunk stays unchanged, uncompressed and in place")
+	var city := CityModel.from_document(reloaded)
+	_check(city.set_funds(4321), "A city with an XFIX chunk can change")
+	var changed := Sc2Document.new()
+	_check(changed.parse(reloaded.serialize().data) and changed.find_chunk("XFIX").decoded_payload == payload,
+		"A changed city keeps its XFIX chunk")
+	_check(Sc2kfixXfix.tile_set_paths(reloaded) == PackedStringArray(["C:\\SC2K\\SCURKART\\XFIXTEST.MIF", "D:\\missing.mif"]),
+		"XFIX lists its tile sets in load order")
+	_check(Sc2kfixXfix.tile_set_paths(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))).is_empty(),
+		"A city without XFIX lists no tile sets")
+
+	var directory := OS.get_user_data_dir().path_join("xfix_tile_sets")
+	DirAccess.make_dir_recursive_absolute(directory)
+	var file := FileAccess.open(directory.path_join("XfixTest.mif"), FileAccess.WRITE)
+	file.close()
+	_check(Sc2kfixXfix.resolve_tile_set("C:\\SC2K\\SCURKART\\XFIXTEST.MIF", PackedStringArray(["", directory]))
+		== directory.path_join("XfixTest.mif"), "A saved tile set path is found by file name in any letter case")
+	_check(Sc2kfixXfix.resolve_tile_set("D:\\missing.mif", PackedStringArray([directory])).is_empty(),
+		"A missing tile set does not resolve")
+	DirAccess.remove_absolute(directory.path_join("XfixTest.mif"))
+	DirAccess.remove_absolute(directory)

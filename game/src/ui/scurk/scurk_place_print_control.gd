@@ -9,6 +9,7 @@ signal export_bmp_requested
 signal print_city_requested
 signal undo_requested
 signal redo_requested
+signal flip_toggled(flipped: bool)
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
@@ -55,7 +56,8 @@ static var EDIT_TOOLS: Array[ScurkEditTool] = [
 	ScurkEditTool.new("Power Line", CityToolIds.Group.POWER, CityToolIds.Power.WIRES, -1, "city"),
 	ScurkEditTool.new("Rail", CityToolIds.Group.RAIL, CityToolIds.Rail.RAIL, -1, "city"),
 	ScurkEditTool.new("Subway", CityToolIds.Group.RAIL, CityToolIds.Rail.SUBWAY, -1, "underground"),
-	ScurkEditTool.new("Subway-to-Rail Connector", CityToolIds.Group.RAIL, CityToolIds.Rail.SUBWAY_TO_RAIL, -1, "underground"),
+	# the connector is a surface building, as the city tool places it
+	ScurkEditTool.new("Subway-to-Rail Connector", CityToolIds.Group.RAIL, CityToolIds.Rail.SUBWAY_TO_RAIL, -1, "city"),
 	ScurkEditTool.new("Center", CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER, -1, "either"),
 ]
 
@@ -72,7 +74,13 @@ var group_row: HBoxContainer
 var group_selector: OptionButton
 var zone_row: HBoxContainer
 var zone_selector: OptionButton
-var object_list: ItemList
+var object_list: ScurkPlaceObjectList
+var flip_row: HBoxContainer
+var flip_button: CheckButton
+# place the selected object as a mirror image
+var flipped: bool:
+	get:
+		return flip_button != null and flip_button.button_pressed
 var tool_list: ItemList
 var selection_label: Label
 var export_bmp_button: Button
@@ -89,6 +97,8 @@ func _ready() -> void:
 	zone_row = get_node("Panel/Margin/Content/ZoneRow")
 	zone_selector = get_node("Panel/Margin/Content/ZoneRow/ZoneSelector")
 	object_list = get_node("Panel/Margin/Content/PlaceObjectList")
+	flip_row = get_node("Panel/Margin/Content/FlipRow")
+	flip_button = get_node("Panel/Margin/Content/FlipRow/FlipButton")
 	tool_list = get_node("Panel/Margin/Content/PlaceEditToolList")
 	selection_label = get_node("Panel/Margin/Content/SelectionLabel")
 	export_bmp_button = get_node("Panel/Margin/Content/OutputActions/ExportBmpButton")
@@ -96,8 +106,8 @@ func _ready() -> void:
 	redo_button = get_node("Panel/Margin/Content/HistoryActions/RedoButton")
 	get_node("Panel/Margin/Content/WorkspaceRow/ModeSelector").item_selected.connect(_on_mode_selected)
 	get_node("Panel/Margin/Content/GroupRow/GroupSelector").item_selected.connect(_on_group_selected)
-	get_node("Panel/Margin/Content/PlaceObjectList").item_selected.connect(_on_object_selected)
-	get_node("Panel/Margin/Content/PlaceObjectList").item_activated.connect(_on_object_selected)
+	object_list.tile_chosen.connect(_on_object_selected)
+	flip_button.toggled.connect(_on_flip_toggled)
 	get_node("Panel/Margin/Content/PlaceEditToolList").item_selected.connect(_on_edit_tool_selected)
 	get_node("Panel/Margin/Content/PlaceEditToolList").item_activated.connect(_on_edit_tool_selected)
 	export_bmp_button.pressed.connect(export_bmp_requested.emit)
@@ -299,7 +309,7 @@ func _on_object_selected(index: int) -> void:
 	if index < 0 or index >= object_list.item_count:
 		return
 
-	selected_tile_id = int(object_list.get_item_metadata(index))
+	selected_tile_id = object_list.tile_id_at(index)
 	_update_selection_label()
 	tile_selected.emit(selected_tile_id)
 
@@ -317,7 +327,7 @@ func _refresh_objects() -> void:
 	if object_list == null:
 		return
 
-	object_list.clear()
+	object_list.clear_tiles()
 
 	if sprites == null or not sprites.is_valid():
 		return
@@ -329,14 +339,9 @@ func _refresh_objects() -> void:
 			continue
 
 		var tile_id := ScurkEditorRules.object_tile_id(large_id)
-		var label := "%03d\n%s" % [tile_id, _object_name(tile_id)]
-		var item_index := object_list.add_item(label, _object_icon(tile_id))
-		object_list.set_item_metadata(item_index, tile_id)
-		object_list.set_item_tooltip(
-			item_index,
-			"%s\nTile %d; large sprite %d" % [
-				_object_name(tile_id), tile_id, large_id,
-			]
+		var item_index := object_list.add_tile(
+			tile_id, _object_name(tile_id), ScurkEditorRules.sprite_role(tile_id), _object_icon(tile_id),
+			"%s\nTile %d; large sprite %d" % [_object_name(tile_id), tile_id, large_id]
 		)
 
 		if tile_id == selected_tile_id:
@@ -344,11 +349,10 @@ func _refresh_objects() -> void:
 
 	if selected_index < 0 and object_list.item_count > 0:
 		selected_index = 0
-		selected_tile_id = int(object_list.get_item_metadata(0))
+		selected_tile_id = object_list.tile_id_at(0)
 
 	if selected_index >= 0:
-		object_list.select(selected_index)
-		object_list.ensure_current_is_visible()
+		object_list.select_index(selected_index)
 
 	_update_selection_label()
 
@@ -397,6 +401,9 @@ func _sync_mode_controls() -> void:
 	if zone_row != null:
 		zone_row.visible = objects_visible
 
+	if flip_row != null:
+		flip_row.visible = objects_visible
+
 	if object_list != null:
 		object_list.visible = objects_visible
 
@@ -427,32 +434,20 @@ func _emit_edit_tool() -> void:
 
 
 func _object_name(tile_id: int) -> String:
-	var custom_name := String(custom_names.get(tile_id, "")).strip_edges()
+	return ScurkEditorRules.tile_name(tile_id, custom_names)
 
-	if not custom_name.is_empty():
-		return custom_name
 
-	if tile_id >= Tiles.DEVELOPED_FIRST and tile_id <= Tiles.DEVELOPED_3X3_LAST:
-		return "Residential, Commercial, or Industrial"
-
-	if tile_id >= Tiles.HYDRO_POWER_1 and tile_id <= Tiles.COAL_POWER:
-		return "Power Plant"
-
-	if tile_id >= Tiles.CITY_HALL and tile_id <= Tiles.PIER:
-		return "City Service"
-
-	if tile_id >= Tiles.CRANE and tile_id <= Tiles.DESALINIZATION:
-		return "City Infrastructure"
-
-	if tile_id <= Tiles.SMALL_PARK:
-		return "Landscape Object"
-
-	return ScurkEditorRules.sprite_role(tile_id)
+# the list shows the objects as Flip places them
+func _on_flip_toggled(value: bool) -> void:
+	_refresh_objects()
+	flip_toggled.emit(value)
 
 
 func _object_icon(tile_id: int) -> Texture2D:
-	if icon_cache.has(tile_id):
-		return icon_cache[tile_id]
+	var key := Vector2i(tile_id, int(flipped))
+
+	if icon_cache.has(key):
+		return icon_cache[key]
 
 	var entry = sprites.find_sprite(ScurkSpriteIds.LARGE_FIRST + tile_id)
 
@@ -465,6 +460,10 @@ func _object_icon(tile_id: int) -> Texture2D:
 		return null
 
 	var image: Image = rendered.image.duplicate()
+
+	if flipped:
+		image.flip_x()
+
 	var scale := minf(
 		1.0,
 		minf(
@@ -481,7 +480,7 @@ func _object_icon(tile_id: int) -> Texture2D:
 		)
 
 	var texture := PixelArtTexture.wrap(ImageTexture.create_from_image(image))
-	icon_cache[tile_id] = texture
+	icon_cache[key] = texture
 
 	return texture
 

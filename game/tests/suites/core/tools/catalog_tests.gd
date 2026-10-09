@@ -96,10 +96,14 @@ func test_tool_availability(reference_root: String) -> void:
 		and not ToolAvailability.is_available(city, 6, 4),
 		"Initial road availability includes road and tunnel only",
 	)
+	var city_mode := city.city_mode()
+	_check(not ToolAvailability.is_available(city, 2, 2), "Dispatch is not available outside a disaster")
+	city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2)
 	_check(
 		ToolAvailability.is_available(city, 2, 2),
-		"Dispatch selection stays available because live capacity controls dispatch",
+		"Dispatch selection stays available in a disaster because live capacity controls dispatch",
 	)
+	city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, city_mode)
 	var zone_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 9, 0)
 	var road_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 6, 0)
 	var building_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 13, 3)
@@ -123,7 +127,7 @@ func test_tool_availability(reference_root: String) -> void:
 	)
 	var scurk_object_state := ToolEditState.scurk_object(city, CityViewMode.Mode.CITY, 0xcf)
 	var scurk_zone_state := ToolEditState.scurk_tool(
-		city, ScurkEditTool.new("Light Residential", 9, 0, 1, "city")
+		city, CityViewMode.Mode.CITY, ScurkEditTool.new("Light Residential", 9, 0, 1, "city")
 	)
 	_check(
 		scurk_object_state.enabled
@@ -131,6 +135,15 @@ func test_tool_availability(reference_root: String) -> void:
 		and scurk_zone_state.enabled
 		and scurk_zone_state.selection == "rectangle",
 		"Tool edit state classifies SCURK object and edit modes",
+	)
+	# a SCURK edit tool uses its city tool state without the availability gate
+	var normal_highway := ToolEditState.normal(city, CityViewMode.Mode.CITY, 6, 1)
+	var scurk_highway := ToolEditState.scurk_tool(city, CityViewMode.Mode.CITY, ScurkEditTool.new("Highway", 6, 1, -1, "city"))
+	_check(
+		not normal_highway.available and scurk_highway.available and scurk_highway.enabled
+		and scurk_highway.selection == normal_highway.selection and scurk_highway.area == normal_highway.area
+		and scurk_highway.repeat_placement == normal_highway.repeat_placement,
+		"A SCURK edit tool shares its city tool selection without the availability gate",
 	)
 
 	for invention_index in range(12):
@@ -187,8 +200,6 @@ func test_tool_availability(reference_root: String) -> void:
 		and not ToolAvailability.is_available(city, 5, 7),
 		"Arcology availability uses the original released-count behavior",
 	)
-	var misc: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
-	_check(ToolAvailability.rebuild_reward_mask(misc) == 0x15, "Availability rebuild preserves rewards and enables arcologies")
 
 
 func test_bond_command(reference_root: String) -> void:
@@ -246,7 +257,7 @@ func test_bond_command(reference_root: String) -> void:
 	_check(document.misc_u32(0x0614) == 0, "Bond issue normalizes saved rate fields")
 
 	_check(document.set_misc_u32(0x0058, 5), "Bond fixture changes federal rate")
-	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 100), "Bond fixture improves city value")
+	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 5000), "Bond fixture improves city value")
 	var second := Bonds.issue(city, Bonds.CONFIRMATION_CONFIRMED)
 	_check(second.ok and second.rate == 6, "A second bond uses the current rate")
 	_check(city.funds() == 22000 and document.misc_u32(0x0018) == 2, "Second bond is stored")
@@ -297,8 +308,8 @@ func test_bond_command(reference_root: String) -> void:
 	_check(denied_city.set_funds(9999), "Credit fixture sets insufficient repayment funds")
 	var denied := Bonds.issue(denied_city)
 	_check(
-		denied.ok and denied.status == "credit_denied" and denied.credit_value == 24,
-		"Supplied 2,500 credit formula can deny a bond",
+		denied.ok and denied.status == "credit_denied" and denied.credit_value == 247,
+		"The 25,000 credit formula of the budget window can deny a bond",
 	)
 	_check(denied_document.misc_i32(0x0024) == 100, "Denied issue stores rebuilt city value")
 	var insufficient := Bonds.repay(denied_city)
@@ -314,5 +325,6 @@ func test_bond_command(reference_root: String) -> void:
 		maximum_document.set_misc_i32(0x01f0 + tile_id * 4, 0)
 
 	_check(maximum_document.set_misc_u32(0x0018, 50), "Maximum fixture sets fifty bonds")
+	_check(maximum_document.set_misc_u32(0x01f0 + 0x1d * 4, 30000), "Maximum fixture keeps a good credit rating")
 	var maximum := Bonds.issue(maximum_city)
 	_check(maximum.ok and maximum.status == "maximum_bonds", "Bond count is limited to fifty")

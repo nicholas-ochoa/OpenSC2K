@@ -477,16 +477,21 @@ func _check_resume() -> void:
 	state.erase("mayor_approval")
 	_check(not Sc2xCheckpoint.validate(state).is_empty(), "Incomplete saved state is rejected")
 
-	# a fire timer between disaster ticks survives a save
+	# the dropped disaster tick survives a save, and a save removes the fire timer of an older file
 	engine.pending_interaction = ""
-	controller.fire_elapsed_msec = 600.0
+	controller.skip_next_disaster_tick = true
+	document.sc2x_metadata.phase_state[Sc2xMetadata.LEGACY_FIRE_TIMER_KEY] = 600
 	Sc2xCheckpoint.capture(controller, document.sc2x_metadata)
+	_check(not document.sc2x_metadata.phase_state.has(Sc2xMetadata.LEGACY_FIRE_TIMER_KEY), "A save removes the old fire timer")
 	var burning := GameSpeedController.new(SimulationEngine.new(CityState.from_document(_loads(document.serialize().data)), 1, 1, 1))
-	_check(Sc2xCheckpoint.restore(burning, document.sc2x_metadata).is_empty() and burning.fire_elapsed_msec == 600.0,
-		"The fire timer survives a save")
+	_check(Sc2xCheckpoint.restore(burning, document.sc2x_metadata).is_empty() and burning.skip_next_disaster_tick,
+		"The dropped disaster tick survives a save")
 	state = document.sc2x_metadata.phase_state.duplicate()
-	state[Sc2xMetadata.FIRE_TIMER_KEY] = 1200
-	_check(not Sc2xCheckpoint.validate(state).is_empty(), "A fire timer past one disaster tick is rejected")
+	state[Sc2xMetadata.DISASTER_SKIP_KEY] = 1
+	_check(not Sc2xCheckpoint.validate(state).is_empty(), "A dropped disaster tick that is not true or false is rejected")
+	state[Sc2xMetadata.DISASTER_SKIP_KEY] = false
+	state[Sc2xMetadata.LEGACY_FIRE_TIMER_KEY] = 1200
+	_check(Sc2xCheckpoint.validate(state).is_empty(), "A load ignores the old fire timer")
 
 	# a file without phase state still restores its random states
 	var seeded := Sc2xDocument.create_empty(128).document

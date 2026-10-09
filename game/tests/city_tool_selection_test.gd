@@ -123,8 +123,16 @@ func _edit_state(city: CityState) -> void:
 	palette.show_tool_group(CityToolIds.Group.QUERY, city)
 	assert(palette.buttons.size() == 3, "Debug mode shows the Trip Query and Tile Inspector buttons")
 	palette.free()
+	# the Emergency tools are available only in disaster mode
+	for subtool in [CityToolIds.Dispatch.POLICE, CityToolIds.Dispatch.RECALL]:
+		assert(not ToolEditState.normal(city, CityViewMode.Mode.CITY, CityToolIds.Group.DISPATCH, subtool).available)
+
+	assert(city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2))
+	var police := ToolEditState.normal(city, CityViewMode.Mode.CITY, CityToolIds.Group.DISPATCH, CityToolIds.Dispatch.POLICE)
+	assert(police.available and police.enabled)
 	var recall := ToolEditState.normal(city, CityViewMode.Mode.CITY, CityToolIds.Group.DISPATCH, CityToolIds.Dispatch.RECALL)
 	assert(recall.available and not recall.enabled)
+	assert(city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 1))
 
 	# Single-click placement repeats while the button is held. Drag and view tools do not.
 	var repeats := [
@@ -204,20 +212,32 @@ func _selection(city: CityState) -> void:
 	assert(app.tool_state.selected_subtool == CityToolIds.Query.QUERY)
 	app.tool_state.landscape_editor = false
 
+	var group_before: int = app.tool_state.selected_group
+	app.current_tool.select_tool_group(CityToolIds.Group.DISPATCH)
+	assert(app.tool_state.selected_group == group_before, "Emergency needs disaster mode")
+	assert(city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2))
 	var dispatched := DispatchCommand.apply(city, CityToolIds.Group.DISPATCH, CityToolIds.Dispatch.MILITARY, Vector2i(8, 8))
 	assert(dispatched.ok)
 	var dispatched_bytes := city.document.serialize().data
 	app.current_tool.select_tool_group(CityToolIds.Group.DISPATCH)
+	assert(app.tool_state.selected_group == CityToolIds.Group.DISPATCH)
 	app.tool_state.dispatch_cycles = PackedInt32Array([1, 2, 3])
-	app.tool_state.dispatch_initialized = true
+	# a new selection of the group keeps the slots, as the original does
+	app.current_tool.select_tool_group(CityToolIds.Group.DISPATCH)
+	assert(app.tool_state.dispatch_cycles == PackedInt32Array([1, 2, 3]))
 	app.current_tool.select_subtool(CityToolIds.Dispatch.RECALL)
 	assert(app.tool_state.selected_subtool == CityToolIds.Dispatch.POLICE)
-	assert(app.tool_state.dispatch_cycles == PackedInt32Array([0, 0, 0]) and not app.tool_state.dispatch_initialized)
+	assert(app.tool_state.dispatch_cycles == PackedInt32Array([0, 0, 0]))
 	var recalled := app.tool_state.last_edit_command as DispatchEditResult
 	assert(recalled != null and recalled.ok and city.text_overlay_id(8, 8) == 0)
 	assert(DispatchCommand.undo(city, recalled).ok)
 	assert(city.document.serialize().data == dispatched_bytes)
 	assert(DispatchCommand.undo(city, dispatched).ok)
+
+	# the end of the disaster moves the Emergency tool to Center
+	assert(city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 1))
+	app.current_tool.refresh_tool_availability()
+	assert(app.tool_state.selected_group == CityToolIds.Group.CENTERING)
 	app.free()
 
 
@@ -239,7 +259,7 @@ func _scurk_selection() -> void:
 		[8, 0, 7, "city"], [6, 0, -1, "city"], [6, 1, -1, "city"],
 		[6, 2, -1, "city"], [6, 3, -1, "city"], [3, 0, -1, "city"],
 		[7, 0, -1, "city"], [7, 1, -1, "underground"],
-		[7, 4, -1, "underground"], [17, 0, -1, "either"],
+		[7, 4, -1, "city"], [17, 0, -1, "either"],
 	]
 	assert(window.selected_edit_tool() == null)
 	assert(window.tool_list.item_count == expected.size())
@@ -280,6 +300,10 @@ class TestToolbar extends CityToolbar:
 		return 0
 
 
+	func refresh_tool_availability(_city: CityState, _group: int, _subtool: int, _was_available: bool) -> bool:
+		return false
+
+
 class TestMenus extends ApplicationMenus:
 	func set_overlay(mode: CityViewMode.Mode) -> void:
 		app.view_state.overlay_mode = mode
@@ -303,5 +327,7 @@ class TestCityEdits extends ApplicationCityEdits:
 	var applied_tools: Array[Vector2i] = []
 
 
-	func apply_map_selection(_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i], _dragged: bool) -> void:
+	func apply_map_selection(_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i], _dragged: bool) -> Dictionary:
 		applied_tools.append(Vector2i(app.tool_state.selected_group, app.tool_state.selected_subtool))
+
+		return {}

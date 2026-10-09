@@ -20,6 +20,7 @@ signal underground_water_mains_visibility_requested(visible: bool)
 signal underground_pipes_visibility_requested(visible: bool)
 signal underground_subways_visibility_requested(visible: bool)
 signal underground_tunnels_visibility_requested(visible: bool)
+signal help_requested(topic: String)
 
 const LANDSCAPE_TOOL_ORDER := [
 	Vector2i(
@@ -93,6 +94,10 @@ var child_palette: CityChildToolPalette
 var view_layers_heading: Label
 var view_visibility_checks: Dictionary = {}
 var view_mode_buttons: Dictionary[CityViewMode.Mode, CheckBox] = {}
+# the key that turns a click on a button into a request for its help
+var control_bindings := ControlBindings.defaults()
+# the help topics of the buttons that are not tools
+var _help_topics: Dictionary[Control, String] = {}
 
 
 func _ready() -> void:
@@ -189,6 +194,14 @@ func _ready() -> void:
 	view_visibility_checks.pipes.toggled.connect(underground_pipes_visibility_requested.emit)
 	view_visibility_checks.subways.toggled.connect(underground_subways_visibility_requested.emit)
 	view_visibility_checks.tunnels.toggled.connect(underground_tunnels_visibility_requested.emit)
+	_help_topics = {
+		rotate_counter_clockwise_button: "Rotate Counter-Clockwise", rotate_clockwise_button: "Rotate Clockwise",
+		zoom_in_button: "Zoom In", zoom_out_button: "Zoom Out",
+		view_visibility_checks.buildings: "Building Layer", view_visibility_checks.signs: "Sign Layer",
+		view_visibility_checks.networks: "Network Layer", view_visibility_checks.trees: "Tree Layer",
+		view_mode_buttons[CityViewMode.Mode.UNDERGROUND]: "Under-View Layer",
+		start_city_button: "Done", regenerate_button: "Make New Map",
+	}
 	_watch_buttons(self)
 
 
@@ -237,6 +250,7 @@ func show_tool_group(
 	for button_index in toolbar_buttons.size():
 		toolbar_buttons[button_index].button_pressed = button_index == group_index
 
+	_refresh_group_buttons(city)
 	var selected := child_palette.show_tool_group(group_index, city, icon_provider, preferred_subtool)
 	if landscape_editor:
 		child_palette.hide()
@@ -251,10 +265,8 @@ func sync_child_tool_selection(group_index: int, subtool_index: int) -> void:
 		landscape_buttons[key].set_pressed_no_signal(key == Vector2i(group_index, subtool_index))
 
 
-func refresh_child_tool_icons(
-	group_index: int, icon_provider: Callable
-) -> void:
-	child_palette.refresh_icons(group_index, icon_provider)
+func refresh_child_tool_icons(icon_provider: Callable) -> void:
+	child_palette.refresh_icons(icon_provider)
 
 
 func refresh_tool_availability(
@@ -263,9 +275,30 @@ func refresh_tool_availability(
 	selected_subtool: int,
 	selected_was_available: bool,
 ) -> bool:
+	var changed := _refresh_group_buttons(city)
+
 	return child_palette.refresh_availability(
 		city, group_index, selected_subtool, selected_was_available
-	)
+	) or changed
+
+
+# the Emergency button works only in disaster mode
+func _refresh_group_buttons(city: CityState) -> bool:
+	if city == null or toolbar_buttons.size() <= CityToolIds.Group.DISPATCH:
+		return false
+
+	var button := toolbar_buttons[CityToolIds.Group.DISPATCH]
+	var disabled := not ToolAvailability.is_dispatch_enabled(city)
+
+	if button.disabled == disabled:
+		return false
+
+	button.disabled = disabled
+
+	if disabled:
+		hold_menu.hide()
+
+	return true
 
 
 func tool_button_tooltip(
@@ -414,12 +447,53 @@ func set_landscape_editor(enabled: bool) -> void:
 func _watch_buttons(node: Node) -> void:
 	if node is BaseButton and not node.pressed.is_connected(button_clicked.emit):
 		node.pressed.connect(button_clicked.emit)
+		node.gui_input.connect(_on_button_gui_input.bind(node))
 
 	if not node.child_entered_tree.is_connected(_watch_buttons):
 		node.child_entered_tree.connect(_watch_buttons)
 
 	for child in node.get_children():
 		_watch_buttons(child)
+
+
+# A click with the help key asks for the help of the button and does not
+# press it. The gui_input signal comes before the button reads the click
+func _on_button_gui_input(event: InputEvent, button: BaseButton) -> void:
+	var mouse := event as InputEventMouseButton
+
+	if mouse == null or mouse.button_index != MOUSE_BUTTON_LEFT or not mouse.pressed:
+		return
+
+	if not control_bindings.modifier_held("button_help_modifier", event):
+		return
+
+	var topic := help_topic(button)
+
+	if topic.is_empty():
+		return
+
+	button.accept_event()
+	help_requested.emit(topic)
+
+
+# the help topic of a toolbar button, or "" for a button without help
+func help_topic(button: Control) -> String:
+	var group := toolbar_buttons.find(button)
+
+	if group >= 0:
+		return ButtonHelp.group_topic(group)
+
+	for key: Vector2i in landscape_buttons:
+		if landscape_buttons[key] == button:
+			return ButtonHelp.tool_topic(key.x, key.y, true)
+
+	if child_palette.is_ancestor_of(button):
+		return ButtonHelp.group_topic(child_palette.shown_group)
+
+	if hold_menu.is_ancestor_of(button):
+		return ButtonHelp.group_topic(hold_menu.palette.shown_group)
+
+	return _help_topics.get(button, "")
 
 
 func replace_artwork(value: Image) -> void:
@@ -459,7 +533,8 @@ func _build_landscape_tools() -> void:
 		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 		button.tooltip_text = str(Tools.GROUPS[group].tools[tool].name)
 		button.icon = _icon_provider.call(group, tool) if _icon_provider.is_valid() else null
-		if group in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE] and button.icon != null:
+		if (group in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE] and button.icon != null
+				and not button.icon is HdArtworkTexture):
 			# terrain symbols are 19-pixel native icons, like the city toolbar
 			var native_icon := PixelArtTexture.unwrap(button.icon).get_image()
 			native_icon.resize(native_icon.get_width() / 2,

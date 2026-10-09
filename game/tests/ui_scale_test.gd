@@ -98,6 +98,20 @@ func _check_pixel_views() -> void:
 			for axis in 2:
 				assert(_copies_one_to_one(start[axis] * screen, fitted[axis] * screen), "%s at %s" % [screen, start])
 
+	# a popup menu only moves or grows a little, so it shows no empty space
+	# after its last item. a fit that changes an axis copies it one to one
+	for screen in [2.9225, 3.615, 1.35]:
+		for start in [Vector2i(5, 29), Vector2i(82, 29), Vector2i(140, 27)]:
+			for menu_size in [Vector2i(232, 274), Vector2i(151, 122), Vector2i(158, 456)]:
+				var rect := ScreenPixels.popup_rect(start, menu_size, screen)
+
+				for axis in 2:
+					assert(rect.size[axis] >= menu_size[axis] and rect.size[axis] <= menu_size[axis] + ScreenPixels.POPUP_GROWTH)
+					assert(absi(rect.position[axis] - start[axis]) <= ScreenPixels.POPUP_SHIFT)
+
+					if rect.position[axis] != start[axis] or rect.size[axis] != menu_size[axis]:
+						assert(_copies_one_to_one(rect.position[axis] * screen, rect.size[axis] * screen))
+
 	ScreenPixels.scale = 1.5
 	# the minimap gives each of its 128 map pixels whole screen pixels
 	var minimap := CityMapPreviewControl.new()

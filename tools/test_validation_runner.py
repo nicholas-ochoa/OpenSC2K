@@ -110,7 +110,7 @@ class ValidationRunnerTest(unittest.TestCase):
             runner.scene_batch_results(entries, ('PASS', 1, 'SCENE_CASE_START {"id":"b"}\n'))
 
     def test_scene_cases_share_process_and_clean_up(self):
-        first = ('assert(root.get_child_count() == 1)\n'
+        first = ('assert(root.get_children().filter(func(child): return not ProjectSettings.has_setting("autoload/" + child.name)).size() == 1)\n'
                  '\troot.add_child(Node.new())\n'
                  '\troot.content_scale_factor = 1.5\n'
                  '\tget_tree().auto_accept_quit = false\n'
@@ -122,7 +122,7 @@ class ValidationRunnerTest(unittest.TestCase):
                  '\tfile = FileAccess.open("user://shader_cache/keep", FileAccess.WRITE)\n'
                  '\tfile.store_string("cache")\n\tfile.close()\n'
                  '\tquit()')
-        second = ('assert(root.get_child_count() == 1)\n'
+        second = ('assert(root.get_children().filter(func(child): return not ProjectSettings.has_setting("autoload/" + child.name)).size() == 1)\n'
                   '\tassert(root.content_scale_factor == 1.0)\n'
                   '\tassert(get_tree().auto_accept_quit)\n'
                   '\tassert(AppUiTheme.selected == "light" and AppUiTheme.translucent_menus)\n'

@@ -1,0 +1,10 @@
+[package]
+name = "sc2k_platform"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Platform rules of OpenSC2K: release checks, versions, and mod manifests, without engine types"
+
+[dependencies]
+sc2k_formats = { path = "../formats" }

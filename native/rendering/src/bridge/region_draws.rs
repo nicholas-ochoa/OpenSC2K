@@ -1,8 +1,8 @@
 //! The published draws of one region. A region's draw index is immutable, so
 //! the main thread may read it later.
 
-use super::super::{Rect, index::RegionDraws};
 use godot::prelude::*;
+use sc2k_render::{Rect, index::RegionDraws};
 
 /// The published draws of one region. Queries return indices of `records`.
 #[derive(GodotClass)]

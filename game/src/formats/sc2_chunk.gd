@@ -10,7 +10,9 @@ var decoded_payload := PackedByteArray()
 var expected_decoded_size := -1
 var is_compressed := false
 var is_dirty := false
-var mutation_revision := 0
+# Unique in the process: equal revisions mean equal payloads. The native city
+# cache copies only chunks with a new revision. See NativeSimulation.next_revision
+var mutation_revision: int = NativeSimulation.next_revision()
 
 
 # Copies by default. With transfer_ownership, stop using the caller's array,
@@ -27,7 +29,7 @@ func set_decoded_payload(value: PackedByteArray, transfer_ownership := false) ->
 
 func mark_mutated() -> void:
 	is_dirty = true
-	mutation_revision += 1
+	mutation_revision = NativeSimulation.next_revision()
 
 
 # Avoid a temporary array for single-byte edits. Invalid offsets leave the chunk unchanged.

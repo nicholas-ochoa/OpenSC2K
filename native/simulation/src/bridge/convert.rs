@@ -2,10 +2,11 @@
 
 use godot::prelude::*;
 
-use crate::sim::city::{CHUNK_IDS, City};
-use crate::sim::geom::{Rect2i as SimRect2i, Vec2i};
-use crate::sim::random::{GameRandomScript, LfsrRandomScript, Randoms, SimRandomScript};
-use crate::sim::value::Value;
+use sc2k_sim::sim::city::{CHUNK_IDS, City};
+use sc2k_sim::sim::effect_packing;
+use sc2k_sim::sim::geom::{Rect2i as SimRect2i, Vec2i};
+use sc2k_sim::sim::random::{GameRandomScript, LfsrRandomScript, Randoms, SimRandomScript};
+use sc2k_sim::sim::value::Value;
 
 /// Read an integer field. Missing fields use `fallback`.
 pub fn int(dictionary: &VarDictionary, key: &str, fallback: i64) -> i64 {
@@ -55,6 +56,13 @@ pub fn dictionary(dictionary: &VarDictionary, key: &str) -> VarDictionary {
     }
 }
 
+pub fn array(dictionary: &VarDictionary, key: &str) -> VarArray {
+    dictionary
+        .get(key)
+        .and_then(|value| value.try_to::<VarArray>().ok())
+        .unwrap_or_default()
+}
+
 pub fn ints32(dictionary: &VarDictionary, key: &str) -> Vec<i32> {
     match dictionary.get(key).and_then(|value| value.try_to::<PackedInt32Array>().ok()) {
         Some(values) => values.to_vec(),
@@ -92,7 +100,7 @@ pub fn city(request: &VarDictionary) -> City {
             continue;
         };
 
-        if let Some(slot) = chunk_slot(&mut city, id) {
+        if let Some(slot) = city.chunk_slot_mut(id) {
             slot.present = true;
             slot.data = bytes.to_vec();
         }
@@ -101,37 +109,28 @@ pub fn city(request: &VarDictionary) -> City {
     city
 }
 
-fn chunk_slot<'a>(city: &'a mut City, id: &str) -> Option<&'a mut crate::sim::city::Chunk> {
-    let slot = match id {
-        "CNAM" => &mut city.cnam,
-        "MISC" => &mut city.misc,
-        "ALTM" => &mut city.altm,
-        "XTER" => &mut city.xter,
-        "XBLD" => &mut city.xbld,
-        "XZON" => &mut city.xzon,
-        "XUND" => &mut city.xund,
-        "XTXT" => &mut city.xtxt,
-        "XLAB" => &mut city.xlab,
-        "XMIC" => &mut city.xmic,
-        "XTHG" => &mut city.xthg,
-        "XBIT" => &mut city.xbit,
-        "XTRF" => &mut city.xtrf,
-        "XPLT" => &mut city.xplt,
-        "XVAL" => &mut city.xval,
-        "XCRM" => &mut city.xcrm,
-        "XPLC" => &mut city.xplc,
-        "XFIR" => &mut city.xfir,
-        "XPOP" => &mut city.xpop,
-        "XROG" => &mut city.xrog,
-        "XGRP" => &mut city.xgrp,
-        "SCEN" => &mut city.scen,
-        "TEXT" => &mut city.text,
-        "PICT" => &mut city.pict,
-        "TMPL" => &mut city.tmpl,
-        _ => return None,
-    };
+/// The city of a request, from the cached city of the last call. See
+/// `city_cache::sync`.
+pub fn cached_city(request: &VarDictionary, cache: &mut super::city_cache::Cached) -> City {
+    let source = dictionary(request, "city");
+    let chunks = dictionary(&source, "chunks");
+    let revisions = dictionary(&source, "revisions");
 
-    Some(slot)
+    let payloads: Vec<Option<PackedByteArray>> = CHUNK_IDS
+        .iter()
+        .map(|id| chunks.get(*id).and_then(|value| value.try_to::<PackedByteArray>().ok()))
+        .collect();
+
+    let incoming = CHUNK_IDS.iter().zip(&payloads).map(|(id, bytes)| super::city_cache::Incoming {
+        id,
+        bytes: bytes.as_ref().map(|bytes| bytes.as_slice()),
+        revision: int(&revisions, id, 0),
+    });
+
+    let mut city = super::city_cache::sync(cache, int(&source, "map_size", 128), int(&source, "large_version", 2), incoming);
+    city.disaster_damage_class = int(&source, "disaster_damage_class", -1);
+
+    city
 }
 
 /// The written chunks as `{id: bytes}`, in document chunk-id order.
@@ -149,6 +148,10 @@ pub fn written_chunks(city: &City) -> VarDictionary {
 
 /// A GDScript random generator subclass. Each draw calls the object's method.
 struct ScriptedRandom(Gd<Object>);
+
+// SAFETY: a scripted random lives only for one bridge call, on the thread of
+// that call. It never moves to another thread.
+unsafe impl Send for ScriptedRandom {}
 
 impl ScriptedRandom {
     fn draw(&mut self, method: &str, args: &[Variant]) -> i64 {
@@ -237,6 +240,10 @@ pub fn variant(value: &Value) -> Variant {
             .collect::<PackedStringArray>()
             .to_variant(),
         Value::Array(items) => {
+            if let Some(packed) = effect_packing::pack(items) {
+                return effect_list(packed);
+            }
+
             let mut array = VarArray::new();
 
             for item in items {
@@ -267,10 +274,28 @@ pub fn variant(value: &Value) -> Variant {
     }
 }
 
+/// A list of effect events as `{__class, values, types}`. GDScript makes
+/// the EffectEvent objects again.
+fn effect_list(packed: effect_packing::PackedEffects) -> Variant {
+    let mut result = VarDictionary::new();
+    result.set("__class", effect_packing::PACKED_CLASS);
+    result.set("values", &PackedInt64Array::from(packed.values.as_slice()));
+    result.set(
+        "types",
+        &packed
+            .types
+            .iter()
+            .map(|name| GString::from(name.as_str()))
+            .collect::<PackedStringArray>(),
+    );
+
+    result.to_variant()
+}
+
 /// A SimulationTiming sent as `{work_usec, steps}`.
-pub fn timing(dictionary: &VarDictionary, key: &str) -> crate::sim::events::Timing {
+pub fn timing(dictionary: &VarDictionary, key: &str) -> sc2k_sim::sim::events::Timing {
     let source = self::dictionary(dictionary, key);
-    let mut steps = crate::sim::value::OrderedMap::new();
+    let mut steps = sc2k_sim::sim::value::OrderedMap::new();
 
     for (name, value) in self::dictionary(&source, "steps").iter_shared() {
         steps.set(&name.to_string(), value.try_to::<i64>().unwrap_or(0));
@@ -282,11 +307,11 @@ pub fn timing(dictionary: &VarDictionary, key: &str) -> crate::sim::events::Timi
         -1
     };
 
-    crate::sim::events::Timing::new(total, steps)
+    sc2k_sim::sim::events::Timing::new(total, steps)
 }
 
 /// ScenarioState fields, or None when the dictionary is missing or empty.
-pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<crate::sim::civic::scenario::Scenario> {
+pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<sc2k_sim::sim::civic::scenario::Scenario> {
     let source = self::dictionary(dictionary, key);
 
     if source.is_empty() {
@@ -295,7 +320,7 @@ pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<crate::sim::civ
 
     let field = |name: &str| int(&source, name, 0);
 
-    Some(crate::sim::civic::scenario::Scenario {
+    Some(sc2k_sim::sim::civic::scenario::Scenario {
         format_size: field("format_size") as usize,
         disaster_type: field("disaster_type"),
         disaster_x: field("disaster_x"),
@@ -319,23 +344,10 @@ pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<crate::sim::civ
     })
 }
 
-pub fn schedule(dictionary: &VarDictionary, key: &str) -> crate::sim::engine::day::Schedule {
+pub fn engine_state(dictionary: &VarDictionary, key: &str) -> sc2k_sim::sim::engine::day::EngineState {
     let fields = self::dictionary(dictionary, key);
 
-    crate::sim::engine::day::Schedule {
-        city_days: int(&fields, "city_days", 0),
-        month_day: int(&fields, "month_day", 0),
-        season: int(&fields, "season", 0),
-        actions: strings(&fields, "actions"),
-        growth_step: int(&fields, "growth_step", -1),
-        growth_substep: int(&fields, "growth_substep", -1),
-    }
-}
-
-pub fn engine_state(dictionary: &VarDictionary, key: &str) -> crate::sim::engine::day::EngineState {
-    let fields = self::dictionary(dictionary, key);
-
-    crate::sim::engine::day::EngineState {
+    sc2k_sim::sim::engine::day::EngineState {
         developed_tiles: int(&fields, "developed_tiles", -1),
         power_usage_percent: int(&fields, "power_usage_percent", -1),
         water_usage_percent: int(&fields, "water_usage_percent", -1),

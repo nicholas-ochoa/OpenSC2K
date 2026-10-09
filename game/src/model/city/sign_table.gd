@@ -54,68 +54,17 @@ static func budget(city: CityState) -> int:
 
 
 # The XSGN payload after `point` gets `text`. Empty text removes the sign. A new
-# sign takes the next persistent ID and the first empty slot.
+# sign takes the next persistent ID and the first empty slot. See
+# native/core/sim/src/formats/sc2x/xsgn.rs
 static func with_text(city: CityState, point: Vector2i, text: String) -> Dictionary:
-	var table := decode(city)
+	var chunk := city.document.find_chunk(CHUNK_ID)
 
-	if not table.ok:
-		return {"ok": false, "error": table.error}
+	if chunk == null:
+		return {"ok": false, "error": "XSGN data is missing"}
 
-	var error := str(NativeSc2x.name_error(text))
+	var next_id := city.document.sc2x_metadata.next_sign_id
 
-	if not error.is_empty():
-		return {"ok": false, "error": error}
-
-	var ids: PackedInt64Array = table.ids
-	var xs: PackedInt32Array = table.xs
-	var ys: PackedInt32Array = table.ys
-	var texts: PackedStringArray = table.texts
-	var found := -1
-	var free := -1
-	var active := 0
-
-	for slot in ids.size():
-		if ids[slot] == 0:
-			free = slot if free < 0 else free
-			continue
-
-		active += 1
-
-		if xs[slot] == point.x and ys[slot] == point.y:
-			found = slot
-
-	var metadata := city.document.sc2x_metadata
-	var sign_id := 0
-
-	if text.is_empty():
-		if found < 0:
-			return {"ok": false, "error": "this tile does not have a sign"}
-
-		ids[found] = 0
-		xs[found] = 0
-		ys[found] = 0
-		texts[found] = ""
-	elif found >= 0:
-		texts[found] = text
-		sign_id = ids[found]
-	else:
-		if free < 0 or active >= budget(city):
-			return {"ok": false, "error": "all sign slots are in use"}
-
-		sign_id = metadata.next_sign_id
-		ids[free] = sign_id
-		xs[free] = point.x
-		ys[free] = point.y
-		texts[free] = text
-
-	var encoded: Dictionary = NativeSc2x.encode_signs({
-		"ids": ids, "xs": xs, "ys": ys, "texts": texts, "extension": table.extension,
-	}, city.map_size)
-
-	if not encoded.ok:
-		return {"ok": false, "error": encoded.error}
-
-	return {"ok": true, "error": "", "payload": encoded.data, "sign_id": sign_id}
+	return NativeSc2x.sign_with_text(chunk.decoded_payload, city.map_size, point, text, next_id, budget(city))
 
 
 # The XSGN payload with every sign turned with the map. IDs and text stay.

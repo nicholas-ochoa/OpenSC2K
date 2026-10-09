@@ -31,7 +31,7 @@ func _initialize() -> void:
 					"River banks must fit a flat buildable neighborhood")
 				assert(Array(heights).max() >= sea + 6, "Retain raised valley sides")
 			else:
-				var distances := TerrainElevation._water_distances(heights, sea, edge)
+				var distances := _water_distances(heights, sea, edge)
 				var inland_min := 31
 				var inland_max := 0
 				var inland_count := 0
@@ -67,3 +67,24 @@ func _largest_flat_square(city: CityState, level: int) -> int:
 				widths[y + 1] = 0
 			diagonal = above
 	return largest
+
+
+# steps from each tile to the nearest tile below `sea`
+func _water_distances(heights: PackedInt32Array, sea: int, edge: int) -> PackedInt32Array:
+	var distances := PackedInt32Array()
+	distances.resize(heights.size())
+	distances.fill(edge * 2)
+	var queue := PackedInt32Array()
+	for index in heights.size():
+		if heights[index] < sea:
+			distances[index] = 0
+			queue.append(index)
+	var cursor := 0
+	while cursor < queue.size():
+		var index := queue[cursor]
+		cursor += 1
+		for next in [index - edge, index + edge, index - 1 if index % edge > 0 else -1, index + 1 if index % edge < edge - 1 else -1]:
+			if next >= 0 and next < heights.size() and distances[next] > distances[index] + 1:
+				distances[next] = distances[index] + 1
+				queue.append(next)
+	return distances

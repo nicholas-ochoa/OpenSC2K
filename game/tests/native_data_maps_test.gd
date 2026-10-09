@@ -2,6 +2,7 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+const PollutionReference = preload("res://tests/support/pollution_reference.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
@@ -174,7 +175,7 @@ func check_values(edge: int) -> void:
 			city.set_zone_id(point.x + dx, point.y + dy, 2)
 
 	var station := point + Vector2i(8, 0)
-	city.set_building_id(station.x, station.y, PollutionPhase.POLICE_STATION)
+	city.set_building_id(station.x, station.y, PollutionReference.POLICE_STATION)
 	city.zones[station.x * edge + station.y] |= 0x80
 	doc.find_chunk("XZON").set_decoded_payload(city.zones)
 	city.set_tile_flag(station.x, station.y, 0x40, true)
@@ -231,8 +232,8 @@ func check_split_schedule() -> void:
 			city.set_zone_id(point.x + dx, point.y + dy, 4)
 
 	var station := point + Vector2i(6, 0)
-	city.set_building_id(station.x, station.y, PollutionPhase.POLICE_STATION)
-	city.zones[station.x * 128 + station.y] |= PollutionPhase.ZONE_BUILDING_ORIGIN
+	city.set_building_id(station.x, station.y, PollutionReference.POLICE_STATION)
+	city.zones[station.x * 128 + station.y] |= PollutionReference.ZONE_BUILDING_ORIGIN
 	doc.find_chunk("XZON").set_decoded_payload(city.zones)
 	check(city.set_age_in_days(0), "Split schedule starts a month")
 	var expected := CityState.from_document(doc.duplicate_document())
@@ -247,7 +248,7 @@ func check_split_schedule() -> void:
 	var pollution_after_power := doc.find_chunk("XPLT").decoded_payload.duplicate()
 	var data_day := engine.advance_day()
 	check(data_day.ok and data_day.applied == PackedStringArray(["pollution_terrain_land_value"]), "Data-map day completes")
-	check(SimulationDaySchedule.scanned_data_maps_only(data_day), "Data-map day reports data-map work alone")
+	check(data_day.scanned_data_maps_only(), "Data-map day reports data-map work alone")
 	check(doc.find_chunk("XPLT").decoded_payload == pollution_after_power, "Data-map day keeps pollution")
 	check(doc.find_chunk("XVAL").decoded_payload != land_before, "Data-map day stores land value")
 	check(PowerPhase.run(expected, SimRandom.new(1)).ok and NativeDataMapPhase.run(expected).ok, "Full scan after power")

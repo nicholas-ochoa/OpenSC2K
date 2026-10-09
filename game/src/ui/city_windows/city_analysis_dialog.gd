@@ -24,7 +24,7 @@ func set_categories(categories: Array[QueryActions.Category]) -> void:
 
 	for category in categories:
 		var item := table.create_item(root)
-		item.set_text(0, str(category.name))
+		item.set_text(0, tr(str(category.name)))
 		item.set_text(1, str(category.acres))
 		item.set_text(2, "%d%%" % category.percent)
 		item.set_text_alignment(1, HORIZONTAL_ALIGNMENT_RIGHT)

@@ -16,6 +16,9 @@ var visual_city_life_traffic := false
 var parse_error := ""
 # alternate art can leave the ground visible below its small highway pieces
 var redraw_small_highway_ground := false
+# full-color art from an HD sprite pack, by sprite ID. It changes only the look
+# of a sprite, never its indexed pixels
+var high_resolution: Dictionary[int, HdSprite] = {}
 
 
 static func load_path(path: String) -> Sc2SpriteArchive:
@@ -54,14 +57,19 @@ static func combine(archives: Array[Sc2SpriteArchive]) -> Sc2SpriteArchive:
 			result.parse_error = "cannot combine an invalid sprite archive"
 			result.entries.clear()
 			result.entries_by_id.clear()
+			result.high_resolution.clear()
 
 			return result
 
 		result.redraw_small_highway_ground = result.redraw_small_highway_ground or archive.redraw_small_highway_ground
 
+		# a later sprite replaces the art of an earlier sprite with its ID
 		for entry in archive.entries:
 			result.entries.append(entry)
 			result.entries_by_id[entry.sprite_id] = entry
+			result.high_resolution.erase(entry.sprite_id)
+
+		result.high_resolution.merge(archive.high_resolution, true)
 
 	return result
 
@@ -71,6 +79,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	entries_by_id.clear()
 	visual_nature.clear()
 	visual_nature_masks.clear()
+	high_resolution.clear()
 	parse_error = ""
 	redraw_small_highway_ground = false
 

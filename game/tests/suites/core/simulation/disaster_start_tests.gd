@@ -18,6 +18,7 @@ func test_disaster_start_phase(reference_root: String) -> void:
 	_test_pollution(reference_root)
 	_test_riots(reference_root)
 	_test_earthquakes(reference_root)
+	_test_menu_points(reference_root)
 
 
 func _test_monster_and_fire(reference_root: String) -> void:
@@ -39,9 +40,9 @@ func _test_monster_and_fire(reference_root: String) -> void:
 		and monster.started
 		and monster.complete
 		and monster.record == 1
-		and SoundEvent.same_arrays(monster.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
-		and monster.view_center_requests == [Vector2i(20, 20)],
-		"Monster disaster replaces an occupied moving object and reports runtime effects",
+		and SoundEvent.same_arrays(monster.sound_events, _start_sounds([]))
+		and monster.view_center_requests == [Vector2i(12, 12)],
+		"Monster disaster replaces an occupied moving object and centers the view 8 tiles up and left",
 	)
 	var monster_thing := monster_city.thing(1)
 	_check(
@@ -96,7 +97,7 @@ func _test_monster_and_fire(reference_root: String) -> void:
 		and fire.started
 		and fire.complete
 		and fire.point == fire_point
-		and SoundEvent.same_arrays(fire.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(fire.sound_events, _start_sounds([]))
 		and fire.view_center_requests == [fire_point],
 		"Fire starts at the first suitable point in the center spiral",
 	)
@@ -141,7 +142,7 @@ func _test_flood_and_toxic(reference_root: String) -> void:
 		and flood.started
 		and flood.point == flood_source
 		and flood.map_counter == 60
-		and SoundEvent.same_arrays(flood.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_FLOOD, DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(flood.sound_events, _start_sounds([DisasterStart.SOUND_FLOOD]))
 		and flood.view_center_requests == [flood_source],
 		"Flood starts on the first shoreline terrain cell and reports its runtime state",
 	)
@@ -174,7 +175,7 @@ func _test_flood_and_toxic(reference_root: String) -> void:
 		and toxic_start.started
 		and toxic_start.complete
 		and toxic_start.point == toxic_point
-		and SoundEvent.same_arrays(toxic_start.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(toxic_start.sound_events, _start_sounds([]))
 		and toxic_start.view_center_requests == [toxic_point]
 		and toxic_city.text_overlay_id(toxic_point.x, toxic_point.y) == DisasterMap.TOXIC_OVERLAY,
 		"Toxic Spill writes XTXT 0xFB directly at the requested point",
@@ -219,7 +220,7 @@ func _test_pollution(reference_root: String) -> void:
 		and pollution_start.complete
 		and pollution_start.counters.attempt_count == 8
 		and pollution_start.counters.seed_writes == 8
-		and SoundEvent.same_arrays(pollution_start.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		and SoundEvent.same_arrays(pollution_start.sound_events, _start_sounds([]))
 		and pollution_start.view_center_requests == [pollution_point],
 		"Pollution uses normal population for its seed count and reports a start",
 	)
@@ -289,11 +290,10 @@ func _test_riots(reference_root: String) -> void:
 		riot_city.text_overlay_id(20, 19) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and riot_city.text_overlay_id(20, 18) == DisasterStart.RIOT_OVERLAY_REVERSE
 		and riot_city.text_overlay_id(20, 17) == DisasterStart.RIOT_OVERLAY_FORWARD
-		and SoundEvent.same_arrays(riot_start.sound_events, SoundEvent.from_ids([
+		and SoundEvent.same_arrays(riot_start.sound_events, _start_sounds([
 			DisasterStart.SOUND_RIOT,
 			DisasterStart.SOUND_RIOT,
 			DisasterStart.SOUND_RIOT,
-			DisasterStart.SOUND_SIREN,
 		]))
 		and riot_random.position == 3,
 		"Riot uses one orientation bit and sound request for each seeded marker",
@@ -376,7 +376,7 @@ func _test_riots(reference_root: String) -> void:
 		and mass_riot_city.text_overlay_id(68, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and mass_riot_city.text_overlay_id(56, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and mass_riot_start.sound_events.size() == 8
-		and mass_riot_start.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN)),
+		and mass_riot_start.sound_events[-1].equals(_siren_loop()),
 		"Mass Riots stores each marker and appends the common siren after riot sounds",
 	)
 
@@ -435,7 +435,7 @@ func _test_earthquakes(reference_root: String) -> void:
 		and earthquake_start.sound_events.size() == 25
 		and earthquake_start.sound_events[0].equals(SoundEvent.new(DisasterStart.SOUND_EARTHQUAKE))
 		and earthquake_start.sound_events[23].equals(SoundEvent.new(DisasterStart.SOUND_EARTHQUAKE))
-		and earthquake_start.sound_events[24].equals(SoundEvent.new(DisasterStart.SOUND_SIREN))
+		and earthquake_start.sound_events[24].equals(_siren_loop())
 		and earthquake_start.view_center_requests == [earthquake_point],
 		"Earthquake reports its 24 shake frames, repeated sound, siren, and view center",
 	)
@@ -471,3 +471,28 @@ func _test_earthquakes(reference_root: String) -> void:
 	)
 	PowerDisasterTests.new(context).run(reference_root)
 	WidespreadDisasterTests.new(context).run(reference_root)
+
+
+# each Disasters menu item of SIMCITY.EXE selects its own place, and Air Crash
+# starts the falling plane of type 18
+func _test_menu_points(reference_root: String) -> void:
+	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
+	_check(
+		document.set_misc_u32(Sc2MiscLayout.CITY_CENTER_X, 40) and document.set_misc_u32(Sc2MiscLayout.CITY_CENTER_Y, 50),
+		"Menu point fixture sets the city center",
+	)
+	var engine := SimulationEngine.new(CityModel.from_document(document), 1, 7)
+	engine.random = SequenceRandom.new([3, 70, 5, 6, 9, 10])
+	var fallback := Vector2i(1, 2)
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_FIRE, fallback) == Vector2i(50, 33), "Fire selects a random place near the city center")
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_EARTHQUAKE, fallback) == Vector2i(7, 6), "Earthquake selects a random map place")
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_MONSTER, fallback) == Vector2i(35, 44), "Monster selects a place near the city center")
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_FLOOD, fallback) == Vector2i(40, 50), "Flood starts its search at the city center")
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_MELTDOWN, fallback) == Vector2i.ZERO, "Melt Down passes the map corner")
+	_check(
+		engine.menu_disaster_point(DisasterStart.DISASTER_PLANE_CRASH, fallback) == fallback
+		and (engine.random as SequenceRandom).position == 6,
+		"Air Crash keeps the place and draws no random value",
+	)
+	var air_crash: Array = CityMenuBar.DISASTERS_MENU_ITEMS.filter(func(item: Array) -> bool: return item[0] == "Air Crash")
+	_check(air_crash.size() == 1 and air_crash[0][1] == DisasterStart.DISASTER_PLANE_CRASH, "The Air Crash menu item starts a plane crash")

@@ -21,7 +21,9 @@ static func apply_supported(
 	path: Array[Vector2i],
 	random: SimRandom,
 	underground: bool,
-	free_mode: bool
+	free_mode: bool,
+	effect_window := Rect2i(),
+	effect_tile_limit := 0
 ) -> Result:
 	var command: EditCommandResult
 
@@ -40,7 +42,9 @@ static func apply_supported(
 			path,
 			random,
 			underground,
-			free_mode
+			free_mode,
+			effect_window,
+			effect_tile_limit
 		)
 
 		return _result("demolish", command, group_index, subtool_index, free_mode)
@@ -116,9 +120,6 @@ static func _result(
 	result.record_command = kind != "hydro"
 	result.refresh_details = kind != "subway_to_rail"
 	result.show_effects = kind == "terrain" or (kind == "demolish" and not free_mode)
-	result.refresh_news_summary = (
-		command is DemolishEditResult and command.ok and (command as DemolishEditResult).easter_events > 0
-	)
 	result.play_success_sound = kind in [
 		"landscape", "hydro", "subway_to_rail", "onramp", "zone",
 	]
@@ -185,12 +186,6 @@ static func _success_message(
 					% demolition.skipped_specialized
 				)
 
-			if demolition.easter_events > 0:
-				message += " A forest protest kept %d %s." % [
-					demolition.easter_events,
-					"tree" if demolition.easter_events == 1 else "trees",
-				]
-
 			return message
 		"terrain":
 			var terrain := command as TerrainEditResult
@@ -237,7 +232,6 @@ class Result extends RefCounted:
 	var record_command: bool = false
 	var refresh_details: bool = false
 	var show_effects: bool = false
-	var refresh_news_summary: bool = false
 	var play_success_sound: bool = false
 	var play_failure_sound: bool = false
 	var message: String = ""

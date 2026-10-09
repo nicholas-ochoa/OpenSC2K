@@ -303,7 +303,7 @@ static func surface_polygon(city: CityState, x: int, y: int, height_view := fals
 	return CityIsometricRenderer.terrain_surface_polygon(city, x, y, height_view)
 
 
-# the rendering library builds the geometry. see native/rendering/src/data_view.rs
+# the rendering library builds the geometry. see native/core/render/src/data_view.rs
 # vertex colors only mark tops and walls. the grid shader reads each
 # tile's value through the uvs
 static func create_mesh(city: CityState, mode: CityViewMode.Mode) -> ArrayMesh:

@@ -108,6 +108,35 @@ func run(small_medium: Sc2SpriteArchive) -> void:
 		_static_command_values(regional_patch_occlusion) == _static_command_values(full_patch_occlusion),
 		"A regional edit keeps the complete static occlusion command order",
 	)
+	var gray_bytes := PackedByteArray()
+
+	for index in 256:
+		gray_bytes.append_array([index, index, index])
+
+	var full_rgb := IsometricRenderer.create_image(
+		render_fixture, Palette.from_rgb_bytes(gray_bytes), small_medium,
+		IsometricRenderer.VIEW_SMALL, 0, false, false, false, false
+	)
+	var reduced_rgb := IsometricRenderer.create_image(
+		render_fixture, Palette.from_rgb_bytes(gray_bytes), small_medium,
+		IsometricRenderer.VIEW_SMALL, 0, false, false, false, false, Callable(), full_rgb.image.get_size() / 3
+	)
+	_check(
+		full_rgb.ok and reduced_rgb.ok
+		and reduced_rgb.image.get_size() == Vector2i(ceili(full_rgb.image.get_width() / 3.0), ceili(full_rgb.image.get_height() / 3.0))
+		and reduced_rgb.image.get_pixel(reduced_rgb.image.get_width() / 2, reduced_rgb.image.get_height() / 2)
+		!= reduced_rgb.image.get_pixel(0, 0),
+		"A city image with a maximum size paints a whole-factor reduction",
+	)
+	var huge_small_view := IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_SMALL, 4096)
+	var preview_reduction := IsometricImageRender.reduction_to_fit(
+		huge_small_view, NewCityPreviewJob.preview_maximum_size(Vector2(1920, 1080))
+	)
+	_check(
+		huge_small_view.x * huge_small_view.y > IsometricImageRender.MAXIMUM_IMAGE_PIXELS
+		and (huge_small_view.x / preview_reduction) * (huge_small_view.y / preview_reduction) <= 3840 * 2160,
+		"A 4096 map preview reduces below the image pixel limit",
+	)
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
 	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")
 	_check(IsometricRenderer.terrain_sprite_id(0x45, true) == 1290, "Last water tile uses sprite 1290")

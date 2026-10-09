@@ -122,7 +122,7 @@ func _check_hazard_blending() -> void:
 	canvas.material = material
 	viewport.add_child(canvas)
 	canvas.set_visuals([visual], 1.0, Vector2.ZERO)
-	for phase in [0.0, 0.5, 1.0, 7.5]:
+	for phase in [0.0, 0.5, 1.0, 7.5, 2.0 * 8.0 / 255.0, 50.0 * 8.0 / 255.0, 64.0 * 8.0 / 255.0, 80.0 * 8.0 / 255.0]:
 		visual.hazard_animation.phase = phase
 		canvas.queue_redraw()
 		await RenderingServer.frame_post_draw
@@ -135,7 +135,9 @@ func _check_hazard_blending() -> void:
 		elif phase == 1.0:
 			assert(pixel.g > 0.98 and pixel.r < 0.01)
 		else:
-			assert(absf(pixel.r - 0.5) < 0.02 and absf(pixel.g - 0.5) < 0.02)
+			var green := fposmod(float(phase), 1.0) if int(phase) % 2 == 0 else 1.0 - fposmod(float(phase), 1.0)
+			assert(absf(pixel.r - (1.0 - green)) < 0.02 and absf(pixel.g - green) < 0.02,
+				"Effect phase must not select an HD-art tag: %s" % phase)
 		assert(image.get_pixel(0, 0).a == 0.0)
 		if phase == 0.5:
 			var edge := image.get_pixel(1, 0)

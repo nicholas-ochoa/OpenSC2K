@@ -32,10 +32,10 @@ func set_tools(title_text: String, prompt_text: String, tools: Array[ToolCatalog
 
 		var tool: ToolCatalog.Tool = tools[choice_index]
 		choice_button.text = "%s\n$%s" % [
-			tool.name,
+			tr(tool.name),
 			Numbers.format(int(tool.cost)),
 		]
-		choice_button.tooltip_text = "Select %s" % tool.name
+		choice_button.tooltip_text = tr("Select %s") % tr(tool.name)
 
 
 func show_tools(title_text: String, prompt_text: String, tools: Array[ToolCatalog.Tool]) -> void:

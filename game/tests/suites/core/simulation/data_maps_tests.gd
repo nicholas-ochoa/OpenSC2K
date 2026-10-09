@@ -103,16 +103,17 @@ func test_pollution(reference_root: String) -> void:
 	_check(clean_result.developed_tiles == 1, "Combined scan counts one developed tile")
 	_check(clean_result.city_center == Vector2i.ZERO, "Roads do not enter the city-center average")
 	_check(clean_result.pollution_total == 0, "Clean road fixture has no pollution")
-	_check(clean_result.land_value_total == 96, "Land-value scan stores the exact fixture total")
+	# 96 from the rules and 32 from the fixed land-value base.
+	_check(clean_result.land_value_total == 128, "Land-value scan stores the exact fixture total")
 	_check(
-		clean_document.find_chunk("XVAL").decoded_payload[20 * 64 + 20] == 96,
+		clean_document.find_chunk("XVAL").decoded_payload[20 * 64 + 20] == 128,
 		"Land-value scan uses quarter-map smoothing and center distance"
 	)
 	_check(clean_city.tile_flags[20 * 128 + 20] & 0x08, "Developed area sets the temporary mark")
 	_check(clean_document.find_chunk("XPOP").decoded_payload[10 * 32 + 10] == 0, "Road adds no population")
 	_check(clean_document.find_chunk("XROG").decoded_payload[10 * 32 + 10] == 16, "Growth map uses the recovered bias")
 	_check(clean_result.crime_total == 0, "Negative crime pressure clamps to zero")
-	_check(clean_document.misc_u32(0x28) == 96, "Combined scan stores the land-value total")
+	_check(clean_document.misc_u32(0x28) == 128, "Combined scan stores the land-value total")
 	_check(clean_document.misc_u32(0x2c) == 0, "Combined scan stores the crime total")
 
 

@@ -1,5 +1,6 @@
 extends SceneTree
 
+const PollutionReference = preload("res://tests/support/pollution_reference.gd")
 const Reference = preload("res://tests/support/native_data_map_reference.gd")
 const Results = preload("res://tests/support/timing_results.gd")
 
@@ -14,8 +15,8 @@ func _run() -> void:
 	for edge in [128, 512]:
 		var modes := [0]
 		if edge == 128:
-			modes.append(PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE
-				| PollutionPhase.CRIME_REDUCTION_ORDINANCE)
+			modes.append(PollutionReference.POLICE_COVERAGE_ORDINANCE | PollutionReference.FIRE_COVERAGE_ORDINANCE
+				| PollutionReference.CRIME_REDUCTION_ORDINANCE)
 		for ordinances in modes:
 			var doc := EmptyCityTemplate.create(edge)
 			assert(doc.enable_full_resolution_maps())
@@ -24,13 +25,13 @@ func _run() -> void:
 			var zones := city.zones.duplicate()
 			var flags := city.tile_flags.duplicate()
 			var types := [0, 1, 5, 6, 12, 15, 0x1d, 0x70, 0x80, 0x90, 0xa0, 0xb0, 0xc5, 0xfb,
-				PollutionPhase.POLICE_STATION, PollutionPhase.FIRE_STATION, PollutionPhase.BIG_PARK]
+				PollutionReference.POLICE_STATION, PollutionReference.FIRE_STATION, PollutionReference.BIG_PARK]
 			# cover every building byte used by the derived source tables
 			types.append_array(range(256))
 
 			for index in buildings.size():
 				buildings[index] = types[(index * 13 + index / edge) % types.size()]
-				zones[index] = (index % 7) | (PollutionPhase.ZONE_BUILDING_ORIGIN if index % 107 == 0 else 0)
+				zones[index] = (index % 7) | (PollutionReference.ZONE_BUILDING_ORIGIN if index % 107 == 0 else 0)
 				flags[index] = (index * 71) % 256
 
 			assert(city.replace_buildings(buildings) and city.replace_zones(zones) and city.replace_tile_flags(flags))
@@ -43,7 +44,7 @@ func _run() -> void:
 
 				assert(doc.find_chunk(id).set_decoded_payload(values))
 
-			assert(doc.set_misc_u32(PollutionPhase.MISC_ORDINANCES, ordinances))
+			assert(doc.set_misc_u32(PollutionReference.MISC_ORDINANCES, ordinances))
 			var original := CityState.from_document(doc.duplicate_document())
 			var expected := Reference.run(original)
 			var actual := NativeDataMapPhase.run(city)

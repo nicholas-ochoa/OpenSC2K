@@ -2,7 +2,7 @@ class_name FacilityRecordRepair
 extends RefCounted
 # Repair SC2X facility records on activation. Parsing and simulation snapshots
 # keep the saved bytes. The native simulation library links each facility
-# building to its record; see native/simulation/src/sim/tools/commands/facility_repair.rs.
+# building to its record; see native/core/sim/src/sim/tools/commands/facility_repair.rs.
 
 
 static func apply(city: CityState) -> Result:

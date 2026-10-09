@@ -3,6 +3,8 @@ extends Node2D
 
 const MAX_SPECIAL_VISUALS_PER_BATCH := 256
 const MAX_SPECIAL_BATCH_AREA := 1500000
+# the vertex color that tells the palette cycle shader to filter full-color art
+const ARTWORK_TAG := Color8(2, 0, 0, 255)
 
 var visuals: Array[CityDynamicVisual] = []
 var view_scale := 1.0
@@ -31,7 +33,7 @@ func _draw() -> void:
 			texture,
 			Rect2(source_position, source_size),
 			false,
-			Color(1, 0, 1) if visual.transparent_shadow else (Color(1, 0, 0) if visual.toxic_cloud else (Color(1, 0.5, 0) if visual.warm_cloud else (Color(1, 1, 0) if visual.fullbright else Color.WHITE))),
+			Color(1, 0, 1) if visual.transparent_shadow else (Color(1, 0, 0) if visual.toxic_cloud else (Color(1, 0.5, 0) if visual.warm_cloud else (Color(1, 1, 0) if visual.fullbright else (ARTWORK_TAG if visual.literal_artwork else Color.WHITE)))),
 		)
 
 		if visual.emission_texture != null and (detail_lights_visible or not visual.vehicle_light):
@@ -95,6 +97,7 @@ static func batch_special_visuals(
 				or visual.fullbright != pending[0].fullbright
 				or visual.toxic_cloud != pending[0].toxic_cloud
 				or visual.warm_cloud != pending[0].warm_cloud
+				or visual.literal_artwork != pending[0].literal_artwork
 			)
 		):
 			_append_special_batch(result, pending, batch_cache)
@@ -156,7 +159,9 @@ static func _append_special_batch(
 	var batch := CityDynamicVisual.new()
 	batch.texture = texture
 	batch.index_texture = texture
-	batch.palette_lookup_all = true
+	batch.palette_lookup_all = not pending[0].literal_artwork
+	batch.literal_artwork = pending[0].literal_artwork
+	batch.texture_factor = factor
 	batch.position = Vector2(bounds.position)
 	batch.size = Vector2(bounds.size)
 	batch.image = image

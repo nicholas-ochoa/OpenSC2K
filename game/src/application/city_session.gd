@@ -16,7 +16,8 @@ func _init(application: CityApplication) -> void:
 
 
 func activate_document(
-	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := "", loaded_from_file := false
+	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := "", loaded_from_file := false,
+	content_snapshot := PackedByteArray()
 ) -> bool:
 	app.map_view.clear_trip_reach()
 	var loaded_city := CityModel.from_document(document)
@@ -33,6 +34,7 @@ func activate_document(
 	app.city_menu_bar.disasters_menu.disabled = false
 
 	var music_was_active := app.effects_audio.music_playback_is_active()
+	app.effects_audio.stop_sound_loop()
 
 	app.budget.reset_prompts()
 	app.current_tool.reset_prompts()
@@ -62,16 +64,17 @@ func activate_document(
 	app.current_tool.select_tool_group(CityToolIds.Group.CENTERING)
 	app.view_state.overlay_mode = CityViewMode.Mode.CITY
 	document_state.current_document = document
-	document_state.saved_city_snapshot = document.content_snapshot()
+	# a large city computes its snapshot while it loads
+	document_state.saved_city_snapshot = content_snapshot if not content_snapshot.is_empty() else document.content_snapshot()
 	var facility_repair := FacilityRecordRepair.apply(app.document_state.city)
 
 	if not facility_repair.ok:
 		status_text += " " + str(facility_repair.error)
 	elif facility_repair.linked > 0 or facility_repair.unfilled > 0:
-		status_text += " Restored facility records for %d buildings." % facility_repair.linked
+		status_text += tr(" Restored facility records for %d buildings.") % facility_repair.linked
 
 		if facility_repair.unfilled > 0:
-			status_text += " %d buildings still need records; the table is full." % facility_repair.unfilled
+			status_text += tr(" %d buildings still need records; the table is full.") % facility_repair.unfilled
 
 	document_state.current_city_saved_once = not document_state.current_document.source_path.is_empty()
 	var source_path := document_state.current_document.source_path.simplify_path()
@@ -132,6 +135,8 @@ func activate_document(
 		if not restore_error.is_empty():
 			status_text += " " + restore_error
 
+	app.simulation_state.simulation_engine.refresh_city_status()
+
 	if document_state.current_document.is_extended():
 		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)
 
@@ -139,10 +144,10 @@ func activate_document(
 	app.tool_state.tool_random = app.simulation_state.simulation_engine.random
 	app.simulation_state.nuisance_random = app.simulation_state.simulation_engine.game_random
 	app.simulation_state.simulation_map_dirty = false
-	app.reports.refresh_saved_news_summary()
+	app.interface.refresh_status_summary()
 	app.tool_state.last_edit_command = null
 	app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
-	app.tool_state.dispatch_initialized = false
+	app.tool_state.dispatch_epoch = -1
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 
 	app.city_menu_bar.set_city_name(app.document_state.city.display_name(),
@@ -169,6 +174,8 @@ func activate_document(
 	if not facility_repair.ok or facility_repair.linked > 0 or facility_repair.unfilled > 0:
 		app.status_label.text = status_text
 
+	app.scripting.on_city_opened()
+
 	return true
 
 
@@ -190,6 +197,7 @@ func finish_game() -> void:
 	app.simulation_state.speed_controller = null
 	app.simulation_state.simulation_engine = null
 	app.document_state.city = null
+	app.scripting.emit("city.closed")
 	document_state.current_document = null
 	document_state.current_save_path = ""
 	document_state.saved_city_snapshot = PackedByteArray()

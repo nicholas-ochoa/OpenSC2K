@@ -67,10 +67,7 @@ func _test_volcanoes(reference_root: String) -> void:
 	)
 	_check(
 		volcano_random.position == volcano.counters.iterations * 6
-		and SoundEvent.same_arrays(volcano.sound_events, SoundEvent.from_ids([
-			DisasterStart.SOUND_VOLCANO,
-			DisasterStart.SOUND_SIREN,
-		]))
+		and SoundEvent.same_arrays(volcano.sound_events, _start_sounds([DisasterStart.SOUND_VOLCANO]))
 		and volcano.view_center_requests == [Vector2i(64, 64)],
 		"Volcano preserves the per-iteration random order, sound gate, and view center",
 	)
@@ -171,7 +168,7 @@ func _test_firestorms(reference_root: String) -> void:
 		"Firestorm uses the shared small-tile damage option for every accepted cell",
 	)
 	_check(
-		SoundEvent.same_arrays(firestorm.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
+		SoundEvent.same_arrays(firestorm.sound_events, _start_sounds([]))
 		and firestorm.view_center_requests == [Vector2i(67, 68)]
 		and firestorm_random.position == 0
 		and firestorm_lfsr.position == 0,
@@ -270,7 +267,7 @@ func _test_mass_floods(reference_root: String) -> void:
 	_check(
 		mass_flood.sound_events.size() == 6
 		and SoundEvent.count_plain(mass_flood.sound_events, DisasterStart.SOUND_FLOOD) == 5
-		and mass_flood.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN))
+		and mass_flood.sound_events[-1].equals(_siren_loop())
 		and mass_flood.view_center_requests == [Vector2i(64, 64)]
 		and mass_flood_random.position == 10
 		and mass_flood_lfsr.position == 0,
@@ -382,7 +379,7 @@ func _test_hurricanes(reference_root: String) -> void:
 			and hurricane.view_center_requests.is_empty()
 			and hurricane.sound_events[0].equals(SoundEvent.new(DisasterStart.SOUND_HURRICANE))
 			and hurricane.sound_events[-2].equals(SoundEvent.new(DisasterStart.SOUND_HURRICANE))
-			and hurricane.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN)),
+			and hurricane.sound_events[-1].equals(_siren_loop()),
 			"Hurricane direction %d preserves random use, sound order, and no view center"
 			% hurricane_case.direction,
 		)

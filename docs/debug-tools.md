@@ -12,6 +12,34 @@ Debug mode adds:
 When you turn debug mode off, all debug views close. If a debug tool is selected,
 the Query tool replaces it.
 
+## Console
+
+Open the Console with Cmd+Shift+J (Ctrl+Shift+J on Windows and Linux) or
+Windows > Console. The shortcut works on every screen, also on the main menu.
+You can change it in Settings > Controls.
+
+The Console shows the output that the command line shows when you start the game
+from a terminal: messages, warnings and errors, with the script call stack of
+each error. It keeps the last 5000 entries. Use the checks and the filter field
+to show only some entries. **Copy** copies the entries that show. **Save**
+writes all entries to a text file, also the entries that the checks and the
+filter hide. **Log Folder** opens the folder of the log files of earlier
+sessions.
+
+The Console can stay open while you play. It takes the keys only while it has
+focus. Type `help` in the input to list the commands. `save [path]` saves the
+console without a dialog. Without a path, or with a relative path, the file goes
+in the log folder.
+
+Enter runs the input. Shift+Enter starts a new line, and the input grows to
+eight lines. Up on the first line and Down on the last line recall earlier
+input. Tab completes a command name. Commands use one line.
+Other input, and all input with more than one line, runs as JavaScript. The
+console shows its value. `run <path>` runs a script file, `reset` stops all
+scripts, `scripts` shows the state of the script runtime, and `inspect` lets
+Chrome DevTools connect to scripts. Scripts can add their own commands. See
+[Scripting](scripting.md).
+
 ## Tile Inspector
 
 Point at a tile to see its stored values:
@@ -46,12 +74,17 @@ file) also show it.
 | Draw Order | Shows the painter index of each sprite draw in the view, and the depth of foreground draws. It needs the GPU region renderer and at most 600 draws in view. |
 | Freeze Palette Cycling | Stops the animated palette colors, for stable images. |
 | Check Missing Artwork | Paints the tiles around the view with placeholders on a worker thread, and shows each tile that needs a sprite that the artwork lacks as the Missing Artwork layer. |
+| Repair Bad Terrain | Repairs the bad terrain of sc2kfix: dry tiles whose own water level is above the city water level and their land. It finds the water level of the map from its water tiles, sets it on each bad tile, and marks a tile below it as water. **Undo Edit** restores ALTM and XBIT together. |
+| Find Orphaned Labels, Remove Orphaned Labels | List, or clear, the sign labels that no tile shows, as sc2kfix does. A cancelled sign in the original game leaves its XLAB text. **Undo Edit** restores removed labels. SC2X version 4 cities keep signs in sign records and have none. |
 | Advance One Phase, Advance One Day | Step the paused simulation. See [Steps](#steps). |
 | Preview Disaster at View Center | Runs the disaster for 20 ticks in a copy of the simulation and shows the tiles that it would change as the Disaster Preview layer. The city and its random states do not change. |
 | Verify Save | Saves a copy of the city to a temporary file with the normal save path, loads it again, and compares every chunk. A second save of the loaded file must write the same content. A dialog lists each chunk. The open city and its save path do not change. |
 | Undo Debug Edit | Reverses the last record or MISC edit. |
 | Performance HUD | Shows frame rate, frame times, draw calls, memory, simulation day cost and region state, with a graph of the last 240 frames. The Metrics tab of the Debug window also shows the engine counters. |
 | Capture Screenshot and State | Saves `screen.png` and `state.json` in a new folder under `debug_captures` in the application data folder. The JSON file holds the debug metrics, the camera, the hovered tile, the inspector text and the active debug views. |
+| Run Script File | Runs a `.js` or `.mjs` file in the script runtime. Its event listeners, timers and console commands stay active until a reset. See [Scripting](scripting.md). |
+| Reset Script Runtime | Stops all scripts: their event listeners, timers and console commands. |
+| Script Inspector | Lets Chrome DevTools connect to scripts on port 9229: open `chrome://inspect` in Chrome. See [Scripting](scripting.md#chrome-devtools). |
 
 The analysis layers:
 
@@ -59,7 +92,8 @@ The analysis layers:
   set to their four side neighbors. Each network gets its own hue. A network that holds a
   powered or watered tile is bright. The key gives the network counts.
 - **Unusual Values** marks values that no known table names: a zone type above 9, an
-  unused terrain or underground ID, and a MARK flag that a scan left set.
+  unused terrain or underground ID, a MARK flag that a scan left set, and sc2kfix bad
+  terrain (dry land under a water level above the city's).
 
 For a residential, commercial or industrial tile, a pinned Tile Inspector also shows the
 growth inputs: the month day of the tile's growth visit, power, nearby transport, the

@@ -1,0 +1,12 @@
+[package]
+name = "sc2k_game"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "The game loop of OpenSC2K: the simulation engine, its clock and its speed, without engine types"
+
+[dependencies]
+sc2k_sim = { path = "../sim" }
+sc2k_formats = { path = "../formats" }
+sc2k_assets = { path = "../assets" }

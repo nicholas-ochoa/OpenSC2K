@@ -1,7 +1,7 @@
 //! Godot classes of the view queries: rectangle indices and region plans.
 
-use super::super::{Rect, rect_index::RectIndex, region_plan};
 use godot::prelude::*;
+use sc2k_render::{Rect, rect_index::RectIndex, region_plan};
 
 /// Rectangles in a bucket grid, for occlusion queries.
 #[derive(GodotClass)]

@@ -1,0 +1,25 @@
+[package]
+name = "opensc2k"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "The native OpenSC2K game: window, input, frame loop, and audio output"
+
+[[bin]]
+name = "opensc2k"
+path = "src/main.rs"
+
+[dependencies]
+sc2k_formats = { path = "../core/formats" }
+sc2k_assets = { path = "../core/assets" }
+sc2k_sim = { path = "../core/sim" }
+sc2k_game = { path = "../core/game" }
+sc2k_render = { path = "../core/render" }
+sc2k_platform = { path = "../core/platform" }
+sc2k_audio = { path = "../core/audio" }
+sc2k_view = { path = "../core/view" }
+sc2k_ui = { path = "../core/ui" }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "x11", "wayland", "wayland-dlopen"] }
+softbuffer = { version = "0.4", default-features = false, features = ["x11", "x11-dlopen", "wayland", "wayland-dlopen"] }
+cpal = "0.15"

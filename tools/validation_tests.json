@@ -149,6 +149,88 @@
     "driver": "scene-batch"
   },
   {
+    "id": "visual_luts_test",
+    "script": "tests/visual_luts_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
+    "id": "visual_luts_gpu_test",
+    "script": "tests/visual_luts_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
+    "id": "city_life_artwork_test",
+    "script": "tests/city_life_artwork_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
+    "id": "city_life_test",
+    "script": "tests/city_life_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": ["ext/graphics/pack.json"]
+  },
+  {
+    "id": "traffic_motion_test",
+    "script": "tests/traffic_motion_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": ["ext/graphics/pack.json"]
+  },
+  {
+    "id": "ship_artwork_gpu_test",
+    "script": "tests/ship_artwork_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
+    "id": "train_artwork_gpu_test",
+    "script": "tests/train_artwork_gpu_test.gd",
+    "requires": ["ext/graphics/pack.json"],
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
+    "id": "traffic_shadow_gpu_test",
+    "script": "tests/traffic_shadow_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
+    "id": "city_life_gpu_test",
+    "script": "tests/city_life_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
+    "id": "vehicle_lights_test",
+    "script": "tests/vehicle_lights_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": ["ext/graphics/pack.json"]
+  },
+  {
+    "id": "vehicle_lights_gpu_test",
+    "script": "tests/vehicle_lights_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
+    "id": "visual_settings_usability_test",
+    "script": "tests/visual_settings_usability_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "sc2x_edge_render_test",
     "script": "tests/sc2x_edge_render_test.gd",
     "domain": "rendering",
@@ -208,6 +290,12 @@
     "id": "city_tool_selection_test",
     "script": "tests/city_tool_selection_test.gd",
     "domain": "tools",
+    "lane": "product"
+  },
+  {
+    "id": "place_print_input_test",
+    "script": "tests/place_print_input_test.gd",
+    "domain": "ui",
     "lane": "product"
   },
   {
@@ -308,6 +396,12 @@
     "id": "maxis_man_response_test",
     "script": "tests/maxis_man_response_test.gd",
     "domain": "simulation",
+    "lane": "product"
+  },
+  {
+    "id": "export_scene_layout_test",
+    "script": "tests/export_scene_layout_test.gd",
+    "domain": "ui",
     "lane": "product"
   },
   {
@@ -448,6 +542,70 @@
     "lane": "product"
   },
   {
+    "id": "console_window_test",
+    "script": "tests/console_window_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
+    "id": "script_runtime_test",
+    "script": "tests/script_runtime_test.gd",
+    "domain": "scripting",
+    "lane": "product"
+  },
+  {
+    "id": "scripting_api_test",
+    "script": "tests/scripting_api_test.gd",
+    "domain": "scripting",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
+    "id": "scripting_examples_test",
+    "script": "tests/scripting_examples_test.gd",
+    "domain": "scripting",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
+    "id": "mod_manifest_test",
+    "script": "tests/mod_manifest_test.gd",
+    "domain": "scripting",
+    "lane": "product"
+  },
+  {
+    "id": "mods_workflow_test",
+    "script": "tests/mods_workflow_test.gd",
+    "domain": "scripting",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
+    "id": "scripting_types_test",
+    "script": "tests/scripting_types_test.gd",
+    "domain": "scripting",
+    "lane": "product"
+  },
+  {
+    "id": "scripting_workflow_test",
+    "script": "tests/scripting_workflow_test.gd",
+    "domain": "scripting",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "control_binding_test",
     "script": "tests/control_binding_test.gd",
     "domain": "ui",
@@ -545,10 +703,37 @@
     "lane": "product"
   },
   {
+    "id": "johab_text_resource_test",
+    "script": "tests/johab_text_resource_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
+    "id": "johab_newspaper_test",
+    "script": "tests/johab_newspaper_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
+    "id": "localization_test",
+    "script": "tests/localization_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "graphics_pack_test",
     "script": "tests/graphics_pack_test.gd",
     "domain": "formats",
     "lane": "product"
+  },
+  {
+    "id": "hd_sprite_pack_test",
+    "script": "tests/hd_sprite_pack_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "independent_startup_test",
@@ -657,6 +842,26 @@
   {
     "id": "debug_tools_workflow_test",
     "script": "tests/debug_tools_workflow_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
+    "id": "sc2kfix_tile_set_restore_test",
+    "script": "tests/sc2kfix_tile_set_restore_test.gd",
+    "domain": "scurk",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
+    "id": "autosave_test",
+    "script": "tests/autosave_test.gd",
     "domain": "ui",
     "lane": "product",
     "requires": [
@@ -1014,12 +1219,6 @@
     "lane": "product"
   },
   {
-    "id": "terrain_elevation_test",
-    "script": "tests/terrain_elevation_test.gd",
-    "domain": "tools",
-    "lane": "product"
-  },
-  {
     "id": "coastal_canyon_test",
     "script": "tests/coastal_canyon_test.gd",
     "domain": "ui",
@@ -1119,6 +1318,13 @@
     "script": "tests/menu_music_test.gd",
     "domain": "audio",
     "lane": "product"
+  },
+  {
+    "id": "disaster_sound_loop_test",
+    "script": "tests/disaster_sound_loop_test.gd",
+    "domain": "audio",
+    "lane": "product",
+    "requires": ["references/SIMCITY2000"]
   },
   {
     "id": "title_music_startup_test",
@@ -1245,6 +1451,16 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
+    "id": "large_city_busy_test",
+    "script": "tests/large_city_busy_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -1788,86 +2004,23 @@
     "driver": "scene-batch"
   },
   {
-    "id": "visual_luts_test",
-    "script": "tests/visual_luts_test.gd",
-    "domain": "rendering",
-    "lane": "product"
-  },
-  {
-    "id": "visual_luts_gpu_test",
-    "script": "tests/visual_luts_gpu_test.gd",
-    "domain": "rendering",
-    "lane": "native",
-    "driver": "scene-batch"
-  },
-  {
-    "id": "city_life_artwork_test",
-    "script": "tests/city_life_artwork_test.gd",
-    "domain": "rendering",
-    "lane": "product"
-  },
-  {
-    "id": "city_life_test",
-    "script": "tests/city_life_test.gd",
-    "domain": "rendering",
+    "id": "golden_corpus_test",
+    "script": "tests/golden_corpus_test.gd",
+    "domain": "formats",
     "lane": "product",
-    "requires": ["ext/graphics/pack.json"]
+    "requires": ["references/SIMCITY2000", "ext/graphics/pack.json"]
   },
   {
-    "id": "traffic_motion_test",
-    "script": "tests/traffic_motion_test.gd",
-    "domain": "rendering",
+    "id": "golden_corpus_import_test",
+    "script": "tests/golden_corpus_import_test.gd",
+    "domain": "formats",
     "lane": "product",
-    "requires": ["ext/graphics/pack.json"]
+    "requires": ["references/SIMCITY2000"]
   },
   {
-    "id": "ship_artwork_gpu_test",
-    "script": "tests/ship_artwork_gpu_test.gd",
-    "domain": "rendering",
-    "lane": "native",
-    "driver": "scene-batch"
-  },
-  {
-    "id": "train_artwork_gpu_test",
-    "script": "tests/train_artwork_gpu_test.gd",
-    "requires": ["ext/graphics/pack.json"],
-    "domain": "rendering",
-    "lane": "native",
-    "driver": "scene-batch"
-  },
-  {
-    "id": "traffic_shadow_gpu_test",
-    "script": "tests/traffic_shadow_gpu_test.gd",
-    "domain": "rendering",
-    "lane": "native",
-    "driver": "scene-batch"
-  },
-  {
-    "id": "city_life_gpu_test",
-    "script": "tests/city_life_gpu_test.gd",
-    "domain": "rendering",
-    "lane": "native",
-    "driver": "scene-batch"
-  },
-  {
-    "id": "vehicle_lights_test",
-    "script": "tests/vehicle_lights_test.gd",
-    "domain": "rendering",
-    "lane": "product",
-    "requires": ["ext/graphics/pack.json"]
-  },
-  {
-    "id": "vehicle_lights_gpu_test",
-    "script": "tests/vehicle_lights_gpu_test.gd",
-    "domain": "rendering",
-    "lane": "native",
-    "driver": "scene-batch"
-  },
-  {
-    "id": "visual_settings_usability_test",
-    "script": "tests/visual_settings_usability_test.gd",
-    "domain": "ui",
+    "id": "golden_new_city_test",
+    "script": "tests/golden_new_city_test.gd",
+    "domain": "simulation",
     "lane": "product"
   }
 ]
-

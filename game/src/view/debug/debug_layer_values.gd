@@ -21,6 +21,8 @@ static func source(city: CityState, layer: Layer) -> Dictionary:
 			result.zones = city.zones
 			result.terrain = city.terrain
 			result.underground = city.underground
+			result.altitude = city.altitude_words
+			result.water_level = BadTerrain.city_water_level(city)
 		Layer.BUILDING_ID:
 			result.buildings = city.buildings
 		Layer.TERRAIN_ID:
@@ -71,7 +73,8 @@ static func build(tiles: Dictionary, layer: Layer, changes: PackedByteArray = Pa
 			data = networks.values
 			result.summary = "%d networks, %d supplied, largest %d tiles" % [networks.count, networks.supplied, networks.largest]
 		Layer.UNUSUAL_VALUES:
-			data = NativeDebugTiles.unusual_values(tiles.zones, tiles.terrain, tiles.underground, tiles.flags)
+			data = NativeDebugTiles.unusual_values(tiles.zones, tiles.terrain, tiles.underground, tiles.flags,
+				tiles.get("altitude", PackedInt32Array()), int(tiles.get("water_level", 0)))
 		Layer.CHANGED_TILES:
 			data = changes
 		Layer.DISASTER_PREVIEW, Layer.MISSING_ARTWORK:

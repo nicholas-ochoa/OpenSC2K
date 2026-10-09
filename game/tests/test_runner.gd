@@ -51,7 +51,7 @@ func _init() -> void:
 	var context := CoreTestContext.new(reference_root)
 
 	for argument in arguments.slice(1):
-		if argument not in ["formats", "simulation", "tools", "rendering", "scurk", "ui", "audio"]:
+		if argument not in ["formats", "simulation", "tools", "rendering", "scurk", "ui", "audio", "scripting"]:
 			push_error("Unknown core domain: " + argument)
 			quit(1)
 			return
@@ -74,12 +74,24 @@ func _init() -> void:
 		PaletteMinimapTests.new(context).test_palette_and_minimap(reference_root)
 	if _selected("rendering"):
 		SpriteArchivesTests.new(context).test_sprite_archives(reference_root)
+	if _selected("rendering"):
+		SpriteArchivesTests.new(context).test_sc2kfix_sprite_fixes(reference_root)
 	if _selected("scurk"):
 		TileSetsTests.new(context).test_scurk_mif(reference_root)
+	if _selected("scurk"):
+		TileSetsTests.new(context).test_sc2kfix_and_mac_tile_sets(reference_root)
+	if _selected("scurk"):
+		TileSetsTests.new(context).test_dos_and_mac_native_tile_sets(reference_root)
 	if _selected("formats"):
 		CityFilesTests.new(context).test_reference_corpus(reference_root)
 	if _selected("formats"):
 		CityFilesTests.new(context).test_city_options(reference_root)
+	if _selected("formats"):
+		CityFilesTests.new(context).test_zero_form_length(reference_root)
+	if _selected("formats"):
+		CityFilesTests.new(context).test_sc2kfix_archive(reference_root)
+	if _selected("formats"):
+		CityFilesTests.new(context).test_sc2kfix_xfix(reference_root)
 	if _selected("audio"):
 		audio_tests.test_music(reference_root)
 	if _selected("ui"):
@@ -88,6 +100,8 @@ func _init() -> void:
 		ui_shell_tests.test_rci_status_control()
 	if _selected("formats"):
 		ScenariosTests.new(context).test_scenarios(reference_root)
+	if _selected("formats"):
+		ScenariosTests.new(context).test_scenario_progress(reference_root)
 	if _selected("simulation"):
 		ClockEngineTests.new(context).test_simulation_clock()
 	if _selected("simulation"):

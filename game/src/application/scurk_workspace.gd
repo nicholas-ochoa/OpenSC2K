@@ -1,8 +1,9 @@
 class_name ApplicationScurkWorkspace
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
-const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
 
 var app: CityApplication
@@ -37,6 +38,7 @@ func ensure_scurk_place_print() -> void:
 	app.scurk_place_print.undo_requested.connect(undo_scurk_place)
 	app.scurk_place_print.redo_requested.connect(_redo_scurk_place)
 	app.scurk_place_print.close_requested.connect(close_scurk_place_print)
+	app.scurk_place_print.flip_toggled.connect(func(_flipped: bool) -> void: app.map_view.queue_redraw())
 	app.desktop_presentation.place_print = app.scurk_place_print
 	app.scurk_city_export_dialog = preload("res://src/ui/shared/file_dialog_factory.gd").city_bitmap_save()
 	app.scurk_place_print.add_child(app.scurk_city_export_dialog)
@@ -124,6 +126,9 @@ func open_scurk_place_print() -> void:
 	ensure_scurk_place_print()
 	app.interface.hide_main_menu()
 
+	if not app.scurk_place_print.visible:
+		app.scurk_state.tool_before_place_print = Vector2i(app.tool_state.selected_group, app.tool_state.selected_subtool)
+
 	if app.scurk_editor != null and app.scurk_editor.visible:
 		app.scurk_editor.hide()
 
@@ -136,6 +141,7 @@ func open_scurk_place_print() -> void:
 		names = app.asset_state.active_scurk_tile_set.names
 
 	app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, names, app.asset_state.scurk_graphics)
+	app.scurk_state.ghost_textures.clear()
 
 	if app.tool_state.last_edit_command == null or not app.tool_state.last_edit_command.scurk_place_history:
 		app.scurk_state.edit_history.clear()
@@ -159,6 +165,14 @@ func close_scurk_place_print() -> void:
 
 	if app.scurk_print != null:
 		app.scurk_print.hide()
+
+	# the edit tools change the selected tool. give the sidebar its tool back
+	var before := app.scurk_state.tool_before_place_print
+	app.scurk_state.tool_before_place_print = Vector2i(-1, -1)
+
+	if before.x >= 0:
+		app.current_tool.select_tool_group(before.x)
+		app.current_tool.select_subtool(before.y)
 
 	app.current_tool.update_edit_state()
 
@@ -204,7 +218,19 @@ func record_edit_command(
 	command: EditCommandResult, scurk_history := false, scurk_name := ""
 ) -> void:
 	if scurk_history:
-		app.scurk_state.edit_history.record(command, scurk_name)
+		var history := app.scurk_state.edit_history
+		var stroke := app.map_view.uses_paint_brush() and app.map_view.is_left_drag_active()
+		# the main Undo also routes this edit to the SCURK history
+		command.scurk_place_history = true
+		command.scurk_tool_name = scurk_name
+
+		# one brush stroke is one history entry, as it is one undo of the city tools
+		if stroke and app.scurk_state.brush_stroke != null and history.current_command() == app.scurk_state.brush_stroke:
+			app.scurk_state.brush_stroke.merge_stroke(command)
+		else:
+			var entry := command.copy() if stroke else command
+			history.record(entry, scurk_name)
+			app.scurk_state.brush_stroke = entry if stroke else null
 
 		if app.scurk_place_print != null:
 			app.scurk_place_print.set_history_enabled(true, false)
@@ -229,7 +255,9 @@ func apply_scurk_place_selection(point: Vector2i) -> void:
 		tile_id,
 		point,
 		app.tool_state.tool_random,
-		app.scurk_place_print.selected_zone_id()
+		app.scurk_place_print.selected_zone_id(),
+		false,
+		app.scurk_place_print.flipped
 	)
 
 	if not result.ok:
@@ -248,6 +276,83 @@ func apply_scurk_place_selection(point: Vector2i) -> void:
 	app.scurk_place_print.set_status(message)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = message
+
+
+# the selected object at `tile` as the map draws it, for the translucent
+# placement preview. positions use the large view, as the static painter does
+func place_ghost(tile: Vector2i) -> CityDynamicVisual:
+	var city := app.document_state.city
+
+	if (city == null or app.scurk_place_print == null or not app.scurk_place_print.visible
+			or not app.scurk_place_print.is_object_mode() or city.index_of(tile.x, tile.y) < 0):
+		return null
+
+	var tile_id := app.scurk_place_print.selected_tile_id
+	var site := ScurkPlace.footprint(tile_id, tile)
+
+	if site.size.x == 0:
+		return null
+
+	var developed := tile_id >= BuildingTileIds.DEVELOPED_FIRST and tile_id <= BuildingTileIds.MAX_ID
+	# an odd compass rotation mirrors buildings, as the painter does
+	var flip: bool = app.scurk_place_print.flipped != (developed and city.compass_rotation() % 2 == 1)
+	var texture := _ghost_texture(tile_id, flip)
+
+	if texture == null:
+		return null
+
+	var size := texture.get_size()
+	var position := Vector2.ZERO
+
+	if tile_id > BuildingTileIds.MAX_ID:
+		# an artwork stamp hangs from the bottom corner of its tile
+		var anchor: Vector2 = CityIsometricRenderer.tile_polygon(city, tile.x, tile.y)[2]
+		position = anchor - Vector2(size.x / 2.0, size.y - 1)
+	else:
+		# the painter draws from the left tile of the footprint
+		var left := Vector2i(site.position.x, site.end.y - 1)
+		var offset := 0
+
+		if developed:
+			offset = int(size.x) / 4 - IsometricConstants.HALF_HEIGHT
+		elif city.terrain_id(left.x, left.y) == TerrainTileIds.RAISED:
+			offset = -IsometricConstants.ALTITUDE_STEP
+
+		var baseline := (IsometricConstants.TOP_MARGIN + (left.x + left.y) * IsometricConstants.HALF_HEIGHT
+			+ IsometricConstants.TILE_HEIGHT - city.object_altitude(left.x, left.y) * IsometricConstants.ALTITUDE_STEP + offset)
+		position = Vector2(
+			IsometricConstants.SIDE_MARGIN + (city.map_size + left.x - left.y) * IsometricConstants.HALF_WIDTH,
+			baseline - size.y
+		)
+
+	return CityDynamicVisual.new(texture, position)
+
+
+func _ghost_texture(tile_id: int, flip: bool) -> Texture2D:
+	var key := Vector2i(tile_id, int(flip))
+
+	if app.scurk_state.ghost_textures.has(key):
+		return app.scurk_state.ghost_textures[key]
+
+	var entry = app.asset_state.large_sprites.find_sprite(ScurkSpriteIds.LARGE_FIRST + tile_id)
+
+	if entry == null:
+		return null
+
+	var rendered := entry.create_image(app.asset_state.palette)
+
+	if not rendered.ok:
+		return null
+
+	var image: Image = rendered.image
+
+	if flip:
+		image.flip_x()
+
+	var texture := ImageTexture.create_from_image(image)
+	app.scurk_state.ghost_textures[key] = texture
+
+	return texture
 
 
 func undo_scurk_place() -> void:
@@ -321,7 +426,7 @@ func load_tile_set(path: String) -> void:
 
 		return
 
-	var tile_set := ScurkTileSet.load_path(path)
+	var tile_set := ScurkForeignTileSet.load_path(path)
 
 	if not tile_set.is_valid():
 		app.interface.show_error("Cannot load tile set: %s" % tile_set.parse_error)
@@ -334,38 +439,45 @@ func load_tile_set(path: String) -> void:
 func _apply_scurk_tile_set(
 	tile_set: ScurkMif, display_name: String, path: String
 ) -> void:
+	_apply_scurk_tile_sets([tile_set], display_name, path)
+
+
+# Combine the original sprites with each tile set in order. A later tile set
+# replaces the graphics and names of an earlier one.
+func _apply_scurk_tile_sets(
+	tile_sets: Array[ScurkMif], display_name: String, path: String
+) -> void:
 	if app.asset_state.base_large_sprites == null or app.asset_state.base_small_medium_sprites == null:
 		app.interface.show_error("Original sprite data is not loaded.")
 
 		return
 
-	if tile_set == null or not tile_set.is_valid():
-		app.interface.show_error("Cannot apply an invalid SCURK tile set.")
+	for tile_set in tile_sets:
+		if tile_set == null or not tile_set.is_valid():
+			app.interface.show_error("Cannot apply an invalid SCURK tile set.")
 
+			return
+
+	if tile_sets.is_empty():
 		return
 
-	var new_large := SpriteArchive.combine([app.asset_state.base_large_sprites, tile_set.overrides])
-	var new_small_medium := SpriteArchive.combine([
-		app.asset_state.base_small_medium_sprites, tile_set.overrides,
-	])
-
-	if not new_large.is_valid() or not new_small_medium.is_valid():
+	if not combine_tile_sets(tile_sets):
 		app.interface.show_error("Cannot combine the tile set with the original sprite data.")
 
 		return
 
-	app.asset_state.active_scurk_tile_set = tile_set
+	var names := _tile_set_names(tile_sets)
+	app.asset_state.active_scurk_tile_set = tile_sets[-1]
+	app.asset_state.active_scurk_tile_sets = tile_sets.duplicate()
 	app.asset_state.active_scurk_name = display_name
 	app.asset_state.active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
-	app.asset_state.large_sprites = new_large
-	app.asset_state.small_medium_sprites = new_small_medium
 	app.visual_environment.reload_brightmaps(false)
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(
 			app.asset_state.palette,
 			app.asset_state.large_sprites,
-			tile_set.names,
+			names,
 			app.asset_state.scurk_graphics,
 		)
 
@@ -374,10 +486,97 @@ func _apply_scurk_tile_set(
 	if app.document_state.city != null:
 		app.map_render.refresh_map()
 
+	var replacements := 0
+
+	for loaded in tile_sets:
+		replacements += loaded.overrides.entries.size()
+
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Loaded tile set %s: %d graphic replacements and %d names." % [
-		app.asset_state.active_scurk_name, tile_set.overrides.entries.size(), tile_set.names.size(),
+		app.asset_state.active_scurk_name, replacements, names.size(),
 	]
+
+
+# Show the sprites of the graphics source with `tile_sets` in order. A tile set
+# that uses the sc2kfix DOS colours adds them to the palette, and the original
+# sprites under it keep those entries black. False when the sprites cannot combine.
+func combine_tile_sets(tile_sets: Array[ScurkMif]) -> bool:
+	var dos_colors := tile_sets.any(func(tile_set: ScurkMif) -> bool: return tile_set.uses_dos_colors())
+	var base_large := app.asset_state.base_large_sprites
+	var base_small_medium := app.asset_state.base_small_medium_sprites
+
+	if dos_colors:
+		base_large = Sc2kfixSpriteFixes.apply(base_large, "large", false)
+		base_small_medium = Sc2kfixSpriteFixes.apply(base_small_medium, "small_medium", false)
+
+	# a tile set sprite replaces the HD art of its ID
+	var large_archives: Array[Sc2SpriteArchive] = [app.assets.with_hd_sprites(base_large)]
+	var small_medium_archives: Array[Sc2SpriteArchive] = [app.assets.with_hd_sprites(base_small_medium)]
+
+	for tile_set in tile_sets:
+		large_archives.append(tile_set.overrides)
+		small_medium_archives.append(tile_set.overrides)
+
+	var new_large := SpriteArchive.combine(large_archives)
+	var new_small_medium := SpriteArchive.combine(small_medium_archives)
+
+	if not new_large.is_valid() or not new_small_medium.is_valid():
+		return false
+
+	app.asset_state.large_sprites = new_large
+	app.asset_state.small_medium_sprites = new_small_medium
+	app.assets.use_dos_colors(dos_colors)
+
+	return true
+
+
+static func _tile_set_names(tile_sets: Array[ScurkMif]) -> Dictionary[int, String]:
+	var names: Dictionary[int, String] = {}
+
+	for tile_set in tile_sets:
+		names.merge(tile_set.names, true)
+
+	return names
+
+
+# As sc2kfix does, load the tile sets that the XFIX chunk of a loaded city
+# lists. A path from another computer is found by file name beside the city
+# or in the original SCURKART folder. Returns the number of tile sets loaded.
+func restore_city_tile_sets(document: Sc2File) -> int:
+	var saved_paths := Sc2kfixXfix.tile_set_paths(document)
+
+	if saved_paths.is_empty():
+		return 0
+
+	var directories := PackedStringArray([
+		document.source_path.get_base_dir(),
+		app.asset_state.reference_root.path_join("SCURKART"),
+	])
+	var tile_sets: Array[ScurkMif] = []
+	var last_path := ""
+
+	for saved_path in saved_paths:
+		var resolved := Sc2kfixXfix.resolve_tile_set(saved_path, directories)
+
+		if resolved.is_empty():
+			continue
+
+		var tile_set := ScurkForeignTileSet.load_path(resolved)
+
+		if tile_set.is_valid():
+			tile_sets.append(tile_set)
+			last_path = resolved
+
+	if tile_sets.is_empty():
+		app.status_label.text += " The city lists sc2kfix tile sets that were not found."
+
+		return 0
+
+	var status := app.status_label.text
+	_apply_scurk_tile_sets(tile_sets, last_path.get_file(), last_path)
+	app.status_label.text = "%s Loaded %d of %d sc2kfix tile sets." % [status, tile_sets.size(), saved_paths.size()]
+
+	return tile_sets.size()
 
 
 func restore_original_tile_set() -> void:
@@ -385,10 +584,10 @@ func restore_original_tile_set() -> void:
 		return
 
 	app.asset_state.active_scurk_tile_set = null
+	app.asset_state.active_scurk_tile_sets.clear()
 	app.asset_state.active_scurk_name = ""
 	app.asset_state.active_scurk_path = ""
-	app.asset_state.large_sprites = app.asset_state.base_large_sprites
-	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
+	app.assets.use_default_sprites()
 	app.visual_environment.reload_brightmaps(false)
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:

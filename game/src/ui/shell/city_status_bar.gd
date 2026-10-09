@@ -2,89 +2,7 @@ class_name CityStatusBar
 extends PanelContainer
 
 signal disaster_locate_requested
-
-const REPORT_ROTATION_SECONDS := 7.0
-const NEWS_NAMES := {
-	46: CityStatusMessages.NEEDS[0],
-	47: CityStatusMessages.NEEDS[1],
-	48: CityStatusMessages.NEEDS[2],
-	49: CityStatusMessages.NEEDS[3],
-	50: CityStatusMessages.NEEDS[4],
-	51: CityStatusMessages.NEEDS[5],
-	52: CityStatusMessages.NEEDS[6],
-	53: CityStatusMessages.NEEDS[7],
-	54: CityStatusMessages.NEEDS[8],
-	55: CityStatusMessages.NEEDS[9],
-	56: CityStatusMessages.NEEDS[10],
-	57: CityStatusMessages.NEEDS[11],
-	58: CityStatusMessages.NEEDS[12],
-	59: CityStatusMessages.NEEDS[13],
-	60: CityStatusMessages.NEEDS[14],
-
-	0: "Weather report",
-	2: "City founded",
-	22: "Fire",
-	23: "Flood",
-	24: "Plane crash",
-	25: "Helicopter crash",
-	26: "Tornado",
-	27: "Earthquake",
-	28: "Monster attack",
-	29: "Nuclear meltdown",
-	30: "Microwave disaster",
-	31: "Volcano",
-	32: "Pollution disaster",
-	33: "Chemical spill",
-	34: "Hurricane",
-	35: "Riot",
-	37: "Prison overcrowding",
-	42: "Opinion column",
-	43: "Editorial",
-	44: "Public survey",
-	45: "Advice column",
-
-	1: "Local news",
-	4: "New invention",
-	5: "New innovation",
-	6: "War report",
-	7: "Market report",
-	8: "Sports report",
-	9: "Federal rate increase",
-	10: "Federal rate decrease",
-	0x0b: "Political report",
-	0x0c: "Diplomatic report",
-	0x0d: "Disaster report",
-	0x0e: "Medical report",
-	0x0f: "Upbeat report",
-	0x10: "High crime",
-	0x11: "High traffic",
-	0x12: "High pollution",
-	0x13: "Poor education",
-	0x14: "Poor health",
-	0x15: "Poor employment",
-	3: "City milestone",
-	0x24: "Power plant report",
-	0x26: "Education report",
-	39: "Bridge collapse",
-	0x28: "Forest protest",
-	0x29: "New ordinance",
-	0x3d: "Low crime",
-	0x3e: "Low traffic",
-	0x3f: "Low pollution",
-	0x40: "Good education",
-	0x41: "Good health",
-	0x42: "Good employment",
-	0x1f8: "Explosion",
-	0x1fe: "Traffic report",
-	0x201: "High mayor approval",
-	0x202: "Monster attack",
-	0x203: "Air disaster",
-	0x205: "Cargo ship report",
-	0x206: "Airplane takeoff",
-	0x207: "Airplane landing",
-	0x20c: "Train report",
-	0x20f: "Sailboat distress",
-}
+signal help_requested(topic: String)
 
 var message_label: Label
 var weather_label: Label
@@ -95,14 +13,12 @@ var speed_label: Label
 var compass: StatusCompass
 var zoom_label: Label
 var city_status_text := ""
-var city_status_available := false
 var priority_status := false
 var status_style := ""
-var recent_reports := PackedStringArray()
 var music_notice := ""
 var music_notice_seconds := 0.0
-var report_index := 0
-var report_elapsed_seconds := 0.0
+# the key that turns a click on the status bar into a request for its help
+var control_bindings := ControlBindings.defaults()
 
 
 func _ready() -> void:
@@ -118,6 +34,30 @@ func _ready() -> void:
 	speed_label.theme_changed.connect(_fit_speed_label)
 	_fit_speed_label()
 	refresh_tooltips()
+	_watch_help_clicks(self)
+
+
+func _watch_help_clicks(control: Control) -> void:
+	control.gui_input.connect(_on_help_gui_input.bind(control))
+
+	for child in control.get_children():
+		if child is Control:
+			_watch_help_clicks(child)
+
+
+# A click with the help key shows the help of the status bar, or of the
+# Demand Indicator. The gui_input signal comes before a button reads the click
+func _on_help_gui_input(event: InputEvent, control: Control) -> void:
+	var mouse := event as InputEventMouseButton
+
+	if mouse == null or mouse.button_index != MOUSE_BUTTON_LEFT or not mouse.pressed:
+		return
+
+	if not control_bindings.modifier_held("button_help_modifier", event):
+		return
+
+	control.accept_event()
+	help_requested.emit(ButtonHelp.DEMAND_INDICATOR if control == rci_graph else ButtonHelp.STATUS_BAR)
 
 
 func _on_locate_disaster_pressed() -> void:
@@ -130,14 +70,14 @@ func _fit_speed_label() -> void:
 	var width := 122.0
 
 	for speed_name: String in GameSpeedController.SPEED_NAMES.values():
-		width = maxf(width, font.get_string_size("Speed: " + speed_name,
+		width = maxf(width, font.get_string_size(tr("Speed: %s") % tr(speed_name),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 8.0)
 
 	speed_label.custom_minimum_size.x = ceilf(width)
 
 
 func set_environment(demand: Vector3i, weather_name: String) -> void:
-	weather_label.text = "Weather: %s" % weather_name
+	weather_label.text = tr("Weather: %s") % tr(weather_name)
 	rci_graph.set_demand(demand)
 	refresh_tooltips()
 
@@ -148,8 +88,10 @@ func clear_environment() -> void:
 	refresh_tooltips()
 
 
-func set_zoom(percent: int) -> void:
-	zoom_label.text = "Zoom: %d%%" % percent
+# the fit levels of a large map are below 10% and need a fraction
+func set_zoom(factor: float) -> void:
+	var percent := factor * 100.0
+	zoom_label.text = (tr("Zoom: %d%%") % roundi(percent)) if percent >= 10.0 else (tr("Zoom: %s%%") % String.num(percent, 3))
 	_sync_overflow_tooltip(zoom_label)
 
 
@@ -158,72 +100,22 @@ func set_compass(value: int) -> void:
 
 
 func set_speed(speed_name: String) -> void:
-	speed_label.text = "Speed: %s" % speed_name
+	speed_label.text = tr("Speed: %s") % tr(speed_name)
 	speed_label.set_meta(
-		"status_tooltip_text", "Current simulation speed: %s." % speed_name
+		"status_tooltip_text", tr("Current simulation speed: %s.") % tr(speed_name)
 	)
 	_sync_overflow_tooltip(speed_label)
 
 
-func set_reports(reports: PackedStringArray) -> void:
-	recent_reports = reports.duplicate()
-	report_index = 0
-	report_elapsed_seconds = 0.0
-	_refresh_report_text()
-	_sync_overflow_tooltip(reports_label)
-
-
-func prepend_reports(reports: PackedStringArray, maximum := 3) -> void:
-	for report in reports:
-		recent_reports.insert(0, report)
-
-	while recent_reports.size() > maximum:
-		recent_reports.remove_at(recent_reports.size() - 1)
-
-	report_index = 0
-	report_elapsed_seconds = 0.0
-	_refresh_report_text()
-	_sync_overflow_tooltip(reports_label)
-
-
-func prepend_news_items(news_items: Array[NewsEvent], maximum := 3) -> void:
-	var reports := PackedStringArray()
-
-	for item in news_items:
-		reports.append(report_name(int(item.type)))
-
-	prepend_reports(reports, maximum)
-
-
-static func report_name(news_type: int) -> String:
-	if news_type >= 46 and news_type <= 60:
-		return CityStatusMessages.NEEDS[news_type - 46]
-
-	return str(NEWS_NAMES.get(news_type, "City report"))
-
-
-func update_report_rotation(delta: float) -> void:
-	if music_notice_seconds > 0.0:
-		music_notice_seconds = maxf(0.0, music_notice_seconds - delta)
-
-		if music_notice_seconds == 0.0:
-			_refresh_report_text()
-
-	if delta <= 0.0 or recent_reports.size() < 2:
+func update_music_notice(delta: float) -> void:
+	if music_notice_seconds <= 0.0:
 		return
 
-	report_elapsed_seconds += delta
+	music_notice_seconds = maxf(0.0, music_notice_seconds - delta)
 
-	if report_elapsed_seconds < REPORT_ROTATION_SECONDS:
-		return
-
-	var steps := floori(report_elapsed_seconds / REPORT_ROTATION_SECONDS)
-	report_elapsed_seconds = fmod(
-		report_elapsed_seconds, REPORT_ROTATION_SECONDS
-	)
-	report_index = posmod(report_index + steps, recent_reports.size())
-	_refresh_report_text()
-	_sync_overflow_tooltip(reports_label)
+	if music_notice_seconds == 0.0:
+		_refresh_report_text()
+		_sync_overflow_tooltip(reports_label)
 
 
 func refresh_tooltips() -> void:
@@ -240,13 +132,11 @@ func refresh_message_tooltip() -> void:
 
 func set_city_status(engine: SimulationEngine, paused: bool) -> void:
 	city_status_text = ""
-	city_status_available = false
 	priority_status = false
 	status_style = ""
 	var disaster_active := engine != null and engine.active_disaster_type != 0
 
 	if engine != null:
-		city_status_available = engine.city_status_resource_id >= 0
 		city_status_text = CityStatusMessages.text(engine.city_status_resource_id)
 
 		if paused:
@@ -267,42 +157,20 @@ func set_city_status(engine: SimulationEngine, paused: bool) -> void:
 	_sync_overflow_tooltip(reports_label)
 
 
+# the message pane of SIMCITY.EXE 0x00406fd0: *PAUSED*, the disaster, or the
+# city status, which can be blank. a music notice shows over the city status
+# for a few seconds
 func _refresh_report_text() -> void:
 	reports_label.theme_type_variation = status_style
 
-	if priority_status or (city_status_available and music_notice_seconds <= 0.0):
-		reports_label.text = city_status_text
-		reports_label.set_meta("status_tooltip_text", city_status_text)
-
-		return
-
-	if music_notice_seconds > 0.0:
+	if music_notice_seconds > 0.0 and not priority_status:
 		reports_label.text = music_notice
 		reports_label.set_meta("status_tooltip_text", music_notice)
 
 		return
 
-	var current_report := "None"
-
-	if not recent_reports.is_empty():
-		report_index = posmod(report_index, recent_reports.size())
-		current_report = recent_reports[report_index]
-	else:
-		report_index = 0
-		report_elapsed_seconds = 0.0
-
-	reports_label.text = current_report
-	reports_label.set_meta(
-		"status_tooltip_text",
-		(
-			"Recent city reports. These are the newest saved newspaper records.\n%s"
-			% (
-				"No reports."
-				if recent_reports.is_empty()
-				else "\n".join(recent_reports)
-			)
-		),
-	)
+	reports_label.text = city_status_text
+	reports_label.set_meta("status_tooltip_text", tr(city_status_text))
 
 
 func _sync_overflow_tooltip(label: Label) -> void:

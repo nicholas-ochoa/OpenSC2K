@@ -64,17 +64,17 @@ func test_city_value_phase(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x01f0 + 0xd0 * 4, 99), "City-value fixture sets city halls")
 	var before := document.misc_i32(0x0024)
 	var calculated := CityValue.calculate(city)
-	_check(calculated.ok and calculated.city_value == 136956, "City value uses all recovered rules")
+	_check(calculated.ok and calculated.city_value == 123359, "City value uses all recovered rules and the sc2kfix corrections")
 	_check(document.misc_i32(0x0024) == before, "City-value calculation is read-only")
 	var result := CityValue.run(city)
-	_check(result.ok and result.city_value == 136956, "City-value phase completes")
-	_check(document.misc_i32(0x0024) == 136956, "City-value phase stores MISC city value")
+	_check(result.ok and result.city_value == 123359, "City-value phase completes")
+	_check(document.misc_i32(0x0024) == 123359, "City-value phase stores MISC city value")
 
 	_check(document.set_misc_u32(0x01f0 + 0x0e * 4, 0xffff), "City-value fixture sets signed count")
 	_check(document.set_misc_u32(0x0fe8, 0xffff), "City-value fixture sets signed subway count")
 	var signed_result := CityValue.calculate(city)
 	_check(
-		signed_result.ok and signed_result.city_value == 136954,
+		signed_result.ok and signed_result.city_value == 122953,
 		"City value sign-extends the supplied runtime counters",
 	)
 

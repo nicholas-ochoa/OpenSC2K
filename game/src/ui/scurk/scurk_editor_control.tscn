@@ -90,7 +90,7 @@ custom_minimum_size = Vector2(150, 0)
 text_overrun_behavior = 3
 
 [node name="Dialogs" parent="." instance=ExtResource("dialogs")]
-layout_mode = 2
+layout_mode = 1
 
 [node name="CanvasMenu" type="PopupMenu" parent="."]
 script = ExtResource("context_menu")

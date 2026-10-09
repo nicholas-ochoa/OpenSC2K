@@ -12,17 +12,29 @@ const NOTICE_TEXT := {
 	244: "Six missile sites have been placed in your city.",
 	411: ("The military is unable to find a suitable\nlocation for a base near your city.  You\nhave "
 		+ "the thanks of the nation for your\npatriotic acquiesence.  SALUTE!!"),
+	119: "Because you have no police or firefighters, the National Guard has been deployed to your city",
+	284: "The people of your city love you so dearly that they\nhave thrown  a spontaneous parade in your honor.",
 	292: "Due to the current fiscal crisis, the city council urges you to cut back drastically on city expenditures.",
 	529: "The exodus has begun.",
 	530: "Your launch arcos have departed into space to found new worlds. You have been compensated for their construction.",
 }
+# the notices that SIMCITY.EXE shows with a picture (0x0042b870), by string ID:
+# the National Guard and the parade. the value is the BITMAPS picture
+const NOTICE_PICTURES := {119: 406, 284: 407}
+# the original stops the bulldozer sound before the National Guard notice
+const NATIONAL_GUARD_NOTICE := 119
 
 var app: CityApplication
 var city_map: ApplicationCityMapReports
 var document_state: ActiveDocumentState
 var text_resources: OriginalTextResources
-var pending_notices := PackedStringArray()
+# the string IDs of the notices that wait for the notice dialog
+var pending_notices := PackedInt32Array()
 var military_notice_pending := false
+# a newspaper that waits until the player closes the parade notice: the paper
+# and the top complaint of its poll. -1 when no paper waits
+var deferred_newspaper := -1
+var deferred_opinion_subject := -1
 var pending_game_over_events: Array[GameOverEvent] = []
 var game_over_terminal := false
 
@@ -53,17 +65,29 @@ func on_disaster_menu(id: int) -> void:
 
 		app.menus.sync_city_option_menus()
 		app.status_label.theme_type_variation = ""
-		app.status_label.text = "No Disasters %s." % ("enabled" if enabled else "disabled")
+		app.status_label.text = tr("No Disasters %s.") % tr("enabled" if enabled else "disabled")
 
 		return
 
-	var result := start_disaster_at_view_center(id)
+	# the menu item selects the place, as in the original
+	var engine := app.simulation_state.simulation_engine
+	var result := start_disaster_at(id, engine.menu_disaster_point(id, _view_center_tile()))
 
 	if not result.ok:
-		app.interface.show_error("Cannot start the disaster: %s" % result.error)
+		app.interface.show_error(tr("Cannot start the disaster: %s") % result.error)
 
 
 func start_disaster_at_view_center(id: int) -> DisasterReportResult:
+	return start_disaster_at(id, _view_center_tile())
+
+
+func _view_center_tile() -> Vector2i:
+	var point := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
+
+	return point if point.x >= 0 else Vector2i(64, 64)
+
+
+func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 	var report := DisasterReportResult.new()
 
 	if app.document_state.city == null or app.simulation_state.simulation_engine == null:
@@ -71,10 +95,10 @@ func start_disaster_at_view_center(id: int) -> DisasterReportResult:
 
 		return report
 
-	var point := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
+	if app.scripting.cancelled("disaster.beforeStart", {"id": id, "name": CityMenuBar.disaster_name(id), "x": point.x, "y": point.y}):
+		report.error = "a script cancelled it"
 
-	if point.x < 0:
-		point = Vector2i(64, 64)
+		return report
 
 	var result := app.simulation_state.simulation_engine.start_disaster(id, point)
 	report.phase_result = result
@@ -100,6 +124,10 @@ func start_disaster_at_view_center(id: int) -> DisasterReportResult:
 	app.simulation_state.simulation_map_dirty = false
 	app.map_render.refresh_map(false)
 
+	# a disaster enables the Emergency tool
+	if app.current_tool.refresh_tool_availability():
+		app.current_tool.update_edit_state()
+
 	for requested_point in result.view_center_requests:
 		app.map_view.center_on_tile(requested_point)
 
@@ -107,7 +135,8 @@ func start_disaster_at_view_center(id: int) -> DisasterReportResult:
 		result.effect_events, result.sound_events
 	)
 	app.disaster_effects.disaster_started(result)
-	show_news_items(result.news_items)
+	app.interface.refresh_status_summary()
+	show_notices(result.notice_ids)
 	var first_update := result.first_update
 
 	if first_update != null:
@@ -115,17 +144,18 @@ func start_disaster_at_view_center(id: int) -> DisasterReportResult:
 			app.map_view.center_on_tile(requested_point)
 
 		app.effects_audio.show_effect_events(first_update.effect_events, first_update.sound_events)
-		show_news_items(first_update.news_items)
+		app.interface.refresh_status_summary()
 
 		if first_update.newspaper_requested:
 			open_scheduled_newspaper(first_update.newspaper_paper)
 
 	var disaster_name := CityMenuBar.disaster_name(id)
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "%s started." % disaster_name
+	app.status_label.text = tr("%s started.") % tr(disaster_name)
 
 	report.ok = true
 	report.name = disaster_name
+	app.scripting.check_disaster()
 
 	return report
 
@@ -147,6 +177,8 @@ func on_windows_menu(id: int) -> void:
 		city_map.open_window()
 	elif id == 7:
 		app.debug_overlay.toggle()
+	elif id == CityMenuBarView.MENU_CONSOLE:
+		app.console_window.open()
 	elif id == CityMenuBarView.MENU_SCENARIO_GOALS:
 		var engine := app.simulation_state.simulation_engine
 		if engine != null and engine.scenario != null:
@@ -160,7 +192,7 @@ func _open_ordinance_window() -> void:
 	var result: OrdinanceCommand.Result = app.city_dialogs.ordinance_window.open_city(app.document_state.city)
 
 	if not result.ok:
-		app.interface.show_error("Cannot open ordinances: %s" % result.error)
+		app.interface.show_error(tr("Cannot open ordinances: %s") % result.error)
 
 
 func on_ordinances_changed() -> void:
@@ -232,6 +264,23 @@ func on_newspaper_menu(id: int) -> void:
 
 		return
 
+	# SIMCITY.EXE (0x00477880) polls the mayor approval before it shows a
+	# paper. a rise to 80 percent shows the parade notice first
+	var subject := _poll_mayor_approval()
+
+	if notice_visible() or not pending_notices.is_empty():
+		deferred_newspaper = id
+		deferred_opinion_subject = subject
+
+		return
+
+	_open_newspaper(id, subject)
+
+
+func _open_newspaper(id: int, opinion_subject: int) -> void:
+	if app.document_state.city == null or document_state.current_document == null:
+		return
+
 	if app.document_state.city.music_enabled() and app.simulation_state.simulation_engine != null:
 		app.effects_audio.play_music_track(Music.newspaper_track(app.simulation_state.simulation_engine.lfsr_random))
 
@@ -239,10 +288,30 @@ func on_newspaper_menu(id: int) -> void:
 		app.document_state.city,
 		document_state.current_document,
 		text_resources.newspaper_data,
-		CityStatusBar.NEWS_NAMES,
+		NewspaperDialog.STORY_NAMES,
 		app.newspaper_state.session_seed,
 		id,
+		opinion_subject,
 	)
+
+
+# the approval poll of a paper. returns its top complaint, or -1 without a poll
+func _poll_mayor_approval() -> int:
+	var engine := app.simulation_state.simulation_engine
+
+	if engine == null:
+		return -1
+
+	var approval := engine.recalculate_mayor_house()
+
+	if not approval.ok:
+		app.interface.show_error(tr("Cannot calculate mayor approval: %s") % approval.error)
+
+		return -1
+
+	show_mayor_approval(approval)
+
+	return approval.ranking[0] if not approval.ranking.is_empty() else -1
 
 
 # the original toggles each saved option and changes nothing else
@@ -263,8 +332,8 @@ func _toggle_newspaper_option(id: int) -> void:
 
 	refresh_newspaper_menu()
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Newspaper %s %s." % [
-		"subscription" if subscription else "extra editions", "enabled" if enabled else "disabled",
+	app.status_label.text = tr("Newspaper %s %s.") % [
+		tr("subscription" if subscription else "extra editions"), tr("enabled" if enabled else "disabled"),
 	]
 
 
@@ -293,7 +362,7 @@ func open_scheduled_newspaper(paper := -1) -> void:
 		paper = city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE)
 
 	on_newspaper_menu(clampi(paper, 0, paper_count - 1))
-	app.newspaper_state.scheduled_pending = app.city_dialogs.newspaper_dialog.visible
+	app.newspaper_state.scheduled_pending = app.city_dialogs.newspaper_dialog.visible or deferred_newspaper >= 0
 
 
 func on_scheduled_newspaper_visibility_changed() -> void:
@@ -301,18 +370,19 @@ func on_scheduled_newspaper_visibility_changed() -> void:
 		app.newspaper_state.scheduled_pending = false
 
 
-func show_news_items(news_items: Array[NewsEvent]) -> void:
-	if app.city_status_bar != null:
-		app.city_status_bar.prepend_news_items(news_items)
-
-	app.interface.refresh_status_summary()
-
-
 func show_building_objection() -> void:
 	if app.city_dialogs.building_objection_dialog == null:
 		return
 
 	app.city_dialogs.building_objection_dialog.show_message(BuildingConstants.NUISANCE_OBJECTION, true)
+
+
+# the original shows the forest protest with the picture of the objection notice
+func show_forest_protest() -> void:
+	if app.city_dialogs.building_objection_dialog == null:
+		return
+
+	app.city_dialogs.building_objection_dialog.show_message(DemolishConstants.FOREST_PROTEST, true)
 
 
 func on_building_objection_closed() -> void:
@@ -327,86 +397,91 @@ func on_building_objection_closed() -> void:
 	app.tool_state.pending_building_objection_subtool = -1
 
 
-func refresh_saved_news_summary() -> void:
-	if app.document_state.city == null or document_state.current_document == null:
-		if app.city_status_bar != null:
-			app.city_status_bar.set_reports(PackedStringArray())
-
-		app.interface.refresh_status_summary()
-
-		return
-
-	var misc_chunk := document_state.current_document.find_chunk("MISC")
-
-	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		if app.city_status_bar != null:
-			app.city_status_bar.set_reports(PackedStringArray(["Unavailable"]))
-
-		app.interface.refresh_status_summary()
-
-		return
-
-	var reports := PackedStringArray()
-
-	for slot in NewsQueue.QUEUE_COUNT:
-		var record := NewsQueue.story_record(misc_chunk.decoded_payload, slot)
-
-		if record == null or int(record.priority) <= 0:
-			continue
-
-		var story_type := int(record.type)
-		reports.append(CityStatusBar.report_name(story_type))
-
-		if reports.size() == 3:
-			break
-
-	if app.city_status_bar != null:
-		app.city_status_bar.set_reports(reports)
-
-	app.interface.refresh_status_summary()
-
-
-# queue each notice and show them one at a time. the notice dialog suspends
+# queue each notice and show them one at a time. the notice dialogs suspend
 # the simulation, as the original message box does
 func show_notices(notice_ids: PackedInt32Array) -> void:
-	var dialog := app.city_dialogs.notice_dialog
-
-	if not dialog.visibility_changed.is_connected(_show_next_notice):
-		dialog.visibility_changed.connect(_show_next_notice, CONNECT_DEFERRED)
+	for dialog: Window in _notice_dialogs():
+		if not dialog.visibility_changed.is_connected(_show_next_notice):
+			dialog.visibility_changed.connect(_show_next_notice, CONNECT_DEFERRED)
 
 	for notice_id in notice_ids:
 		if NOTICE_TEXT.has(notice_id):
-			pending_notices.append(NOTICE_TEXT[notice_id])
+			pending_notices.append(notice_id)
 
 	# a notice can follow an option change, such as Auto Budget
 	app.menus.sync_city_option_menus()
 	_show_next_notice()
 
 
+# the result of a mayor approval poll: the parade notice and its sound
+func show_mayor_approval(approval: MayorApprovalPhase.Result) -> void:
+	app.effects_audio.play_sound_events(approval.sound_events, true)
+	app.interface.refresh_status_summary()
+	show_notices(approval.notice_ids)
+
+
 func reset_notices() -> void:
 	military_notice_pending = false
 	pending_notices.clear()
+	deferred_newspaper = -1
+	deferred_opinion_subject = -1
 
-	if app.city_dialogs.notice_dialog.visible:
-		app.city_dialogs.notice_dialog.hide()
+	for dialog: Window in _notice_dialogs():
+		if dialog.visible:
+			dialog.hide()
+
+
+func notice_visible() -> bool:
+	return _notice_dialogs().any(func(dialog: Window) -> bool: return dialog.visible)
+
+
+func _notice_dialogs() -> Array[Window]:
+	var dialogs: Array[Window] = [app.city_dialogs.notice_dialog, app.city_dialogs.picture_notice_dialog]
+
+	return dialogs
 
 
 func _show_next_notice() -> void:
-	var dialog := app.city_dialogs.notice_dialog
-
-	if dialog.visible:
+	if notice_visible():
 		return
 
 	if pending_notices.is_empty():
 		if military_notice_pending:
 			military_notice_pending = false
 			app.budget.resolve_military_notice()
+		elif deferred_newspaper >= 0:
+			var paper := deferred_newspaper
+			deferred_newspaper = -1
+			_open_newspaper(paper, deferred_opinion_subject)
 
 		return
 
-	dialog.dialog_text = pending_notices[0]
+	var notice_id := pending_notices[0]
 	pending_notices.remove_at(0)
-	dialog.popup_centered()
+	var text: String = NOTICE_TEXT[notice_id]
+	var picture := _notice_picture(notice_id)
+
+	if notice_id == NATIONAL_GUARD_NOTICE:
+		app.effects_audio.stop_tool_loop_sound()
+
+	if picture == null:
+		app.city_dialogs.notice_dialog.dialog_text = text
+		app.city_dialogs.notice_dialog.popup_centered()
+
+		return
+
+	app.city_dialogs.picture_notice_dialog.set_picture(picture)
+	app.city_dialogs.picture_notice_dialog.show_message(text, true)
+
+
+# the original picture of a notice, or null without a picture or imported graphics
+func _notice_picture(notice_id: int) -> Image:
+	var assets := app.city_dialogs.original_assets
+
+	if not NOTICE_PICTURES.has(notice_id) or assets == null or assets.city_ui_graphics == null:
+		return null
+
+	return assets.city_ui_graphics.notices.get(NOTICE_PICTURES[notice_id])
 
 
 func show_game_over_events(events: Array[GameOverEvent]) -> void:

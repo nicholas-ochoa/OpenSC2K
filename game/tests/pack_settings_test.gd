@@ -100,7 +100,8 @@ func _run() -> void:
 				assert(child.filters[0].begins_with("*.sf2, *.sf3, *.dls"))
 				soundfont_pickers += 1
 
-	assert(pickers == 4 and soundfont_pickers == 1)
+	# graphics, sound, music, data, and HD sprite packs
+	assert(pickers == 5 and soundfont_pickers == 1)
 	assert(dialog.pack_name_labels.data.text == main.asset_state.data_pack.pack_name and main.asset_state.data_pack.is_loaded())
 	assert(dialog.folder_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE)
 	assert(dialog.folder_dialog.filters[0].begins_with("pack.json"))

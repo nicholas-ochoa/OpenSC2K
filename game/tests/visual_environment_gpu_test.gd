@@ -5,6 +5,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	await _check_hd_environment()
+	await _check_hd_animation_masks()
 	await _check_dispatch_lights()
 	await _check_power_warnings()
 	var viewport := SubViewport.new()
@@ -693,3 +695,83 @@ func _particle_width(rendered: Image, background: Image) -> float:
 					adjacent += 1
 	assert(covered > 60, "Precipitation disappeared at a map zoom level")
 	return float(adjacent) / maxf(covered, 1.0)
+
+
+# The upstream literal-art tag must keep full-color pixels when palette lookup
+# is on, while participating in the package's environmental grading.
+func _check_hd_environment() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(8, 8)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var pixels := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	pixels.fill(Color(0.4, 0.6, 0.8))
+	var palette := Image.create(256, 1, false, Image.FORMAT_RGBA8)
+	palette.fill(Color.RED)
+	var sprite := Sprite2D.new()
+	sprite.centered = false
+	sprite.texture = ImageTexture.create_from_image(pixels)
+	sprite.self_modulate = CityDynamicSpriteCanvas.ARTWORK_TAG
+	var material := ShaderMaterial.new()
+	material.shader = CityMapControl.PALETTE_CYCLE_SHADER
+	material.set_shader_parameter("palette_lookup_all", true)
+	material.set_shader_parameter("palette_cycle_enabled", true)
+	material.set_shader_parameter("animated_palette", ImageTexture.create_from_image(palette))
+	sprite.material = material
+	viewport.add_child(sprite)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var original := viewport.get_texture().get_image()
+	var pixel := original.get_pixel(4, 4)
+	assert(pixel.b > 0.7 and pixel.g > 0.5 and pixel.r < 0.5, "HD art must retain its literal colors")
+	material.set_shader_parameter("environment_enabled", true)
+	material.set_shader_parameter("environment_night", 1.0)
+	material.set_shader_parameter("environment_tint", Vector3(0.2, 0.3, 0.4))
+	await RenderingServer.frame_post_draw
+	var night := viewport.get_texture().get_image().get_pixel(4, 4)
+	assert(night.r < pixel.r * 0.3 and night.g < pixel.g * 0.4 and night.b < pixel.b * 0.5,
+		"HD art must follow the same night lighting as indexed sprites")
+	material.set_shader_parameter("environment_enabled", false)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == original.get_data(), "Disabling effects must restore HD pixels")
+	viewport.queue_free()
+	await process_frame
+
+
+func _check_hd_animation_masks() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(8, 8)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var pixels := Image.create(8, 24, false, Image.FORMAT_RGBA8)
+	pixels.fill(Color.WHITE)
+	var masks := Image.create(8, 24, false, Image.FORMAT_RGBA8)
+	masks.fill_rect(Rect2i(0, 2, 8, 8), Color.RED)
+	masks.fill_rect(Rect2i(0, 14, 8, 8), Color.BLUE)
+	var sprite := Sprite2D.new()
+	sprite.centered = false
+	sprite.texture = ImageTexture.create_from_image(pixels)
+	sprite.region_enabled = true
+	sprite.region_rect = Rect2(0, 2, 8, 8)
+	# Native HD animation tag, two frames at 8 FPS, padded stride of 12 rows.
+	sprite.self_modulate = Color(64.0 / 255.0, 2.0 / 255.0, 0, 12.0 / 255.0)
+	var material := ShaderMaterial.new()
+	material.shader = CityMapControl.PALETTE_CYCLE_SHADER
+	material.set_shader_parameter("environment_enabled", true)
+	material.set_shader_parameter("environment_night", 1.0)
+	material.set_shader_parameter("environment_has_emission", true)
+	material.set_shader_parameter("environment_emission", ImageTexture.create_from_image(masks))
+	sprite.material = material
+	viewport.add_child(sprite)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var first := viewport.get_texture().get_image().get_pixel(4, 4)
+	assert(first.r > 0.9 and first.b < 0.1, "HD frame zero must sample its own light mask")
+	material.set_shader_parameter("artwork_animation_seconds", 0.125)
+	await RenderingServer.frame_post_draw
+	var second := viewport.get_texture().get_image().get_pixel(4, 4)
+	assert(second.b > 0.9 and second.r < 0.1, "HD animation must advance the emission UV together with its artwork")
+	viewport.queue_free()
+	await process_frame

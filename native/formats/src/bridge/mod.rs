@@ -1,12 +1,26 @@
 //! Godot classes of the codecs. Results are dictionaries with `ok` and `error`,
 //! plus the fields of each codec. The GDScript wrappers make result objects.
 
+mod audio_import;
 mod bmp;
+mod container;
 mod crc32;
+mod data_import;
 mod gif;
+mod graphics_import;
+mod import_source;
+mod johab;
+mod palette;
 mod pe;
 mod png;
+mod scurk_mif;
+mod scurk_pixels;
+mod scurk_print;
+mod scurk_project;
 mod sprite;
+mod sprite_fixes;
+mod sprite_import;
+mod zip;
 
 use godot::{
     classes::{Image, image::Format},

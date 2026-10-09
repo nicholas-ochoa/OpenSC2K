@@ -53,9 +53,11 @@ func check_formats() -> void:
 				check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000").ok, "Save original city")
 				check(FileAccess.get_file_as_bytes(save_path) == doc.serialize().data, "Original save stays byte-identical")
 				check(
-					not CityFileStore.save_copy(doc, save_path + "x", "res://../references/SIMCITY2000").ok,
-					"An SC2 city rejects the SC2X extension",
+					CityFileStore.save_copy(doc, save_path + "x", "res://../references/SIMCITY2000").ok
+					and Sc2File.load_path(save_path + "x").source_format == "sc2kfix",
+					"An SC2 city saved with the SC2X extension uses the sc2kfix format",
 				)
+				DirAccess.remove_absolute(save_path + "x")
 
 			check(saved_payloads(doc) == original, "Policy does not convert or mutate city")
 

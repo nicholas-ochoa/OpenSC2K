@@ -52,7 +52,7 @@ func run() -> void:
 
 	for pack_result in [result, media]:
 		for kind in ["sound", "music"]:
-			assert(MediaPack.load_folder(pack_result.get(kind), kind).import_revision == ImportedPackRevision.CURRENT[kind])
+			assert(MediaPack.load_folder(pack_result.get(kind), kind).import_revision == ImportedPackRevision.current(kind))
 	assert(selected.assets.large_sprites.entries.size() == 501)
 	assert(MediaPack.load_folder(result.sound, "sound").files.size() == 30)
 	assert(MediaPack.load_folder(result.music, "music").files.size() == 19)

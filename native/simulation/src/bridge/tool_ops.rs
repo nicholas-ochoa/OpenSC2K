@@ -8,18 +8,19 @@ use godot::prelude::*;
 
 use super::convert;
 use super::ops::Outcome;
-use crate::sim::city::{CHUNK_IDS, City};
-use crate::sim::geom::Vec2i;
-use crate::sim::random::Randoms;
-use crate::sim::tools::commands::building::{self, Placement};
-use crate::sim::tools::commands::landscape::terrain::TerrainPath;
-use crate::sim::tools::commands::route::{self, RouteChoices};
-use crate::sim::tools::commands::zone::{self, ZoneRequest};
-use crate::sim::tools::commands::{
-    ToolArgs, building::facility_repair, demolish, highway, hydro, landscape, onramp, scurk_place, subway_to_rail, tunnel,
+use sc2k_sim::sim::city::{CHUNK_IDS, City};
+use sc2k_sim::sim::effect_sampling;
+use sc2k_sim::sim::geom::Vec2i;
+use sc2k_sim::sim::random::Randoms;
+use sc2k_sim::sim::tools::commands::building::{self, Placement};
+use sc2k_sim::sim::tools::commands::landscape::terrain::TerrainPath;
+use sc2k_sim::sim::tools::commands::route::{self, RouteChoices};
+use sc2k_sim::sim::tools::commands::zone::{self, ZoneRequest};
+use sc2k_sim::sim::tools::commands::{
+    ToolArgs, building::facility_repair, demolish, dispatch, highway, hydro, landscape, onramp, scurk_place, sign, subway_to_rail, tunnel,
 };
 
-use crate::sim::value::{ToValue, Value};
+use sc2k_sim::sim::value::{ToValue, Value};
 
 pub const OPERATIONS: &[&str] = &[
     "tool.route",
@@ -38,6 +39,11 @@ pub const OPERATIONS: &[&str] = &[
     "tool.landscape_editor",
     "tool.scurk_place",
     "tool.facility_repair",
+    "tool.dispatch",
+    "tool.dispatch_recall",
+    "tool.dispatch_availability",
+    "tool.dispatch_begin_disaster",
+    "tool.sign",
 ];
 
 pub fn is_tool(op: &str) -> bool {
@@ -111,15 +117,22 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
                 zone::preview(city, &tool, &request).to_value()
             }
         }
-        "tool.demolish" => demolish::apply(
-            city,
-            &tool,
-            &convert::points(args, "points"),
-            &mut randoms.random,
-            convert::boolean(args, "underground_view", false),
-            convert::boolean(args, "scurk_mode", false),
-        )
-        .to_value(),
+        "tool.demolish" => {
+            let mut result = demolish::apply(
+                city,
+                &tool,
+                &convert::points(args, "points"),
+                &mut randoms.random,
+                convert::boolean(args, "underground_view", false),
+                convert::boolean(args, "scurk_mode", false),
+            );
+
+            // the view shows the dust of only a spread of tiles near it
+            let effects = std::mem::take(&mut result.base.effect_events);
+            let tile_limit = convert::int(args, "effect_tile_limit", 0).max(0) as usize;
+            result.base.effect_events = effect_sampling::sample(effects, convert::rect(args, "effect_window"), tile_limit);
+            result.to_value()
+        }
         "tool.terrain" => {
             let points = convert::points(args, "points");
             let path = TerrainPath {
@@ -156,13 +169,47 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
             &mut randoms.random,
             convert::int(args, "selected_zone", 0),
             convert::boolean(args, "australian_locale", false),
+            convert::boolean(args, "flipped", false),
         )
         .to_value(),
         "tool.facility_repair" => facility_repair::apply(city).to_value(),
+        "tool.dispatch" => {
+            let capacity = match convert::ints32(args, "capacity").as_slice() {
+                [police, fire, military] => [i64::from(*police), i64::from(*fire), i64::from(*military)],
+                _ => dispatch::NO_CAPACITY,
+            };
+            let edit = dispatch::apply(
+                city,
+                tool.subtool,
+                point(args, "target"),
+                convert::int(args, "cycle_index", 0),
+                &slot_points(args),
+                capacity,
+            );
+
+            edit.map_or_else(|error| dispatch::rejected(&error), |edit| edit.to_value())
+        }
+        "tool.sign" => sign::set_sign(city, point(args, "point"), &convert::string(args, "text"))
+            .map_or_else(|error| sign::rejected(&error), |edit| edit.to_value()),
+        "tool.dispatch_recall" => dispatch::recall_all(city).to_value(),
+        "tool.dispatch_availability" => dispatch::availability_value(dispatch::availability(city)),
+        "tool.dispatch_begin_disaster" => dispatch::availability_value(dispatch::begin_disaster(city)),
         _ => return Outcome::failure(format!("unknown tool operation: {op}")),
     };
 
     Outcome::value(result)
+}
+
+/// The tile of each dispatch slot: a dictionary of slot numbers and points.
+fn slot_points(args: &VarDictionary) -> Vec<(i64, Vec2i)> {
+    convert::dictionary(args, "slot_points")
+        .iter_shared()
+        .filter_map(|(slot, point)| {
+            let point = point.try_to::<Vector2i>().ok()?;
+
+            Some((slot.try_to::<i64>().ok()?, Vec2i::new(i64::from(point.x), i64::from(point.y))))
+        })
+        .collect()
 }
 
 fn building_placement(args: &VarDictionary) -> Placement {

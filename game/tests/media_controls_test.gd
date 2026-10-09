@@ -24,11 +24,10 @@ func _run() -> void:
 	assert(not audio.handle_media_key(KEY_A))
 	var bar := preload("res://src/ui/shell/city_status_bar.tscn").instantiate() as CityStatusBar
 	root.add_child(bar)
-	bar.set_reports(PackedStringArray(["Test report"]))
 	bar.show_music_notice("Playing: Test track")
 	assert(bar.reports_label.text == "Playing: Test track")
-	bar.update_report_rotation(5.1)
-	assert(bar.reports_label.text == "Test report")
+	bar.update_music_notice(5.1)
+	assert(bar.reports_label.text.is_empty(), "The music notice did not give way to the blank city status")
 
 	for tile in range(0xfb, 0xff):
 		assert(QueryNeighborhood.zoom_for_tile(tile) == 2.0)
@@ -36,7 +35,7 @@ func _run() -> void:
 	assert(QueryNeighborhood.zoom_for_tile(BuildingTileIds.GAS_POWER) == 2.5)
 	assert(ToolSoundRules.success_events(2, 0) == [506])
 	assert(ToolSoundRules.success_events(2, 1) == [509])
-	assert(ToolSoundRules.success_events(2, 2) == [506])
+	assert(ToolSoundRules.success_events(2, 2) == [525])
 	audio.queue_free()
 	bar.queue_free()
 	await process_frame

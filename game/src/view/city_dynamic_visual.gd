@@ -26,6 +26,8 @@ var hidden: bool = false
 var hazard_animation: CitySpriteFrameBlend
 # true when the pixels come from the static image, as a shadow does, and not only from its silhouettes
 var samples_static: bool = false
+# the texture holds full-color HD art, not palette indices
+var literal_artwork: bool = false
 
 
 func _init(image_texture: Texture2D = null, destination := Vector2.ZERO, extent := Vector2.INF) -> void:
@@ -60,6 +62,7 @@ func copy() -> CityDynamicVisual:
 	result.hidden = hidden
 	result.hazard_animation = hazard_animation
 	result.samples_static = samples_static
+	result.literal_artwork = literal_artwork
 
 	return result
 
@@ -88,13 +91,14 @@ func matches(other: CityDynamicVisual) -> bool:
 		and special_batch == other.special_batch
 		and hidden == other.hidden
 		and hazard_animation == other.hazard_animation
+		and literal_artwork == other.literal_artwork
 	)
 
 
 # cache stamps compare fields by value while retaining resource identity
 func value_signature() -> Array:
 	return [texture, water_reflection, emission_texture, vehicle_light, index_texture, palette_lookup_all, texture_factor, position, size,
-		image, special_overlay, batch_cache_key, depth_order, shadow, transparent_shadow, fullbright, toxic_cloud, warm_cloud, beam_glow, special_batch, hidden, hazard_animation]
+		image, special_overlay, batch_cache_key, depth_order, shadow, transparent_shadow, fullbright, toxic_cloud, warm_cloud, beam_glow, special_batch, hidden, hazard_animation, literal_artwork]
 
 
 static func build_grid(visuals: Array[CityDynamicVisual]) -> NativeRectIndex:

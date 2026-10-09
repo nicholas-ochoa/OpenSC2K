@@ -111,6 +111,7 @@ func begin() -> void:
 		var original := app.static_render.original_archive_for_view(view)
 		var archive := Sc2SpriteArchive.new()
 		# Share immutable decoded art; only the decorative traffic switch differs.
+		archive.high_resolution = original.high_resolution
 		archive.entries = original.entries
 		archive.entries_by_id = original.entries_by_id
 		archive.visual_emission = original.visual_emission
@@ -254,6 +255,7 @@ func _configure(index: int, dirty := Rect2i()) -> void:
 	if not cache.signature.is_empty() and cache.signature != signature:
 		listed = ApplicationStaticRender.changed_source_rects(app.document_state.city, cache.source_payloads, archives[index], view, changed)
 	var previous_generation := cache.generation
+	cache.artwork_palette = app.asset_state.palette if not archives[index].high_resolution.is_empty() else null
 	cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, archives[index], signature, view,
 		CityViewMode.Mode.CITY, app.view_state.surface_visibility, app.view_state.show_underground_pipes,
 		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains, changed, listed,

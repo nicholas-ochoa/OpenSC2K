@@ -1,7 +1,7 @@
 class_name SubwayToRailCommand
 extends RefCounted
 # Subway-to-rail connections. The native simulation library checks and places
-# the connector; see native/simulation/src/sim/tools/commands/subway_to_rail.rs.
+# the connector; see native/core/sim/src/sim/tools/commands/subway_to_rail.rs.
 
 const GROUP_RAIL := CityToolIds.Group.RAIL
 const SUBTOOL_CONNECTION := CityToolIds.Rail.SUBWAY_TO_RAIL

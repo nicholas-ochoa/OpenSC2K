@@ -1,0 +1,10 @@
+{
+  "id": "disaster-response",
+  "name": "Disaster Response",
+  "version": "1.0.0",
+  "description": "Pauses the game when a disaster starts, and reports the cost when it ends.",
+  "main": "main.js",
+  "author": "OpenSC2K",
+  "website": "https://github.com/nicholas-ochoa/OpenSC2K",
+  "license": "MIT"
+}

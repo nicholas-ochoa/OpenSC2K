@@ -1,6 +1,9 @@
 class_name CityMapPresentation
 extends CityMapConstants
 
+# the placement preview shows the object at half opacity
+const GHOST_COLOR := Color(1.0, 1.0, 1.0, 0.5)
+
 var map: CityMapControl
 var _effect_generation := 0
 # effect sequences that play now. each one advances on its own timer
@@ -60,17 +63,23 @@ func _draw_overlay() -> void:
 	var canvas := map.layers.overlay_layer
 	var scale := map.camera._view_scale()
 	var offset := map.camera._draw_offset(scale)
-	var valid := (not map.placement_validator.is_valid()
+	var valid := (map.selection.query_preview_active() or not map.placement_validator.is_valid()
 		or bool(map.placement_validator.call(map.selection_end if map.selection_end.x >= 0 else map.hover_tile)))
 
 	map.selection._draw_selection_preview(canvas, scale, offset, valid)
+
+	if map.placement_ghost_provider.is_valid() and map.edit_enabled and map.hover_tile.x >= 0:
+		var ghost: CityDynamicVisual = map.placement_ghost_provider.call(map.hover_tile)
+
+		if ghost != null:
+			canvas.draw_texture_rect(ghost.texture, Rect2(offset + ghost.position * scale, ghost.size * scale), false, GHOST_COLOR)
 
 	if map.selection.bulldozer_visible() and map.bulldozer_visual_provider.is_valid():
 		var visual: CityDynamicVisual = map.bulldozer_visual_provider.call(map.hover_tile, map.bulldozer_direction)
 		if visual != null:
 			canvas.draw_texture_rect(
 				visual.texture, Rect2(offset + visual.position * scale, visual.size * scale),
-				false, CityForegroundPalette.INDEXED_DRAW_COLOR
+				false, Color.WHITE if visual.literal_artwork else CityForegroundPalette.INDEXED_DRAW_COLOR
 			)
 
 	if map.trip_reach != null:
@@ -112,6 +121,15 @@ func set_city_view(
 
 	if reset_center and map.city_source != null:
 		map.source_center = Vector2(map.city_source.size) * 0.5
+
+		# a smaller map can lack the fit level of the previous map. the zoom
+		# signal waits, because its map refresh can supply a new source
+		var furthest: float = map.camera.zoom_levels()[0]
+
+		if map.zoom_factor < furthest * 0.75:
+			map.zoom_factor = furthest
+			map.signs._invalidate_sign_entries()
+			map.zoom_changed.emit.call_deferred(map.camera.zoom_percent())
 
 	if map.pending_loaded_center.x >= 0:
 		map.camera.center_on_tile(map.pending_loaded_center)
@@ -156,23 +174,19 @@ func transient_effect_count() -> int:
 	return count
 
 
-func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
+# `offsets` are parts of `distance` view pixels, one each `frame_duration`
+# seconds. the map multiplies the distance by the zoom
+func shake_view(offsets: Array[Vector2], frame_duration: float, distance: float) -> void:
 	_shake_generation += 1
 	shake_offset = Vector2.ZERO
 
-	if frames <= 0 or not map.is_inside_tree():
+	if offsets.is_empty() or not map.is_inside_tree():
 		map.layers._sync_base_layer()
 		map.queue_redraw()
 
 		return
 
-	_show_shake_frame(
-		0,
-		frames,
-		maxf(0.0, float(frame_duration)),
-		maxf(0.0, float(distance)),
-		_shake_generation
-	)
+	_show_shake_frame(0, offsets, maxf(0.0, frame_duration), maxf(0.0, distance), _shake_generation)
 
 
 func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
@@ -255,23 +269,24 @@ func _show_transient_effect_frame(
 
 
 func _show_shake_frame(
-	frame: int, frames: int, duration: float, distance: float, generation: int
+	frame: int, offsets: Array[Vector2], duration: float, distance: float, generation: int
 ) -> void:
 	if generation != _shake_generation:
 		return
 
-	if frame >= frames:
+	if frame >= offsets.size():
 		shake_offset = Vector2.ZERO
 		map.layers._sync_base_layer()
 		map.queue_redraw()
 
 		return
 
-	shake_offset = Vector2(-distance * maxf(1.0, map.zoom_factor) * map.map_pixel_ratio, 0.0) if frame & 1 == 0 else Vector2.ZERO
+	# whole screen pixels keep the pixel art sharp
+	shake_offset = (offsets[frame] * distance * maxf(1.0, map.zoom_factor) * map.map_pixel_ratio).round()
 	map.layers._sync_base_layer()
 	map.queue_redraw()
 	map.get_tree().create_timer(duration).timeout.connect(
-		map._show_shake_frame.bind(frame + 1, frames, duration, distance, generation)
+		map._show_shake_frame.bind(frame + 1, offsets, duration, distance, generation)
 	)
 
 

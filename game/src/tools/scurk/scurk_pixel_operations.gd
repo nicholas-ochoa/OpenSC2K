@@ -14,6 +14,8 @@ const TEXTURE_ROWS := [
 ]
 
 
+# The native formats library holds the pixel rules; see
+# native/core/assets/src/scurk/pixels.rs
 static func copy_region(
 	value_pixels: PackedInt32Array,
 	width: int,
@@ -21,37 +23,11 @@ static func copy_region(
 	start: Vector2i,
 	finish: Vector2i
 ) -> PixelRegion:
-	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		var empty_region := PixelRegion.new()
-		empty_region.width = 0
-		empty_region.height = 0
-		empty_region.pixels = PackedInt32Array()
-
-		return empty_region
-
-	var minimum := Vector2i(
-		clampi(mini(start.x, finish.x), 0, width - 1),
-		clampi(mini(start.y, finish.y), 0, height - 1)
-	)
-	var maximum := Vector2i(
-		clampi(maxi(start.x, finish.x), 0, width - 1),
-		clampi(maxi(start.y, finish.y), 0, height - 1)
-	)
-	var copied_width := maximum.x - minimum.x + 1
-	var copied_height := maximum.y - minimum.y + 1
-	var copied := PackedInt32Array()
-	copied.resize(copied_width * copied_height)
-
-	for y in copied_height:
-		for x in copied_width:
-			copied[y * copied_width + x] = value_pixels[
-				(minimum.y + y) * width + minimum.x + x
-			]
-
+	var copied := NativeScurkPixels.copy_region(value_pixels, width, height, start, finish)
 	var result := PixelRegion.new()
-	result.width = copied_width
-	result.height = copied_height
-	result.pixels = copied
+	result.width = copied.width
+	result.height = copied.height
+	result.pixels = copied.pixels
 
 	return result
 
@@ -65,86 +41,27 @@ static func paste_region(
 	source_width: int,
 	source_height: int
 ) -> PackedInt32Array:
-	var result := target_pixels.duplicate()
-
-	if (
-		target_width <= 0
-		or target_height <= 0
-		or result.size() != target_width * target_height
-		or source_width <= 0
-		or source_height <= 0
-		or source_pixels.size() != source_width * source_height
-	):
-		return result
-
-	for source_y in source_height:
-		var target_y := target.y + source_y
-
-		if target_y < 0 or target_y >= target_height:
-			continue
-
-		for source_x in source_width:
-			var target_x := target.x + source_x
-
-			if target_x < 0 or target_x >= target_width:
-				continue
-
-			result[target_y * target_width + target_x] = (
-				source_pixels[source_y * source_width + source_x]
-			)
-
-	return result
+	return NativeScurkPixels.paste_region(
+		target_pixels, target_width, target_height, target, source_pixels, source_width, source_height
+	)
 
 
 static func rotate_counterclockwise(
 	value_pixels: PackedInt32Array, width: int, height: int
 ) -> PackedInt32Array:
-	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		return PackedInt32Array()
-
-	var result := PackedInt32Array()
-	result.resize(width * height)
-	var result_width := height
-
-	for y in height:
-		for x in width:
-			var result_x := y
-			var result_y := width - 1 - x
-			result[result_y * result_width + result_x] = value_pixels[y * width + x]
-
-	return result
+	return NativeScurkPixels.rotate_counterclockwise(value_pixels, width, height)
 
 
 static func flip_horizontal(
 	value_pixels: PackedInt32Array, width: int, height: int
 ) -> PackedInt32Array:
-	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		return PackedInt32Array()
-
-	var result := PackedInt32Array()
-	result.resize(width * height)
-
-	for y in height:
-		for x in width:
-			result[y * width + width - 1 - x] = value_pixels[y * width + x]
-
-	return result
+	return NativeScurkPixels.flip_horizontal(value_pixels, width, height)
 
 
 static func flip_vertical(
 	value_pixels: PackedInt32Array, width: int, height: int
 ) -> PackedInt32Array:
-	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		return PackedInt32Array()
-
-	var result := PackedInt32Array()
-	result.resize(width * height)
-
-	for y in height:
-		for x in width:
-			result[(height - 1 - y) * width + x] = value_pixels[y * width + x]
-
-	return result
+	return NativeScurkPixels.flip_vertical(value_pixels, width, height)
 
 
 static func flood_fill(
@@ -171,14 +88,7 @@ static func flood_fill_pattern(
 	if pattern_rows.size() != 8:
 		return value_pixels.duplicate()
 
-	var pattern := PackedInt32Array()
-	pattern.resize(64)
-
-	for y in 8:
-		var row_mask := int(pattern_rows[y])
-
-		for x in 8:
-			pattern[y * 8 + x] = 0xff if row_mask & (0x80 >> x) else 0
+	var pattern := NativeScurkPixels.pattern_pixels(PackedByteArray(pattern_rows))
 
 	return flood_fill_texture(
 		value_pixels, width, height, start, selected_color, pattern, 8, 8
@@ -195,57 +105,9 @@ static func flood_fill_texture(
 	pattern_width: int,
 	pattern_height: int
 ) -> PackedInt32Array:
-	var result := value_pixels.duplicate()
-
-	if (
-		width <= 0
-		or height <= 0
-		or result.size() != width * height
-		or start.x < 0
-		or start.y < 0
-		or start.x >= width
-		or start.y >= height
-		or selected_color < -1
-		or selected_color > 255
-		or pattern_width <= 0
-		or pattern_height <= 0
-		or pattern_pixels.size() != pattern_width * pattern_height
-	):
-		return result
-
-	var target := result[start.y * width + start.x]
-	var visited := PackedByteArray()
-	visited.resize(width * height)
-	var pending: Array[Vector2i] = [start]
-
-	while not pending.is_empty():
-		var point: Vector2i = pending.pop_back()
-		var point_index := point.y * width + point.x
-
-		if visited[point_index] != 0 or result[point_index] != target:
-			continue
-
-		visited[point_index] = 1
-		result[point_index] = texture_color(
-			point, selected_color,
-			pattern_pixels, pattern_width, pattern_height
-		)
-		var neighbors: Array[Vector2i] = [
-			Vector2i(point.x - 1, point.y),
-			Vector2i(point.x + 1, point.y),
-			Vector2i(point.x, point.y - 1),
-			Vector2i(point.x, point.y + 1),
-		]
-		for neighbor: Vector2i in neighbors:
-			if (
-				neighbor.x >= 0
-				and neighbor.y >= 0
-				and neighbor.x < width
-				and neighbor.y < height
-			):
-				pending.append(neighbor)
-
-	return result
+	return NativeScurkPixels.flood_fill_texture(
+		value_pixels, width, height, start, selected_color, pattern_pixels, pattern_width, pattern_height
+	)
 
 
 static func texture_color(
@@ -255,46 +117,18 @@ static func texture_color(
 	pattern_width: int,
 	pattern_height: int
 ) -> int:
-	if (
-		pattern_width <= 0
-		or pattern_height <= 0
-		or pattern_pixels.size() != pattern_width * pattern_height
-	):
-		return selected_color
-
-	var source := pattern_pixels[
-		posmod(point.y, pattern_height) * pattern_width
-		+ posmod(point.x, pattern_width)
-	]
-
-	return ScurkPaintOptions.resolve_texture_value(source, selected_color)
+	return NativeScurkPixels.texture_color(point, selected_color, pattern_pixels, pattern_width, pattern_height)
 
 
 static func line_points(start: Vector2i, finish: Vector2i) -> Array[Vector2i]:
+	return _points(NativeScurkPixels.line_points(start, finish))
+
+
+static func _points(flat: PackedInt64Array) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	var x := start.x
-	var y := start.y
-	var dx := absi(finish.x - x)
-	var sx := 1 if x < finish.x else -1
-	var dy := -absi(finish.y - y)
-	var sy := 1 if y < finish.y else -1
-	var error := dx + dy
 
-	while true:
-		result.append(Vector2i(x, y))
-
-		if x == finish.x and y == finish.y:
-			break
-
-		var doubled := error * 2
-
-		if doubled >= dy:
-			error += dy
-			x += sx
-
-		if doubled <= dx:
-			error += dx
-			y += sy
+	for index in range(0, flat.size(), 2):
+		result.append(Vector2i(flat[index], flat[index + 1]))
 
 	return result
 

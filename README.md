@@ -69,6 +69,7 @@ sound, and music.
 - More zoom levels, layer controls, and optional dark underground views
 - Detailed simulation data available including simulation timings, inspection tools
 - Support for external graphics, sound, and music packs
+- A JavaScript runtime for mods and developer scripts, with game events, a game API, example mods in `examples/mods`, and a Chrome DevTools console. Mods load from the `mods` folder, each in its own sandbox, and the Mods tab of Settings turns them on and off. See [Scripting](docs/scripting.md) and [Mods](docs/mods.md)
 
 Larger cities and per-tile data maps use `.sc2x` saves: ZIP archives with one raw entry per
 city structure, city names of up to 64 characters, and signs that can share a tile with any
@@ -88,8 +89,8 @@ Open `game/project.godot` in Godot. Run `python3 tools/build_native.py` after ea
 to a crate in `native`. It also builds the FluidSynth library, which needs CMake. The validation command also builds the native libraries and runs
 their unit tests. See [the native simulation](docs/native-simulation.md),
 [the native region builder](docs/native-rendering.md),
-[the native formats](docs/native-formats.md), [the native audio](docs/native-audio.md) and
-[FluidSynth music](docs/fluidsynth.md) for their layouts. Run the checks with:
+[the native formats](docs/native-formats.md), [the native audio](docs/native-audio.md),
+[FluidSynth music](docs/fluidsynth.md) and [the native scripting](docs/native-scripting.md) for their layouts. Run the checks with:
 
 ```sh
 tools/validate_project.sh

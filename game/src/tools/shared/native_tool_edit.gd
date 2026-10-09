@@ -1,7 +1,7 @@
 class_name NativeToolEdit
 extends RefCounted
 ## Runs a player tool command in the native simulation library. See
-## native/simulation/src/sim/tools/commands. The command edits the city chunks
+## native/core/sim/src/sim/tools/commands. The command edits the city chunks
 ## and returns its result class; this adds the payloads before and after the
 ## edit, which undo exchanges.
 

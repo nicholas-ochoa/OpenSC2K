@@ -7,6 +7,13 @@ const EXTENDED_SIZE := 56
 const SCHEMA2_SIZE := 64
 const SCHEMA2_TIME_LIMIT := 0x0a
 const TEMPLATE_HEADER := 0x80000000
+# the SCEN fields that the native library reads and evaluates
+const FIELDS: PackedStringArray = [
+	"format_size", "disaster_type", "disaster_x", "disaster_y", "time_limit_months", "city_size_goal",
+	"residential_goal", "commercial_goal", "industrial_goal", "cash_goal", "land_value_goal",
+	"life_expectancy_goal", "education_goal", "pollution_limit", "crime_limit", "traffic_limit",
+	"first_building_id", "second_building_id", "first_building_tile_count", "second_building_tile_count",
+]
 const TEMPLATE_TYPE_SIZES := {
 	"DBYT": 1,
 	"DWRD": 2,
@@ -37,6 +44,8 @@ var first_building_tile_count := 0
 var second_building_tile_count := 0
 
 
+# The scenario of a document. The native simulation library reads SCEN; see
+# native/core/sim/src/sim/civic/scenario.rs.
 static func from_document(source: Sc2File) -> ScenarioState:
 	var scenario := ScenarioState.new()
 	scenario.document = source
@@ -53,78 +62,21 @@ static func from_document(source: Sc2File) -> ScenarioState:
 
 		return scenario
 
-	var data := chunk.decoded_payload
+	var read: Dictionary = NativeSimulation.scenario_read(chunk.decoded_payload)
 
-	if data.size() != LEGACY_SIZE and data.size() != EXTENDED_SIZE and data.size() != SCHEMA2_SIZE:
-		scenario.load_error = "SCEN has %d bytes; expected 52, 56, or 64" % data.size()
-
-		return scenario
-
-	if BinaryData.read_u32_be(data, 0) != 0x80000000:
-		scenario.load_error = "SCEN header is not 0x80000000"
+	if not read.ok:
+		scenario.load_error = read.error
 
 		return scenario
 
-	scenario.format_size = data.size()
-
-	if data.size() == SCHEMA2_SIZE:
-		scenario._read_schema2(data)
-
-		return scenario
-
-	scenario.disaster_type = BinaryData.read_u16_be(data, 0x04)
-	scenario.disaster_x = data[0x06]
-	scenario.disaster_y = data[0x07]
-	scenario.time_limit_months = BinaryData.read_u16_be(data, 0x08)
-	scenario.city_size_goal = BinaryData.read_u32_be(data, 0x0a)
-	scenario.residential_goal = BinaryData.read_i32_be(data, 0x0e)
-	scenario.commercial_goal = BinaryData.read_i32_be(data, 0x12)
-	scenario.industrial_goal = BinaryData.read_i32_be(data, 0x16)
-	scenario.cash_goal = BinaryData.read_i32_be(data, 0x1a)
-	scenario.land_value_goal = BinaryData.read_i32_be(data, 0x1e)
-
-	var limit_offset := 0x22
-
-	if data.size() == EXTENDED_SIZE:
-		scenario.life_expectancy_goal = BinaryData.read_u16_be(data, 0x22)
-		scenario.education_goal = BinaryData.read_u16_be(data, 0x24)
-		limit_offset = 0x26
-
-	scenario.pollution_limit = BinaryData.read_u32_be(data, limit_offset)
-	scenario.crime_limit = BinaryData.read_u32_be(data, limit_offset + 4)
-	scenario.traffic_limit = BinaryData.read_u32_be(data, limit_offset + 8)
-	scenario.first_building_id = data[limit_offset + 12]
-	scenario.second_building_id = data[limit_offset + 13]
-	scenario.first_building_tile_count = BinaryData.read_u16_be(data, limit_offset + 14)
-	scenario.second_building_tile_count = BinaryData.read_u16_be(data, limit_offset + 16)
+	for field: String in read.fields:
+		scenario.set(field, read.fields[field])
 
 	return scenario
 
 
 func is_valid() -> bool:
 	return load_error.is_empty()
-
-
-func _read_schema2(data: PackedByteArray) -> void:
-	disaster_type = BinaryData.read_u16_be(data, 0x04)
-	disaster_x = BinaryData.read_u16_be(data, 0x06)
-	disaster_y = BinaryData.read_u16_be(data, 0x08)
-	time_limit_months = BinaryData.read_u16_be(data, SCHEMA2_TIME_LIMIT)
-	city_size_goal = BinaryData.read_u32_be(data, 0x0c)
-	residential_goal = BinaryData.read_i32_be(data, 0x10)
-	commercial_goal = BinaryData.read_i32_be(data, 0x14)
-	industrial_goal = BinaryData.read_i32_be(data, 0x18)
-	cash_goal = BinaryData.read_i32_be(data, 0x1c)
-	land_value_goal = BinaryData.read_i32_be(data, 0x20)
-	life_expectancy_goal = BinaryData.read_u16_be(data, 0x24)
-	education_goal = BinaryData.read_u16_be(data, 0x26)
-	pollution_limit = BinaryData.read_u32_be(data, 0x28)
-	crime_limit = BinaryData.read_u32_be(data, 0x2c)
-	traffic_limit = BinaryData.read_u32_be(data, 0x30)
-	first_building_id = data[0x34]
-	second_building_id = data[0x35]
-	first_building_tile_count = BinaryData.read_u32_be(data, 0x36)
-	second_building_tile_count = BinaryData.read_u32_be(data, 0x3a)
 
 
 func selection_description() -> String:
@@ -285,69 +237,75 @@ func evaluate_goals(city: CityState) -> Goals:
 	if city == null or not city.is_valid():
 		return Goals.rejected("city is invalid")
 
-	var unmet := PackedStringArray()
-	var values: Dictionary[String, int] = {
-		"city_size": city.document.misc_u32(Sc2MiscLayout.NORMAL_POPULATION),
-		"residential": city.document.misc_i32(Sc2MiscLayout.BUDGETS),
-		"commercial": city.document.misc_i32(Sc2MiscLayout.BUDGETS + Sc2BudgetLayout.COMMERCIAL * Sc2BudgetLayout.RECORD_SIZE),
-		"industrial": city.document.misc_i32(Sc2MiscLayout.BUDGETS + Sc2BudgetLayout.INDUSTRIAL * Sc2BudgetLayout.RECORD_SIZE),
-		"cash_after_bonds": city.funds() - city.document.misc_i32(Sc2MiscLayout.BONDS),
-		"land_value": city.document.misc_i32(Sc2MiscLayout.CITY_LAND_VALUE),
-		"life_expectancy": city.document.misc_i32(Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY),
-		"education": city.document.misc_i32(Sc2MiscLayout.WORKFORCE_EDUCATION),
-		"pollution": city.document.misc_u32(Sc2MiscLayout.CITY_POLLUTION),
-		"crime": city.document.misc_u32(Sc2MiscLayout.CITY_CRIME),
-		"traffic": city.document.misc_u32(Sc2MiscLayout.CITY_TRAFFIC),
-	}
-	var original_format := not city.document.is_extended()
-	var required_land_value := land_value_goal
-	var required_life_expectancy := life_expectancy_goal
-	var required_education := education_goal
+	var misc := city.document.find_chunk("MISC")
 
-	if original_format:
-		values.cash_after_bonds = _signed_32(values.cash_after_bonds)
-		values.land_value &= 0xffffffff
-		values.life_expectancy &= 0xffffffff
-		values.education &= 0xffffffff
-		required_land_value &= 0xffffffff
-		required_life_expectancy = _signed_16(required_life_expectancy) & 0xffffffff
-		required_education = _signed_16(required_education) & 0xffffffff
+	if misc == null:
+		return Goals.rejected("city is invalid")
 
-	_check_minimum(unmet, "city_size", values.city_size, city_size_goal, true)
-	_check_minimum(unmet, "residential", values.residential, residential_goal)
-	_check_minimum(unmet, "commercial", values.commercial, commercial_goal)
-	_check_minimum(unmet, "industrial", values.industrial, industrial_goal)
-	_check_minimum(unmet, "cash", values.cash_after_bonds, cash_goal)
-	_check_minimum(unmet, "land_value", values.land_value, required_land_value)
-	_check_minimum(unmet, "life_expectancy", values.life_expectancy, required_life_expectancy)
-	_check_minimum(unmet, "education", values.education, required_education)
-	_check_limit(unmet, "pollution", values.pollution, _signed_32(pollution_limit) if original_format else pollution_limit)
-	_check_limit(unmet, "crime", values.crime, _signed_32(crime_limit) if original_format else crime_limit)
-	_check_limit(unmet, "traffic", values.traffic, _signed_32(traffic_limit) if original_format else traffic_limit)
+	var fields := {}
 
-	if first_building_id != BuildingTileIds.EMPTY:
-		var first_count := city.document.misc_u32(Sc2MiscLayout.TILE_COUNTS + first_building_id * 4)
-		values["first_building_tiles"] = first_count
+	for field in FIELDS:
+		fields[field] = get(field)
 
-		if _signed_16(first_count) < _signed_16(first_building_tile_count) if original_format else first_count < first_building_tile_count:
-			unmet.append("first_building")
-
-	if second_building_id != BuildingTileIds.EMPTY:
-		var second_count := city.document.misc_u32(Sc2MiscLayout.TILE_COUNTS + second_building_id * 4)
-		values["second_building_tiles"] = second_count
-
-		if (_signed_16(second_count) < _signed_16(second_building_tile_count) if original_format
-				else second_count < second_building_tile_count):
-			unmet.append("second_building")
-
+	var evaluated: Dictionary = NativeSimulation.scenario_goals(fields, misc.decoded_payload, city.map_size,
+		city.document.large_version)
 	var result := Goals.new()
 	result.ok = true
-	result.met = unmet.is_empty()
-	result.unmet = unmet
-	result.values = values
+	result.unmet = evaluated.unmet
+	result.met = result.unmet.is_empty()
+	result.values.assign(evaluated.values)
 	result.error = ""
 
 	return result
+
+
+# The player progress of each goal, as the scenario status window of sc2kfix
+# shows it: label, requirement, current value, and whether the goal is met.
+# A goal that the scenario does not use is left out.
+func progress_rows(city: CityState) -> Array[ProgressRow]:
+	var rows: Array[ProgressRow] = []
+	var goals := evaluate_goals(city)
+
+	if not goals.ok:
+		return rows
+
+	var money := func(value: int) -> String: return BudgetReport.currency(value)
+	var land := func(value: int) -> String: return BudgetReport.currency(value * 1000)
+	var number := func(value: int) -> String: return str(value)
+
+	for goal: Array in [
+		["city_size", "city_size", city_size_goal, "City population", number, false],
+		["residential", "residential", residential_goal, "Residential population", number, false],
+		["commercial", "commercial", commercial_goal, "Commercial population", number, false],
+		["industrial", "industrial", industrial_goal, "Industrial population", number, false],
+		["cash", "cash_after_bonds", cash_goal, "Funds minus bonds", money, false],
+		["land_value", "land_value", land_value_goal, "Total land value", land, false],
+		["life_expectancy", "life_expectancy", life_expectancy_goal, "Life expectancy", number, false],
+		["education", "education", education_goal, "Education quotient", number, false],
+		["pollution", "pollution", pollution_limit, "Pollution", number, true],
+		["crime", "crime", crime_limit, "Crime", number, true],
+		["traffic", "traffic", traffic_limit, "Traffic", number, true],
+	]:
+		var required: int = goal[2]
+
+		if required <= 0:
+			continue
+
+		var format: Callable = goal[4]
+		rows.append(ProgressRow.create(goal[3], ("at most " if goal[5] else "at least ") + format.call(required),
+			format.call(int(goals.values.get(goal[1], 0))), goal[0] not in goals.unmet))
+
+	for building: Array in [
+		["first_building", "first_building_tiles", first_building_id, first_building_tile_count],
+		["second_building", "second_building_tiles", second_building_id, second_building_tile_count],
+	]:
+		if int(building[2]) == BuildingTileIds.EMPTY:
+			continue
+
+		rows.append(ProgressRow.create("%s tiles" % QueryStrings.tile_name(int(building[2])), "at least %d" % int(building[3]),
+			str(int(goals.values.get(building[1], 0))), building[0] not in goals.unmet))
+
+	return rows
 
 
 func set_time_limit_months(value: int) -> bool:
@@ -370,32 +328,8 @@ func set_time_limit_months(value: int) -> bool:
 	return true
 
 
-static func _signed_16(value: int) -> int:
-	value &= 0xffff
-	return value - 0x10000 if value & 0x8000 else value
 
 
-static func _signed_32(value: int) -> int:
-	value &= 0xffffffff
-	return value - 0x100000000 if value & 0x80000000 else value
-
-
-static func _check_minimum(
-	unmet: PackedStringArray,
-	name: String,
-	actual: int,
-	required: int,
-	zero_disables: bool = false
-) -> void:
-	if (not zero_disables or required != 0) and actual < required:
-		unmet.append(name)
-
-
-static func _check_limit(
-	unmet: PackedStringArray, name: String, actual: int, limit: int
-) -> void:
-	if limit > 0 and actual > limit:
-		unmet.append(name)
 
 
 func _text_chunk(expected_header: int) -> String:
@@ -414,6 +348,22 @@ func _text_chunk(expected_header: int) -> String:
 		return chunk.decoded_payload.slice(4, end).get_string_from_ascii()
 
 	return ""
+
+
+class ProgressRow extends RefCounted:
+	var label := ""
+	var requirement := ""
+	var current := ""
+	var met := false
+
+	static func create(label_text: String, requirement_text: String, current_text: String, is_met: bool) -> ProgressRow:
+		var row := ProgressRow.new()
+		row.label = label_text
+		row.requirement = requirement_text
+		row.current = current_text
+		row.met = is_met
+
+		return row
 
 
 class TemplateField extends RefCounted:

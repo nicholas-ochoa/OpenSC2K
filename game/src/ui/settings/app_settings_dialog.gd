@@ -15,8 +15,9 @@ signal brightmaps_export_requested
 # the player accepted the Use Defaults warning. the controls reset and save at once
 signal controls_reset_requested
 
-const CONTROLS_TAB := 3
-const DATA_TAB := 4
+const CONTROLS_TAB := 4
+const DATA_TAB := 5
+const MODS_TAB := 6
 
 var pack_error_label: Label
 var shuffle_music_check: CheckBox
@@ -28,6 +29,7 @@ var city_sounds_selector: OptionButton
 var sound_pack_edit: LineEdit
 var music_pack_edit: LineEdit
 var data_pack_edit: LineEdit
+var hd_pack_edit: LineEdit
 var pack_name_labels: Dictionary = {}
 var pack_edits: Dictionary = {}
 var pack_import_buttons: Dictionary = {}
@@ -40,10 +42,18 @@ var folder_dialog: FileDialog
 var music_slider: HSlider
 var effects_slider: HSlider
 var dark_underground_check: CheckBox
+var sprite_corrections_check: CheckBox
+# HD graphics need a loaded HD graphics pack, and they rule out the sc2kfix corrections
+var hd_graphics_check: CheckBox
+var hd_pack_loaded := false
+# the HD graphics choice, which a disabled check box keeps while it shows off
+var hd_graphics_choice := true
+var recent_autosaves_check: CheckBox
 var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
 var overview_graphics_selector: OptionButton
 var theme_selector: OptionButton
+var language_selector: OptionButton
 var ui_scale_selector: OptionButton
 var translucent_menus_check: CheckBox
 var default_mayor_edit: LineEdit
@@ -53,6 +63,7 @@ var check_for_updates_check: CheckBox
 var check_updates_now_button: Button
 var update_status_label: Label
 var controls_list: ControlsBindingList
+var mods_panel: ModsSettingsPanel
 var use_defaults_button: Button
 var reset_controls_dialog: ConfirmationDialog
 # true while the application fills the controls with the saved values
@@ -74,14 +85,31 @@ func _ready() -> void:
 	update_status_label = %UpdateStatusLabel
 	default_mayor_edit = %DefaultMayorEdit
 	theme_selector = %ThemeSelector
+	language_selector = %LanguageSelector
+
+	# each language shows its own name, in every language
+	for code in AppLocalization.codes():
+		language_selector.add_item(AppLocalization.LANGUAGES[code])
+
+	language_selector.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	ui_scale_selector = %UiScaleSelector
 	translucent_menus_check = %TranslucentMenusCheck
 	effects_slider = %EffectsSlider
 	folder_edit = %FolderEdit
 	dark_underground_check = %DarkUndergroundCheck
+	sprite_corrections_check = %SpriteCorrectionsCheck
+	hd_graphics_check = %HdGraphicsCheck
+	# this runs before the change notice, so the values have the corrections off
+	hd_graphics_check.toggled.connect(func(pressed: bool) -> void:
+		if not hd_graphics_check.disabled:
+			hd_graphics_choice = pressed
+
+		_sync_hd_controls())
+	recent_autosaves_check = %RecentAutosavesCheck
 	fullscreen_check = %FullscreenCheck
 	music_pack_edit = %MusicPackEdit
 	data_pack_edit = %DataPackEdit
+	hd_pack_edit = %HdPackEdit
 	music_slider = %MusicSlider
 
 	overview_graphics_selector = %OverviewGraphicsSelector
@@ -123,10 +151,21 @@ func _ready() -> void:
 	_bind_pack_controls("sound", sound_pack_edit, %SoundPackName, %SoundBrowse)
 	_bind_pack_controls("music", music_pack_edit, %MusicPackName, %MusicBrowse)
 	_bind_pack_controls("data", data_pack_edit, %DataPackName, %DataBrowse)
+	_bind_pack_controls("hd", hd_pack_edit, %HdPackName, %HdBrowse)
 	_watch_clicks(tabs)
 	tabs.get_tab_bar().tab_clicked.connect(button_clicked.emit.unbind(1))
 	_build_controls_reset(content)
 	_watch_changes(tabs)
+	# a mod check box applies at once, not through settings_changed
+	var mods_scroll := ScrollContainer.new()
+	mods_scroll.name = "Mods"
+	mods_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	mods_panel = ModsSettingsPanel.new()
+	mods_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mods_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	mods_scroll.add_child(mods_panel)
+	tabs.add_child(mods_scroll)
+	_watch_clicks(mods_panel)
 	controls_list.bindings_changed.connect(_notify_change)
 	# closing the dialog applies a text field that still has focus
 	visibility_changed.connect(func() -> void:
@@ -331,6 +370,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.visual_enhancements = visual_tab.selected_values()
 	result.default_mayor_name = default_mayor_edit.text.strip_edges()
 	result.ui_theme = "dark" if theme_selector.selected == 1 else "light"
+	result.ui_language = AppLocalization.codes()[maxi(0, language_selector.selected)]
 	result.translucent_menus = translucent_menus_check.button_pressed
 	result.ui_scale = AppUiScale.OPTIONS[maxi(0, ui_scale_selector.selected)]
 	result.overview_graphics = overview_graphics_selector.selected
@@ -342,12 +382,16 @@ func selected_values() -> AppSettingsStore.Values:
 	result.sound_pack_folder = sound_pack_edit.text.strip_edges()
 	result.music_pack_folder = music_pack_edit.text.strip_edges()
 	result.data_pack_folder = data_pack_edit.text.strip_edges()
+	result.hd_pack_folder = hd_pack_edit.text.strip_edges()
 	result.zoom_graphics = _selected_zoom_graphics()
 	result.background_audio = background_audio_check.button_pressed
 	result.city_renderer = "cpu" if renderer_selector.selected == 1 else "gpu"
 	result.music_volume = float(music_slider.value) / 100.0
 	result.effects_volume = float(effects_slider.value) / 100.0
 	result.dark_underground = dark_underground_check.button_pressed
+	result.sprite_corrections = sprite_corrections_check.button_pressed
+	result.hd_graphics = hd_graphics_choice
+	result.recent_autosaves = recent_autosaves_check.button_pressed
 	result.fullscreen = fullscreen_check.button_pressed
 	result.check_for_updates = check_for_updates_check.button_pressed
 	result.control_bindings = controls_list.pending.duplicate_set()
@@ -432,20 +476,50 @@ func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: But
 	browse.pressed.connect(func() -> void:
 		picker.popup_centered_ratio(0.8))
 
+	pack_name_labels[kind] = label
+	pack_edits[kind] = edit
+	edit.text_changed.connect(func(_text: String) -> void:
+		_refresh_pack_name(kind))
+
+	# an HD sprite pack is optional and has no import
+	if kind == "hd":
+		return
+
 	# Import only this pack kind from a copy of the game.
 	var import_button := Button.new()
 	import_button.name = kind.capitalize() + "Import"
 	import_button.text = "Import..."
 	import_button.custom_minimum_size = browse.custom_minimum_size
-	import_button.tooltip_text = "Import only a %s pack from your copy of SimCity 2000." % kind
+	import_button.tooltip_text = tr("Import only a %s pack from your copy of SimCity 2000.") % tr(kind)
 	import_button.pressed.connect(_request_original_import.bind(PackedStringArray([kind])))
 	browse.get_parent().add_child(import_button)
 	pack_import_buttons[kind] = import_button
-	pack_name_labels[kind] = label
-	pack_edits[kind] = edit
-	edit.placeholder_text = "Automatic (%s)" % MediaPack.default_folder(kind).path_join("pack.json")
-	edit.text_changed.connect(func(_text: String) -> void:
-		_refresh_pack_name(kind))
+	edit.placeholder_text = tr("Automatic (%s)") % MediaPack.default_folder(kind).path_join("pack.json")
+
+
+# Whether an HD graphics pack is loaded: only then can HD graphics show.
+func set_hd_pack_loaded(loaded: bool) -> void:
+	hd_pack_loaded = loaded
+	_sync_hd_controls()
+
+
+# Show the HD graphics choice of the settings. Without a loaded pack the check
+# box is off and disabled, and the choice stays for a later pack.
+func show_hd_graphics(enabled: bool) -> void:
+	hd_graphics_choice = enabled
+	_sync_hd_controls()
+
+
+# HD graphics show with a loaded pack and the check box on. They use no sc2kfix
+# sprite corrections, which then turn off.
+func _sync_hd_controls() -> void:
+	hd_graphics_check.disabled = not hd_pack_loaded
+	hd_graphics_check.set_pressed_no_signal(hd_pack_loaded and hd_graphics_choice)
+	var hd := hd_pack_loaded and hd_graphics_choice
+	sprite_corrections_check.disabled = hd
+
+	if hd:
+		sprite_corrections_check.set_pressed_no_signal(false)
 
 
 func set_loaded_pack(kind: String, pack_name: String, path: String) -> void:
@@ -480,7 +554,7 @@ static func pack_file_path(value: String) -> String:
 func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 	var picker := FileDialog.new()
 	picker.theme = AppUiTheme.file_dialog()
-	picker.title = "Select %s pack.json" % kind
+	picker.title = tr("Select %s pack.json") % tr("HD sprite" if kind == "hd" else kind)
 	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	picker.filters = PackedStringArray(["pack.json ; OpenSC2K pack"])
 	picker.access = FileDialog.ACCESS_FILESYSTEM

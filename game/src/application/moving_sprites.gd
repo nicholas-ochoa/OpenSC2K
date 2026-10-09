@@ -82,7 +82,6 @@ func refresh_moving_things(view_size := -1) -> void:
 	var sprite_archive := app.static_render.sprite_archive_for_view(view_size)
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := configuration.divisor
-	var factor := 1
 	var commands := caches.dynamic_command_cache.get_commands(
 		app.document_state.city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
 	)
@@ -102,6 +101,7 @@ func refresh_moving_things(view_size := -1) -> void:
 		var command := traffic_motion.draw_command(source_command, divisor, app.document_state.city.map_size)
 		var display_position := Vector2(source_command.position * divisor) + traffic_motion.display_offset(source_command, divisor)
 		var position := Vector2i(display_position.round())
+		var factor := _artwork_texture_factor(sprite_archive, command.sprite_id, divisor) if not command.shadow else 1
 		if not app.view_state.show_vehicles and command.record >= 0 and _is_vehicle(int(command.record)):
 			continue
 
@@ -147,6 +147,13 @@ func refresh_moving_things(view_size := -1) -> void:
 		var texture: Texture2D = resource.texture
 		var index_texture: Texture2D = resource.index_texture
 		var visual_image: Image = resource.image
+		var literal_artwork := resource.artwork_image != null and not command.shadow
+
+		if literal_artwork:
+			visual_image = resource.artwork_image
+			texture = resource.artwork_texture
+			index_texture = null
+
 		var occluder_mask: Image
 
 		if bool(command.static_occlusion):
@@ -184,20 +191,21 @@ func refresh_moving_things(view_size := -1) -> void:
 				samples_static = true
 
 			var occluded := IsometricRenderer.occlude_dynamic_with_mask(
-				resource.image, occluder_mask, position * factor, index_image, foreground_indices, index_covers_sprite
+				visual_image, occluder_mask, position * factor, index_image, foreground_indices, index_covers_sprite
 			)
 
 			if int(occluded.occluded_pixels) > 0:
 				visual_image = occluded.image
 				texture = ImageTexture.create_from_image(occluded.image)
-				index_texture = texture
+				index_texture = null if literal_artwork else texture
 
 		var visual := CityDynamicVisual.new()
 		visual.vehicle_light = command.record >= 0 and _is_vehicle(int(command.record))
 		visual.samples_static = samples_static
 		visual.texture = texture
 		visual.index_texture = index_texture
-		visual.palette_lookup_all = true
+		visual.palette_lookup_all = not literal_artwork
+		visual.literal_artwork = literal_artwork
 		visual.texture_factor = factor
 		visual.position = Vector2(position)
 		visual.size = Vector2(resource.native_size)
@@ -607,7 +615,8 @@ func demolish_brush_visual(tile: Vector2i, direction: int) -> CityDynamicVisual:
 
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := configuration.divisor
-	var resource := dynamic_sprite_resource(archive, int(sprite.sprite_id), bool(sprite.flip), divisor)
+	var resource := dynamic_sprite_resource(archive, int(sprite.sprite_id), bool(sprite.flip), divisor,
+		_artwork_texture_factor(archive, int(sprite.sprite_id), divisor))
 	if resource == null:
 		return null
 
@@ -621,7 +630,8 @@ func demolish_brush_visual(tile: Vector2i, direction: int) -> CityDynamicVisual:
 	if commands.is_empty():
 		return null
 	var result := CityDynamicVisual.new()
-	result.texture = resource.texture
+	result.texture = resource.artwork_texture if resource.artwork_texture != null else resource.texture
+	result.literal_artwork = resource.artwork_texture != null
 	result.position = Vector2(commands[0].position * divisor)
 	result.size = Vector2(entry.width, entry.height) * divisor
 
@@ -678,9 +688,42 @@ func dynamic_sprite_resource(
 	resource.native_size = native_size
 	resource.texture = texture
 	resource.index_texture = texture
+
+	if _shows_artwork(sprite_archive, sprite_id):
+		resource.artwork_image = HdSprite.scaled(sprite_archive.high_resolution[sprite_id].image, image.get_size())
+
+		if flip:
+			resource.artwork_image.flip_x()
+
+		resource.artwork_texture = ImageTexture.create_from_image(resource.artwork_image)
+
 	caches.dynamic_sprite_cache[key] = resource
 
 	return resource
+
+
+func _shows_artwork(sprite_archive: Sc2SpriteArchive, sprite_id: int) -> bool:
+	return sprite_archive.high_resolution.has(sprite_id) and caches.region_cache != null
+
+
+# The texel density of a moving sprite: 1, or up to 4 for HD art. Positions and
+# sizes stay in view pixels.
+func _artwork_texture_factor(sprite_archive: Sc2SpriteArchive, sprite_id: int, divisor: int) -> int:
+	if not _shows_artwork(sprite_archive, sprite_id):
+		return 1
+
+	var entry := sprite_archive.find_sprite(sprite_id)
+
+	if entry == null:
+		return 1
+
+	var physical := sprite_archive.high_resolution[sprite_id].image.get_width()
+	var logical := entry.width * divisor
+
+	if physical > logical * 2:
+		return 4
+
+	return 2 if physical > logical else 1
 
 
 func _dynamic_shadow_image(

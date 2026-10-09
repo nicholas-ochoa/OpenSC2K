@@ -1,8 +1,8 @@
 //! Indexed GIF files.
 
-use super::super::gif;
 use super::{bytes, failure, ints, success};
 use godot::prelude::*;
+use sc2k_formats::gif;
 
 /// Indexed GIF files. See `gif.rs`.
 #[derive(GodotClass)]

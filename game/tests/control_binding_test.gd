@@ -150,6 +150,15 @@ func _test_modifiers_and_scopes() -> void:
 	assert(bindings.conflicts(ControlBinding.key(KEY_SHIFT), "tool_shape_modifier").is_empty())
 	assert(bindings.conflicts(ControlBinding.key(KEY_Q), "tool_shape_modifier") == ["zoom_out"])
 	assert(bindings.conflicts(ControlBinding.key(KEY_Q), "zoom_in") == ["zoom_out"])
+	# B bulldozes while it is down, so the budget uses Command+B
+	assert(bindings.conflicts(ControlBinding.key(KEY_B), "speed_pause") == ["tool_bulldoze_modifier"])
+	var budget := _key(KEY_B)
+	_set_command(budget)
+	assert(bindings.action_for(budget) == "window_budget")
+	assert(bindings.action_for(_key(KEY_B)).is_empty() and bindings.modifier_held("tool_bulldoze_modifier", _key(KEY_B)))
+	var option_click := InputEventMouseButton.new()
+	option_click.alt_pressed = true
+	assert(bindings.modifier_held("tool_center_modifier", option_click))
 	# SCURK keys use their own scope
 	var save := ControlBinding.from_text("key:Command+S")
 	assert(bindings.conflicts(save, "scurk_save").is_empty())

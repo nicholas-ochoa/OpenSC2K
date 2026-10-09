@@ -3,6 +3,7 @@
 # Frozen pre-optimization oracle from e5f6abd9; used only by regression tests.
 extends RefCounted
 
+const PollutionReference = preload("res://tests/support/pollution_reference.gd")
 const NativeGridReference = preload("res://tests/support/native_grid_reference.gd")
 
 ## SC2X v3 rules. These are independent per-tile rules, not executable parity.
@@ -49,29 +50,29 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			var flags := int(city.tile_flags[index])
 			var zone := int(city.zones[index]) & 15
 			sources[index] = int(old.XPLT[index]) + (int(old.XTRF[index]) / 5)
-			sources[index] += int(PollutionPhase.BUILDING_POLLUTION.get(building, 0)) * 4
+			sources[index] += int(PollutionReference.BUILDING_POLLUTION.get(building, 0)) * 4
 
-			if building == PollutionPhase.RADIOACTIVITY:
+			if building == PollutionReference.RADIOACTIVITY:
 				sources[index] += 800
 
-			if building >= PollutionPhase.FIRST_POLLUTING_BUILDING:
+			if building >= PollutionReference.FIRST_POLLUTING_BUILDING:
 				center_sum += Vector2i(x, y)
 				center_count += 1
 
-			if building >= PollutionPhase.FIRST_ROAD or zone != 0:
+			if building >= PollutionReference.FIRST_ROAD or zone != 0:
 				developed += 1
 
 			if building == 0:
-				residential[index] = 12 if flags & PollutionPhase.FLAG_WATER else 4
-				industrial[index] = 12 if flags & PollutionPhase.FLAG_WATER else 0
-			elif building == PollutionPhase.BIG_PARK:
+				residential[index] = 12 if flags & PollutionReference.FLAG_WATER else 4
+				industrial[index] = 12 if flags & PollutionReference.FLAG_WATER else 0
+			elif building == PollutionReference.BIG_PARK:
 				residential[index] = 40
-			elif building >= PollutionPhase.FIRST_TREE and building <= PollutionPhase.SMALL_PARK:
+			elif building >= PollutionReference.FIRST_TREE and building <= PollutionReference.SMALL_PARK:
 				residential[index] = 20
-			elif building < PollutionPhase.FIRST_TREE:
+			elif building < PollutionReference.FIRST_TREE:
 				residential[index] = -20
 
-			if flags & PollutionPhase.FLAG_WATERED:
+			if flags & PollutionReference.FLAG_WATERED:
 				residential[index] += 4
 				industrial[index] += 4
 
@@ -79,14 +80,14 @@ static func run(city: CityState) -> PollutionPhase.Result:
 				residential[index] += 12
 
 			if building >= 0x70 and building < 0xc6:
-				weights[index] = PollutionPhase._population_weight(building)
+				weights[index] = PollutionReference._population_weight(building)
 				occupied[index] = 1
 			elif building >= 0xc6:
 				weights[index] = 12 if building >= 0xfb and building <= 0xfe else 2
 
 	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_sum.x / center_count, center_sum.y / center_count)
-	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)
-	var divisor := PollutionPhase.pollution_divisor(doc)
+	var ordinances := doc.misc_u32(PollutionReference.MISC_ORDINANCES)
+	var divisor := PollutionReference.pollution_divisor(doc)
 	var pollution := NativeGridReference.bytes(
 		NativeGridReference.smooth(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice),
 		city.simulation_slice,
@@ -106,10 +107,10 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	police.resize(count)
 	fire.resize(count)
 
-	if ordinances & PollutionPhase.POLICE_COVERAGE_ORDINANCE:
+	if ordinances & PollutionReference.POLICE_COVERAGE_ORDINANCE:
 		police = ordinance_coverage.duplicate()
 
-	if ordinances & PollutionPhase.FIRE_COVERAGE_ORDINANCE:
+	if ordinances & PollutionReference.FIRE_COVERAGE_ORDINANCE:
 		fire = ordinance_coverage.duplicate()
 
 	_add_stations(city, police, fire)
@@ -126,7 +127,7 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			growth[index] = clampi((int(old.XROG[index]) * 7 + (int(population[index]) - int(old.XPOP[index])) * 8 + 128) / 8, 0, 255)
 			var zone := int(city.zones[index]) & 15
 
-			if city.buildings[index] < PollutionPhase.FIRST_ROAD and zone == 0:
+			if city.buildings[index] < PollutionReference.FIRST_ROAD and zone == 0:
 				continue
 
 			var distance_value := 64 - ((absi(center.x - x) + absi(center.y - y)) / 2)
@@ -142,7 +143,9 @@ static func run(city: CityState) -> PollutionPhase.Result:
 					value += 21 if old.XPOP[index] < 64 else 0
 					value += maxi(distance_value / 2, 0) - (int(pollution[index]) / 5) - (int(old.XCRM[index]) / 3)
 
-			if PollutionPhase.LAND_VALUE_HALVED.has(int(city.buildings[index])):
+			value += PollutionReference.LAND_VALUE_BASE
+
+			if PollutionReference.LAND_VALUE_HALVED.has(int(city.buildings[index])):
 				value -= value / 2
 
 			land[index] = clampi(value, 0, 255)
@@ -155,10 +158,10 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			var index := x * edge + y
 			sources[index] = 0
 
-			if city.buildings[index] >= PollutionPhase.FIRST_ROAD or city.zones[index] & 15:
+			if city.buildings[index] >= PollutionReference.FIRST_ROAD or city.zones[index] & 15:
 				sources[index] = int(population[index]) - (int(land[index]) / 4) - (int(police[index]) / 2)
 
-				if ordinances & PollutionPhase.CRIME_REDUCTION_ORDINANCE:
+				if ordinances & PollutionReference.CRIME_REDUCTION_ORDINANCE:
 					sources[index] += 16
 
 	var crime := NativeGridReference.bytes(
@@ -173,9 +176,9 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	var land_total := _sum(land, city) / 4
 	var crime_total := _sum(crime, city) / 4
 
-	for update in [[PollutionPhase.MISC_CITY_POLLUTION, pollution_total],
-		[PollutionPhase.MISC_CITY_LAND_VALUE, land_total], [PollutionPhase.MISC_CITY_CRIME, crime_total],
-		[PollutionPhase.MISC_CITY_CENTER_X, center.x], [PollutionPhase.MISC_CITY_CENTER_Y, center.y]]:
+	for update in [[PollutionReference.MISC_CITY_POLLUTION, pollution_total],
+		[PollutionReference.MISC_CITY_LAND_VALUE, land_total], [PollutionReference.MISC_CITY_CRIME, crime_total],
+		[PollutionReference.MISC_CITY_CENTER_X, center.x], [PollutionReference.MISC_CITY_CENTER_Y, center.y]]:
 		doc.set_misc_u32(update[0], update[1])
 
 	return PollutionPhase.totals(
@@ -192,25 +195,25 @@ static func _add_stations(city: CityState, police: PackedByteArray, fire: Packed
 		for y in edge:
 			var index := x * edge + y
 
-			if not city.zones[index] & PollutionPhase.ZONE_BUILDING_ORIGIN:
+			if not city.zones[index] & PollutionReference.ZONE_BUILDING_ORIGIN:
 				continue
 
 			var building := int(city.buildings[index])
 			var strength := 0
 
-			if building == PollutionPhase.POLICE_STATION:
-				strength = ((city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city,
-					PollutionPhase.BUDGET_POLICE)) / 2
-			elif building == PollutionPhase.FIRE_STATION:
-				strength = (PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_FIRE) * 5) / 2
+			if building == PollutionReference.POLICE_STATION:
+				strength = ((city.document.misc_i32(PollutionReference.MISC_PRISON_BONUS) + 5) * PollutionReference._budget_funding(city,
+					PollutionReference.BUDGET_POLICE)) / 2
+			elif building == PollutionReference.FIRE_STATION:
+				strength = (PollutionReference._budget_funding(city, PollutionReference.BUDGET_FIRE) * 5) / 2
 			else:
 				continue
 
-			if not city.tile_flags[index] & PollutionPhase.FLAG_POWERED:
+			if not city.tile_flags[index] & PollutionReference.FLAG_POWERED:
 				strength /= 2
 
 			_checkpoint(city)
-			NativeGridReference.add_service(police if building == PollutionPhase.POLICE_STATION else fire, edge, Vector2i(x, y), strength)
+			NativeGridReference.add_service(police if building == PollutionReference.POLICE_STATION else fire, edge, Vector2i(x, y), strength)
 
 
 static func _sum(values: PackedByteArray, city: CityState) -> int:

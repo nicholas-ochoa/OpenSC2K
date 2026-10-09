@@ -19,7 +19,7 @@ func open_window() -> void:
 
 func on_mode_changed(mode: String) -> void:
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "City Map: %s" % CityMapView.MODE_NAMES.get(mode, mode)
+	app.status_label.text = tr("City Map: %s") % CityMapView.MODE_NAMES.get(mode, mode)
 
 
 # the city map window drives the isometric view while its checkbox is on
@@ -33,7 +33,7 @@ func on_isometric_view_requested(mode: CityViewMode.Mode) -> void:
 func on_center_requested(point: Vector2i) -> void:
 	app.map_view.center_on_tile(point)
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "City view centered at %d, %d." % [point.x, point.y]
+	app.status_label.text = tr("City view centered at %d, %d.") % [point.x, point.y]
 
 
 func viewport_outline() -> PackedVector2Array:

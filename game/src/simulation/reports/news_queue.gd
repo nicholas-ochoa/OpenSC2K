@@ -1,7 +1,7 @@
 class_name NewsQueue
 extends RefCounted
 ## The saved newspaper papers and story queue in MISC. The native simulation
-## library holds the rules; see native/simulation/src/sim/reports/news.rs.
+## library holds the rules; see native/core/sim/src/sim/reports/news.rs.
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const PAPER_OFFSET := Sc2MiscLayout.PAPERS

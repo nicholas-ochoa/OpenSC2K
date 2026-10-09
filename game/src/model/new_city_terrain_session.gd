@@ -129,6 +129,8 @@ class PreviewResult extends RefCounted:
 	var document: Sc2File
 	var city: CityState
 	var landscape_image: Image
+	# the landscape has HD art
+	var landscape_artwork := false
 	var minimap_image: Image
 
 	static func failure(message: String, failed_stage: String) -> PreviewResult:

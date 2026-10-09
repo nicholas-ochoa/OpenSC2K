@@ -7,6 +7,8 @@ signal isometric_view_requested(mode: CityViewMode.Mode)
 
 const Minimap = preload("res://src/view/city_minimap.gd")
 const Preview = preload("res://src/view/city_map_preview_control.gd")
+# SIMCITY.EXE draws the city-centre cross with PALETTEINDEX(29)
+const CENTER_MARKER_COLOR := 29
 const TAB_NAMES := [
 	"City", "Transit", "Power", "Water", "Population", "Police",
 	"Pollution", "Land Value", "Services",
@@ -143,6 +145,26 @@ func refresh(points := PackedVector2Array()) -> void:
 		image_signature = signature
 
 	preview.set_viewport_outline(points)
+	_update_center_marker()
+
+
+# The Land Value map shows the city centre, as SIMCITY.EXE intended and as
+# sc2kfix restores. The executable compares a variable that never selects it.
+func _update_center_marker() -> void:
+	if current_mode() != "land_value":
+		preview.set_center_marker(Vector2i(-1, -1), city.map_size, Color.BLACK)
+
+		return
+
+	var center := Vector2i(
+		_signed_word(city.document.misc_u32(Sc2MiscLayout.CITY_CENTER_X)),
+		_signed_word(city.document.misc_u32(Sc2MiscLayout.CITY_CENTER_Y)),
+	)
+	preview.set_center_marker(center, city.map_size, palette.color(CENTER_MARKER_COLOR))
+
+
+static func _signed_word(value: int) -> int:
+	return (value & 0xffff) - (0x10000 if value & 0x8000 else 0)
 
 
 func refresh_viewport(points: PackedVector2Array) -> void:

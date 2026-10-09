@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (last published: 0.2.0)'
+        description: 'Version to release (last published: 0.3.0)'
         type: string
         required: true
       draft:
@@ -83,6 +83,8 @@ jobs:
       ref: ${{ needs.prepare.outputs.sha }}
       version: ${{ needs.inspect.outputs.version }}
       retention-days: 7
+      signing: required
+    secrets: inherit
 
   publish:
     name: Create GitHub release

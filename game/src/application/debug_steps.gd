@@ -56,18 +56,7 @@ func step_day() -> String:
 	if open_day != null:
 		return finish_open_day()
 
-	var controller := app.simulation_state.speed_controller
-
-	# a paused fire has no elapsed fire time. a step runs its tick now
-	controller.fire_elapsed_msec = GameSpeedController.FIRE_TICK_MSEC
-
-	return _record("Day", func() -> SimulationTickResult:
-		var result := controller._empty_result()
-		var error := controller._run_day(result)
-		result.ok = error.is_empty()
-		result.error = error
-
-		return result)
+	return _record("Day", app.simulation_state.speed_controller.run_day)
 
 
 func step_phase() -> String:
@@ -94,12 +83,12 @@ func step_phase() -> String:
 	var action := open_day.actions[0]
 	var single := open_day.copy()
 	single.actions = PackedStringArray([action])
-	var remaining := SimulationDaySchedule._schedule_after(open_day, action)
+	var remaining := open_day.after(action)
 	var last := remaining.actions.is_empty()
 	open_day = null if last else remaining
 
 	return _record("Phase " + action, func() -> SimulationTickResult:
-		return _run_schedule(single, first, last))
+		return app.simulation_state.speed_controller.step_schedule(single, first, last))
 
 
 # run the actions that the open day did not run yet
@@ -111,25 +100,7 @@ func finish_open_day() -> String:
 	open_day = null
 
 	return _record("Rest of day: " + ", ".join(schedule.actions), func() -> SimulationTickResult:
-		return _run_schedule(schedule, false, true))
-
-
-func _run_schedule(schedule: SimulationSchedule, first: bool, last: bool) -> SimulationTickResult:
-	var engine := app.simulation_state.simulation_engine
-	var controller := app.simulation_state.speed_controller
-	var day := engine._run_day_schedule(schedule, false, first)
-
-	if last and day.ok:
-		day = engine._append_pending_disaster(day)
-
-	var result := controller._empty_result()
-	result.ok = day.ok
-	result.error = day.error
-
-	if day.ok:
-		controller._consume_day_result(result, day)
-
-	return result
+		return app.simulation_state.speed_controller.step_schedule(schedule, false, true))
 
 
 # the reason that a step cannot run now, or an empty string

@@ -31,12 +31,12 @@ var mayor_approval := 0
 var pending_disaster_type := 0
 var pending_disaster_point := Vector2i.ZERO
 var active_disaster_type := 0
+# the unit counts that the last disaster start fixed, and a count of those starts
+var dispatch_capacity := DispatchCommand.NO_CAPACITY
+var dispatch_epoch := 0
 var unsupported_disaster_type := 0
 var disaster_map_counter := 0
 var disaster_hurricane_counter := 0
-# true when the last disaster scan found a fire marker. riots, crashes, and
-# earthquakes also start fires, so the fire pace does not use the disaster type
-var disaster_fire_active := false
 var midi_playback_active := false
 # runtime only; never saved. false while the player hides the vehicle layer:
 # airplanes and helicopters then leave instead of crashing, as with no disasters
@@ -87,55 +87,28 @@ func _init(
 				break
 
 
+# Engine fields that the native engine reads and writes. SimulationSnapshot
+# copies them too
+const STATE_FIELDS := [
+	"developed_tiles", "power_usage_percent", "water_usage_percent", "bus_passengers", "rail_passengers",
+	"subway_passengers", "ship_home", "city_status_resource_id", "commerce_connections", "industry_connections",
+	"mayor_approval", "midi_playback_active", "pending_disaster_type", "pending_disaster_point", "terminal_state",
+	"traffic_news_deadline_msec", "stage_arcology_launch", "pending_interaction", "pending_military_site",
+	"pending_military_base_type", "forced_military_base_type", "active_disaster_type", "unsupported_disaster_type",
+	"disaster_map_counter", "disaster_hurricane_counter", "dispatch_epoch",
+	"vehicle_crashes_enabled", "arcology_launch_active", "arcology_launch_sites", "arcology_launch_wait",
+]
+
+
 func advance_moving_things(current_time_msec := -1) -> MovingThingResult:
-	var span := SimulationTimingSpan.new(city.simulation_slice)
-	var result := _timed_advance_moving_things(current_time_msec)
-	result.timing = span.finish()
-
-	return result
-
-
-func _timed_advance_moving_things(current_time_msec := -1) -> MovingThingResult:
-	if terminal_state:
-		return MovingThingResult.failure("the game has ended")
-
 	if current_time_msec < 0:
 		current_time_msec = Time.get_ticks_msec()
 
-	var result := MovingThingPhase.run(
-		city,
-		random,
-		lfsr_random,
-		game_random,
-		ship_home,
-		true,
-		current_time_msec,
-		traffic_news_deadline_msec,
-		not vehicle_crashes_enabled
-	)
-
-	if not result.ok:
-		return result
-
-	var queue_update := _persist_news_result(result)
-
-	if not queue_update.ok:
-		return MovingThingResult.failure(queue_update.error)
-
-	traffic_news_deadline_msec = result.traffic_news_deadline_msec
-
-	for change in result.connection_count_changes:
-		change_connection_count(change.kind, int(change.delta))
-
-	for request in result.disaster_start_requests:
-		pending_disaster_type = int(request.type)
-		pending_disaster_point = request.point
-
-	return result
+	return run("engine.advance_moving_things", {"current_time_msec": current_time_msec})
 
 
 # neighbor connection counts are process-local 16-bit values, as in the original.
-# a load counts them. a bought connection, explosion damage and undo change them.
+# a load counts them. a bought connection, disaster damage and undo change them.
 # `kind` is "commerce" or "industry"
 func change_connection_count(kind: String, delta: int) -> void:
 	if kind == "commerce":
@@ -145,281 +118,45 @@ func change_connection_count(kind: String, delta: int) -> void:
 
 
 func advance_day() -> SimulationDayResult:
-	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
-	var result := _timed_advance_day()
-
-	if result.ok:
-		var measured := span.finish()
-		var scheduled := result.timing
-		measured.steps = scheduled.steps
-		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
-		result.timing = measured
-
-	return result
-
-
-func _timed_advance_day() -> SimulationDayResult:
 	if city == null or not city.is_valid():
 		return SimulationDayResult.failure("city is invalid")
 
-	if not pending_interaction.is_empty():
-		return SimulationDayResult.failure("%s interaction is pending" % pending_interaction)
-
-	if terminal_state:
-		return SimulationDayResult.failure("the game has ended")
-
-	if active_disaster_type != 0:
-		return SimulationDayResult.failure("a disaster is active")
-
-	if arcology_launch_active:
-		return SimulationDayResult.failure("an arcology launch is active")
-
-	var schedule := clock.advance_day()
-
-	if not city.set_age_in_days(clock.city_days):
-		return SimulationDayResult.failure("cannot store the new simulation day")
-
-	# the day asks for the annual budget first when the year needs one
-	return _append_pending_disaster(_run_day_schedule(schedule, false, true))
+	return run("engine.advance_day")
 
 
 func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> SimulationDayResult:
-	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
-	var result := _timed_resolve_annual_budget(funding_values, auto_budget)
-
-	if result.ok:
-		var measured := span.finish()
-		var scheduled := result.timing
-		measured.steps = scheduled.steps
-		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
-		result.timing = measured
-
-	return result
-
-
-func _timed_resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> SimulationDayResult:
-	if pending_interaction != "annual_budget" or pending_day_schedule == null:
-		return SimulationDayResult.failure("no annual budget interaction is pending")
-
-	var stored := BudgetPhase.set_funding(city, funding_values, auto_budget)
-
-	if not stored.ok:
-		return SimulationDayResult.failure(stored.error)
-
-	var result := _run_day_schedule(pending_day_schedule, true)
-
-	if result.ok:
-		pending_interaction = ""
-		pending_day_schedule = null
-
-	return _append_pending_disaster(result)
+	return run("engine.resolve_annual_budget", {"values": funding_values, "auto_budget": auto_budget})
 
 
 func resolve_military_proposal(accepted: bool) -> SimulationDayResult:
-	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
-	var result := _timed_resolve_military_proposal(accepted)
-
-	if result.ok:
-		var measured := span.finish()
-		var scheduled := result.timing
-		measured.steps = scheduled.steps
-		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
-		result.timing = measured
-
-	return result
-
-
-func _timed_resolve_military_proposal(accepted: bool) -> SimulationDayResult:
-	if pending_interaction != "military_proposal" or pending_day_schedule == null:
-		return SimulationDayResult.failure("no military proposal interaction is pending")
-
-	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random, true, forced_military_base_type)
-	forced_military_base_type = 0
-
-	if not proposal.ok:
-		return SimulationDayResult.failure(proposal.error)
-
-	if proposal.notice_id >= 0:
-		pending_interaction = "military_notice"
-		pending_military_site = proposal.site if not proposal.complete else Rect2i()
-		pending_military_base_type = proposal.base_type
-		var result := SimulationDayResult.new()
-		result.ok = true
-		result.day = clock.city_days
-		result.schedule = pending_day_schedule
-		result.pending = pending_day_schedule.actions.duplicate()
-		result.phase_results = { "military_proposal": proposal }
-		result.interaction_requests = [SimulationInteractionRequest.new("military_notice")]
-		return result
-
-	return _complete_military_proposal(proposal)
+	return run("engine.resolve_military_proposal", {"accepted": accepted})
 
 
 func resolve_military_notice() -> SimulationDayResult:
-	if pending_interaction != "military_notice" or pending_day_schedule == null:
-		return SimulationDayResult.failure("no military notice is pending")
-
-	var proposal := MilitaryProposalPhase.Result.new()
-	proposal.ok = true
-	proposal.base_type = pending_military_base_type
-
-	if pending_military_site.has_area():
-		proposal = MilitaryProposalPhase.reserve_land_site(city, pending_military_base_type, pending_military_site)
-
-		if not proposal.ok:
-			return SimulationDayResult.failure(proposal.error)
-
-	pending_military_site = Rect2i()
-	pending_military_base_type = 0
-	return _complete_military_proposal(proposal)
-
-
-func _complete_military_proposal(proposal: MilitaryProposalPhase.Result) -> SimulationDayResult:
-	var original_schedule: SimulationSchedule = pending_day_schedule
-	var remaining_schedule := _schedule_after(original_schedule, "milestones")
-	pending_interaction = ""
-	pending_day_schedule = null
-	var result := _run_day_schedule(remaining_schedule, false)
-
-	if not result.ok:
-		return result
-
-	var applied := PackedStringArray(["milestones"])
-	applied.append_array(result.applied)
-	var phase_results: Dictionary[String, PhaseResult] = { "military_proposal": proposal }
-
-	for phase_name in result.phase_results:
-		phase_results[phase_name] = result.phase_results[phase_name]
-
-	result.schedule = original_schedule
-	result.applied = applied
-	result.phase_results = phase_results
-
-	return _append_pending_disaster(result)
+	return run("engine.resolve_military_notice")
 
 
 func advance_disaster_tick() -> DisasterMapResult:
-	var span := SimulationTimingSpan.new(city.simulation_slice)
-	var result := _timed_advance_disaster_tick()
-	result.timing = span.finish()
-
-	return result
+	return run("engine.advance_disaster_tick")
 
 
-func _timed_advance_disaster_tick() -> DisasterMapResult:
-	if active_disaster_type == 0:
-		return DisasterMapResult.failure("no disaster is active")
-
-	var phase_result := DisasterMapScanDispatch.run_all(
-		city, random, lfsr_random, disaster_map_counter, disaster_hurricane_counter
-	)
-
-	if not phase_result.ok:
-		return phase_result
-
-	disaster_map_counter = phase_result.map_counter
-	disaster_hurricane_counter = phase_result.hurricane_counter
-	disaster_fire_active = phase_result.active_markers.get("fire", false)
-	var still_active: bool = bool(phase_result.active) or DisasterStartObjectsState.has_active_object(
-		city, active_disaster_type
-	)
-	var ended_type := 0
-
-	if not still_active:
-		ended_type = active_disaster_type
-		active_disaster_type = 0
-		disaster_map_counter = 0
-		disaster_hurricane_counter = 0
-		disaster_fire_active = false
-
-		var finished := DisasterEnd.finish(city, ended_type)
-
-		if not finished.ok:
-			return DisasterMapResult.failure(finished.error)
-
-		phase_result.news_items.append_array(finished.news_items)
-		phase_result.map_changed = phase_result.map_changed or finished.removed_units > 0
-		phase_result.newspaper_requested = true
-		phase_result.newspaper_paper = DisasterEnd.NEWSPAPER_PAPER
-
-		if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 1):
-			return DisasterMapResult.failure("cannot restore city mode after the disaster")
-
-	var queue_update := _persist_news_result(phase_result)
-
-	if not queue_update.ok:
-		return DisasterMapResult.failure(queue_update.error)
-
-	phase_result.active = still_active
-	phase_result.disaster_type = active_disaster_type if still_active else ended_type
-	phase_result.ended_type = ended_type
-	phase_result.complete = not still_active
-
-	return phase_result
+# the point that a Disasters or Debug menu item of SIMCITY.EXE gives a disaster
+# (0x0040f5b0 to 0x0040f7b0 and 0x00412340 to 0x004124a0). some items draw
+# process random values. `fallback` is for the types without a menu item and
+# for Air Crash and Hurricane, whose starts do not use the point
+func menu_disaster_point(disaster_type: int, fallback: Vector2i) -> Vector2i:
+	return run("engine.menu_disaster_point", {"disaster_type": disaster_type, "fallback": fallback})
 
 
 func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	if city == null or not city.is_valid():
 		return DisasterStartResult.failed("city is invalid")
 
-	if terminal_state:
-		return DisasterStartResult.failed("the game has ended")
-
-	if not pending_interaction.is_empty():
-		return DisasterStartResult.failed("%s interaction is pending" % pending_interaction)
-
-	if active_disaster_type != 0:
-		return DisasterStartResult.failed("a disaster is already active")
-
-	var started := _start_disaster_phase(disaster_type, point)
-
-	if not started.ok:
-		return started
-
-	if not started.started:
-		if not started.complete:
-			unsupported_disaster_type = disaster_type
-
-		return started
-
-	active_disaster_type = disaster_type
-	disaster_map_counter = started.map_counter
-	disaster_hurricane_counter = started.hurricane_counter
-	unsupported_disaster_type = 0
-
-	if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2):
-		active_disaster_type = 0
-		disaster_map_counter = 0
-		disaster_hurricane_counter = 0
-		disaster_fire_active = false
-
-		return DisasterStartResult.failed("cannot store active disaster mode")
-
-	var queue_update := _persist_news_result(started)
-
-	if not queue_update.ok:
-		return DisasterStartResult.failed(queue_update.error)
-
-	# the original runs the first disaster update in the same step as the start
-	started.first_update = advance_disaster_tick()
-
-	if not started.first_update.ok:
-		return DisasterStartResult.failed(started.first_update.error)
-
-	return started
+	return run("engine.start_disaster", {"disaster_type": disaster_type, "point": point})
 
 
 func recalculate_mayor_house() -> MayorApprovalPhase.Result:
-	var result := MayorApprovalPhase.run(city, random, mayor_approval)
-
-	if result.ok:
-		mayor_approval = result.approval
-		var queue_update := _persist_news_result(result)
-
-		if not queue_update.ok:
-			return MayorApprovalPhase.failed(queue_update.error)
-
-	return result
+	return run("engine.recalculate_mayor_house")
 
 
 func rotate_runtime_coordinates(counter_clockwise: bool) -> void:
@@ -445,105 +182,9 @@ static func _rotate_runtime_point(point: Vector2i, counter_clockwise: bool, map_
 	return Vector2i(map_edge - 1 - point.y, point.x)
 
 
-func _run_day_schedule(
-	schedule: SimulationSchedule, annual_budget_approved: bool, check_annual_budget := false
-) -> SimulationDayResult:
-	var span := SimulationTimingSpan.new(city.simulation_slice)
-	var result := _execute_day_schedule(schedule, annual_budget_approved, span, check_annual_budget)
-	result.timing = span.finish()
-	var annual: PhaseResult = result.phase_results.get("annual_microsim")
-
-	if annual is MicrosimAnnualPhase.Result and annual.arcology_launch_staged:
-		arcology_launch_active = true
-
-	return result
-
-
 # run `steps` steps of a staged arcology launch
 func advance_arcology_launch(steps: int) -> MicrosimAnnualPhase.LaunchStep:
-	var span := SimulationTimingSpan.new(city.simulation_slice)
-	var result := MicrosimAnnualPhase.launch_step(city, random, arcology_launch_sites, arcology_launch_wait, steps)
-	result.timing = span.finish()
-
-	if not result.ok:
-		return result
-
-	arcology_launch_sites = result.sites
-	arcology_launch_wait = result.wait
-
-	if result.complete:
-		arcology_launch_active = false
-
-	return result
-
-
-func _execute_day_schedule(
-	schedule: SimulationSchedule, annual_budget_approved: bool, span: SimulationTimingSpan, check_annual_budget := false
-) -> SimulationDayResult:
-	return SimulationDaySchedule._execute_day_schedule(self, schedule, annual_budget_approved, span, check_annual_budget)
-
-
-func _schedule_after(schedule: SimulationSchedule, completed_action: String) -> SimulationSchedule:
-	return SimulationDaySchedule._schedule_after(schedule, completed_action)
-
-
-func _persist_news_result(result: PhaseResult) -> SimulationPhaseContext.NewsPersistenceResult:
-	return SimulationDaySchedule._persist_news_result(self, result)
-
-
-func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResult:
-	if not result.ok or not result.interaction_requests.is_empty():
-		return result
-
-	if pending_disaster_type == 0:
-		return result
-
-	var disaster_type := pending_disaster_type
-	pending_disaster_type = 0
-
-	if not city.document.set_misc_u32(Sc2MiscLayout.DISASTER_TYPE, 0):
-		return SimulationDayResult.failure("cannot clear the pending disaster type")
-
-	var started := _start_disaster_phase(disaster_type, pending_disaster_point)
-
-	if not started.ok:
-		return SimulationDayResult.failure(started.error)
-
-	var queue_update := _persist_news_result(started)
-
-	if not queue_update.ok:
-		return SimulationDayResult.failure(queue_update.error)
-
-	result.phase_results["disaster_start"] = started
-
-	if started.started:
-		active_disaster_type = disaster_type
-		disaster_map_counter = started.map_counter
-		disaster_hurricane_counter = started.hurricane_counter
-
-		if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2):
-			return SimulationDayResult.failure("cannot store active disaster mode")
-
-		result.applied.append("disaster_start")
-
-		# the original runs the first disaster update in the same step as the start
-		var first_update := advance_disaster_tick()
-
-		if not first_update.ok:
-			return SimulationDayResult.failure(first_update.error)
-
-		result.disaster_results.append(first_update)
-	elif not started.complete:
-		unsupported_disaster_type = disaster_type
-		result.pending.append("disaster_start")
-		result.complete = false
-
-	return result
-
-
-func _start_disaster_phase(disaster_type: int, point: Vector2i) -> DisasterStartResult:
-	var started := DisasterStartPhase.start(city, disaster_type, point, random, lfsr_random)
-	return MaxisManResponse.apply(city, started, random, lfsr_random)
+	return run("engine.advance_arcology_launch", {"steps": steps})
 
 
 # the original loads a city file, then scans power and water and counts the
@@ -552,13 +193,77 @@ func initialize_loaded_city() -> bool:
 	if city == null or not city.is_valid():
 		return false
 
-	var response := NativeSimulationBridge.run("engine.initialize", city, random, null, null)
+	return run("engine.initialize")
 
-	if not response.ok:
-		return false
 
-	power_usage_percent = response.result.power_usage_percent
-	water_usage_percent = response.result.water_usage_percent
-	developed_tiles = response.result.developed_tiles
+# the original checks the city status when a city opens, a new city starts, or
+# a disaster ends. this check skips the random disaster of that routine and
+# changes neither the city nor the random state
+func refresh_city_status() -> void:
+	if city != null and city.is_valid():
+		run("engine.refresh_city_status")
 
-	return true
+
+# Run an engine operation of the native simulation library with the engine
+# state, and keep the state that it returns. See sc2k_game::engine.
+func run(operation: String, args := {}, controller: GameSpeedController = null) -> Variant:
+	args["engine"] = state()
+	args["scenario"] = ScenarioPhase.fields(scenario) if scenario != null else {}
+	args["detailed"] = SimulationTimingSpan.detailed
+
+	if controller != null:
+		args["controller"] = controller.state()
+
+	var response := NativeSimulationBridge.run(operation, city, random, lfsr_random, game_random, args)
+	var outcome: Dictionary = response.result
+	apply_state(outcome.engine)
+
+	if not outcome.scenario_present:
+		scenario = null
+	elif scenario != null:
+		scenario.time_limit_months = outcome.scenario_time_limit
+
+	if controller != null:
+		controller.apply_state(outcome.controller)
+
+	return outcome.result
+
+
+# The engine fields, the clock, and the pending schedule.
+func state() -> Dictionary:
+	var result := {}
+
+	for field in STATE_FIELDS:
+		result[field] = get(field)
+
+	# the native library reads untyped arrays
+	result.arcology_launch_sites = Array(arcology_launch_sites)
+	result.city_days = clock.city_days
+	result.dispatch_capacity = PackedInt32Array([dispatch_capacity.x, dispatch_capacity.y, dispatch_capacity.z])
+	result.pending_day_schedule = _schedule_fields(pending_day_schedule)
+
+	return result
+
+
+func apply_state(fields: Dictionary) -> void:
+	for field in STATE_FIELDS:
+		if field == "arcology_launch_sites":
+			arcology_launch_sites.assign(fields[field])
+		else:
+			set(field, fields[field])
+
+	clock.city_days = fields.city_days
+	var capacity: PackedInt32Array = fields.dispatch_capacity
+	dispatch_capacity = Vector3i(capacity[0], capacity[1], capacity[2])
+	pending_day_schedule = fields.pending_day_schedule
+
+
+static func _schedule_fields(schedule: SimulationSchedule) -> Dictionary:
+	if schedule == null:
+		return {}
+
+	return {
+		"city_days": schedule.city_days, "elapsed_years": schedule.elapsed_years, "month": schedule.month,
+		"month_day": schedule.month_day, "season": schedule.season, "actions": schedule.actions,
+		"growth_step": schedule.growth_step, "growth_substep": schedule.growth_substep,
+	}

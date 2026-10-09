@@ -22,6 +22,7 @@ script = ExtResource("1_about")
 [node name="Content" type="VBoxContainer" parent="."]
 
 [node name="GameTitle" type="HBoxContainer" parent="Content"]
+auto_translate_mode = 2
 layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 0

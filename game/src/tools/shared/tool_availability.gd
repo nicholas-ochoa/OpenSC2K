@@ -1,24 +1,17 @@
 class_name ToolAvailability
 extends RefCounted
+## The tools that a city allows. The native simulation library holds the
+## rules; see native/core/sim/src/sim/tools/availability.rs.
 
 const MISC_PROGRESSION := Sc2MiscLayout.PROGRESSION
 const MISC_GRANTED_REWARDS := Sc2MiscLayout.GRANTED_REWARDS
 const MISC_INVENTION_YEARS := Sc2MiscLayout.INVENTION_YEARS
 const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
 const INVENTION_COUNT := 17
-const ARCOLOGY_FIRST_INVENTION := 12
-const ARCOLOGY_LAST_INVENTION := 15
 const ORDINANCE_NUCLEAR_FREE := OrdinanceIds.NUCLEAR_FREE_ZONE_MASK
-# supplied executable table at 0x004e9560. the final three groups use direct
-# actions and do not use these submenu masks
-const BASE_GROUP_MASKS := [
-	0x1f, 0x03, 0x03, 0x03, 0x07, 0x00,
-	0x05, 0x05, 0x01, 0x03, 0x03, 0x03,
-	0x0f, 0x0f, 0x1f, 0x00, 0x00, 0x00,
-]
-# power chooser order: coal, hydro, oil, gas, nuclear, wind, solar,
-# microwave, and fusion
-const BASE_POWER_PLANT_MASK := 0x07
+# MISC city mode 2. SIMCITY.EXE FUN_0040b250 disables the Emergency button
+# in any other mode and moves a selected Emergency tool to Center
+const DISASTER_CITY_MODE := 2
 
 
 static func inspect(city: CityState) -> Result:
@@ -34,80 +27,24 @@ static func inspect(city: CityState) -> Result:
 
 
 static func inspect_misc(misc: PackedByteArray) -> Result:
-	if misc.size() != Sc2MiscLayout.SIZE:
-		return Result.failure("MISC has the wrong size")
-
-	var group_masks := PackedInt32Array(BASE_GROUP_MASKS)
-	var power_plant_mask := BASE_POWER_PLANT_MASK
-	var released := PackedByteArray()
-	released.resize(INVENTION_COUNT)
-
-	for index in INVENTION_COUNT:
-		released[index] = int(BinaryData.read_u32_be(misc, MISC_INVENTION_YEARS + index * 4) & 0xffff == 0)
-
-	if released[0]:
-		power_plant_mask |= 0x08
-
-	if released[1] and (BinaryData.read_u32_be(misc, MISC_ORDINANCES) & ORDINANCE_NUCLEAR_FREE) == 0:
-		power_plant_mask |= 0x10
-
-	if released[2]:
-		power_plant_mask |= 0x40
-
-	if released[3]:
-		power_plant_mask |= 0x20
-
-	if released[4]:
-		power_plant_mask |= 0x80
-
-	if released[5]:
-		power_plant_mask |= 0x100
-
-	if released[6]:
-		group_masks[CityToolIds.Group.PORTS] |= 0x02
-
-	if released[7]:
-		group_masks[CityToolIds.Group.ROADS] |= 0x0a
-
-	if released[8]:
-		group_masks[CityToolIds.Group.ROADS] |= 0x10
-
-	if released[9]:
-		group_masks[CityToolIds.Group.RAIL] |= 0x1a
-
-	if released[10]:
-		group_masks[CityToolIds.Group.WATER] |= 0x08
-
-	if released[11]:
-		group_masks[CityToolIds.Group.WATER] |= 0x10
-
-	var arcology_count := 0
-
-	for index in range(ARCOLOGY_FIRST_INVENTION, ARCOLOGY_LAST_INVENTION + 1):
-		arcology_count += int(released[index])
-
-	group_masks[CityToolIds.Group.REWARDS] = BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS) & 0xffff
-	var progression := BinaryData.read_u32_be(misc, MISC_PROGRESSION) & 0xffff
-
-	if progression >= 6 and arcology_count > 0:
-		group_masks[CityToolIds.Group.REWARDS] |= 0x10
-
-	var military_base_type := BinaryData.read_u32_be(misc, Sc2MiscLayout.MILITARY_BASE_TYPE) & 0xffff
-
-	if military_base_type == 2 or military_base_type == 3 or military_base_type == 4:
-		group_masks[CityToolIds.Group.DISPATCH] |= 0x04
-
+	var fields := NativeCityTools.tool_availability(misc)
 	var result := Result.new()
-	result.ok = true
-	result.group_masks = group_masks
-	result.power_plant_mask = power_plant_mask
-	result.released_inventions = released
-	result.arcology_count = arcology_count
-	result.progression = progression
-	result.military_base_type = military_base_type
-	result.error = ""
+	result.ok = fields.ok
+	result.error = fields.error
+
+	if result.ok:
+		result.group_masks = fields.group_masks
+		result.power_plant_mask = fields.power_plant_mask
+		result.released_inventions = fields.released_inventions
+		result.arcology_count = fields.arcology_count
+		result.progression = fields.progression
+		result.military_base_type = fields.military_base_type
 
 	return result
+
+
+static func is_dispatch_enabled(city: CityState) -> bool:
+	return city != null and city.is_valid() and city.city_mode() == DISASTER_CITY_MODE
 
 
 static func is_available(city: CityState, group_index: int, subtool_index: int) -> bool:
@@ -116,50 +53,11 @@ static func is_available(city: CityState, group_index: int, subtool_index: int) 
 	if tool == null or not DebugMode.allows_tool(group_index, subtool_index):
 		return false
 
-	if (group_index >= CityToolIds.Group.SIGNS
-			or (group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST)):
-		return true
+	var valid := city != null and city.is_valid()
+	var chunk := city.document.find_chunk("MISC") if valid else null
+	var misc := chunk.decoded_payload if chunk != null else PackedByteArray()
 
-	var result := inspect(city)
-
-	if not result.ok:
-		return false
-
-	# dispatch capacity is prepared from live station and military counts. keep
-	# those tools selectable here and let dispatchcommand report capacity
-	if group_index == CityToolIds.Group.DISPATCH:
-		return true
-
-	if group_index == CityToolIds.Group.POWER and subtool_index >= CityToolIds.Power.COAL:
-		return (int(result.power_plant_mask) & (1 << (subtool_index - CityToolIds.Power.COAL))) != 0
-
-	if group_index == CityToolIds.Group.REWARDS and subtool_index >= CityToolIds.Rewards.PLYMOUTH:
-		return (
-			(int(result.group_masks[CityToolIds.Group.REWARDS]) & 0x10) != 0
-			and subtool_index - CityToolIds.Rewards.PLYMOUTH < int(result.arcology_count)
-		)
-
-	return (int(result.group_masks[group_index]) & (1 << subtool_index)) != 0
-
-
-static func rebuild_reward_mask(misc: PackedByteArray) -> int:
-	if misc.size() != Sc2MiscLayout.SIZE:
-		return 0
-
-	var mask := BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS)
-	var progression := BinaryData.read_u32_be(misc, MISC_PROGRESSION) & 0xffff
-	var arcology_count := 0
-
-	for index in range(ARCOLOGY_FIRST_INVENTION, ARCOLOGY_LAST_INVENTION + 1):
-		if (BinaryData.read_u32_be(misc, MISC_INVENTION_YEARS + index * 4) & 0xffff) == 0:
-			arcology_count += 1
-
-	if progression >= 6 and arcology_count > 0:
-		mask |= 0x10
-
-	BinaryData.write_u32_be(misc, MISC_GRANTED_REWARDS, mask)
-
-	return mask
+	return NativeCityTools.tool_available(misc, city.city_mode() if valid else 0, group_index, subtool_index)
 
 
 class Result extends RefCounted:

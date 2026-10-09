@@ -61,6 +61,10 @@ static func maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
 		result.x = maxi(result.x, entry.width)
 		result.y = maxi(result.y, entry.height)
 
+	# HD art can be taller than its indexed sprite
+	for art: HdSprite in sprites.high_resolution.values():
+		result.y = maxi(result.y, art.height)
+
 	return result
 
 

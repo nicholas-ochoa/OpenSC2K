@@ -96,8 +96,8 @@ func _test_daily_schedule(reference_root: String) -> void:
 	_check(day_two.pending.is_empty(), "Day two has no unimplemented scheduled phase")
 	_check(engine.developed_tiles >= 0, "Simulation engine retains the developed-tile count")
 	_check(
-		SimulationDaySchedule.scanned_data_maps_only(day_two)
-		and not SimulationDaySchedule.scanned_data_maps_only(day_one),
+		day_two.scanned_data_maps_only()
+		and not day_one.scanned_data_maps_only(),
 		"Only the data-map scan day reports data-map work alone",
 	)
 	var day_three := engine.advance_day()
@@ -109,7 +109,7 @@ func _test_daily_schedule(reference_root: String) -> void:
 	)
 	_check(engine.lfsr_random.state != 7, "Growth continues the engine LFSR sequence")
 	_check(
-		not SimulationDaySchedule.scanned_data_maps_only(day_three),
+		not day_three.scanned_data_maps_only(),
 		"A growth day does not report data-map work alone",
 	)
 	var latest := day_three

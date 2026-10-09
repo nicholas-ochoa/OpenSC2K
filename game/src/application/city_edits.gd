@@ -26,15 +26,53 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
+## Uses the selected tool on a map selection. A script can cancel it in the
+## tool.beforeApply event. Returns the detail of the tool.applied event, or
+## an empty Dictionary without a city.
 func apply_map_selection(
 	start: Vector2i,
 	finish: Vector2i,
 	path: Array[Vector2i],
 	dragged: bool
-) -> void:
-	if app.document_state.city == null:
-		return
+) -> Dictionary:
+	var city := app.document_state.city
 
+	if city == null:
+		return {}
+
+	var detail := {
+		"tool": ApplicationScriptingApi.tool_info(app.tool_state.selected_group, app.tool_state.selected_subtool),
+		"start": start, "finish": finish, "dragged": dragged, "tiles": path.size(),
+	}
+
+	if app.scripting.cancelled("tool.beforeApply", detail):
+		detail.merge({"changed": false, "cancelled": true, "command": "", "cost": 0, "message": "A script cancelled the tool."})
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = detail.message
+
+		return detail
+
+	var command_before := app.tool_state.last_edit_command
+	var funds_before := city.funds()
+	_apply_selected_tool(start, finish, path, dragged)
+	var command := app.tool_state.last_edit_command
+	var changed := command != null and command != command_before
+	detail.merge({
+		"changed": changed, "cancelled": false, "command": command.command_type if changed else "",
+		"cost": funds_before - city.funds() if app.document_state.city == city else 0,
+		"message": app.status_label.text if app.status_label != null else "",
+	})
+	app.scripting.emit("tool.applied", detail)
+
+	return detail
+
+
+func _apply_selected_tool(
+	start: Vector2i,
+	finish: Vector2i,
+	path: Array[Vector2i],
+	dragged: bool
+) -> void:
 	var tool := app.tool_state
 
 	if (tool.landscape_editor
@@ -56,7 +94,7 @@ func apply_map_selection(
 		app.document_state.city, tool.selected_group, tool.selected_subtool
 	):
 		app.interface.show_error(
-			"%s is not available in this city."
+			tr("%s is not available in this city.")
 			% Tools.tool(tool.selected_group, tool.selected_subtool).name
 		)
 
@@ -71,7 +109,7 @@ func apply_map_selection(
 	if _apply_landscape_editor_terrain(start, dragged):
 		return
 
-	if _apply_landscape_brush(start, path):
+	if _apply_landscape_brush(start, path, scurk_tool_mode, scurk_tool):
 		return
 
 	if _apply_simple_edit(start, finish, path, scurk_tool_mode, scurk_tool):
@@ -177,37 +215,54 @@ func _apply_dispatch_tool(finish: Vector2i) -> bool:
 	if not Dispatch.supports_tool(tool.selected_group, tool.selected_subtool):
 		return false
 
+	var engine := app.simulation_state.simulation_engine
+
+	# a new disaster resets the slot cycles, as 0x0044f910 does
+	if engine != null and engine.dispatch_epoch != tool.dispatch_epoch:
+		tool.dispatch_cycles = PackedInt32Array([0, 0, 0])
+		tool.dispatch_epoch = engine.dispatch_epoch
+
 	var cycles_before := tool.dispatch_cycles.duplicate()
-	var initialized_before := tool.dispatch_initialized
+	var points_before := _copy_slot_points(tool.dispatch_slot_points)
 	var dispatch := Dispatch.apply(
 		app.document_state.city,
 		tool.selected_group,
 		tool.selected_subtool,
 		finish,
 		tool.dispatch_cycles[tool.selected_subtool],
-		not tool.dispatch_initialized
+		tool.dispatch_slot_points[tool.selected_subtool],
+		engine.dispatch_capacity if engine != null else Dispatch.NO_CAPACITY
 	)
 
 	if not dispatch.ok:
-		app.interface.show_error("Cannot dispatch unit: %s" % dispatch.error)
+		app.interface.show_error(tr("Cannot dispatch unit: %s") % dispatch.error)
 
 		return true
 
-	_record_dispatch(dispatch, cycles_before, initialized_before)
+	_record_dispatch(dispatch, cycles_before, points_before)
 
 	return true
 
 
+static func _copy_slot_points(points: Array[Dictionary]) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+
+	for slots in points:
+		result.append(slots.duplicate())
+
+	return result
+
+
 # advance the unit cycle, keep the cycle state undo restores, and report the unit
 func _record_dispatch(
-	dispatch: DispatchEditResult, cycles_before: PackedInt32Array, initialized_before: bool
+	dispatch: DispatchEditResult, cycles_before: PackedInt32Array, points_before: Array[Dictionary]
 ) -> void:
 	var tool := app.tool_state
 	dispatch.dispatch_cycles_before = cycles_before
-	dispatch.dispatch_initialized_before = initialized_before
+	dispatch.dispatch_slot_points_before = points_before
 
-	tool.dispatch_initialized = true
 	tool.dispatch_cycles[tool.selected_subtool] = dispatch.slot_index
+	tool.dispatch_slot_points[tool.selected_subtool][dispatch.slot_index] = dispatch.target
 
 	dispatch.dispatch_cycles_after = tool.dispatch_cycles.duplicate()
 
@@ -217,8 +272,8 @@ func _record_dispatch(
 	app.effects_audio.play_tool_success_sound(tool.selected_group, tool.selected_subtool)
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Deployed %s unit %d of %d." % [
-		Tools.tool(tool.selected_group, tool.selected_subtool).name,
+	app.status_label.text = tr("Deployed %s unit %d of %d.") % [
+		tr(Tools.tool(tool.selected_group, tool.selected_subtool).name),
 		dispatch.slot_index,
 		dispatch.available,
 	]
@@ -263,12 +318,16 @@ func _apply_landscape_editor_terrain(start: Vector2i, dragged: bool) -> bool:
 
 
 # terrain and landscape brushes along the dragged path. a brush pass that
-# changes nothing is not reported
-func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
+# changes nothing is not reported. the landscape editor and Place & Print
+# paint for free
+func _apply_landscape_brush(
+	start: Vector2i, path: Array[Vector2i], scurk_tool_mode: bool, scurk_tool: ScurkEditTool
+) -> bool:
 	if not app.map_view.landscape_brush:
 		return false
 
 	var tool := app.tool_state
+	var free := tool.landscape_editor or scurk_tool_mode
 
 	if tool.selected_group == CityToolIds.Group.BULLDOZER:
 		var origin := app.map_view.selection_start if app.map_view.selection_start.x >= 0 else start
@@ -277,13 +336,13 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 			origin.y,
 		)
 		var terrain_command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
-			origin, path, tool.tool_random, tool.landscape_editor, target)
+			origin, path, tool.tool_random, free, target)
 
 		if terrain_command.ok or terrain_command.error != "no terrain height changed":
 			_finish_simple_edit(
-				SimpleEdits._result("terrain", terrain_command, tool.selected_group, tool.selected_subtool, tool.landscape_editor),
-				false,
-				null,
+				SimpleEdits._result("terrain", terrain_command, tool.selected_group, tool.selected_subtool, free),
+				scurk_tool_mode,
+				scurk_tool,
 			)
 
 		return true
@@ -294,15 +353,15 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 		tool.selected_subtool,
 		path,
 		tool.tool_random,
-		tool.landscape_editor,
+		free,
 		true,
 	)
 
 	if command.ok or command.error != "no eligible tiles changed":
 		_finish_simple_edit(
-			SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor),
-			false,
-			null,
+			SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, free),
+			scurk_tool_mode,
+			scurk_tool,
 		)
 
 	return true
@@ -322,7 +381,9 @@ func _apply_simple_edit(
 		path,
 		app.tool_state.tool_random,
 		app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND,
-		scurk_tool_mode or app.tool_state.landscape_editor
+		scurk_tool_mode or app.tool_state.landscape_editor,
+		app.effects_audio.effect_tile_window(),
+		ApplicationEffectsAudio.EFFECT_TILE_LIMIT
 	)
 
 	if not simple_edit.handled:
@@ -413,13 +474,13 @@ func _report_building_rejection(
 		app.tool_state.pending_building_objection_subtool = building_subtool
 		app.reports.show_building_objection()
 		app.status_label.theme_type_variation = ""
-		app.status_label.text = "%s placement was rejected by nearby residents." % building_name
+		app.status_label.text = tr("%s placement was rejected by nearby residents.") % tr(building_name)
 
 		return
 
 	app.interface.show_error(
-		"Cannot build %s: %s"
-		% [building_name, building.error]
+		tr("Cannot build %s: %s")
+		% [tr(building_name), building.error]
 	)
 	app.effects_audio.play_tool_failure_sound(
 		building_group, building_subtool, str(building.error), scurk_tool_mode
@@ -449,8 +510,8 @@ func _record_building(
 		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Built %s for $%s." % [
-		building_name,
+	app.status_label.text = tr("Built %s for $%s.") % [
+		tr(building_name),
 		app.interface.format_number(building.cost),
 	]
 
@@ -539,10 +600,6 @@ func _finish_simple_edit(
 		var sound_ids: Array[int] = [ToolSounds.SOUND_TRACTOR]
 		app.effects_audio.play_sound_ids(sound_ids)
 
-	# keep the tree and news story, no modal protest notice
-	if edit.refresh_news_summary:
-		app.reports.refresh_saved_news_summary()
-
 	if command.command_type == "zone":
 		app.effects_audio.play_sound_ids(ToolSounds.zone_success_events((command as ZoneEditResult).zone_type))
 	elif edit.play_success_sound:
@@ -550,6 +607,12 @@ func _finish_simple_edit(
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = str(edit.message)
+
+	# the notice takes the mouse and ends the stroke, as in the original.
+	# the stroke ends after the input event that placed the edit
+	if command is DemolishEditResult and (command as DemolishEditResult).easter_events > 0:
+		app.reports.show_forest_protest()
+		app.map_view.end_held_selection.call_deferred()
 
 
 func undo_last_edit() -> void:
@@ -564,9 +627,6 @@ func undo_last_edit() -> void:
 
 		return
 
-	var undo_forest_protest := (
-		command is DemolishEditResult and (command as DemolishEditResult).easter_events > 0
-	)
 	var result: EditCommandResult
 
 	if command_type == "sign":
@@ -600,14 +660,16 @@ func undo_last_edit() -> void:
 		result = Zones.undo(app.document_state.city, command as ZoneEditResult)
 
 	if not result.ok:
-		app.interface.show_error("Cannot undo the last edit: %s" % result.error)
+		app.interface.show_error(tr("Cannot undo the last edit: %s") % result.error)
 
 		return
 
 	if command is DispatchEditResult:
 		var dispatch := command as DispatchEditResult
 		app.tool_state.dispatch_cycles = dispatch.dispatch_cycles_before
-		app.tool_state.dispatch_initialized = dispatch.dispatch_initialized_before
+
+		if not dispatch.dispatch_slot_points_before.is_empty():
+			app.tool_state.dispatch_slot_points = dispatch.dispatch_slot_points_before
 
 	app.tool_state.last_edit_command = null
 	_restore_utility_usage(command)
@@ -615,19 +677,16 @@ func undo_last_edit() -> void:
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(command)
 
-	if undo_forest_protest:
-		app.reports.refresh_saved_news_summary()
-
 	app.status_label.theme_type_variation = ""
 
 	if command_type == "sign":
 		app.status_label.text = "Restored the previous sign."
 	elif command_type == "landscape":
-		app.status_label.text = "Restored %d landscape actions and the previous funds value." % result.restored_tiles
+		app.status_label.text = tr("Restored %d landscape actions and the previous funds value.") % result.restored_tiles
 	elif command_type == "building":
-		app.status_label.text = "Removed the last building and restored %d tiles." % result.restored_tiles
+		app.status_label.text = tr("Removed the last building and restored %d tiles.") % result.restored_tiles
 	elif command_type == "network":
-		app.status_label.text = "Restored the previous route across %d tiles." % result.restored_tiles
+		app.status_label.text = tr("Restored the previous route across %d tiles.") % result.restored_tiles
 	elif command_type == "hydro":
 		app.status_label.text = "Removed the last hydroelectric plant."
 	elif command_type == "subway_to_rail":
@@ -637,12 +696,14 @@ func undo_last_edit() -> void:
 	elif command_type == "tunnel":
 		app.status_label.text = "Removed the last tunnel."
 	elif command_type == "highway":
-		app.status_label.text = "Restored the previous highway route across %d tiles." % result.restored_tiles
+		app.status_label.text = tr("Restored the previous highway route across %d tiles.") % result.restored_tiles
 	elif command_type == "demolish":
-		app.status_label.text = "Restored %d demolished tiles and the previous funds value." % result.restored_tiles
+		app.status_label.text = tr("Restored %d demolished tiles and the previous funds value.") % result.restored_tiles
 	elif command_type == "terrain":
-		app.status_label.text = "Restored %d terrain tiles and the previous funds value." % result.restored_tiles
+		app.status_label.text = tr("Restored %d terrain tiles and the previous funds value.") % result.restored_tiles
 	elif command_type == "dispatch":
 		app.status_label.text = "Restored the previous dispatched unit."
 	else:
-		app.status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
+		app.status_label.text = tr("Restored %d tiles and the previous funds value.") % result.restored_tiles
+
+	app.scripting.emit("tool.undone", {"command": command_type})

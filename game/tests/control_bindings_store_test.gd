@@ -79,3 +79,23 @@ func _test_migration(path: String) -> void:
 	config.set_value("controls", "binding/map_context_menu", PackedStringArray(["mouse:Right"]))
 	assert(config.save(path) == OK)
 	assert(not AppSettingsStore.load_values(path).control_bindings.has_mouse_button("map_context_menu", MOUSE_BUTTON_MIDDLE))
+	_test_budget_migration(path)
+
+
+# version 1 opened the budget with B. B now bulldozes while it is down, and the
+# budget moves to Command+B, the Ctrl+B of the original menu
+func _test_budget_migration(path: String) -> void:
+	var config := ConfigFile.new()
+	config.set_value("controls", "binding/window_budget", PackedStringArray(["key:B"]))
+	config.set_value("controls", "bindings_version", 1)
+	assert(config.save(path) == OK)
+	var bindings := AppSettingsStore.load_values(path).control_bindings
+	assert(bindings.to_texts("window_budget") == PackedStringArray(["key:Command+B"]))
+	assert(bindings.to_texts("tool_bulldoze_modifier") == PackedStringArray(["key:B"]))
+	# a saved action keeps B, and the new action does without it
+	config.set_value("controls", "binding/speed_pause", PackedStringArray(["key:B"]))
+	assert(config.save(path) == OK)
+	bindings = AppSettingsStore.load_values(path).control_bindings
+	assert(bindings.to_texts("speed_pause") == PackedStringArray(["key:B"]))
+	assert(bindings.for_action("tool_bulldoze_modifier").is_empty())
+	assert(bindings.to_texts("tool_center_modifier") == PackedStringArray(["key:Alt"]))

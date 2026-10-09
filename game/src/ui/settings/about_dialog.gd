@@ -74,6 +74,7 @@ func _build_licenses() -> void:
 	_add_license("UnifrakturMaguntia — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/unifrakturmaguntia/OFL.txt"))
 	_add_license("Grenze Gotisch — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/grenzegotisch/OFL.txt"))
 	_add_license("Chomsky — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/chomsky/OFL.txt"))
+	_add_license("Pretendard — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/pretendard/OFL.txt"))
 	_add_license("FluidSynth — LGPL 2.1 or later", _license_files("fluidsynth", ["NOTICE.txt", "LGPL-2.1.txt", "fluidsynth-AUTHORS.txt"]))
 	_add_license("FluidSynth — included library notices", _license_files("fluidsynth", [
 		"libsndfile-COPYING.txt", "libsndfile-AUTHORS.txt", "libsndfile-GSM610-COPYRIGHT.txt", "libogg-COPYING.txt",
@@ -84,6 +85,13 @@ func _build_licenses() -> void:
 
 	if OS.get_name() == "Linux":
 		_add_license("FluidR3 Mono SoundFont — MIT", _license_files("fluidr3mono", ["FluidR3Mono-License.txt"]))
+
+	_add_license("QuickJS-ng — MIT", "QuickJS-ng %s JavaScript engine of the script runtime\nhttps://github.com/quickjs-ng/quickjs\n\n%s"
+		% [ScriptRuntime.engine_version(), FileAccess.get_file_as_string("res://assets/licenses/quickjs/QuickJS-ng-LICENSE.txt").strip_edges()])
+
+	_add_license("Rust crates and ported code — MIT, 0BSD", _license_files("rust", [
+		"miniz_oxide-LICENSE-MIT.txt", "adler2-LICENSE-0BSD.txt", "FastNoiseLite-LICENSE.txt",
+	]))
 
 	_add_license("Research and original game", """RESEARCH
 

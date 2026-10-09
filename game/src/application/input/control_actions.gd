@@ -59,7 +59,7 @@ const DATA_VIEW_IDS: Array[String] = [
 ]
 # Windows menu ids, in CityMenuBar order
 const WINDOW_ACTIONS: Array[Array] = [
-	["window_budget", "Budget", 0, ["key:B"]], ["window_ordinances", "Ordinances", 1, []],
+	["window_budget", "Budget", 0, ["key:Command+B"]], ["window_ordinances", "Ordinances", 1, []],
 	["window_population", "Population", 2, []], ["window_industry", "Industry", 3, []],
 	["window_graphs", "Graphs", 4, ["key:G"]], ["window_neighbors", "Neighbors", 5, []],
 	["window_map", "Map", 6, ["key:M"]], ["window_scenario_goals", "Scenario goals", 8, []],
@@ -132,6 +132,10 @@ static func _build() -> void:
 	_add("cancel_selection", "Cancel selection", "Tools", SCOPE_MAP, KIND_PRESS, [])
 	_add("tool_shape_modifier", "Line or rectangle (hold)", "Tools", SCOPE_MAP, KIND_MODIFIER, ["key:Shift"])
 	_add("tool_query_modifier", "Query with any tool (hold)", "Tools", SCOPE_MAP, KIND_MODIFIER, ["key:Shift"])
+	# the Macintosh version turns the cursor into the Bulldozer while B is
+	# down, and into the Center tool while Option is down
+	_add("tool_bulldoze_modifier", "Bulldoze with any tool (hold)", "Tools", SCOPE_MAP, KIND_MODIFIER, ["key:B"])
+	_add("tool_center_modifier", "Center with any tool (hold)", "Tools", SCOPE_MAP, KIND_MODIFIER, ["key:Alt"])
 
 	_add("view_city", "City view", "View", SCOPE_MAP, KIND_PRESS, ["key:V"])
 	_add("view_toggle_underground", "Underground view", "View", SCOPE_MAP, KIND_PRESS, ["key:U"])
@@ -148,6 +152,7 @@ static func _build() -> void:
 		_add(window[0], window[1], "Windows", SCOPE_MAP if window[0] != "window_debug" else SCOPE_GLOBAL, KIND_PRESS, window[3])
 
 	_add("window_newspaper", "Latest newspaper", "Windows", SCOPE_MAP, KIND_PRESS, ["key:N"])
+	_add("window_console", "Console", "Windows", SCOPE_ANYWHERE, KIND_PRESS, ["key:Command+Shift+J"])
 
 	_add("music_play_pause", "Play or pause music", "Music", SCOPE_ANYWHERE, KIND_PRESS, ["key:MediaPlay"])
 	_add("music_next", "Next track", "Music", SCOPE_ANYWHERE, KIND_PRESS, ["key:MediaNext"])
@@ -173,6 +178,7 @@ static func _build() -> void:
 	_add("map_context_menu", "Context menu", "Mouse", SCOPE_MAP, KIND_CLICK, ["mouse:Right"])
 	_add("map_center_on_tile", "Center on tile", "Mouse", SCOPE_MAP, KIND_CLICK, ["mouse:Middle"])
 	_add("map_pan", "Move map (drag)", "Mouse", SCOPE_MAP, KIND_DRAG, ["mouse:Right", "mouse:Middle"])
+	_add("button_help_modifier", "Toolbar and status bar help (hold)", "Mouse", SCOPE_MAP, KIND_MODIFIER, ["key:Shift"])
 
 	_add("scurk_open", "Open tile set", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+O"])
 	_add("scurk_save", "Save tile set", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+S"])

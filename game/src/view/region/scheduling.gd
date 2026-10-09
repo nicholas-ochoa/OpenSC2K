@@ -462,11 +462,11 @@ static func _gpu_atlas_bytes(cache: CityRegionCache) -> int:
 
 		if texture != null and not seen.has(texture.get_instance_id()):
 			seen[texture.get_instance_id()] = true
-			bytes += texture.get_width() * texture.get_height() * 2
+			bytes += texture.get_width() * texture.get_height() * 4
 
 	for worker in cache.gpu_workers:
 		if worker.atlas != null and not seen.has(worker.atlas.get_instance_id()):
 			seen[worker.atlas.get_instance_id()] = true
-			bytes += worker.atlas.get_width() * worker.atlas.get_height() * 2
+			bytes += worker.atlas.get_width() * worker.atlas.get_height() * 4
 
 	return bytes

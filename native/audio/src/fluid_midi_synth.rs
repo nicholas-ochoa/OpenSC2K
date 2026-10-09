@@ -2,9 +2,9 @@
 //! `AudioStreamGenerator`, so music passes through the Godot audio buses.
 use godot::prelude::*;
 
-use crate::fluidsynth::{self, FluidSynth};
-use crate::midi;
-use crate::sequencer::Sequencer;
+use sc2k_audio::fluidsynth::{self, FluidSynth};
+use sc2k_audio::midi;
+use sc2k_audio::sequencer::Sequencer;
 
 /// FluidSynth renders at the common device rate; Godot resamples to the mix rate.
 const SAMPLE_RATE: f64 = 44_100.0;
@@ -211,7 +211,7 @@ impl FluidMidiSynth {
     /// The sounding FluidSynth voices, for tests and diagnostics.
     #[func]
     fn active_voices(&mut self) -> i64 {
-        use crate::sequencer::MidiOutput;
+        use sc2k_audio::sequencer::MidiOutput;
 
         self.synth.as_mut().map_or(0, |synth| synth.active_voices() as i64)
     }

@@ -33,8 +33,24 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="Text" type="Label" parent="Layout/TextScroll"]
+[node name="Content" type="VBoxContainer" parent="Layout/TextScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Text" type="Label" parent="Layout/TextScroll/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/line_spacing = 4
 autowrap_mode = 3
+
+[node name="ProgressHeading" type="Label" parent="Layout/TextScroll/Content"]
+visible = false
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Progress" type="GridContainer" parent="Layout/TextScroll/Content"]
+visible = false
+layout_mode = 2
+theme_override_constants/h_separation = 16
+columns = 4

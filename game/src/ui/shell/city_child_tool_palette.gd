@@ -11,10 +11,24 @@ var heading: Label
 var scroll: ScrollContainer
 var grid: GridContainer
 var buttons: Dictionary = {}
+# the group whose tools the buttons show, or -1
+var shown_group := -1
 
 
 func _ready() -> void:
 	build()
+
+
+# the buttons put the tool names in their text, so they change with the language
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_TRANSLATION_CHANGED or shown_group < 0:
+		return
+
+	for subtool_index: int in buttons:
+		var button := buttons[subtool_index] as Button
+		var tool := Tools.tool(shown_group, subtool_index)
+		button.text = tr(tool.name) if free_landscape else "%s\n%s" % [tr(tool.name), _tool_price(tool)]
+		button.tooltip_text = tool_button_tooltip(shown_group, subtool_index, not button.disabled)
 
 
 func build() -> void:
@@ -52,6 +66,7 @@ func show_tool_group(
 		return 0
 
 	_clear_buttons()
+	shown_group = group_index
 	scroll.scroll_vertical = 0
 	scroll.set_deferred("scroll_vertical", 0)
 	var visible_group := group_index < CityToolIds.Group.SIGNS or group_index == CityToolIds.Group.QUERY
@@ -117,14 +132,16 @@ func sync_selection(subtool_index: int) -> void:
 		button.button_pressed = int(button_subtool) == displayed_subtool
 
 
-func refresh_icons(group_index: int, icon_provider: Callable) -> void:
-	if not icon_provider.is_valid():
+# the buttons keep the icons of the group they show. a scurk edit tool can
+# select another group without a new palette
+func refresh_icons(icon_provider: Callable) -> void:
+	if not icon_provider.is_valid() or shown_group < 0:
 		return
 
 	for subtool_index in buttons:
 		var button: Button = buttons[subtool_index]
 		button.theme_type_variation = "ArtworkButton"
-		button.icon = icon_provider.call(group_index, int(subtool_index))
+		button.icon = icon_provider.call(shown_group, int(subtool_index))
 
 
 func refresh_availability(
@@ -140,7 +157,7 @@ func refresh_availability(
 
 	for subtool_index in buttons:
 		var available := free_landscape or ToolAvailability.is_available(
-			city, group_index, int(subtool_index)
+			city, shown_group, int(subtool_index)
 		)
 		var button: Button = buttons[subtool_index]
 
@@ -149,7 +166,7 @@ func refresh_availability(
 			changed = true
 
 		button.tooltip_text = tool_button_tooltip(
-			group_index, int(subtool_index), available
+			shown_group, int(subtool_index), available
 		)
 
 	var selected_available := free_landscape or ToolAvailability.is_available(
@@ -176,23 +193,23 @@ func tool_button_tooltip(
 			"Click to keep the panel on a tile. Inspection does not change the city.")
 
 	var price := _tool_price(tool)
-	var lines := PackedStringArray([str(tool.name)])
+	var lines := PackedStringArray([tr(str(tool.name))])
 
 	if not free_landscape:
-		lines.append("Cost: %s" % price)
+		lines.append(tr("Cost: %s") % price)
 
 	if int(tool.area) > 0:
-		lines.append("Footprint: %d x %d tiles" % [tool.area, tool.area])
+		lines.append(tr("Footprint: %d x %d tiles") % [tool.area, tool.area])
 
 	if group_index == CityToolIds.Group.POWER and subtool_index >= CityToolIds.Power.COAL:
 		var details := Tools.power_plant_details(subtool_index)
 
 		if details != null:
-			lines.append("Nominal output: %d MW" % details.output_mw)
-			lines.append("Grid capacity: %s" % details.grid_capacity)
-			lines.append("Pollution factor: %d" % details.pollution)
-			lines.append("Service life: %s" % details.service_life)
-			lines.append(str(details.note))
+			lines.append(tr("Nominal output: %d MW") % details.output_mw)
+			lines.append(tr("Grid capacity: %s") % tr(details.grid_capacity))
+			lines.append(tr("Pollution factor: %d") % details.pollution)
+			lines.append(tr("Service life: %s") % tr(details.service_life))
+			lines.append(tr(str(details.note)))
 
 	const FACILITY_DETAILS := {
 		"220": "Requires power and pipes. Output depends on weather and nearby water; each adjacent fresh-water tile adds 10 supply units.",
@@ -217,10 +234,10 @@ func tool_button_tooltip(
 	var tile_id := BuildingSites.tile_for_tool(group_index, subtool_index)
 
 	if FACILITY_DETAILS.has(str(tile_id)):
-		lines.append(FACILITY_DETAILS[str(tile_id)])
+		lines.append(tr(FACILITY_DETAILS[str(tile_id)]))
 
 	if not available:
-		lines.append("Status: Not available in this city.")
+		lines.append(tr("Status: Not available in this city."))
 
 	return "\n".join(lines)
 
@@ -246,7 +263,7 @@ func _create_button(
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.toggle_mode = true
 	button.button_group = button_group
-	button.text = str(tool.name) if free_landscape else "%s\n%s" % [tool.name, _tool_price(tool)]
+	button.text = tr(str(tool.name)) if free_landscape else "%s\n%s" % [tr(tool.name), _tool_price(tool)]
 	button.clip_text = true
 	button.theme_type_variation = "ArtworkButton"
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -268,7 +285,7 @@ func _create_button(
 
 func _tool_price(tool: ToolCatalog.Tool) -> String:
 	if free_landscape:
-		return "Free"
+		return tr("Free")
 
 	return (
 		"Free"

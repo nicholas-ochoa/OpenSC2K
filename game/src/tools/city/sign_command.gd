@@ -1,9 +1,12 @@
 class_name SignCommand
 extends RefCounted
+## User signs. The native simulation library edits XLAB and XTXT of original
+## and SCLG cities, and XSGN of SC2X version 4 cities; see
+## native/core/sim/src/sim/tools/commands/sign.rs.
 
-const FIRST_USER_LABEL := Sc2OverlayLayout.ORIGINAL_SIGN_FIRST
-const LAST_USER_LABEL := Sc2OverlayLayout.ORIGINAL_SIGN_LAST
 const LABEL_RECORD_SIZE := Sc2LabelLayout.RECORD_SIZE
+# commit order: the label text, then its tile link
+const PAYLOAD_IDS: PackedStringArray = ["XLAB", "XTXT"]
 
 
 static func set_sign(city: CityState, point: Vector2i, text: String) -> SignEditResult:
@@ -18,60 +21,7 @@ static func set_sign(city: CityState, point: Vector2i, text: String) -> SignEdit
 	if CitySignTable.uses_table(city):
 		return _set_table_sign(city, point, tile_index, text)
 
-	var old_overlay := OverlayData.read(city.text_overlays, tile_index)
-
-	if old_overlay != 0 and not OverlayData.is_sign(old_overlay):
-		return SignEditResult.rejected("this tile has a protected simulation label")
-
-	var label_id := old_overlay
-
-	if label_id == 0 and not text.is_empty():
-		label_id = _first_free_label(city)
-
-		if label_id == 0:
-			return SignEditResult.rejected("all user sign labels are in use")
-
-	if label_id == 0:
-		return SignEditResult.rejected("this tile does not have a sign")
-
-	var label_chunk := city.document.find_chunk("XLAB")
-
-	if label_chunk == null:
-		return SignEditResult.rejected("XLAB data is missing")
-
-	var record_offset := label_id * LABEL_RECORD_SIZE
-	var old_record := label_chunk.decoded_payload.slice(
-		record_offset, record_offset + LABEL_RECORD_SIZE
-	)
-	var new_overlay := 0 if text.is_empty() else label_id
-
-	if not city.set_label(label_id, text):
-		return SignEditResult.rejected("cannot store the sign text")
-
-	var new_record := label_chunk.decoded_payload.slice(
-		record_offset, record_offset + LABEL_RECORD_SIZE
-	)
-	var changed_overlays := city.text_overlays.duplicate()
-	OverlayData.write(changed_overlays, tile_index, new_overlay)
-
-	if not city.replace_text_overlays(changed_overlays):
-		_restore_label_record(label_chunk, record_offset, old_record)
-
-		return SignEditResult.rejected("cannot store the sign position")
-
-	var result := SignEditResult.new()
-	result.ok = true
-	result.command_type = "sign"
-	result.point = point
-	result.tile_index = tile_index
-	result.label_id = label_id
-	result.old_overlay = old_overlay
-	result.new_overlay = new_overlay
-	result.old_record = old_record
-	result.new_record = new_record
-	result.text = text.left(Sc2LabelLayout.MAX_TEXT_BYTES)
-
-	return result
+	return NativeSimulationBridge.run("tool.sign", city, null, null, null, {"point": point, "text": text}, PAYLOAD_IDS).result
 
 
 static func undo(city: CityState, command: SignEditResult) -> EditCommandResult:
@@ -127,14 +77,6 @@ static func undo(city: CityState, command: SignEditResult) -> EditCommandResult:
 		return EditCommandResult.failure("cannot restore the sign position")
 
 	return EditCommandResult.undone(1)
-
-
-static func _first_free_label(city: CityState) -> int:
-	for label_id in OverlayData.sign_ids(city.document.decoded_size("XLAB")):
-		if city.label(label_id).is_empty():
-			return label_id
-
-	return 0
 
 
 static func _restore_label_record(

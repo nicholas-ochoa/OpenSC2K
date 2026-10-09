@@ -1,0 +1,10 @@
+[package]
+name = "sc2k_assets"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Original-game assets of OpenSC2K: text resources, newspaper grammar and the Johab codec, without engine types"
+
+[dependencies]
+sc2k_formats = { path = "../formats" }

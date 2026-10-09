@@ -1,31 +1,33 @@
 class_name MusicShuffle
 extends RefCounted
+## The shuffled order of the music tracks: each track plays once before any
+## track repeats. The native audio library keeps the order; see
+## native/core/audio/src/shuffle.rs.
 
-var random := RandomNumberGenerator.new()
-var remaining: Array[int] = []
-var last_track := -1
+# the tracks that the current round has not played
+var remaining: PackedInt64Array:
+	get:
+		return _native.remaining()
+	set(tracks):
+		_native.set_remaining(tracks)
 
-
-func _init() -> void:
-	random.randomize()
+var _native := NativeMusicShuffle.new()
 
 
 func next_track() -> int:
-	if remaining.is_empty():
-		for id in range(MusicDirector.FIRST_TRACK_ID, MusicDirector.FIRST_TRACK_ID + MusicDirector.TRACK_COUNT):
-			remaining.append(id)
+	return _native.next_track(MusicDirector.FIRST_TRACK_ID, MusicDirector.TRACK_COUNT)
 
-		for index in range(remaining.size() - 1, 0, -1):
-			var other := random.randi_range(0, index)
-			var value := remaining[index]
-			remaining[index] = remaining[other]
-			remaining[other] = value
 
-		if remaining.back() == last_track:
-			var value := remaining[0]
-			remaining[0] = remaining.back()
-			remaining[-1] = value
+# a track that started outside the shuffle: the round skips it, and the next
+# round does not start with it
+func mark_started(track: int) -> void:
+	_native.mark_started(track)
 
-	last_track = remaining.pop_back()
 
-	return last_track
+func restart_after(track: int) -> void:
+	_native.restart_after(track)
+
+
+# restart the order with `value`, for a repeatable test
+func seed(value: int) -> void:
+	_native.seed(value)

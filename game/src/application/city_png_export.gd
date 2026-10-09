@@ -62,6 +62,7 @@ func open_export_dialog() -> void:
 		CityViewMode.key(view_state.overlay_mode),
 		bool(view_state.surface_visibility.get("signs", true)),
 		asset_state.reference_root,
+		asset_state.hd_active(),
 	)
 	dialog.show_options()
 
@@ -74,7 +75,7 @@ func start_export(options: CityPngExportJob.Options) -> void:
 	var snapshot := CityModel.from_document(document_state.current_document.duplicate_document())
 
 	if not snapshot.is_valid():
-		error_reported.emit("Cannot prepare the city for export: %s" % snapshot.load_error)
+		error_reported.emit(tr("Cannot prepare the city for export: %s") % snapshot.load_error)
 
 		return
 
@@ -92,18 +93,19 @@ func start_export(options: CityPngExportJob.Options) -> void:
 	job.surface_visibility = view_state.surface_visibility.duplicate()
 	job.show_underground_pipes = view_state.show_underground_pipes
 	job.show_underground_water_mains = view_state.show_underground_water_mains
+	job.artwork_factor = int(options.artwork_factor)
 	job.path = String(options.path)
 	last_folder = job.path.get_base_dir()
 	var error := job.start()
 
 	if error != OK:
 		job = null
-		error_reported.emit("Cannot start the PNG export: %s" % error_string(error))
+		error_reported.emit(tr("Cannot start the PNG export: %s") % error_string(error))
 
 		return
 
 	_started_msec = Time.get_ticks_msec()
-	status_changed.emit("Exporting the city to %s…" % options.path.get_file())
+	status_changed.emit(tr("Exporting the city to %s…") % options.path.get_file())
 
 
 func poll_export() -> void:
@@ -117,7 +119,7 @@ func poll_export() -> void:
 			# rendering reports its fraction; png encoding cannot
 			var fraction := float(progress.fraction) if stage == ExportJob.STAGE_RENDER else -1.0
 			progress_overlay.show_progress(
-				"Exporting %s" % job.path.get_file(), String(STAGE_TEXT.get(stage, "")), fraction
+				tr("Exporting %s") % job.path.get_file(), String(STAGE_TEXT.get(stage, "")), fraction
 			)
 
 		return
@@ -127,12 +129,12 @@ func poll_export() -> void:
 	progress_overlay.hide()
 
 	if not result.ok:
-		error_reported.emit("Cannot export the city: %s" % result.error)
+		error_reported.emit(tr("Cannot export the city: %s") % result.error)
 
 		return
 
 	var size: Vector2i = result.size
-	status_changed.emit("Exported a %d by %d city image to %s." % [size.x, size.y, result.path])
+	status_changed.emit(tr("Exported a %d by %d city image to %s.") % [size.x, size.y, result.path])
 
 
 func close() -> void:

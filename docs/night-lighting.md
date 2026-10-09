@@ -70,4 +70,3 @@ and custom assets still follow the options. Player settings are not overwritten.
 The existing private menu simulation and camera sequence are unchanged. Its
 render context has no active player document, save path, input or audio controller;
 all menu effect layers are released when gameplay starts.
-

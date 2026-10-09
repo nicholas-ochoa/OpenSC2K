@@ -151,7 +151,7 @@ func _run() -> void:
 		assert(DemolishCommand.undo(main.document_state.city, main.tool_state.last_edit_command, main.tool_state.tool_random).ok)
 		assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_state.tool_random.state == rng)
 		main.menus.set_overlay(CityViewMode.Mode.CITY)
-		# A protest keeps its tree without a notice or ending the held stroke.
+		# A protest removes its tree, shows its notice, and ends the held stroke.
 		buildings = main.document_state.city.buildings.duplicate()
 		buildings[main.document_state.city.index_of(start.x, start.y)] = Tiles.TREES_1
 		assert(main.document_state.city.replace_buildings(buildings))
@@ -164,7 +164,12 @@ func _run() -> void:
 		rng = main.tool_state.tool_random.state
 		before = DocumentState.capture(main.document_state.current_document)
 		_button(map, start, true)
-		assert(map.is_left_drag_active() and main.tool_state.last_edit_command.easter_events == 1)
+		await process_frame
+		var protest: PictureNoticeDialog = main.city_dialogs.building_objection_dialog
+		assert(main.tool_state.last_edit_command.easter_events == 1 and not map.is_left_drag_active())
+		assert(protest.visible)
+		assert(main.document_state.city.building_id(start.x, start.y) == Tiles.EMPTY)
+		protest.hide()
 		_button(map, start, false)
 		assert(not map.selection.bulldozer_visible())
 		assert(DemolishCommand.undo(main.document_state.city, main.tool_state.last_edit_command, main.tool_state.tool_random).ok)

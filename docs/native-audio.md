@@ -1,7 +1,8 @@
 # Native audio
 
-The music synthesizers are a Rust GDExtension in `native/audio`. Its only crate
-dependency is `godot`. FluidSynth loads at run time; see [FluidSynth music](fluidsynth.md).
+The music synthesizers are the Rust crate `sc2k_audio` in `native/core/audio`. It has no
+dependencies and no engine types. The bridge crate `opensc2k_audio` in `native/audio` holds
+the Godot class `FluidMidiSynth`. See [Native workspace](native-workspace.md). FluidSynth loads at run time; see [FluidSynth music](fluidsynth.md).
 
 ## Layout
 
@@ -19,4 +20,4 @@ dependency is `godot`. FluidSynth loads at run time; see [FluidSynth music](flui
 `python3 tools/build_native.py` builds and installs every native library and builds
 FluidSynth. Run `cargo fmt`, `cargo fmt --check`,
 `cargo clippy --all-targets --all-features -- -D warnings` and
-`cargo test --release` from `native/audio`.
+`cargo test --release` from `native/`.

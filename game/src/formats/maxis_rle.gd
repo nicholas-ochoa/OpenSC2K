@@ -1,7 +1,7 @@
 class_name MaxisRle
 extends RefCounted
 ## The Maxis run-length code of compressed city chunks. The native simulation
-## library runs the codec; see native/simulation/src/formats/rle.rs.
+## library runs the codec; see native/core/sim/src/formats/rle.rs.
 
 
 static func decode(encoded: PackedByteArray, expected_size: int = -1) -> BinaryResult:

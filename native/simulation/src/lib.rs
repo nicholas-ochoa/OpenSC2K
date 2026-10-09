@@ -1,12 +1,7 @@
-//! Native SimCity 2000 simulation for OpenSC2K.
-//!
-//! `sim` holds the simulation. It has no Godot types, so `cargo test` can run it.
-//! `formats` holds the city file codecs. It also has no Godot types.
-//! `bridge` converts Godot values to and from the simulation types.
+//! The Godot classes of the native simulation. The simulation is in the
+//! `sc2k_sim` crate; `bridge` converts Godot values to and from its types.
 
 mod bridge;
-pub mod formats;
-pub mod sim;
 
 use godot::prelude::*;
 

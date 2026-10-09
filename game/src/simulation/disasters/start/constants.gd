@@ -31,6 +31,9 @@ const SOUND_MICROWAVE := 514
 const SOUND_EARTHQUAKE := 504
 const SOUND_VOLCANO := 507
 const SOUND_HURRICANE := 502
+# the plays of the siren when a disaster starts. SIMCITY.EXE 0x0045cf10 asks
+# for five, and the siren then continues. presentation preference: three
+const SIREN_PLAYS := 3
 const VOLCANO_BUDGET := 25000
 const MISC_CITY_CENTER_X := Sc2MiscLayout.CITY_CENTER_X
 const MISC_CITY_CENTER_Y := Sc2MiscLayout.CITY_CENTER_Y

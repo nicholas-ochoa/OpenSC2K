@@ -416,23 +416,17 @@ func _test_save_gate_and_reports(main: CityApplication, loaded_city: CityState, 
 		quit(2)
 
 		return false
-	status_bar.set_reports(PackedStringArray([
-		"Good health", "Good employment", "Low crime",
-	]))
-	main.interface.call("refresh_status_summary")
-	# Reports rotate when no priority city status is displayed.
-	status_bar.set_city_status(null, false)
-	var report_label := status_bar.reports_label
-	status_bar.update_report_rotation(6.0)
-	var first_report_stable := report_label.text == "Good health"
-	status_bar.update_report_rotation(1.1)
+	# opening a city checks its status. the pane shows that status, not newspaper stories
+	var engine: SimulationEngine = main.simulation_state.simulation_engine
+	# a music notice shows over the status for a few seconds
+	status_bar.update_music_notice(status_bar.music_notice_seconds)
+	status_bar.set_city_status(engine, false)
 
 	if (
-		not first_report_stable
-		or report_label.text != "Good employment"
-		or not report_label.tooltip_text.contains("Low crime")
+		engine.city_status_resource_id < 0
+		or status_bar.reports_label.text != CityStatusMessages.text(engine.city_status_resource_id)
 	):
-		push_error("Status news does not rotate one saved report every seven seconds")
+		push_error("Opening a city did not show its city status: " + status_bar.reports_label.text)
 		main.queue_free()
 		quit(2)
 
@@ -441,7 +435,6 @@ func _test_save_gate_and_reports(main: CityApplication, loaded_city: CityState, 
 
 
 func _test_regional_edits(main: CityApplication, loaded_city: CityState) -> Vector2i:
-	main.reports.call("refresh_saved_news_summary")
 	var patch_point := Vector2i(-1, -1)
 
 	for x in range(8, CityState.MAP_SIZE - 8):
@@ -549,7 +542,7 @@ func _test_scurk_print(main: CityApplication) -> ScurkPlacePrintControl:
 		quit(2)
 
 		return null
-	var place_list: ItemList = place_print.object_list
+	var place_list: ScurkPlaceObjectList = place_print.object_list
 
 	if (
 		not place_print.visible

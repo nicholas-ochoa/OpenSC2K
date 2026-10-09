@@ -10,6 +10,23 @@ them in memory, and a save writes a new version 4 file.
 The reader selects the format from the file signature, not the extension: `PK\x03\x04`
 selects version 4, and `FORM` selects the original or SCLG reader.
 
+## sc2kfix cities
+
+The sc2kfix plugin writes its own `.sc2x` ZIP format for original 128 by 128 cities.
+OpenSC2K calls it the sc2kfix format (`Sc2kfixArchive`). Its first member is `META.json`,
+with the sc2kfix magic in `sc2x.magic` and version 1. A ZIP file whose first member is
+`META.json` loads as an original SC2 city. Saving an original city to an `.sc2x` file
+writes this format; an extended city always writes version 4.
+
+The archive holds `current/MISC.json` (the MISC words under sc2kfix key names),
+`current/XFIX.json`, and the sc2kfix runtime arrays under `current/<ID>`. These match the
+decoded SC2 chunks, except that ALTM words, XGRP values, and the three words of each XMIC
+record are little-endian, and XLAB holds C strings. MISC.json omits the MISC version, the
+industry tables, the words from `0x1050`, and the scenario chunks. OpenSC2K also writes
+`opensc2k/MISC`, `opensc2k/chunks/<ID>` for other or inexact chunks, and
+`opensc2k/chunk_order`, so its own files load again without loss. sc2kfix ignores these
+entries and drops them when it saves.
+
 Every entry is at the archive root. ZIP compresses every entry with DEFLATE level 9
 (`compression/formats/gzip/compression_level=9` in `project.godot`). No entry uses Maxis RLE
 or another inner compression. The writer uses fixed timestamps and this entry order:
@@ -170,7 +187,7 @@ The simulation, the tools, and the renderer use its chunks in the extended layou
 - The document keeps the metadata, the compatibility XLAB table, the object identities,
   the TEXT source orders, and the preserved chunks and entries.
 
-`Sc2xDocument.split` and `join` (native code in `native/simulation/src/formats/sc2x`) convert
+`Sc2xDocument.split` and `join` (native code in `native/core/sim/src/formats/sc2x`) convert
 between the working chunks and the saved structures. A load followed by a save writes the same
 entries. After each simulation step that changes XTHG, a slot whose object was freed or changed
 type loses its identity and name; the next save gives the new object a new ID. IDs are never
@@ -266,9 +283,11 @@ military decision waits for the player, the save reports what to finish first.
 `pending_disaster_point`, `active_disaster_type`, `unsupported_disaster_type`,
 `disaster_map_counter`, `disaster_hurricane_counter`, `terminal_state`, `subtick_counter`,
 `simulation_ready`, and the load-scan results `developed_tiles`, `power_usage_percent`,
-`water_usage_percent`, and `city_status_resource_id`. The optional `fire_elapsed_msec`
-(0 to 1000) is the fire timer between two fire or firestorm disaster ticks; without it the
-timer starts at 0.
+`water_usage_percent`, and `city_status_resource_id`. The optional `skip_next_disaster_tick`
+(true or false) tells whether disaster mode drops the next due tick: as in SIMCITY.EXE, a
+disaster scans on every other due tick, except at African Swallow. Without it the next due
+tick runs. Older files can hold a `fire_elapsed_msec` fire timer; a load ignores it and a
+save removes it.
 
 A file with this state loads without a new power and water scan, so the next days run as
 they would have without the save. The frame timing accumulators, the traffic news deadline
@@ -278,7 +297,7 @@ conversion. The load still restores `rng_states` before its scan.
 
 ## Record and vehicle limits
 
-`native/simulation/src/formats/sc2x/limits.rs` holds the default capacities and the ordinary
+`native/core/sim/src/formats/sc2x/limits.rs` holds the default capacities and the ordinary
 vehicle caps of each map size.
 
 | Map size | XMIC | XSGN | XTHG | Airplanes | Helicopters | Ships | Sailboats | Trains |
@@ -316,4 +335,4 @@ SC2 and SCN cities keep the original allocation rules.
 - `game/src/formats/zip_archive.gd`: the in-memory ZIP codec, which checks each CRC-32.
 - `game/src/model/city/sign_table.gd`: sign lookup and edits.
 - `game/src/simulation/core/sc2x_checkpoint.gd`: saved simulation state.
-- `native/simulation/src/formats/sc2x`: the binary structures, the projection, and the limits.
+- `native/core/sim/src/formats/sc2x`: the binary structures, the projection, and the limits.

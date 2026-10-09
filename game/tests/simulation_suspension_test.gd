@@ -29,7 +29,7 @@ func _run() -> void:
 	_check_current_classification()
 	_check_scenario_goals()
 	await _check_notices()
-	_check_scheduled_newspaper()
+	await _check_scheduled_newspaper()
 	_check_new_windows()
 	await _check_military_result()
 	await _check_game_over()
@@ -69,10 +69,11 @@ func _check_current_classification() -> void:
 		main.city_dialogs.network_connection_dialog, main.city_dialogs.highway_connection_dialog, main.city_dialogs.tunnel_dialog,
 		main.city_dialogs.query_dialog, main.city_dialogs.ordinance_window, main.city_dialogs.building_objection_dialog,
 		main.city_dialogs.scenario_dialog, main.city_dialogs.military_dialog, main.city_dialogs.budget_dialog,
-		main.city_dialogs.notice_dialog, main.city_dialogs.game_over_dialog, main.city_dialogs.analysis_dialog,
-		main.city_dialogs.library_windows,
+		main.city_dialogs.notice_dialog, main.city_dialogs.picture_notice_dialog, main.city_dialogs.game_over_dialog,
+		main.city_dialogs.analysis_dialog,
+		main.city_dialogs.library_windows, main.city_dialogs.help_dialog,
 		main.main_menu, main.main_overlays.settings_dialog, main.reference_import_dialog, main.main_overlays.save_changes_dialog,
-		main.main_overlays.update_dialog,
+		main.main_overlays.update_dialog, main.main_overlays.busy_overlay,
 		main.scurk_editor, main.scurk_place_print, main.scurk_print,
 	]
 	var modeless: Array[Node] = [
@@ -119,6 +120,11 @@ func _check_scenario_goals() -> void:
 	assert(main.city_dialogs.scenario_dialog.visible)
 	assert(not main.city_dialogs.scenario_dialog.starts_scenario)
 	assert(not main.city_dialogs.scenario_dialog.text_view.text.is_empty())
+	var rows := engine.scenario.progress_rows(main.document_state.city)
+	assert(not rows.is_empty() and main.city_dialogs.scenario_dialog.progress_grid.visible
+		and main.city_dialogs.scenario_dialog.progress_grid.get_child_count() == (rows.size() + 1) * 4,
+		"Show Scenario Goals lists each goal with its current value")
+	assert(main.city_dialogs.scenario_dialog.progress_heading.text.contains("months left"))
 	assert(main.frame._simulation_suspended())
 	main.city_dialogs.scenario_dialog.get_ok_button().pressed.emit()
 	assert(not main.city_dialogs.scenario_dialog.visible)
@@ -159,6 +165,29 @@ func _check_notices() -> void:
 	await process_frame
 	assert(not dialog.visible)
 
+	# the National Guard and the parade show their original picture, when the
+	# graphics are imported, in a modal notice
+	var picture_dialog: PictureNoticeDialog = main.city_dialogs.picture_notice_dialog
+	var assets: OriginalGameAssets = main.city_dialogs.original_assets
+	var pictures: bool = assets != null and assets.city_ui_graphics != null and assets.city_ui_graphics.notices.has(406)
+	main.reports.show_notices(PackedInt32Array([119, 284]))
+	var shown: Window = picture_dialog if pictures else dialog
+	assert(shown.visible and main.frame._simulation_suspended(), "A picture notice suspends the simulation")
+	assert(main.reports.pending_notices == PackedInt32Array([284]), "The parade follows the National Guard")
+
+	if pictures:
+		assert(picture_dialog.message_label.text.begins_with("Because you have no police or firefighters"))
+		assert(picture_dialog.picture_view.texture != null)
+	else:
+		assert(dialog.dialog_text.begins_with("Because you have no police or firefighters"))
+
+	shown.hide()
+	await process_frame
+	assert(shown.visible, "The parade notice follows")
+	shown.hide()
+	await process_frame
+	assert(not main.reports.notice_visible() and not main.frame._simulation_suspended())
+
 
 # a newspaper that the simulation opens suspends it until the player closes it
 func _check_scheduled_newspaper() -> void:
@@ -167,6 +196,36 @@ func _check_scheduled_newspaper() -> void:
 	assert(main.frame._simulation_suspended(), "A scheduled newspaper suspends the simulation")
 	main.city_dialogs.newspaper_dialog.hide()
 	assert(not main.newspaper_state.scheduled_pending and not main.frame._simulation_suspended())
+
+	# the original polls the mayor approval before it shows a paper. a rise to
+	# 80 percent shows the parade notice, and the paper follows it
+	var engine: SimulationEngine = main.simulation_state.simulation_engine
+	var document: Sc2File = main.document_state.city.document
+	var contented := {
+		Sc2MiscLayout.NORMAL_POPULATION: 1000, Sc2MiscLayout.WORKFORCE_EDUCATION: 100,
+		Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY: 70, Sc2MiscLayout.BUDGETS + 4: 0,
+	}
+
+	for offset: int in contented:
+		assert(document.set_misc_u32(offset, contented[offset]))
+
+	engine.mayor_approval = 79
+	var random_before: int = engine.random.state
+	main.reports.open_scheduled_newspaper()
+	assert(engine.random.state != random_before and engine.mayor_approval >= 80, "A paper runs the approval poll")
+	assert(main.reports.notice_visible() and not main.city_dialogs.newspaper_dialog.visible,
+		"The parade notice comes before the paper")
+	assert(main.frame._simulation_suspended())
+
+	for notice: Window in [main.city_dialogs.notice_dialog, main.city_dialogs.picture_notice_dialog]:
+		notice.hide()
+
+	await process_frame
+	assert(main.city_dialogs.newspaper_dialog.visible and main.newspaper_state.scheduled_pending,
+		"The paper follows the parade notice")
+	main.city_dialogs.newspaper_dialog.hide()
+	assert(not main.newspaper_state.scheduled_pending and not main.frame._simulation_suspended())
+	assert(document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 0))
 
 
 func _check_new_windows() -> void:
@@ -224,8 +283,7 @@ func _check_military_result() -> void:
 	engine.city.document.set_misc_u32(Sc2MiscLayout.PROGRESSION, 3)
 	engine.city.document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 60001)
 	var controller: GameSpeedController = main.simulation_state.speed_controller
-	var result := SimulationTickResult.new()
-	controller._consume_day_result(result, engine.advance_day())
+	var result := controller.run_day()
 	main.frame.consume_simulation_result(result)
 	assert(main.city_dialogs.military_dialog.visible)
 	main.city_dialogs.military_dialog.hide()

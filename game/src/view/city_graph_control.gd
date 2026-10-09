@@ -95,7 +95,7 @@ func _draw() -> void:
 
 	for index in point_count:
 		var x := _point_x(plot, index, point_count)
-		var label := labels[index] if index < labels.size() else ""
+		var label := tr(labels[index]) if index < labels.size() else ""
 
 		if not label.is_empty():
 			draw_line(Vector2(x, plot.end.y), Vector2(x, plot.end.y + 4), get_theme_color("border", "AppPalette"), 1.0)
@@ -343,6 +343,7 @@ func _draw_endpoint_labels(
 
 
 func _draw_centered_message(message: String) -> void:
+	message = tr(message)
 	var font := get_theme_default_font()
 	var font_size := 14
 	var width := font.get_string_size(

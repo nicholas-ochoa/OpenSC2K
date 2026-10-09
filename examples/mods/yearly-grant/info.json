@@ -1,0 +1,10 @@
+{
+  "id": "yearly-grant",
+  "name": "Yearly Grant",
+  "version": "1.0.0",
+  "description": "The state pays the city a grant at the start of each year. The grant command shows or sets the amount.",
+  "main": "main.js",
+  "author": "OpenSC2K",
+  "website": "https://github.com/nicholas-ochoa/OpenSC2K",
+  "license": "MIT"
+}

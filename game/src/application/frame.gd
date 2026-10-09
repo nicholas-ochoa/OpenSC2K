@@ -35,7 +35,7 @@ func process(delta: float) -> void:
 	app.debug_tools.process(delta)
 
 	if app.city_status_bar != null:
-		app.city_status_bar.update_report_rotation(delta)
+		app.city_status_bar.update_music_notice(delta)
 
 	if not preparing:
 		app.static_render.poll_static_render()
@@ -59,7 +59,7 @@ func process(delta: float) -> void:
 	if not result.ok:
 		app.simulation_state.speed_controller.set_speed(GameSpeed.Speed.PAUSED)
 		sync_speed_ui()
-		app.interface.show_error("Simulation stopped: %s" % result.error)
+		app.interface.show_error(tr("Simulation stopped: %s") % result.error)
 
 		return
 
@@ -89,6 +89,8 @@ func _simulation_suspended() -> bool:
 func _advance_palette_animation(delta: float, suspended: bool) -> void:
 	# Keep palette animation running while the simulation worker is busy.
 	if not suspended and app.simulation_state.speed_controller.speed != GameSpeed.Speed.PAUSED and not app.debug_tools.state.palette_frozen:
+		if app.map_view != null:
+			app.map_view.advance_artwork_animation(delta)
 		palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
 	var ticks := int(palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC)
 
@@ -113,6 +115,10 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "The simulation paused on the target date."
 
+	# the controller changed the speed itself
+	if result.paused_on_target_day or result.disaster_slowed:
+		app.scripting.emit("sim.speed", {"speed": app.simulation_state.speed_controller.speed_name()})
+
 	app.timing_state.simulation_timings.consume(result)
 	var refresh_started := Time.get_ticks_usec()
 	var ran_days: bool = not result.day_results.is_empty()
@@ -135,7 +141,7 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 		app.scurk_state.edit_history.clear()
 		# sc2x data-map updates do not change the surface or underground artwork
 		var data_maps_only: bool = (app.document_state.city.document.full_resolution_maps() and result.day_results.size() == 1
-			and SimulationDaySchedule.scanned_data_maps_only(result.day_results[0])
+			and result.day_results[0].scanned_data_maps_only()
 			and result.effect_events.is_empty() and result.view_center_requests.is_empty()
 			and CityViewMode.is_map(app.view_state.overlay_mode))
 
@@ -145,6 +151,10 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 	if ran_days:
 		app.interface.refresh_details()
 		app.debug_tools.on_days_completed()
+	elif not result.disaster_results.is_empty():
+		# the start of a disaster enables the Emergency tool, and its end disables it
+		if app.current_tool.refresh_tool_availability():
+			app.current_tool.update_edit_state()
 
 	var force_refresh: bool = (
 		not result.effect_events.is_empty()
@@ -180,7 +190,7 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 			app.effects_audio.play_music_track(int(track_id))
 
 	if not result.news_items.is_empty():
-		app.reports.show_news_items(result.news_items)
+		app.interface.refresh_status_summary()
 
 	if not result.notice_ids.is_empty():
 		app.reports.show_notices(result.notice_ids)
@@ -198,6 +208,8 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 			app.reports.military_notice_pending = true
 		elif request.type == "military_proposal":
 			app.budget.open_military_proposal()
+
+	app.scripting.on_simulation_result(result)
 
 
 func _update_fps(delta: float) -> void:
@@ -231,7 +243,8 @@ func select_speed(speed_value: int) -> void:
 
 	sync_speed_ui()
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "%s speed selected." % app.simulation_state.speed_controller.speed_name()
+	app.status_label.text = tr("%s speed selected.") % tr(app.simulation_state.speed_controller.speed_name())
+	app.scripting.emit("sim.speed", {"speed": app.simulation_state.speed_controller.speed_name()})
 
 
 func sync_speed_ui() -> void:

@@ -108,7 +108,7 @@ func _draw() -> void:
 		font, Vector2(bracket_center + 12, plot.position.y - 12), indicator_text(data, mode),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, workforce_color
 	)
-	var age_title := "Resident Age"
+	var age_title := tr("Resident Age")
 	var age_title_width := font.get_string_size(
 		age_title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 	).x
@@ -236,6 +236,7 @@ static func y_axis_label(selected_mode: int, step: int) -> String:
 
 
 func _draw_centered_message(message: String) -> void:
+	message = tr(message)
 	var font := get_theme_default_font()
 	var font_size := 14
 	var width := font.get_string_size(

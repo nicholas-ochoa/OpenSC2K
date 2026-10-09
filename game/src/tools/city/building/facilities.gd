@@ -1,7 +1,7 @@
 class_name BuildingFacilities
 extends BuildingConstants
 ## Stadium teams. New facility records are made in the native simulation
-## library; see native/simulation/src/sim/tools/commands/facilities.rs.
+## library; see native/core/sim/src/sim/tools/commands/facilities.rs.
 
 
 @warning_ignore_start("integer_division")

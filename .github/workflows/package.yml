@@ -15,6 +15,12 @@ on:
         description: Days to keep the desktop-packages artifact
         type: number
         default: 1
+      signing:
+        description: >-
+          macOS Developer ID signing and notarization: none, optional (sign when the
+          repository secrets are set), or required
+        type: string
+        default: none
 
 permissions:
   contents: read
@@ -53,6 +59,10 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: native
+      # cpal in the native game links ALSA on Linux
+      - name: Install the ALSA headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image.
       # The audio library folder also receives FluidSynth, which needs CMake
       - name: Build the package libraries
@@ -66,6 +76,7 @@ jobs:
             game/bin/opensc2k_rendering/${{ matrix.platform }}/*
             game/bin/opensc2k_formats/${{ matrix.platform }}/*
             game/bin/opensc2k_audio/${{ matrix.platform }}/*
+            game/bin/opensc2k_scripting/${{ matrix.platform }}/*
           if-no-files-found: error
           retention-days: 1
 
@@ -73,7 +84,8 @@ jobs:
     name: Build desktop packages
     needs: native
     runs-on: macos-15
-    timeout-minutes: 30
+    # notarization usually takes a few minutes, but Apple can queue a submission longer
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -90,12 +102,30 @@ jobs:
           pattern: native-*
           path: local/native
           merge-multiple: true
+      - name: Prepare macOS signing
+        if: inputs.signing != 'none'
+        env:
+          SIGNING: ${{ inputs.signing }}
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: bash tools/setup_macos_signing_ci.sh
       - name: Build desktop packages
         env:
           PACKAGE_VERSION: ${{ inputs.version }}
+          SIGNING: ${{ inputs.signing }}
         run: |
           label="${PACKAGE_VERSION:-nightly-$(git rev-parse --short=8 HEAD)}"
-          python tools/build_desktop_release.py --output local/packages --label "$label" --native local/native
+          require=''
+          if [ "$SIGNING" = required ]; then
+            require=--require-notarization
+          fi
+          python tools/build_desktop_release.py --output local/packages --label "$label" --native local/native $require
+      - name: Remove the signing keychain
+        if: always() && inputs.signing != 'none'
+        run: bash tools/cleanup_macos_signing_ci.sh
       - name: Save packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:

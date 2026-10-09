@@ -49,8 +49,9 @@ The macOS DMG includes an app for Intel and Apple Silicon.
 It requires macOS 11 or later on Intel, or macOS 13 or later on Apple Silicon.
 Open the DMG. Drag `OpenSC2K.app` to Applications, then open it.
 
-The app has an ad-hoc signature and is not notarized.
-If macOS blocks it, use **Open Anyway** in **System Settings > Privacy & Security** after the first launch attempt.
+Releases are signed with a Developer ID and notarized by Apple, so macOS opens them without a warning.
+Other builds can have an ad hoc signature.
+If macOS blocks one, use **Open Anyway** in **System Settings > Privacy & Security** after the first launch attempt.
 See the [Godot macOS launch instructions](https://docs.godotengine.org/en/4.7/tutorials/export/running_on_macos.html).
 
 ## Music SoundFonts

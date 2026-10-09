@@ -93,14 +93,15 @@ func initialize_runtime() -> void:
 		return
 
 	app.asset_state.palette = original_assets.palette
+	app.asset_state.base_palette = original_assets.palette
 	app.asset_state.scenario_palette = original_assets.scenario_palette
 	app.asset_state.scenario_graphics = original_assets.scenario_graphics
 	app.asset_state.palette_index_encoding = Palette.index_encoding()
 	app.static_render.update_palette_cycle_texture()
 	app.asset_state.base_large_sprites = original_assets.large_sprites
 	app.asset_state.base_small_medium_sprites = original_assets.small_medium_sprites
-	app.asset_state.large_sprites = app.asset_state.base_large_sprites
-	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
+	_load_startup_hd_pack()
+	use_default_sprites()
 	app.visual_environment.reload_brightmaps()
 	app.camera_input.refresh_child_tool_icons()
 
@@ -192,7 +193,7 @@ func activate_imported_packs(result: Sc2MediaImportResult) -> void:
 				app.preferences.soundtrack_folder = ""
 				app.audio_controller.set_soundtrack_folder("")
 		else:
-			notes.append("%s pack saved, but could not be loaded. The previous pack is still active." % kind.capitalize())
+			notes.append(tr("%s pack saved, but could not be loaded. The previous pack is still active.") % tr(kind.capitalize()))
 
 	if not active.is_empty():
 		notes.append("Active packs: " + ", ".join(active) + ".")
@@ -256,7 +257,7 @@ func _import_original_game(executable_path: String) -> void:
 	)
 
 	app.settings.open_import_settings()
-	app.status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
+	app.status_label.text = tr("Packs active. Imported %d cities and %d scenarios.") % [install_result.cities, install_result.scenarios]
 
 	if saved != OK:
 		app.interface.show_error("Packs imported, but their preferences could not be saved.")
@@ -276,19 +277,16 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	text_resources.newspaper_data = assets.newspaper_data
 	text_resources.library_texts = assets.library_texts
 	app.asset_state.palette = assets.palette
+	app.asset_state.base_palette = assets.palette
 	app.asset_state.scenario_palette = assets.scenario_palette
 	app.asset_state.scenario_graphics = assets.scenario_graphics
 	app.asset_state.scurk_graphics = assets.scurk_graphics
 	app.asset_state.base_large_sprites = assets.large_sprites
 	app.asset_state.base_small_medium_sprites = assets.small_medium_sprites
-	app.asset_state.large_sprites = app.asset_state.base_large_sprites
-	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
+	use_default_sprites()
 
-	if app.asset_state.active_scurk_tile_set != null:
-		app.asset_state.large_sprites = SpriteArchive.combine([app.asset_state.base_large_sprites,
-			app.asset_state.active_scurk_tile_set.overrides])
-		app.asset_state.small_medium_sprites = SpriteArchive.combine([app.asset_state.base_small_medium_sprites,
-			app.asset_state.active_scurk_tile_set.overrides])
+	if not app.asset_state.active_scurk_tile_sets.is_empty():
+		app.scurk_workspace.combine_tile_sets(app.asset_state.active_scurk_tile_sets)
 
 	app.static_render.invalidate_rendered_city()
 	app.static_render.update_palette_cycle_texture()
@@ -321,6 +319,137 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites, app.preferences.visual_enhancements)
 
 	app.map_render.refresh_map(false)
+
+
+# Show the sprites of the graphics source without a SCURK tile set. The sc2kfix
+# corrections apply only here, and only to the original Windows sprites. They
+# also add the DOS colours of sc2kfix to the palette.
+func use_default_sprites() -> void:
+	var large := app.asset_state.base_large_sprites
+	var small_medium := app.asset_state.base_small_medium_sprites
+	# HD graphics show no sc2kfix corrections
+	var corrections := app.preferences.sprite_corrections and not app.asset_state.hd_active()
+
+	if corrections:
+		large = Sc2kfixSpriteFixes.apply(large, "large")
+		small_medium = Sc2kfixSpriteFixes.apply(small_medium, "small_medium")
+
+	app.asset_state.large_sprites = with_hd_sprites(large)
+	app.asset_state.small_medium_sprites = with_hd_sprites(small_medium)
+	use_dos_colors(corrections)
+
+
+# `archive` with the art of the HD sprite pack, when HD graphics show.
+func with_hd_sprites(archive: Sc2SpriteArchive) -> Sc2SpriteArchive:
+	return app.asset_state.hd_pack.apply_to(archive) if app.asset_state.hd_active() else archive
+
+
+# The pack.json of the HD sprite pack. OPENSC2K_HD_PACK overrides the preference.
+func hd_pack_path() -> String:
+	var path := OS.get_environment("OPENSC2K_HD_PACK")
+
+	return path if not path.is_empty() else app.preferences.hd_pack_folder
+
+
+func _load_startup_hd_pack() -> void:
+	var path := hd_pack_path()
+
+	if path.is_empty():
+		return
+
+	var pack := HdSpritePack.load_root(path)
+
+	if pack.error.is_empty():
+		app.asset_state.hd_pack = pack
+	else:
+		ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, "HD sprite pack: %s" % pack.error)
+
+
+# Load the HD sprite pack at `path`, or remove the pack when `path` is empty.
+# Returns an error, and keeps the current pack, when the pack is not valid.
+func set_hd_pack(path: String) -> String:
+	var pack: HdSpritePack = null
+
+	if not path.strip_edges().is_empty():
+		pack = HdSpritePack.load_root(path.strip_edges())
+
+		if not pack.error.is_empty():
+			return pack.error
+
+	app.asset_state.hd_pack = pack
+	_reload_sprites()
+
+	return ""
+
+
+# Show or hide the art of a loaded HD graphics pack.
+func set_hd_graphics(enabled: bool) -> void:
+	if app.preferences.hd_graphics == enabled:
+		return
+
+	app.preferences.hd_graphics = enabled
+	app.asset_state.hd_enabled = enabled
+
+	if app.asset_state.hd_pack != null:
+		_reload_sprites()
+
+
+# Paint the city again with the sprites of the current graphics, HD art, and tile sets.
+func _reload_sprites() -> void:
+	if app.asset_state.base_large_sprites == null:
+		return
+
+	app.map_render.close_region_cache()
+	app.static_render.stop_render_job()
+
+	if app.asset_state.active_scurk_tile_sets.is_empty():
+		use_default_sprites()
+	else:
+		app.scurk_workspace.combine_tile_sets(app.asset_state.active_scurk_tile_sets)
+
+	app.visual_environment.reload_brightmaps(false)
+	app.static_render.invalidate_rendered_city()
+	app.main_menu.city_background.replace_graphics(app.asset_state.palette, app.asset_state.large_sprites)
+
+	if app.document_state.city != null:
+		app.map_render.refresh_map()
+
+
+# Use the palette of the graphics source, with the sc2kfix DOS colours when
+# `enabled`. The palette animation textures follow.
+func use_dos_colors(enabled: bool) -> void:
+	var base := app.asset_state.base_palette
+
+	if base == null:
+		return
+
+	var palette := Sc2kfixSpriteFixes.extended_palette(base) if enabled else base
+
+	if palette == app.asset_state.palette or (app.asset_state.palette != null and palette.colors == app.asset_state.palette.colors):
+		return
+
+	app.asset_state.palette = palette
+	app.static_render.update_palette_cycle_texture()
+
+
+# Apply a changed sprite correction preference to the city view. A SCURK tile
+# set keeps its own sprites.
+func set_sprite_corrections(enabled: bool) -> void:
+	if app.preferences.sprite_corrections == enabled:
+		return
+
+	app.preferences.sprite_corrections = enabled
+
+	if app.asset_state.active_scurk_tile_set != null or app.asset_state.base_large_sprites == null:
+		return
+
+	app.map_render.close_region_cache()
+	app.static_render.stop_render_job()
+	use_default_sprites()
+	app.static_render.invalidate_rendered_city()
+
+	if app.document_state.city != null:
+		app.map_render.refresh_map()
 
 
 func data_pack_folder() -> String:
@@ -387,12 +516,12 @@ func prompt_for_stale_packs() -> void:
 	var names := PackedStringArray()
 
 	for kind in kinds:
-		names.append(PACK_NAMES[kind])
+		names.append(tr(PACK_NAMES[kind]))
 
 	app.pack_update_dialog.set_meta("kinds", kinds)
 	app.pack_update_dialog.dialog_text = (
-		"These imported packs are missing or out of date: %s.\n\n" % ", ".join(names)
-		+ "Import your SimCity 2000 game files again to update them. The import keeps your other packs."
+		tr("These imported packs are missing or out of date: %s.\n\n") % ", ".join(names)
+		+ tr("Import your SimCity 2000 game files again to update them. The import keeps your other packs.")
 	)
 	app.pack_update_dialog.popup_centered(Vector2i(560, 200))
 
@@ -420,6 +549,9 @@ func refresh_scurk_artwork() -> void:
 
 			if not rendered.ok:
 				continue
+
+			if stamp.flipped:
+				rendered.image.flip_x()
 
 			var texture := ImageTexture.create_from_image(rendered.image)
 			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(app.document_state.city, stamp.point.x, stamp.point.y)[2]

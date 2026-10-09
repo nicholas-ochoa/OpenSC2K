@@ -85,7 +85,7 @@ func _draw() -> void:
 
 	for industry in INDUSTRY_COUNT:
 		var center_y := plot.position.y + row_height * (float(industry) + 0.5)
-		var label := INDUSTRY_NAMES[industry]
+		var label := tr(INDUSTRY_NAMES[industry])
 		var label_width := font.get_string_size(
 			label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 		).x
@@ -270,6 +270,7 @@ func _plot_rect() -> Rect2:
 
 
 func _draw_centered_message(message: String) -> void:
+	message = tr(message)
 	var font := get_theme_default_font()
 	var font_size := 14
 	var width := font.get_string_size(

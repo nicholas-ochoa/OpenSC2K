@@ -34,7 +34,7 @@ func _init(source: GameSpeedController) -> void:
 
 
 func advance_time(delta_msec: float, now_msec: int, suspended := false) -> SimulationTickResult:
-	var empty := controller._empty_result()
+	var empty := SimulationTickResult.new()
 	empty.ok = true
 
 	if delta_msec < 0:

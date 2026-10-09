@@ -38,18 +38,12 @@ func shade_index(index: int, direction := 0) -> int:
 
 
 static func pixel_perfect_path(points: Array[Vector2i]) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-	for point in points:
-		if not result.is_empty() and result[-1] == point:
-			continue
-		if result.size() >= 2:
-			var first := result[-1] - result[-2]
-			var second := point - result[-1]
-			if absi(first.x) + absi(first.y) == 1 and absi(second.x) + absi(second.y) == 1 and first.x * second.x + first.y * second.y == 0:
-				result.remove_at(result.size() - 1)
-		result.append(point)
+	var flat := PackedInt64Array()
 
-	return result
+	for point in points:
+		flat.append_array([point.x, point.y])
+
+	return ScurkPixelOperations._points(NativeScurkPixels.pixel_perfect_path(flat))
 
 
 func constrain_line(start: Vector2i, finish: Vector2i) -> Vector2i:
@@ -108,10 +102,4 @@ func set_stamp(width: int, height: int, pixels: PackedInt32Array) -> bool:
 
 
 static func resolve_texture_value(source: int, selected_color: int) -> int:
-	if source == 0xff:
-		return selected_color
-
-	if source == 0xf5 or source == 0:
-		return -1
-
-	return clampi(source, 0, 255)
+	return NativeScurkPixels.resolve_texture_value(source, selected_color)

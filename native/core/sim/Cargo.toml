@@ -1,0 +1,11 @@
+[package]
+name = "sc2k_sim"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "SimCity 2000 simulation of OpenSC2K, without engine types"
+
+[dependencies]
+sc2k_formats = { path = "../formats" }
+sc2k_assets = { path = "../assets" }

@@ -4,6 +4,9 @@ OpenSC2K loads the original game assets from packs. A pack is a folder that
 contains a UTF-8 `pack.json` file and the files that it refers to. These are
 OpenSC2K formats. They are not original SimCity 2000 formats.
 
+An optional HD sprite pack can replace the look of the city sprites. It is not
+one of these pack kinds. Refer to [HD sprite pack format](hd-sprite-pack-format.md).
+
 There are four pack kinds:
 
 | Kind | `format` value | Content | Automatic location |
@@ -55,6 +58,7 @@ These variables select a pack for one run. They override the Settings value.
 | --- | --- |
 | `OPENSC2K_GRAPHICS_PACK` | Graphics pack folder or `pack.json` file |
 | `OPENSC2K_DATA_PACK` | Data pack folder or `pack.json` file |
+| `OPENSC2K_HD_PACK` | HD sprite pack folder or `pack.json` file. Refer to [HD sprite pack format](hd-sprite-pack-format.md). |
 | `OPENSC2K_SOUNDTRACK_DIR` | Folder of music recordings. Refer to [Music recordings](#music-recordings). |
 | `OPENSC2K_FFMPEG` | Path of the FFmpeg program that decodes FLAC recordings |
 
@@ -89,8 +93,10 @@ all four kinds.
 
 If the content changes for one source platform only, put the new revision for
 that platform in `ImportedPackRevision.CURRENT_BY_PLATFORM`. The game compares
-a pack with the revision for its `source_platform`. Graphics packs from `DOS` and
+a pack with the revision for its `source_platform`. Graphics packs from
 `Macintosh` sources have revision `2`, because the importer changed their palette.
+Graphics packs from `DOS` sources have revision `3`: the importer changed their
+palette, then added the toolbar from `TOOL.RAW`.
 
 When an importer adds content to a pack kind or changes it, increase the current
 revision of that kind. Packs of that kind with a lower revision are then out of
@@ -212,7 +218,7 @@ The five `ui` images are:
 | `industry_icons` | City Industry window icons |
 | `city_map_icons` | City map window icons |
 | `simnation_sprites` | SimNation window sprite sheet |
-| `forest_protest_image` | Picture for the citizen objection notice |
+| `forest_protest_image` | Picture for the citizen objection and forest protest notices |
 
 When an image is not in the pack, the game uses its built-in controls where
 they are available.

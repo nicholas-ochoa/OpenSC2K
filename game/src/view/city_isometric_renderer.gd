@@ -15,11 +15,13 @@ static func create_image(
 	transparent_background := false,
 	validate_required_assets := true,
 	include_special_overlays := true,
-	progress := Callable()
+	progress := Callable(),
+	maximum_size := Vector2i.ZERO,
+	artwork_factor := 0
 ) -> AssetImageResult:
 	return IsometricImageRender.create_image(
 		city, palette, sprites, view_size, animation_phase, include_moving_things, transparent_background,
-		validate_required_assets, include_special_overlays, progress
+		validate_required_assets, include_special_overlays, progress, maximum_size, artwork_factor
 	)
 
 

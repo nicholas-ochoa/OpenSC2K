@@ -81,6 +81,30 @@ func run(starter: CityState, large: Sc2SpriteArchive) -> void:
 				"Fast isometric lookup matches the full generated city scan at %s" % screen_point,
 			)
 	MapInteractionTests.new(context).run(starter, surface_city, surface_point, raised_polygon)
+	_check_earthquake_shake()
+
+
+# the earthquake shake lasts some seconds, moves slowly enough to see, and
+# ends where the view was
+func _check_earthquake_shake() -> void:
+	var offsets := CityEffectTiming.earthquake_offsets()
+	var seconds := float(offsets.size() - 1) / CityEffectTiming.EARTHQUAKE_FPS
+	_check(seconds >= 3.0 and seconds <= 5.0, "The earthquake shake lasts 3 to 5 seconds, got %.2f" % seconds)
+	_check(CityEffectTiming.EARTHQUAKE_FPS <= 20, "The earthquake shake moves at most 20 times a second")
+	_check(offsets[offsets.size() - 1] == Vector2.ZERO, "The earthquake shake returns the view to its position")
+	var largest := 0.0
+	var turns := true
+
+	for frame in range(1, offsets.size() - 1):
+		largest = maxf(largest, absf(offsets[frame].x))
+		turns = turns and signf(offsets[frame].x) == -signf(offsets[frame - 1].x)
+
+	_check(turns, "The earthquake shake moves the view to the other side each frame")
+	_check(is_equal_approx(largest, 1.0), "The earthquake shake reaches its full distance")
+	_check(
+		CityEffectTiming.EARTHQUAKE_DISTANCE > 4.0,
+		"The earthquake shake moves farther than the 4 pixels of the original",
+	)
 
 
 func _dynamic_command_values(commands: Array[CityDynamicCommand]) -> Array:

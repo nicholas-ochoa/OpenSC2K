@@ -1,0 +1,3 @@
+[alias]
+# cargo xtask <task>: see native/xtask/src/main.rs
+xtask = "run --quiet --package xtask --"

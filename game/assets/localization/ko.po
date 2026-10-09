@@ -1,0 +1,2898 @@
+msgid ""
+msgstr ""
+"Language: ko\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+
+msgid " %d buildings still need records; the table is full."
+msgstr " 기록 표가 가득 차 건물 %d개의 기록이 아직 필요합니다."
+
+msgid " %d links or records that SC2X cannot describe were kept unchanged."
+msgstr " SC2X에서 표현할 수 없는 연결 또는 기록 %d개는 그대로 유지했습니다."
+
+msgid " (oldest)"
+msgstr " (가장 오래됨)"
+
+msgid " Restored facility records for %d buildings."
+msgstr " 건물 %d개의 시설 기록을 복원했습니다."
+
+msgid " Route stopped: %s."
+msgstr " 경로가 중단됐습니다: %s."
+
+msgid " The bridge was not built: %s."
+msgstr " 다리를 건설하지 못했습니다: %s."
+
+msgid "% of CITY"
+msgstr "도시 비율"
+
+msgid "%d eq"
+msgstr "%d 교육지수"
+
+msgid "%d yrs"
+msgstr "%d세"
+
+msgid "%s\n$%s total\n$%s for each %s"
+msgstr "%s\n총 $%s\n$%s / %s"
+
+msgid "%s\nFree in Place & Print"
+msgstr "%s\n배치 및 인쇄 모드에서는 무료"
+
+msgid "%s %s."
+msgstr "%s %s."
+
+msgid "%s advisor"
+msgstr "%s 보좌관"
+
+msgid "%s counts %d residents"
+msgstr "%s의 인구 %d명"
+
+msgid "%s has a recorded population of %d. City services and transport must keep pace as new neighborhoods develop. Residents need connections to employment, electricity and water. This edition records conditions on %s."
+msgstr "%s의 인구는 %d명으로 집계됐습니다. 새 주거지가 늘어나면 공공서비스와 교통도 함께 확충해야 합니다. 주민에게는 일자리로 가는 길과 전기, 수도가 필요합니다. 이번 기사는 %s의 상황을 전합니다."
+
+msgid "%s is not available in this city."
+msgstr "이 도시에서는 %s을(를) 사용할 수 없습니다."
+
+msgid "%s pack saved, but could not be loaded. The previous pack is still active."
+msgstr "%s 팩을 저장했지만 불러오지 못했습니다. 이전 팩을 계속 사용합니다."
+
+msgid "%s placement was rejected by nearby residents."
+msgstr "인근 주민이 %s 건설을 반대했습니다."
+
+msgid "%s preview: %d charged %s for $%s."
+msgstr "%s 미리보기: 유료 %d%s, 비용 $%s."
+
+msgid "%s preview: %d tiles; free in SCURK."
+msgstr "%s 미리보기: %d타일, SCURK에서는 무료입니다."
+
+msgid "%s speed selected."
+msgstr "시뮬레이션 속도: %s."
+
+msgid "%s started."
+msgstr "%s 발생."
+
+msgid "... (continued on pg %d)"
+msgstr "… (%d면에 계속)"
+
+msgid "1 Year"
+msgstr "1년"
+
+msgid "10 Years"
+msgstr "10년"
+
+msgid "100 Yrs"
+msgstr "100년"
+
+msgid "11 demand tiles"
+msgstr "수요 타일 11칸"
+
+msgid "111 demand tiles"
+msgstr "수요 타일 111칸"
+
+msgid "1x - Small"
+msgstr "1배 - 작게"
+
+msgid "2 by 2 water section"
+msgstr "2×2 수면 구간"
+
+msgid "2 by 2 water sections"
+msgstr "2×2 수면 구간"
+
+msgid "2x - Medium"
+msgstr "2배 - 중간"
+
+msgid "355 demand tiles"
+msgstr "수요 타일 355칸"
+
+msgid "40 demand tiles"
+msgstr "수요 타일 40칸"
+
+msgid "44 demand tiles"
+msgstr "수요 타일 44칸"
+
+msgid "48 demand tiles"
+msgstr "수요 타일 48칸"
+
+msgid "4x - Large"
+msgstr "4배 - 크게"
+
+msgid "5 to 14 demand tiles; varies with rain"
+msgstr "수요 타일 5~14칸, 강수량에 따라 달라짐"
+
+msgid "50 years"
+msgstr "50년"
+
+msgid "555 demand tiles"
+msgstr "수요 타일 555칸"
+
+msgid "A Single Penny"
+msgstr "50원"
+
+msgid "A closer look at city services"
+msgstr "도시 공공서비스 점검"
+
+msgid "A microwave disaster can start at this plant."
+msgstr "이 발전소에서 마이크로파 재해가 발생할 수 있습니다."
+
+msgid "ACRES"
+msgstr "에이커"
+
+msgid "About"
+msgstr "OpenSC2K란?"
+
+msgid "About OpenSC2K"
+msgstr "OpenSC2K 정보"
+
+msgid "Above Ground"
+msgstr "지상"
+
+msgid "Actual"
+msgstr "실제"
+
+msgid "Add layer"
+msgstr "레이어 추가"
+
+msgid "Advisor"
+msgstr "보좌관"
+
+msgid "Aerospace"
+msgstr "항공우주"
+
+msgid "African Swallow"
+msgstr "아프리카 제비 (최고속)"
+
+msgid "After copy: source graphics"
+msgstr "변경 후: 원본 그래픽"
+
+msgid "Air Crash"
+msgstr "비행기 사고"
+
+msgid "Airport"
+msgstr "공항"
+
+msgid "Airport or Seaport"
+msgstr "공항 또는 항구"
+
+msgid "All"
+msgstr "모두"
+
+msgid "All keyboard and mouse bindings will return to their default values. Your custom bindings will be lost."
+msgstr "키보드와 마우스 조작을 모두 기본값으로 복원합니다. 사용자 지정 단축키는 사라집니다."
+
+msgid "Allow different destination"
+msgstr "다른 대상 허용"
+
+msgid "An empty value removes the sign."
+msgstr "내용을 비우면 표지판을 제거합니다."
+
+msgid "An open-source SimCity 2000 remake"
+msgstr "오픈 소스 심시티 2000 리메이크"
+
+msgid "Animating I"
+msgstr "애니메이션 I"
+
+msgid "Animating II"
+msgstr "애니메이션 II"
+
+msgid "Apply"
+msgstr "적용"
+
+msgid "Arcologies"
+msgstr "아콜로지"
+
+msgid "Ask advisor"
+msgstr "보좌관에게 조언 구하기"
+
+msgid "Ask the %s advisor"
+msgstr "%s 보좌관에게 조언 요청"
+
+msgid "Assigned %s to the new stadium."
+msgstr "새 경기장에 %s 팀을 지정했습니다."
+
+msgid "At full funding, each college supplies 50 units of capacity to the education phase. Serves the college-age population group."
+msgstr "예산을 전액 배정하면 대학당 교육 수용 능력 50을 제공합니다. 대학 연령대의 주민을 교육합니다."
+
+msgid "At full funding, each hospital supplies 25 units of capacity to the health phase. Funding cuts reduce capacity proportionally."
+msgstr "예산을 전액 배정하면 병원당 의료 수용 능력 25를 제공합니다. 예산 삭감 비율에 따라 능력이 감소합니다."
+
+msgid "At full funding, each school supplies 15 units of capacity to the education phase. Serves younger population groups."
+msgstr "예산을 전액 배정하면 학교당 교육 수용 능력 15를 제공합니다. 어린 연령대의 주민을 교육합니다."
+
+msgid "Audio"
+msgstr "소리"
+
+msgid "Author"
+msgstr "작성자"
+
+msgid "Auto-Budget"
+msgstr "자동-예산"
+
+msgid "Auto-Goto"
+msgstr "사건 발생 위치로 이동"
+
+msgid "Automatic"
+msgstr "자동"
+
+msgid "Automatic (%s)"
+msgstr "자동 (%s)"
+
+msgid "Automotive"
+msgstr "자동차"
+
+msgid "Background"
+msgstr "배경"
+
+msgid "Balance"
+msgstr "잔액"
+
+msgid "Before: current working graphics"
+msgstr "변경 전: 현재 그래픽"
+
+msgid "Below Ground"
+msgstr "지하"
+
+msgid "Big Park"
+msgstr "대공원"
+
+msgid "Black and White"
+msgstr "흑백"
+
+msgid "Blizzard"
+msgstr "눈보라"
+
+msgid "Bond"
+msgstr "채권"
+
+msgid "Bond payments"
+msgstr "채무"
+
+msgid "Bonds"
+msgstr "채무"
+
+msgid "Box"
+msgstr "사각형"
+
+msgid "Braun Llama Dome"
+msgstr "브라운 라마 돔"
+
+msgid "Browse"
+msgstr "찾아보기"
+
+msgid "Browse tiles"
+msgstr "타일 찾아보기"
+
+msgid "Browse..."
+msgstr "찾아보기..."
+
+msgid "Browse…"
+msgstr "찾아보기…"
+
+msgid "Brush"
+msgstr "브러시"
+
+msgid "Brush size"
+msgstr "브러시 크기"
+
+msgid "Brush size in tiles (1–15)"
+msgstr "브러시 크기 (1~15칸)"
+
+msgid "Budget"
+msgstr "예산"
+
+msgid "Build %s"
+msgstr "%s 건설"
+
+msgid "Build a %s connection to a neighboring city for $%s?\nThe %d-tile route costs $%s and remains if you cancel."
+msgstr "이웃 도시와 %s 연결을 $%s에 건설할까요?\n%d타일 경로 비용은 $%s이며, 취소해도 경로는 남습니다."
+
+msgid "Build a %s connection to a neighboring city?\nThe route and connection are free in Place & Print."
+msgstr "이웃 도시와 %s 연결을 건설할까요?\n배치 및 인쇄 모드에서는 경로와 연결이 무료입니다."
+
+msgid "Building Zone"
+msgstr "건물 구역"
+
+msgid "Buildings"
+msgstr "건물"
+
+msgid "Built %d %s tiles and %d bridges for $%s."
+msgstr "%d타일의 %s와 다리 %d개를 건설했습니다. 비용: $%s."
+
+msgid "Built %d %s tiles and a %s across %d water tiles for $%s."
+msgstr "%d타일의 %s와 %s을(를) 수면 %d타일에 걸쳐 건설했습니다. 비용: $%s."
+
+msgid "Built %d %s tiles and a neighboring-city connection for $%s."
+msgstr "%d타일의 %s와 이웃 도시 연결을 건설했습니다. 비용: $%s."
+
+msgid "Built %d %s tiles for $%s."
+msgstr "%d타일의 %s을(를) 건설했습니다. 비용: $%s."
+
+msgid "Built %d highway sections and %d bridges for $%s."
+msgstr "고속도로 %d구간과 다리 %d개를 건설했습니다. 비용: $%s."
+
+msgid "Built %d highway sections and a %s across %d water sections for $%s."
+msgstr "고속도로 %d구간과 %s을(를) 수면 %d구간에 걸쳐 건설했습니다. 비용: $%s."
+
+msgid "Built %d highway sections and a neighboring-city connection for $%s."
+msgstr "고속도로 %d구간과 이웃 도시 연결을 건설했습니다. 비용: $%s."
+
+msgid "Built %d highway sections for $%s."
+msgstr "고속도로 %d구간을 건설했습니다. 비용: $%s."
+
+msgid "Built %s for $%s."
+msgstr "%s 건설 완료. 비용: $%s."
+
+msgid "Built a %d-tile tunnel for $%s."
+msgstr "%d타일 터널을 건설했습니다. 비용: $%s."
+
+msgid "Built a %s across %d water sections for $%s."
+msgstr "%s을(를) 수면 %d구간에 걸쳐 건설했습니다. 비용: $%s."
+
+msgid "Built a %s across %d water tiles for $%s."
+msgstr "%s을(를) 수면 %d타일에 걸쳐 건설했습니다. 비용: $%s."
+
+msgid "Bulldozer"
+msgstr "불도우저"
+
+msgid "Bus Depot"
+msgstr "버스 터미날"
+
+msgid "Can be blocked by nearby residential zones."
+msgstr "주변 주거 구역 때문에 건설이 제한될 수 있습니다."
+
+msgid "Cancel"
+msgstr "취소"
+
+msgid "Cancel Dispatch"
+msgstr "출동 취소"
+
+msgid "Cannot analyze city: %s"
+msgstr "도시를 분석할 수 없습니다: %s"
+
+msgid "Cannot apply the annual budget: %s"
+msgstr "연간 예산을 적용할 수 없습니다: %s"
+
+msgid "Cannot assign stadium team: %s"
+msgstr "경기장 팀을 지정할 수 없습니다: %s"
+
+msgid "Cannot build %s: %s"
+msgstr "%s을(를) 건설할 수 없습니다: %s"
+
+msgid "Cannot build highway: %s"
+msgstr "고속도로를 건설할 수 없습니다: %s"
+
+msgid "Cannot build tunnel: %s"
+msgstr "터널을 건설할 수 없습니다: %s"
+
+msgid "Cannot calculate mayor approval: %s"
+msgstr "시장 지지율을 계산할 수 없습니다: %s"
+
+msgid "Cannot change sign: %s"
+msgstr "표지판을 바꿀 수 없습니다: %s"
+
+msgid "Cannot convert %s to SC2X version 4: %s"
+msgstr "%s을(를) SC2X 버전 4로 변환할 수 없습니다: %s"
+
+msgid "Cannot convert the city to SC2X: %s"
+msgstr "도시를 SC2X로 변환할 수 없습니다: %s"
+
+msgid "Cannot create a new city: %s"
+msgstr "새 도시를 만들 수 없습니다: %s"
+
+msgid "Cannot dispatch unit: %s"
+msgstr "대응 부대를 출동시킬 수 없습니다: %s"
+
+msgid "Cannot export the city: %s"
+msgstr "도시를 내보낼 수 없습니다: %s"
+
+msgid "Cannot finish the military proposal: %s"
+msgstr "군 기지 제안을 완료할 수 없습니다: %s"
+
+msgid "Cannot generate terrain: %s"
+msgstr "지형을 생성할 수 없습니다: %s"
+
+msgid "Cannot issue a bond: %s"
+msgstr "채권을 발행할 수 없습니다: %s"
+
+msgid "Cannot open ordinances: %s"
+msgstr "조례를 열 수 없습니다: %s"
+
+msgid "Cannot prepare the city for export: %s"
+msgstr "도시 내보내기를 준비할 수 없습니다: %s"
+
+msgid "Cannot query tile: %s"
+msgstr "타일 정보를 조회할 수 없습니다: %s"
+
+msgid "Cannot rename facility: %s"
+msgstr "시설 이름을 바꿀 수 없습니다: %s"
+
+msgid "Cannot repay a bond: %s"
+msgstr "채권을 상환할 수 없습니다: %s"
+
+msgid "Cannot resolve the military proposal: %s"
+msgstr "군 기지 제안을 처리할 수 없습니다: %s"
+
+msgid "Cannot rotate city: %s"
+msgstr "도시를 회전할 수 없습니다: %s"
+
+msgid "Cannot save the budget: %s"
+msgstr "예산을 저장할 수 없습니다: %s"
+
+msgid "Cannot start the PNG export: %s"
+msgstr "PNG 내보내기를 시작할 수 없습니다: %s"
+
+msgid "Cannot start the disaster: %s"
+msgstr "재난을 시작할 수 없습니다: %s"
+
+msgid "Cannot start zone selection: %s"
+msgstr "구역 선택을 시작할 수 없습니다: %s"
+
+msgid "Cannot undo the last edit: %s"
+msgstr "마지막 작업을 취소할 수 없습니다: %s"
+
+msgid "Cannot update bonds: %s"
+msgstr "채권 정보를 갱신할 수 없습니다: %s"
+
+msgid "Cannot update the %s option."
+msgstr "%s 설정을 바꿀 수 없습니다."
+
+msgid "Capacity"
+msgstr "가동률"
+
+msgid "Cash Flow"
+msgstr "현금 흐름"
+
+msgid "Center"
+msgstr "지형중심"
+
+msgid "Center View"
+msgstr "화면 가운데로 이동"
+
+msgid "Center the map view on the active disaster."
+msgstr "발생한 재해의 위치로 화면을 이동합니다."
+
+msgid "Centered the map on tile %d, %d."
+msgstr "지도 중심을 %d, %d 타일로 옮겼습니다."
+
+msgid "Changed pixels (pink)"
+msgstr "바뀐 픽셀 (분홍색)"
+
+msgid "Check GitHub for a newer release now."
+msgstr "GitHub에서 새 버전을 확인합니다."
+
+msgid "Check for updates"
+msgstr "업데이트 확인"
+
+msgid "Check for updates periodically"
+msgstr "주기적으로 업데이트 확인"
+
+msgid "Check now"
+msgstr "지금 확인"
+
+msgid "Checking..."
+msgstr "확인 중..."
+
+msgid "Cheetah"
+msgstr "빠르게"
+
+msgid "Chilly"
+msgstr "쌀쌀함"
+
+msgid "Choose File…"
+msgstr "파일 선택…"
+
+msgid "Choose Folder…"
+msgstr "폴더 선택…"
+
+msgid "Choose the graphics size for each zoom level. Larger graphics show more detail. Higher zoom levels cannot use a smaller size."
+msgstr "확대율별 그래픽 크기를 선택합니다. 큰 그래픽은 더 세밀하며, 높은 확대율에 더 작은 그래픽을 지정할 수는 없습니다."
+
+msgid "Chronicle"
+msgstr "매거진"
+
+msgid "City"
+msgstr "도시"
+
+msgid "City Analysis"
+msgstr "도시 분석"
+
+msgid "City Budget"
+msgstr "도시 예산"
+
+msgid "City Details"
+msgstr "도시 상세 정보"
+
+msgid "City Hall"
+msgstr "시청"
+
+msgid "City Industry"
+msgstr "도시 산업"
+
+msgid "City Map"
+msgstr "도시 지도"
+
+msgid "City Map: %s"
+msgstr "도시 지도: %s"
+
+msgid "City Name"
+msgstr "도시 이름"
+
+msgid "City Name:"
+msgstr "도시 이름:"
+
+msgid "City Services"
+msgstr "건강과 안전"
+
+msgid "City Size"
+msgstr "도시 규모"
+
+msgid "City Size graph (S)"
+msgstr "도시 규모 그래프 (S)"
+
+msgid "City Sounds"
+msgstr "도시 소리"
+
+msgid "City View"
+msgstr "도시 보기"
+
+msgid "City artwork"
+msgstr "도시 그래픽"
+
+msgid "City budget"
+msgstr "도시 예산"
+
+msgid "City renamed to %s."
+msgstr "도시 이름을 %s(으)로 바꿨습니다."
+
+msgid "City report"
+msgstr "도시 소식"
+
+msgid "City view centered at %d, %d."
+msgstr "도시 화면 중심을 %d, %d로 옮겼습니다."
+
+msgid "Clear"
+msgstr "맑음"
+
+msgid "Clear All"
+msgstr "모두 지우기"
+
+msgid "Clear Object"
+msgstr "오브젝트 지우기"
+
+msgid "Clear ramp"
+msgstr "명암 단계 지우기"
+
+msgid "Clip to tile"
+msgstr "타일 경계로 제한"
+
+msgid "Close"
+msgstr "닫기"
+
+msgid "Close SCURK"
+msgstr "SCURK 닫기"
+
+msgid "Close article"
+msgstr "기사 닫기"
+
+msgid "Close newspaper"
+msgstr "신문 닫기"
+
+msgid "Coal Power Plant"
+msgstr "석탄 발전소"
+
+msgid "Cold"
+msgstr "추움"
+
+msgid "College"
+msgstr "전문교육기관"
+
+msgid "Color"
+msgstr "색상"
+
+msgid "Commentary"
+msgstr "시사 논평"
+
+msgid "Commerce"
+msgstr "상업"
+
+msgid "Commerce graph (C)"
+msgstr "상업 그래프 (C)"
+
+msgid "Commercial"
+msgstr "상업지역"
+
+msgid "Compare"
+msgstr "비교"
+
+msgid "Confirmed bond actions take effect immediately. Cancel does not undo them."
+msgstr "확정한 채권 거래는 즉시 적용됩니다. 취소해도 되돌아가지 않습니다."
+
+msgid "Connections keep the city moving"
+msgstr "교통망이 도시를 움직인다"
+
+msgid "Construction"
+msgstr "건설"
+
+msgid "Continue City"
+msgstr "도시 계속하기"
+
+msgid "Continue to play music and sounds when OpenSC2K is not the active window."
+msgstr "다른 창을 사용하는 동안에도 음악과 효과음을 계속 재생합니다."
+
+msgid "Controls"
+msgstr "조작"
+
+msgid "Converted %s to SC2X version 4. Save a new copy; the original file stays unchanged."
+msgstr "%s을(를) SC2X 버전 4로 변환했습니다. 새 사본으로 저장하세요. 원본 파일은 그대로 유지됩니다."
+
+msgid "Copy"
+msgstr "복사"
+
+msgid "Copy All"
+msgstr "모두 복사"
+
+msgid "Copy Object Group"
+msgstr "오브젝트 그룹 복사"
+
+msgid "Copy Selected"
+msgstr "선택 항목 복사"
+
+msgid "Copy from All Layers"
+msgstr "모든 레이어에서 복사"
+
+msgid "Cost: %s"
+msgstr "비용: %s"
+
+msgid "Courier"
+msgstr "신문"
+
+msgid "Created %s in %d on %s difficulty with generated terrain. Map view: %s."
+msgstr "%s 도시를 %d년에 %s 난이도와 생성한 지형으로 만들었습니다. 지도 보기: %s."
+
+msgid "Crime"
+msgstr "범죄"
+
+msgid "Crime graph (X)"
+msgstr "범죄 그래프 (X)"
+
+msgid "Current city date"
+msgstr "현재 도시 날짜"
+
+msgid "Current city date: %s"
+msgstr "현재 도시 날짜: %s"
+
+msgid "Current city funds"
+msgstr "현재 도시 자금"
+
+msgid "Current city funds: %s"
+msgstr "현재 도시 자금: %s"
+
+msgid "Current city population is not available."
+msgstr "현재 도시 인구 정보가 없습니다."
+
+msgid "Current city population: %s"
+msgstr "현재 도시 인구: %s"
+
+msgid "Current demand readings are %d for homes, %d for commerce and %d for industry. Positive readings indicate room for growth. Tax rates, transport access and city conditions affect development. Zoned land still needs suitable services before it can grow."
+msgstr "현재 수요는 주거 %d, 상업 %d, 공업 %d입니다. 양수는 성장 여력이 있음을 뜻합니다. 세율과 교통 접근성, 도시 환경이 개발에 영향을 줍니다. 구역이 성장하려면 적절한 공공서비스도 갖춰야 합니다."
+
+msgid "Current rendered frames per second"
+msgstr "현재 초당 화면 프레임 수"
+
+msgid "Current simulation speed: %s."
+msgstr "현재 시뮬레이션 속도: %s."
+
+msgid "Current weather: %s."
+msgstr "현재 날씨: %s."
+
+msgid "Cut"
+msgstr "잘라내기"
+
+msgid "Cut from All Layers"
+msgstr "모든 레이어에서 잘라내기"
+
+msgid "Cycle colors"
+msgstr "색상 순환"
+
+msgid "Darco Arcology"
+msgstr "다르코 아콜로지"
+
+msgid "Dark Theme"
+msgstr "어두운 테마"
+
+msgid "Dark underground view"
+msgstr "어두운 지하 보기"
+
+msgid "Data"
+msgstr "데이터"
+
+msgid "Data pack"
+msgstr "데이터 팩"
+
+msgid "Data view: off"
+msgstr "데이터 보기: 끔"
+
+msgid "De-zone"
+msgstr "지역해제"
+
+msgid "Debug"
+msgstr "디버그"
+
+msgid "Decimal"
+msgstr "십진수"
+
+msgid "Default"
+msgstr "기본값"
+
+msgid "Delete"
+msgstr "삭제"
+
+msgid "Delete Selection"
+msgstr "선택 영역 삭제"
+
+msgid "Delete layer"
+msgstr "레이어 삭제"
+
+msgid "Demand"
+msgstr "수요"
+
+msgid "Demolish"
+msgstr "파괴/정리"
+
+msgid "Dense Commercial"
+msgstr "고밀도 상업지역"
+
+msgid "Dense Industrial"
+msgstr "고밀도 공업지역"
+
+msgid "Dense Residential"
+msgstr "고밀도 주거지역"
+
+msgid "Deployed %s unit %d of %d."
+msgstr "%s 출동: %d / %d대."
+
+msgid "Desalinization Plant"
+msgstr "염분 제거 공장"
+
+msgid "Deselect"
+msgstr "선택 해제"
+
+msgid "Destination group"
+msgstr "대상 그룹"
+
+msgid "Development demand in focus"
+msgstr "개발 수요를 살펴보다"
+
+msgid "Diamond"
+msgstr "마름모"
+
+msgid "Difficulty"
+msgstr "난이도"
+
+msgid "Disasters"
+msgstr "재난"
+
+msgid "Dispatch"
+msgstr "파견"
+
+msgid "Done"
+msgstr "완료"
+
+msgid "Drier weather increases grid capacity."
+msgstr "날씨가 건조할수록 전력망 용량이 증가합니다."
+
+msgid "Duplicate Selection"
+msgstr "선택 영역 복제"
+
+msgid "Earthquake"
+msgstr "지진"
+
+msgid "Easy — $20,000"
+msgstr "쉬움 — $20,000"
+
+msgid "Edit"
+msgstr "편집"
+
+msgid "Edit Tools"
+msgstr "편집 도구"
+
+msgid "Editor's Corner"
+msgstr "편집자 코너"
+
+msgid "Education"
+msgstr "교육"
+
+msgid "Education graph (e)"
+msgstr "교육 그래프 (e)"
+
+msgid "Electronics"
+msgstr "전자"
+
+msgid "Ellipse"
+msgstr "타원"
+
+msgid "Enter a new name for the city."
+msgstr "도시의 새 이름을 입력하세요."
+
+msgid "Enter sign text..."
+msgstr "표지판 내용을 입력하세요..."
+
+msgid "Entire City"
+msgstr "도시 전체"
+
+msgid "Eraser"
+msgstr "지우개"
+
+msgid "Exit"
+msgstr "끝내기"
+
+msgid "Expenses"
+msgstr "지출"
+
+msgid "Export City as PNG"
+msgstr "도시를 PNG로 내보내기"
+
+msgid "Export Image"
+msgstr "이미지 내보내기"
+
+msgid "Export Tile Set"
+msgstr "타일 세트 내보내기"
+
+msgid "Export folder"
+msgstr "내보낼 폴더"
+
+msgid "Export image"
+msgstr "이미지 내보내기"
+
+msgid "Exported a %d by %d city image to %s."
+msgstr "%d × %d 도시 이미지를 %s에 저장했습니다."
+
+msgid "Exporting %s"
+msgstr "%s 내보내는 중"
+
+msgid "Exporting the city to %s…"
+msgstr "도시를 %s(으)로 내보내는 중…"
+
+msgid "Extra! Extra!"
+msgstr "호외!"
+
+msgid "Extra!!!"
+msgstr "호외!"
+
+msgid "Features"
+msgstr "특징"
+
+msgid "Fed Rate"
+msgstr "기준 금리"
+
+msgid "Fed Rate graph (%)"
+msgstr "기준금리 그래프 (%)"
+
+msgid "Field"
+msgstr "항목"
+
+msgid "File"
+msgstr "화일"
+
+msgid "File name"
+msgstr "파일 이름"
+
+msgid "Fill"
+msgstr "채우기"
+
+msgid "Filled shapes"
+msgstr "채운 도형"
+
+msgid "Filter tiles"
+msgstr "타일 필터"
+
+msgid "Finance"
+msgstr "금융"
+
+msgid "Fire"
+msgstr "화재"
+
+msgid "Fire Station"
+msgstr "소방서"
+
+msgid "Fire coverage scales with funding. Unpowered stations have half strength. Supports emergency fire dispatch."
+msgstr "예산에 따라 소방 능력이 달라집니다. 전력이 없으면 능력이 절반으로 감소합니다. 화재 시 긴급 출동할 수 있습니다."
+
+msgid "Firestorm"
+msgstr "대화재"
+
+msgid "Fit canvas"
+msgstr "캔버스에 맞추기"
+
+msgid "Five Cents"
+msgstr "100원"
+
+msgid "Five Dollars"
+msgstr "500원"
+
+msgid "Flood"
+msgstr "홍수"
+
+msgid "Foggy"
+msgstr "안개"
+
+msgid "Folder"
+msgstr "폴더"
+
+msgid "Food"
+msgstr "식품"
+
+msgid "Footprint: %d x %d tiles"
+msgstr "크기: %d × %d칸"
+
+msgid "Forest"
+msgstr "숲"
+
+msgid "Forest Arcology"
+msgstr "포레스트 아콜로지"
+
+msgid "Format"
+msgstr "형식"
+
+msgid "Fred's Opinion"
+msgstr "투덜투덜"
+
+msgid "Free"
+msgstr "무료"
+
+msgid "From palette index"
+msgstr "원래 팔레트 번호"
+
+msgid "Fullscreen"
+msgstr "전체 화면"
+
+msgid "Funding"
+msgstr "예산 배정"
+
+msgid "Fusion Power Plant"
+msgstr "핵융합 발전소"
+
+msgid "GNP"
+msgstr "국민 총생산"
+
+msgid "GNP graph (g)"
+msgstr "국민총생산 그래프 (g)"
+
+msgid "GPU (recommended)"
+msgstr "GPU (권장)"
+
+msgid "Game data"
+msgstr "게임 데이터"
+
+msgid "Game folder or file"
+msgstr "게임 폴더 또는 파일"
+
+msgid "Gas Power Plant"
+msgstr "가스 발전소"
+
+msgid "General"
+msgstr "일반"
+
+msgid "Generating terrain..."
+msgstr "지형 생성 중..."
+
+msgid "Graph Window"
+msgstr "그래프 창"
+
+msgid "Graphics"
+msgstr "그래픽"
+
+msgid "Graphics Size"
+msgstr "그래픽 크기"
+
+msgid "Graphics pack"
+msgstr "그래픽 팩"
+
+msgid "Graphs"
+msgstr "그래프"
+
+msgid "Grid capacity: %s"
+msgstr "전력망 용량: %s"
+
+msgid "Grid height"
+msgstr "격자 높이"
+
+msgid "Grid width"
+msgstr "격자 너비"
+
+msgid "Hard — $10,000 bond at 3%"
+msgstr "어려움 — 이율 3%의 $10,000 채권"
+
+msgid "Health"
+msgstr "건강"
+
+msgid "Health & welfare"
+msgstr "건강 & 복지"
+
+msgid "Health graph (h)"
+msgstr "건강 그래프 (h)"
+
+msgid "Height"
+msgstr "고도"
+
+msgid "Height Map"
+msgstr "고도 지도"
+
+msgid "Helicopter Crash"
+msgstr "헬리콥터 추락"
+
+msgid "Help"
+msgstr "도움말"
+
+msgid "Herald"
+msgstr "저널"
+
+msgid "Hex"
+msgstr "16진수"
+
+msgid "Higher land and stronger wind increase grid capacity."
+msgstr "고도가 높고 바람이 강할수록 전력망 용량이 증가합니다."
+
+msgid "Highlight differences"
+msgstr "차이 강조"
+
+msgid "Highway"
+msgstr "고속도로"
+
+msgid "Hills"
+msgstr "언덕"
+
+msgid "Hospital"
+msgstr "병원"
+
+msgid "Hot"
+msgstr "더움"
+
+msgid "Hurricane"
+msgstr "허리케인"
+
+msgid "Hydroelectric Power Plant"
+msgstr "수력 발전소"
+
+msgid "Illustrated"
+msgstr "HD 일러스트"
+
+msgid "Image size"
+msgstr "이미지 크기"
+
+msgid "Import"
+msgstr "가져오기"
+
+msgid "Import Assets"
+msgstr "에셋 가져오기"
+
+msgid "Import Image"
+msgstr "이미지 가져오기"
+
+msgid "Import Original Assets"
+msgstr "원본 에셋 가져오기"
+
+msgid "Import SimCity 2000 assets"
+msgstr "심시티 2000 에셋 가져오기"
+
+msgid "Import image"
+msgstr "이미지 가져오기"
+
+msgid "Import only a %s pack from your copy of SimCity 2000."
+msgstr "보유한 심시티 2000에서 %s 팩만 가져옵니다."
+
+msgid "Import your SimCity 2000 game files again to update them. The import keeps your other packs."
+msgstr "심시티 2000 게임 파일을 다시 가져와 업데이트하세요. 다른 팩은 그대로 유지됩니다."
+
+msgid "Import..."
+msgstr "가져오기..."
+
+msgid "In Tax Rates view, drag a bar to set its surcharge. Hold Alt to set all industries."
+msgstr "세율 보기에서 막대를 드래그해 추가 세율을 설정하세요. Alt를 누르면 모든 산업에 적용됩니다."
+
+msgid "Include"
+msgstr "포함"
+
+msgid "Income"
+msgstr "수입"
+
+msgid "Industrial"
+msgstr "공업지역"
+
+msgid "Industry"
+msgstr "산업"
+
+msgid "Industry graph (I)"
+msgstr "산업 그래프 (I)"
+
+msgid "Infrastructure"
+msgstr "기반 시설"
+
+msgid "Isometric guides"
+msgstr "등각 안내선"
+
+msgid "Issue $10,000 bond…"
+msgstr "$10,000 채권 발행…"
+
+msgid "Issue a $10,000 bond at %d%%?"
+msgstr "이율 %d%%로 $10,000 채권을 발행할까요?"
+
+msgid "Issued a $10,000 bond at %d%%."
+msgstr "이율 %d%%로 $10,000 채권을 발행했습니다."
+
+msgid "Journal"
+msgstr "소식"
+
+msgid "Just A Dollar"
+msgstr "300원"
+
+msgid "Keep %s"
+msgstr "%s 유지"
+
+msgid "LAND USE"
+msgstr "토지 이용"
+
+msgid "Land value"
+msgstr "지가"
+
+msgid "Landscape"
+msgstr "조경"
+
+msgid "Language"
+msgstr "언어"
+
+msgid "Large"
+msgstr "크게"
+
+msgid "Launch Arcology"
+msgstr "론치 아콜로지"
+
+msgid "Layer name"
+msgstr "레이어 이름"
+
+msgid "Layers"
+msgstr "레이어"
+
+msgid "Left wall"
+msgstr "왼쪽 벽"
+
+msgid "Level Terrain"
+msgstr "평평한 지형"
+
+msgid "Library"
+msgstr "도서관"
+
+msgid "Light Commercial"
+msgstr "저밀도 상업지역"
+
+msgid "Light Industrial"
+msgstr "저밀도 공업지역"
+
+msgid "Light Residential"
+msgstr "저밀도 주거지역"
+
+msgid "Light Theme"
+msgstr "밝은 테마"
+
+msgid "Line"
+msgstr "선"
+
+msgid "Llama"
+msgstr "조금 빠르게"
+
+msgid "Load Tile Set"
+msgstr "타일 세트 불러오기"
+
+msgid "Loaded %s. Map view: %s."
+msgstr "%s을(를) 불러왔습니다. 지도 보기: %s."
+
+msgid "Locate"
+msgstr "위치로 이동"
+
+msgid "Location"
+msgstr "위치"
+
+msgid "Lock transparent pixels"
+msgstr "투명 픽셀 잠금"
+
+msgid "Locked"
+msgstr "잠김"
+
+msgid "Lower Sea Level"
+msgstr "해수면 낮추기"
+
+msgid "Lower Terrain"
+msgstr "낮아지는 지형"
+
+msgid "Magnification"
+msgstr "확대율"
+
+msgid "Main Menu"
+msgstr "주 메뉴"
+
+msgid "Make a random city name."
+msgstr "도시 이름을 무작위로 정합니다."
+
+msgid "Make new terrain with the same settings."
+msgstr "같은 설정으로 새 지형을 만듭니다."
+
+msgid "Map"
+msgstr "지도"
+
+msgid "Map Size"
+msgstr "지도 크기"
+
+msgid "Map view: %s"
+msgstr "지도 보기: %s"
+
+msgid "Marina"
+msgstr "수상공원"
+
+msgid "Mass Floods"
+msgstr "대홍수"
+
+msgid "Mass Riots"
+msgstr "대규모 폭동"
+
+msgid "Mayor"
+msgstr "시장"
+
+msgid "Mayor Name"
+msgstr "시장 이름"
+
+msgid "Mayor Name:"
+msgstr "시장 이름:"
+
+msgid "Mayor name"
+msgstr "시장 이름"
+
+msgid "Mayor's House"
+msgstr "시장 저택"
+
+msgid "Media"
+msgstr "미디어"
+
+msgid "Medium"
+msgstr "중간"
+
+msgid "Medium — $10,000"
+msgstr "보통 — $10,000"
+
+msgid "Meltdown"
+msgstr "원자로 노심 용융"
+
+msgid "Merely Five Bucks"
+msgstr "500원"
+
+msgid "Microwave"
+msgstr "마이크로파 사고"
+
+msgid "Microwave Power Plant"
+msgstr "마이크로웨이브"
+
+msgid "Military"
+msgstr "군대"
+
+msgid "MisSim's Advice"
+msgstr "세상만사"
+
+msgid "Misc"
+msgstr "기타"
+
+msgid "Mixed rates stay unchanged until you edit the group. History shows recorded and projected months."
+msgstr "서로 다른 비율은 그룹을 편집하기 전까지 유지됩니다. 내역에는 실제 기록과 예상 월별 값이 표시됩니다."
+
+msgid "Monster"
+msgstr "괴물"
+
+msgid "Move layer down"
+msgstr "레이어 아래로 이동"
+
+msgid "Move layer up"
+msgstr "레이어 위로 이동"
+
+msgid "Moving things"
+msgstr "이동 오브젝트"
+
+msgid "Museum"
+msgstr "박물관"
+
+msgid "Music"
+msgstr "음악"
+
+msgid "Music SoundFont"
+msgstr "음악 사운드폰트"
+
+msgid "Music pack"
+msgstr "음악 팩"
+
+msgid "Must be built on an unused waterfall tile."
+msgstr "사용하지 않는 폭포 타일에 건설해야 합니다."
+
+msgid "Nat'n Pop."
+msgstr "전국 인구"
+
+msgid "Nat'n Pop. graph (n)"
+msgstr "전국 인구 그래프 (n)"
+
+msgid "Nat. Pop: %d000"
+msgstr "전국 인구: %d000"
+
+msgid "Neighbors"
+msgstr "인접도시"
+
+msgid "Networks"
+msgstr "도로·철도·전선"
+
+msgid "New City"
+msgstr "새 도시"
+
+msgid "Newspaper"
+msgstr "신문"
+
+msgid "Newspaper %s %s."
+msgstr "신문 %s %s."
+
+msgid "Next"
+msgstr "다음"
+
+msgid "No"
+msgstr "아니요"
+
+msgid "No Disasters"
+msgstr "재난 없음"
+
+msgid "No Disasters %s."
+msgstr "재난 없음 %s."
+
+msgid "No age limit"
+msgstr "수명 제한 없음"
+
+msgid "No city loaded"
+msgstr "열린 도시 없음"
+
+msgid "Nominal output: %d MW"
+msgstr "정격 출력: %d MW"
+
+msgid "None"
+msgstr "없음"
+
+msgid "Not yet available."
+msgstr "아직 사용할 수 없습니다."
+
+msgid "Notes"
+msgstr "메모"
+
+msgid "Nuclear Power Plant"
+msgstr "핵 발전소"
+
+msgid "OK"
+msgstr "확인"
+
+msgid "Object Group"
+msgstr "오브젝트 그룹"
+
+msgid "Object Selector"
+msgstr "오브젝트 선택"
+
+msgid "Object details"
+msgstr "객체 정보"
+
+msgid "Ocean"
+msgstr "바다"
+
+msgid "Off"
+msgstr "끔"
+
+msgid "Oil Power Plant"
+msgstr "기름 발전소"
+
+msgid "On"
+msgstr "켬"
+
+msgid "On-ramp"
+msgstr "진입로"
+
+msgid "One Cent"
+msgstr "50원"
+
+msgid "One Dollar"
+msgstr "300원"
+
+msgid "Only A Nickel"
+msgstr "100원"
+
+msgid "Open"
+msgstr "열기"
+
+msgid "Open City"
+msgstr "불러오기"
+
+msgid "Open the %s tab"
+msgstr "%s 탭 열기"
+
+msgid "OpenSC2K Settings"
+msgstr "OpenSC2K 설정"
+
+msgid "Opinion"
+msgstr "사설"
+
+msgid "Opinion Poll"
+msgstr "여론 조사"
+
+msgid "Optional tile name"
+msgstr "타일 이름 (선택 사항)"
+
+msgid "Options"
+msgstr "옵션"
+
+msgid "Ordinance changes take effect immediately. Cancel does not undo them."
+msgstr "조례 변경은 즉시 적용됩니다. 취소해도 되돌아가지 않습니다."
+
+msgid "Ordinances"
+msgstr "법령"
+
+msgid "Original"
+msgstr "원본"
+
+msgid "Output"
+msgstr "출력"
+
+msgid "Outstanding: %s   ·   Credit: %s   ·   Bank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s"
+msgstr "미상환 채무: %s · 신용: %s · 은행 금리: %d%% · 다음 채권 금리: %d%% · 도시 가치: %s"
+
+msgid "Overcast"
+msgstr "흐림"
+
+msgid "Overview"
+msgstr "개요"
+
+msgid "Packs active. Imported %d cities and %d scenarios."
+msgstr "팩을 적용했습니다. 도시 %d개와 시나리오 %d개를 가져왔습니다."
+
+msgid "Paste"
+msgstr "붙여넣기"
+
+msgid "Paste on New Layer"
+msgstr "새 레이어에 붙여넣기"
+
+msgid "Pause"
+msgstr "중지"
+
+msgid "Petrochemical"
+msgstr "석유화학"
+
+msgid "Picayune"
+msgstr "일보"
+
+msgid "Pipes"
+msgstr "수도관"
+
+msgid "Pixel resolution"
+msgstr "픽셀 해상도"
+
+msgid "Pixel-perfect pencil"
+msgstr "픽셀 정밀 연필"
+
+msgid "Place & Print Work Area"
+msgstr "배치 및 인쇄 작업 영역"
+
+msgid "Place Forest"
+msgstr "숲 만들기"
+
+msgid "Place Sign"
+msgstr "지명표기"
+
+msgid "Place Stream"
+msgstr "개울 만들기"
+
+msgid "Plane Crash"
+msgstr "비행기 추락"
+
+msgid "Play Scenario"
+msgstr "시나리오 시작"
+
+msgid "Play a click sound when you select a toolbar or main menu button."
+msgstr "도구 모음이나 주 메뉴 버튼을 누를 때 효과음을 재생합니다."
+
+msgid "Play all 19 tracks, including menu and special music, once per shuffle cycle."
+msgstr "메뉴 음악과 특별 음악을 포함한 19곡을 한 주기마다 한 번씩 무작위로 재생합니다."
+
+msgid "Play interface sounds"
+msgstr "버튼 효과음 재생"
+
+msgid "Play music and sounds in background"
+msgstr "백그라운드에서도 소리 재생"
+
+msgid "Plymouth Arcology"
+msgstr "플리머스 아콜로지"
+
+msgid "Police"
+msgstr "경찰"
+
+msgid "Police Station"
+msgstr "경찰서"
+
+msgid "Police coverage scales with funding and the prison bonus. Unpowered stations have half strength. Coverage reduces local crime."
+msgstr "예산과 교도소 보너스에 따라 치안 능력이 달라집니다. 전력이 없으면 능력이 절반으로 감소합니다. 관할 지역의 범죄를 줄입니다."
+
+msgid "Police, fire protection, schools and health services depend on facilities and their funding. The city maps show local coverage. The Budget window lets the mayor review service spending, while Query provides details for individual facilities."
+msgstr "경찰과 소방, 학교, 의료 서비스는 시설과 운영 예산에 달려 있습니다. 도시 지도에서 지역별 서비스 범위를 볼 수 있습니다. 예산 창에서는 공공서비스 지출을, 조사 도구에서는 개별 시설의 상세 정보를 확인할 수 있습니다."
+
+msgid "Pollution"
+msgstr "공해"
+
+msgid "Pollution factor: %d"
+msgstr "공해 계수: %d"
+
+msgid "Pollution graph (P)"
+msgstr "오염 그래프 (P)"
+
+msgid "Population"
+msgstr "인구"
+
+msgid "Population: %s"
+msgstr "인구: %s"
+
+msgid "Population: --"
+msgstr "인구: --"
+
+msgid "Ports"
+msgstr "항구 / 공항"
+
+msgid "Power"
+msgstr "전력"
+
+msgid "Power %"
+msgstr "전력%"
+
+msgid "Power % graph (p)"
+msgstr "전력 여유율 그래프 (p): 총 발전 용량에서 남은 비율"
+
+msgid "Power Lines"
+msgstr "전력선"
+
+msgid "Power Plants"
+msgstr "발전소"
+
+msgid "Powered"
+msgstr "전력 공급"
+
+msgid "Preview in Context..."
+msgstr "도시에 배치해 미리보기..."
+
+msgid "Preview in context"
+msgstr "도시에 배치해 미리보기"
+
+msgid "Preview size"
+msgstr "미리보기 크기"
+
+msgid "Previous"
+msgstr "이전"
+
+msgid "Price $1"
+msgstr "300원"
+
+msgid "Price $5"
+msgstr "500원"
+
+msgid "Price 1¢"
+msgstr "50원"
+
+msgid "Price 25¢"
+msgstr "200원"
+
+msgid "Price 5¢"
+msgstr "100원"
+
+msgid "Print City..."
+msgstr "도시 인쇄..."
+
+msgid "Print What"
+msgstr "인쇄 대상"
+
+msgid "Prints of the City"
+msgstr "도시 인쇄"
+
+msgid "Prison"
+msgstr "교도소"
+
+msgid "Prison facilities contribute to the police-strength bonus. Query shows annual prison statistics."
+msgstr "교도소는 치안 능력에 보너스를 제공합니다. 정보 조회에서 연간 운영 통계를 확인할 수 있습니다."
+
+msgid "Project title"
+msgstr "프로젝트 제목"
+
+msgid "Projected"
+msgstr "예상"
+
+msgid "Property Taxes"
+msgstr "재산세"
+
+msgid "Property taxes"
+msgstr "세금"
+
+msgid "Query"
+msgstr "조회"
+
+msgid "Query — %s"
+msgstr "정보 조회 — %s"
+
+msgid "Rail"
+msgstr "철도"
+
+msgid "Rail Depot"
+msgstr "기차역"
+
+msgid "Rain"
+msgstr "비"
+
+msgid "Raise Sea Level"
+msgstr "해수면 높이기"
+
+msgid "Raise Terrain"
+msgstr "높아지는 지형"
+
+msgid "Rate: %d%%"
+msgstr "비율: %d%%"
+
+msgid "Ratios"
+msgstr "비율"
+
+msgid "Ready."
+msgstr "준비되었습니다."
+
+msgid "Recorded months use saved costs and rates. Projected months use the proposed budget."
+msgstr "기록된 월은 저장된 비용과 비율을, 예상 월은 제안된 예산을 사용합니다."
+
+msgid "Recover Autosave"
+msgstr "자동 저장 복구"
+
+msgid "Recover SCURK project"
+msgstr "SCURK 프로젝트 복구"
+
+msgid "Recreation"
+msgstr "레크레이션"
+
+msgid "Recreation facility. Choose the team name after placement. Query shows annual attendance and financial statistics."
+msgstr "여가 시설입니다. 배치 후 팀 이름을 정합니다. 정보 조회에서 연간 관객 수와 재정을 확인할 수 있습니다."
+
+msgid "Redo"
+msgstr "다시 실행"
+
+msgid "Reduced"
+msgstr "일부만"
+
+msgid "Regenerate Terrain"
+msgstr "지형 다시 생성"
+
+msgid "Removed the last building and restored %d tiles."
+msgstr "마지막 건물을 제거하고 %d타일을 복원했습니다."
+
+msgid "Rename"
+msgstr "이름 변경"
+
+msgid "Rename City"
+msgstr "도시 이름 변경"
+
+msgid "Rename Tile"
+msgstr "타일 이름 변경"
+
+msgid "Renderer"
+msgstr "렌더러"
+
+msgid "Repaid the oldest $10,000 bond at %d%%."
+msgstr "이율 %d%%인 가장 오래된 $10,000 채권을 상환했습니다."
+
+msgid "Repay oldest bond…"
+msgstr "가장 오래된 채권 상환…"
+
+msgid "Repay the oldest $10,000 bond at %d%%?"
+msgstr "이율 %d%%인 가장 오래된 $10,000 채권을 상환할까요?"
+
+msgid "Replace Color"
+msgstr "색상 바꾸기"
+
+msgid "Replace color"
+msgstr "색상 바꾸기"
+
+msgid "Requires power and pipes. Each adjacent salt-water tile adds 20 supply units. Coastal placement improves output."
+msgstr "전력과 수도관이 필요합니다. 인접한 해수 타일마다 공급량이 20 증가하므로 해안에 배치하면 생산량이 늘어납니다."
+
+msgid "Requires power and pipes. Output depends on weather and nearby water; each adjacent fresh-water tile adds 10 supply units."
+msgstr "전력과 수도관이 필요합니다. 날씨와 주변 물에 따라 생산량이 달라지며, 인접한 담수 타일마다 공급량이 10 증가합니다."
+
+msgid "Reset Controls"
+msgstr "조작 설정 초기화"
+
+msgid "Reset all controls?"
+msgstr "모든 조작 설정을 초기화할까요?"
+
+msgid "Resident Age"
+msgstr "주민 연령"
+
+msgid "Residential"
+msgstr "주거지역"
+
+msgid "Residents"
+msgstr "주민"
+
+msgid "Residents are concerned about %s. The mayor can review current city conditions in the graphs and city maps."
+msgstr "주민들은 %s 문제를 우려하고 있습니다. 시장은 그래프와 도시 지도에서 현재 상황을 확인할 수 있습니다."
+
+msgid "Residents graph (R)"
+msgstr "주거 인구 그래프 (R)"
+
+msgid "Restore Original Tile Set"
+msgstr "원본 타일 세트 복원"
+
+msgid "Restored %d demolished tiles and the previous funds value."
+msgstr "철거한 %d타일과 이전 자금을 복원했습니다."
+
+msgid "Restored %d landscape actions and the previous funds value."
+msgstr "지형 작업 %d건과 이전 자금을 복원했습니다."
+
+msgid "Restored %d terrain tiles and the previous funds value."
+msgstr "지형 %d타일과 이전 자금을 복원했습니다."
+
+msgid "Restored %d tiles and the previous funds value."
+msgstr "%d타일과 이전 자금을 복원했습니다."
+
+msgid "Restored the previous highway route across %d tiles."
+msgstr "%d타일의 이전 고속도로 경로를 복원했습니다."
+
+msgid "Restored the previous route across %d tiles."
+msgstr "%d타일의 이전 경로를 복원했습니다."
+
+msgid "Return every keyboard and mouse binding to its default"
+msgstr "키보드와 마우스 조작을 모두 기본값으로 복원합니다."
+
+msgid "Revert Object"
+msgstr "오브젝트 복원"
+
+msgid "Revert name"
+msgstr "이름 복원"
+
+msgid "Review income, services and the year-end forecast."
+msgstr "수입, 공공 서비스와 연말 예상 재정을 검토합니다."
+
+msgid "Rewards"
+msgstr "도시 보너스"
+
+msgid "Right wall"
+msgstr "오른쪽 벽"
+
+msgid "Riot"
+msgstr "폭동"
+
+msgid "River"
+msgstr "강"
+
+msgid "Road"
+msgstr "도로"
+
+msgid "Roads"
+msgstr "도로"
+
+msgid "Roads & transit"
+msgstr "교통"
+
+msgid "Roads, rail and subway routes connect neighborhoods with jobs. Gaps and disconnected stations can prevent trips. The City Map transport views show where the network is busy and where better connections may help."
+msgstr "도로와 철도, 지하철은 주거지와 일자리를 연결합니다. 끊어진 노선이나 연결되지 않은 역은 통행을 막을 수 있습니다. 도시 지도의 교통 보기에서 혼잡 구간과 연결을 개선할 곳을 확인할 수 있습니다."
+
+msgid "Rotate Clockwise"
+msgstr "시계 방향 회전"
+
+msgid "Rotate Counter-Clockwise"
+msgstr "반시계 방향 회전"
+
+msgid "Round"
+msgstr "원형"
+
+msgid "Round brush"
+msgstr "원형 브러시"
+
+msgid "Run the game in full screen mode when enabled, otherwise run in a resizable window."
+msgstr "전체 화면으로 실행합니다. 끄면 크기를 조절할 수 있는 창으로 실행합니다."
+
+msgid "SCURK Place & Print"
+msgstr "SCURK 배치 및 인쇄"
+
+msgid "Save"
+msgstr "저장"
+
+msgid "Save As"
+msgstr "다른 이름으로 저장"
+
+msgid "Save City"
+msgstr "저장하기"
+
+msgid "Save City As"
+msgstr "새 이름 저장"
+
+msgid "Save Printable PDF..."
+msgstr "인쇄용 PDF 저장..."
+
+msgid "Save SCURK project"
+msgstr "SCURK 프로젝트 저장"
+
+msgid "Save selection"
+msgstr "선택 영역 저장"
+
+msgid "Save tile set"
+msgstr "타일 세트 저장"
+
+msgid "Saved city: %s"
+msgstr "도시 저장 완료: %s"
+
+msgid "Saved reports are unavailable."
+msgstr "저장된 기사가 없습니다."
+
+msgid "Saving city: %s"
+msgstr "도시 저장 중: %s"
+
+msgid "Scenario"
+msgstr "시나리오"
+
+msgid "Scenario Goals"
+msgstr "시나리오 목표"
+
+msgid "School"
+msgstr "초등교육기관"
+
+msgid "Seaport"
+msgstr "항구"
+
+msgid "Select %s"
+msgstr "%s 선택"
+
+msgid "Select %s pack.json"
+msgstr "%s 팩의 pack.json 선택"
+
+msgid "Select All"
+msgstr "전체 선택"
+
+msgid "Select Bridge"
+msgstr "다리 선택"
+
+msgid "Select Building"
+msgstr "건물 선택"
+
+msgid "Select Stadium Team"
+msgstr "경기장 팀 선택"
+
+msgid "Select Tile"
+msgstr "타일 선택"
+
+msgid "Select a SoundFont"
+msgstr "사운드폰트 선택"
+
+msgid "Select a bridge for %d %s."
+msgstr "%d개 %s에 놓을 다리를 선택하세요."
+
+msgid "Select a bridge type."
+msgstr "다리 종류를 선택하세요."
+
+msgid "Select a building type."
+msgstr "건물 종류를 선택하세요."
+
+msgid "Select an object."
+msgstr "오브젝트를 선택하세요."
+
+msgid "Select an unused team and edit its name."
+msgstr "아직 배정되지 않은 팀을 선택하고 이름을 수정하세요."
+
+msgid "Select the print options."
+msgstr "인쇄 옵션을 선택하세요."
+
+msgid "Selected Group"
+msgstr "선택한 도구"
+
+msgid "Selected Pages"
+msgstr "선택한 페이지"
+
+msgid "Service life: %s"
+msgstr "수명: %s"
+
+msgid "Settings"
+msgstr "설정"
+
+msgid "Settings applied, but the settings file could not be saved."
+msgstr "설정은 적용했지만 설정 파일을 저장하지 못했습니다."
+
+msgid "Settings saved."
+msgstr "설정을 저장했습니다."
+
+msgid "Show Buildings"
+msgstr "건물 표시"
+
+msgid "Show Networks"
+msgstr "도로·철도·전선 표시"
+
+msgid "Show Pipes"
+msgstr "수도관 표시"
+
+msgid "Show Scenario Goals"
+msgstr "시나리오 목표 보기"
+
+msgid "Show Signs"
+msgstr "표지판 표시"
+
+msgid "Show Subways"
+msgstr "지하철 표시"
+
+msgid "Show Trees"
+msgstr "나무 표시"
+
+msgid "Show Tunnels"
+msgstr "터널 표시"
+
+msgid "Show Vehicles"
+msgstr "차량 표시"
+
+msgid "Show Water"
+msgstr "물 표시"
+
+msgid "Show Water Mains"
+msgstr "수도 간선 표시"
+
+msgid "Show all views"
+msgstr "모든 화면 표시"
+
+msgid "Show clip region"
+msgstr "잘라내기 영역 표시"
+
+msgid "Show differences only"
+msgstr "차이만 표시"
+
+msgid "Show grid"
+msgstr "격자 표시"
+
+msgid "Show individual tax and funding rates"
+msgstr "개별 세율과 예산 비율 표시"
+
+msgid "Show monthly history for %s"
+msgstr "%s 월별 내역 보기"
+
+msgid "Show or hide airplanes, helicopters, ships, boats and trains. Hidden vehicles make no sound and cannot crash."
+msgstr "비행기, 헬리콥터, 선박, 기차를 표시하거나 숨깁니다. 숨긴 차량은 소리를 내거나 사고를 일으키지 않습니다."
+
+msgid "Show or hide buildings in the city view."
+msgstr "도시의 건물을 표시하거나 숨깁니다."
+
+msgid "Show or hide networks in the city view."
+msgstr "도로, 철도, 전선을 표시하거나 숨깁니다."
+
+msgid "Show or hide pipes beneath buildings in the underground view."
+msgstr "건물 아래의 수도관을 표시하거나 숨깁니다."
+
+msgid "Show or hide road tunnels in the underground view."
+msgstr "도로 터널을 표시하거나 숨깁니다."
+
+msgid "Show or hide signs in the city view."
+msgstr "도시의 표지판을 표시하거나 숨깁니다."
+
+msgid "Show or hide subways in the underground view."
+msgstr "지하철을 표시하거나 숨깁니다."
+
+msgid "Show or hide trees in the city view."
+msgstr "도시의 나무를 표시하거나 숨깁니다."
+
+msgid "Show or hide water in the city view."
+msgstr "도시의 물을 표시하거나 숨깁니다."
+
+msgid "Show or hide water mains in the underground view."
+msgstr "지하의 수도 간선을 표시하거나 숨깁니다."
+
+msgid "Show terrain"
+msgstr "지형 표시"
+
+msgid "Show terrain height and transparent water."
+msgstr "지형 높이와 투명한 물을 표시합니다."
+
+msgid "Show the city isometric view."
+msgstr "도시를 입체 등각 화면으로 표시합니다."
+
+msgid "Show the underground isometric view."
+msgstr "지하 시설을 입체 등각 화면으로 표시합니다."
+
+msgid "Shuffle all music"
+msgstr "모든 음악 무작위 재생"
+
+msgid "Sign saved as label %d."
+msgstr "표지판을 %d번으로 저장했습니다."
+
+msgid "Signs"
+msgstr "표지판"
+
+msgid "SimNation"
+msgstr "심네이션"
+
+msgid "Simulation stopped: %s"
+msgstr "시뮬레이션 중지: %s"
+
+msgid "Size"
+msgstr "크기"
+
+msgid "Size of menus, windows, and text. 2.0 is the standard size. Smaller values show more of the city. The city map keeps its own sharp pixel size."
+msgstr "메뉴, 창, 글자의 크기입니다. 기본값은 2.0이며 작게 설정하면 도시를 더 넓게 볼 수 있습니다. 도시 지도의 확대율은 별도로 유지됩니다."
+
+msgid "Small"
+msgstr "작게"
+
+msgid "Small Park"
+msgstr "공원"
+
+msgid "Snap lines"
+msgstr "선 정렬"
+
+msgid "Snap shapes"
+msgstr "도형 정렬"
+
+msgid "Snow"
+msgstr "눈"
+
+msgid "Solar Power Plant"
+msgstr "태양열 발전소"
+
+msgid "Sound Effects"
+msgstr "소리 효과"
+
+msgid "Sound pack"
+msgstr "효과음 팩"
+
+msgid "Sounds"
+msgstr "소리"
+
+msgid "Spacing"
+msgstr "간격"
+
+msgid "Spacing (pixels)"
+msgstr "간격 (픽셀)"
+
+msgid "Special"
+msgstr "특수"
+
+msgid "Speed"
+msgstr "속도"
+
+msgid "Speed: %s"
+msgstr "속도: %s"
+
+msgid "Speed: --"
+msgstr "속도: --"
+
+msgid "Square"
+msgstr "사각형"
+
+msgid "Stadium"
+msgstr "경기장"
+
+msgid "Stamp name"
+msgstr "스탬프 이름"
+
+msgid "Start City"
+msgstr "도시 시작"
+
+msgid "Start New City"
+msgstr "새 도시 시작"
+
+msgid "Starting Year"
+msgstr "시작 연도"
+
+msgid "Statue"
+msgstr "동상"
+
+msgid "Status: Not available in this city."
+msgstr "상태: 이 도시에서는 사용할 수 없습니다."
+
+msgid "Steel/Mining"
+msgstr "철강·광업"
+
+msgid "Still A Quarter"
+msgstr "200원"
+
+msgid "Stores 100 water units per tower tile. Stores surplus supply and releases stored water when needed. Requires a pipe connection."
+msgstr "급수탑 타일당 물 100을 저장합니다. 남는 물을 저장하고 필요할 때 공급합니다. 수도관 연결이 필요합니다."
+
+msgid "Stretch Terrain"
+msgstr "지형 늘이기"
+
+msgid "Subscription"
+msgstr "신문 구독"
+
+msgid "Subway"
+msgstr "지하철"
+
+msgid "Subway Station"
+msgstr "지하철역"
+
+msgid "Subway-to-Rail Connection"
+msgstr "지하철<->기차"
+
+msgid "Subways"
+msgstr "지하철"
+
+msgid "Supports education and city services. Query shows the annual museum statistic."
+msgstr "교육과 공공 서비스를 지원합니다. 정보 조회에서 연간 박물관 통계를 확인할 수 있습니다."
+
+msgid "Supports education. Query shows its annual education statistic. Ruminate opens the library reports."
+msgstr "교육을 지원합니다. 정보 조회에서 연간 교육 통계를 확인하고 도서관 보고서를 열 수 있습니다."
+
+msgid "Survey"
+msgstr "독자 광장"
+
+msgid "Tax Rates"
+msgstr "세율"
+
+msgid "Taxes"
+msgstr "세금"
+
+msgid "Team name"
+msgstr "팀 이름"
+
+msgid "Technical details"
+msgstr "기술 정보"
+
+msgid "Terrain"
+msgstr "지형"
+
+msgid "Terrain Preview"
+msgstr "지형 미리보기"
+
+msgid "Text"
+msgstr "문자"
+
+msgid "Textiles"
+msgstr "섬유"
+
+msgid "Textures"
+msgstr "텍스처"
+
+msgid "The Nuclear-Free ordinance disables this plant."
+msgstr "비핵 지대 법령이 시행 중이면 이 발전소를 새로 건설할 수 없습니다."
+
+msgid "The city treasury holds $%d. Construction draws from this balance, while taxes and service spending affect the annual budget. The Budget window contains current funding levels and projected totals."
+msgstr "도시 재정 잔액은 $%d입니다. 건설비는 이 잔액에서 지출되며, 세금과 공공서비스 지출은 연간 예산에 영향을 줍니다. 예산 창에서 현재 재원과 예상 총액을 확인할 수 있습니다."
+
+msgid "The first year of the city. The year sets the buildings and inventions that you can use."
+msgstr "도시를 시작할 연도입니다. 사용할 수 있는 건물과 기술이 연도에 따라 달라집니다."
+
+msgid "The mayor name for new cities."
+msgstr "새 도시에 사용할 시장 이름입니다."
+
+msgid "The money at the start. Difficulty also sets the national economy."
+msgstr "시작 자금입니다. 난이도는 국가 경제에도 영향을 줍니다."
+
+msgid "The name of the city."
+msgstr "도시의 이름입니다."
+
+msgid "The name of the mayor."
+msgstr "시장의 이름입니다."
+
+msgid "The volume of the music."
+msgstr "음악의 음량입니다."
+
+msgid "The volume of the sound effects."
+msgstr "효과음의 음량입니다."
+
+msgid "Theme"
+msgstr "테마"
+
+msgid "These imported packs are missing or out of date: %s.\n\n"
+msgstr "다음 팩이 없거나 오래된 버전입니다: %s.\n\n"
+
+msgid "This plant becomes available after its invention."
+msgstr "해당 기술이 발명된 이후 사용할 수 있습니다."
+
+msgid "Tile Inspector"
+msgstr "타일 검사"
+
+msgid "Tile name"
+msgstr "타일 이름"
+
+msgid "Time Scale"
+msgstr "시간 단위"
+
+msgid "Times"
+msgstr "뉴스"
+
+msgid "To palette index"
+msgstr "바꿀 팔레트 번호"
+
+msgid "Today's Weather"
+msgstr "오늘의 날씨"
+
+msgid "Tornado"
+msgstr "회오리"
+
+msgid "Total"
+msgstr "합계"
+
+msgid "Tourism"
+msgstr "관광"
+
+msgid "Toxic Spill"
+msgstr "유독 물질 유출"
+
+msgid "Traffic"
+msgstr "교통"
+
+msgid "Traffic graph (T)"
+msgstr "교통 그래프 (T)"
+
+msgid "Translucent interface"
+msgstr "반투명 인터페이스"
+
+msgid "Transportation"
+msgstr "교통"
+
+msgid "Treasury"
+msgstr "시 재정"
+
+msgid "Treasury reports $%d"
+msgstr "도시 재정 $%d"
+
+msgid "Treats 2,000 watered consumers per plant. Sufficient treatment improves the pollution calculation. It does not generate water."
+msgstr "시설당 급수 소비 타일 2,000개의 하수를 처리합니다. 충분한 처리 능력은 공해를 줄이며 물 자체를 생산하지는 않습니다."
+
+msgid "Trees"
+msgstr "나무"
+
+msgid "Trip Query"
+msgstr "통행 경로 조회"
+
+msgid "Tunnel"
+msgstr "터널"
+
+msgid "Tunnels"
+msgstr "터널"
+
+msgid "Tunnels %s."
+msgstr "터널 %s."
+
+msgid "Turn to pg %d for the full column"
+msgstr "전체 사설은 %d면에서"
+
+msgid "Turn to pg %d for the full forecast"
+msgstr "자세한 예보는 %d면에서"
+
+msgid "Turn to pg %d for the full story"
+msgstr "전체 기사는 %d면에서"
+
+msgid "Turtle"
+msgstr "느리게"
+
+msgid "Twenty-Five Cents"
+msgstr "200원"
+
+msgid "UI scale"
+msgstr "인터페이스 크기"
+
+msgid "Unavailable"
+msgstr "이용 불가"
+
+msgid "Underground"
+msgstr "지하"
+
+msgid "Underground View"
+msgstr "지하 보기"
+
+msgid "Underground pipes %s."
+msgstr "지하 배관 %s."
+
+msgid "Underground subways %s."
+msgstr "지하철 %s."
+
+msgid "Undo"
+msgstr "실행 취소"
+
+msgid "Unemployment"
+msgstr "실업률"
+
+msgid "Unemployment graph (u)"
+msgstr "실업률 그래프 (u)"
+
+msgid "Unsaved SCURK changes"
+msgstr "저장하지 않은 SCURK 변경 사항"
+
+msgid "Use Defaults"
+msgstr "기본값 복원"
+
+msgid "Use cool slate colors, clean greens, and softer shading while keeping the original shapes."
+msgstr "원래 형태를 유지하면서 고해상도 일러스트와 부드러운 명암을 적용합니다."
+
+msgid "Use light or dark colors for menus and windows."
+msgstr "메뉴와 창에 밝거나 어두운 테마를 사용합니다."
+
+msgid "Use this budget automatically next year"
+msgstr "내년에도 이 예산 자동 적용"
+
+msgid "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
+msgstr "현재 도시와 새 도시에 사용할 렌더러입니다. GPU 초기화에 실패하면 CPU를 사용합니다."
+
+msgid "Use translucent backgrounds with a frosted glass effect."
+msgstr "반투명 유리 효과를 배경에 적용합니다."
+
+msgid "Value"
+msgstr "지가"
+
+msgid "Value graph (V)"
+msgstr "지가 그래프 (V)"
+
+msgid "Varies with altitude and wind"
+msgstr "고도와 바람에 따라 달라짐"
+
+msgid "Vehicles"
+msgstr "차량"
+
+msgid "Vehicles %s."
+msgstr "차량 %s."
+
+msgid "View"
+msgstr "보기"
+
+msgid "View layers"
+msgstr "표시 항목"
+
+msgid "Visible Layers"
+msgstr "보이는 레이어"
+
+msgid "Volcano"
+msgstr "화산"
+
+msgid "Water"
+msgstr "물"
+
+msgid "Water %"
+msgstr "급수 여유율"
+
+msgid "Water % graph (w)"
+msgstr "급수 여유율 그래프 (w): 총 공급 용량에서 남은 비율"
+
+msgid "Water Pipes"
+msgstr "파이프"
+
+msgid "Water Pump"
+msgstr "물펌프"
+
+msgid "Water Tower"
+msgstr "물탱크"
+
+msgid "Water Treatment Plant"
+msgstr "하수 처리장"
+
+msgid "Water mains"
+msgstr "수도 간선"
+
+msgid "Water mains %s."
+msgstr "상수도관 %s."
+
+msgid "Water: %s tiles   Trees: %s tiles   Height: %s–%s"
+msgstr "물: %s타일   나무: %s타일   높이: %s–%s"
+
+msgid "Watered"
+msgstr "급수"
+
+msgid "Weather"
+msgstr "날씨"
+
+msgid "Weather Corner"
+msgstr "날씨 소식"
+
+msgid "Weather Forecast"
+msgstr "일기 예보"
+
+msgid "Weather Report"
+msgstr "기상 소식"
+
+msgid "Weather Talk"
+msgstr "날씨 이야기"
+
+msgid "Weather with Merle"
+msgstr "멀의 날씨 소식"
+
+msgid "Weather: %s"
+msgstr "날씨: %s"
+
+msgid "Weather: --"
+msgstr "날씨: --"
+
+msgid "Width"
+msgstr "너비"
+
+msgid "Wind Power Plant"
+msgstr "풍력 발전소"
+
+msgid "Windows"
+msgstr "창"
+
+msgid "Windy"
+msgstr "바람"
+
+msgid "Work Force %% = %d"
+msgstr "노동 인구 비율 = %d%%"
+
+msgid "Work Force EQ = %d"
+msgstr "노동 인구 교육지수 = %d"
+
+msgid "Work Force LE = %d"
+msgstr "노동 인구 기대수명 = %d"
+
+msgid "Workspace"
+msgstr "작업 공간"
+
+msgid "X offset"
+msgstr "X 오프셋"
+
+msgid "Y offset"
+msgstr "Y 오프셋"
+
+msgid "Yes"
+msgstr "예"
+
+msgid "Zones"
+msgstr "구역"
+
+msgid "Zoo"
+msgstr "동물원"
+
+msgid "Zoom In (E / +)"
+msgstr "확대 (E / +)"
+
+msgid "Zoom Out (Q / -)"
+msgstr "축소 (Q / -)"
+
+msgid "Zoom: %d%%"
+msgstr "확대: %d%%"
+
+msgid "Zoom: 100%"
+msgstr "확대: 100%"
+
+msgid "crime"
+msgstr "범죄"
+
+msgid "data"
+msgstr "데이터"
+
+msgid "disabled"
+msgstr "사용 안 함"
+
+msgid "education"
+msgstr "교육"
+
+msgid "enabled"
+msgstr "사용"
+
+msgid "extra editions"
+msgstr "호외"
+
+msgid "graphics"
+msgstr "그래픽"
+
+msgid "health"
+msgstr "보건"
+
+msgid "hidden"
+msgstr "숨김"
+
+msgid "music"
+msgstr "음악"
+
+msgid "pollution"
+msgstr "공해"
+
+msgid "shown"
+msgstr "표시"
+
+msgid "sound"
+msgstr "효과음"
+
+msgid "subscription"
+msgstr "정기 구독"
+
+msgid "taxes"
+msgstr "세금"
+
+msgid "tile"
+msgstr "타일"
+
+msgid "tiles"
+msgstr "타일"
+
+msgid "traffic"
+msgstr "교통"
+
+msgid "unemployment"
+msgstr "실업"
+
+msgid "water tile"
+msgstr "수면 타일"
+
+msgid "water tiles"
+msgstr "수면 타일"
+
+msgctxt "budget"
+msgid "Police"
+msgstr "경찰서"
+
+msgctxt "budget"
+msgid "Fire"
+msgstr "소방서"
+
+msgctxt "budget"
+msgid "Health"
+msgstr "건강 & 복지"
+
+msgid "A neighborhood watch program would take a bite out of crime."
+msgstr "자율 방범대는 범죄 발생을 조금이라도 줄일수 있습니다."
+
+msgid "A public smoking ban would benefit everyone."
+msgstr "공공장소 흡연 금지는 누구에게나 이익입니다."
+
+msgid "Annual Budget"
+msgstr "연간 예산"
+
+msgid "Annual interest"
+msgstr "연간 이자"
+
+msgid "April"
+msgstr "4월"
+
+msgid "Ask the bond advisor"
+msgstr "채무 보좌관에게 묻기"
+
+msgid "August"
+msgstr "8월"
+
+msgid "Bridge"
+msgstr "교량"
+
+msgid "Category"
+msgstr "항목"
+
+msgid "Crime is out of control.  We need more police stations."
+msgstr "범죄를 제어하기 힘듭니다. 경찰서를 많이 건설하십시요."
+
+msgid "Current funds"
+msgstr "현재 자금"
+
+msgid "Current health care is adequate to our needs."
+msgstr "현재 건강 서비스는 도시의 수요에 충분합니다."
+
+msgid "Cut back on City Services to cover the budget deficit."
+msgstr "예산 적자의 해결을 위해 서비스 기능을 줄여야 합니다."
+
+msgid "Cut back on services until our funds increase."
+msgstr "자금이 늘어날 때까지 도시 서비스를 줄여야 합니다."
+
+msgid "December"
+msgstr "12월"
+
+msgid "Educational services are adequate to our city's need."
+msgstr "교육 서비스는 도시 주민에게  적절히 제공되고 있습니다."
+
+msgid "February"
+msgstr "2월"
+
+msgid "Funds after settlement"
+msgstr "결산 후 자금"
+
+msgid "General CPR training will assuredly save lives."
+msgstr "심폐소생술(CPR) 교육은 생명을 구할 수 있습니다."
+
+msgid "Hospital services are trim, efficient and responsive."
+msgstr "병원은 효과적이고 신속한 서비스를 제공하고 있습니다."
+
+msgid "I have no advice at this time."
+msgstr "지금은 충고할 것이 없습니다."
+
+msgid "I'm proud to report that crime is at an all time low."
+msgstr "범죄 발생이 적다는 보고를 하게되어 기쁩니다."
+
+msgid "Interest"
+msgstr "이자"
+
+msgid "Interest rate"
+msgstr "금리"
+
+msgid "Issue Bond"
+msgstr "채무 추가"
+
+msgid "January"
+msgstr "1월"
+
+msgid "July"
+msgstr "7월"
+
+msgid "June"
+msgstr "6월"
+
+msgid "Legalized Gambling has attracted an upleasant element."
+msgstr "허가된 도박장은 범죄를 유인합니다."
+
+msgid "Let's raise taxes to increase total funds."
+msgstr "총 자금을 늘리기 위해 세금을 인상해야 합니다."
+
+msgid "March"
+msgstr "3월"
+
+msgid "May"
+msgstr "5월"
+
+msgid "Mixed"
+msgstr "혼합"
+
+msgid "Mixed rates"
+msgstr "서로 다른 비율"
+
+msgid "Month"
+msgstr "월"
+
+msgid "Monthly history"
+msgstr "월별 내역"
+
+msgid "November"
+msgstr "11월"
+
+msgid "October"
+msgstr "10월"
+
+msgid "Ordinance income and costs"
+msgstr "법령 수입과 비용"
+
+msgid "Our crime rate is comparable to the national average."
+msgstr "우리 도시의 범죄 발생은 국가 평균 수준입니다."
+
+msgid "Our fire coverage is excellent."
+msgstr "소방력이 아주 뛰어납니다."
+
+msgid "Our fire response is adequate."
+msgstr "소방력이 적당합니다."
+
+msgid "Principal"
+msgstr "원금"
+
+msgid "Projected annual flow"
+msgstr "연간 예상 수지"
+
+msgid "Rate"
+msgstr "비율"
+
+msgid "Rate / funding"
+msgstr "세율 / 예산 비율"
+
+msgid "Rates are good right now.  Float a bond to take advantage."
+msgstr "현재 금리 조건이 좋으니 채무를 늘려 활용합시다."
+
+msgid "Recorded"
+msgstr "확정"
+
+msgid "Repay Bond"
+msgstr "채무 지불"
+
+msgid "Review income, service funding and the year-end forecast."
+msgstr "수입, 공공서비스 예산과 연말 예상을 검토하십시오."
+
+msgid "Review last year’s totals."
+msgstr "지난해 결산을 검토하십시오."
+
+msgid "Running total"
+msgstr "누계"
+
+msgid "September"
+msgstr "9월"
+
+msgid "Status"
+msgstr "상태"
+
+msgid "The people are asking for a pollution ordinance."
+msgstr "사람들은 공해 방지법을 요구합니다."
+
+msgid "The power plants are overworked.  Let's push energy conservation."
+msgstr "전력이 모자랍니다. 에너지 절약 운동을 실시합시다."
+
+msgid "The transit lanes are inadequate.  Float a bond and build more."
+msgstr "교통시설이 부족하니 채무를 늘려 더 많이 건설해야 합니다."
+
+msgid "These outstanding bonds are killing us.  Raise taxes to pay them off."
+msgstr "세금을 높여서라도 빚을 청산해야 도시가 발전합니다."
+
+msgid "This city needs more firemen."
+msgstr "이 도시는 더 많은 소방수를 필요로 합니다."
+
+msgid "We could use more hospitals."
+msgstr "병원이 더 필요합니다."
+
+msgid "We have too many roads.  Remove some to save on maintenance."
+msgstr "도로가 너무 많습니다. 불필요한 도로를 없애 유지보수비를 줄이십시오."
+
+msgid "We need an Anti-Drug campaign to help our kids."
+msgstr "아이들을 위해서 마약 퇴치 캠페인이 필요합니다."
+
+msgid "We need more adequately funded colleges."
+msgstr "충분한 예산을 배정한 전문 교육 기관이 더 필요합니다."
+
+msgid "We need more adequately funded grade schools."
+msgstr "충분한 예산을 배정한 초등 교육 기관이 더 필요합니다."
+
+msgid "We should float a bond to pay for city expansion."
+msgstr "도시 개발 자금을 마련하기 위해 채무를 늘려야 합니다."
+
+msgid "While expensive, Free Clinics will make you popular."
+msgstr "보건소는 비용이 많이 들지만, 인기가 올라갈 것입니다."
+
+msgid "YOU CAN'T CUT BACK ON FUNDING!  YOU WILL REGRET THIS!"
+msgstr "예산을 줄여서는 안됩니다. 만일 줄이면 후회할 것입니다."
+
+msgid "Year to date"
+msgstr "올해 누계"
+
+msgid "Year-end cash flow"
+msgstr "연말 수지"
+
+msgid "Year-end estimate"
+msgstr "연말 예상"
+
+msgid "Year-end funds"
+msgstr "연말 예상 자금"
+
+msgid "You should drop the 1% income tax to give Residents a break."
+msgstr "주거지역 주민들을 위해 1% 소득세를 받지 말아야 합니다."
+
+msgid "You should drop the 1% sales tax to give Commerce a break."
+msgstr "상업지역 주민들을 위해 1% 판매세를 받지 말아야 합니다."
+
+msgid "You should lower taxes to encourage growth."
+msgstr "도시 성장을 촉진시키기 위해 세금을 낮추어야 합니다."
+
+msgid "{city} · {month} {year}"
+msgstr "{city} · {year}년 {month}"
+
+msgid "Cannot build here: %s"
+msgstr "이곳에는 건설할 수 없습니다: %s"
+
+msgid "Clear the existing structure first."
+msgstr "기존 시설을 먼저 철거하십시오."
+
+msgid "Hydroelectric power requires a waterfall tile."
+msgstr "수력 발전소는 폭포 타일에 건설해야 합니다."
+
+msgid "Insufficient funds for this tunnel."
+msgstr "이 터널을 건설할 자금이 부족합니다."
+
+msgid "Insufficient funds."
+msgstr "자금이 부족합니다."
+
+msgid "Select a tile inside the map."
+msgstr "지도 안의 타일을 선택하십시오."
+
+msgid "The 2 by 2 highway section extends outside the map."
+msgstr "2 × 2칸 고속도로 구간이 지도 밖으로 나갑니다."
+
+msgid "The object footprint extends outside the map."
+msgstr "시설 부지가 지도 밖으로 나갑니다."
+
+msgid "Raised Wires"
+msgstr "수상전력선"
+
+msgid "Rail Bridge"
+msgstr "철교"
+
+msgid "Causeway"
+msgstr "둑길"
+
+msgid "Raising Bridge"
+msgstr "다리"
+
+msgid "Suspension Bridge"
+msgstr "현수교"
+
+msgid "Highway Bridge"
+msgstr "고속도로다리"
+
+msgid "Reinforced Bridge"
+msgstr "철근교"
+
+msgid "Unknown Bridge"
+msgstr "알 수 없는 교량"
+
+msgid "Meandering River"
+msgstr "굽이치는 강"
+
+msgid "River Delta"
+msgstr "삼각주"
+
+msgid "Peninsula"
+msgstr "반도"
+
+msgid "Intersecting rivers"
+msgstr "교차하는 강"
+
+msgid "Forked River"
+msgstr "갈라지는 강"
+
+msgid "Split and rejoin river"
+msgstr "갈라졌다 합쳐지는 강"
+
+msgid "Ocean bay"
+msgstr "만"
+
+msgid "Single Island"
+msgstr "하나의 섬"
+
+msgid "Two islands"
+msgstr "두 개의 섬"
+
+msgid "Plateau"
+msgstr "고원"
+
+msgid "Mountain Ridge"
+msgstr "산등성이"
+
+msgid "River Valley"
+msgstr "하천 계곡"
+
+msgid "Rolling Hills"
+msgstr "구릉 지형"
+
+msgid "Basin"
+msgstr "분지"
+
+msgid "Canyon"
+msgstr "협곡"
+
+msgid "Coastal Cliffs"
+msgstr "해안 절벽"
+
+msgid "Single Lake"
+msgstr "하나의 호수"
+
+msgid "Two Lakes"
+msgstr "두 개의 호수"
+
+msgid "Maintain SimCity 2000 Compatibility"
+msgstr "심시티 2000 호환성 유지"
+
+msgid "Hold the right mouse button to hide this dialog."
+msgstr "마우스 오른쪽 버튼을 누르고 있으면 이 창을 숨깁니다."
+
+msgid "This patch requires complete imported graphics, game data, sound and music.\n\n%s\n\nChoose OK to import your original game resources."
+msgstr "이 패치를 실행하려면 원본 게임의 그래픽, 게임 데이터, 효과음, 음악을 모두 가져와야 합니다.\n\n%s\n\n확인을 누르면 원본 가져오기를 엽니다."
+
+msgid "NEWSPAPER"
+msgstr "신문"
+
+msgid "Zoom: %s%%"
+msgstr "확대: %s%%"
+
+msgid "HD sprite"
+msgstr "HD 스프라이트"
+
+msgid "HD sprite pack"
+msgstr "HD 스프라이트 팩"
+
+msgid "The language of menus and windows. Original game text, such as newspapers, uses the language of the imported game."
+msgstr "메뉴와 창의 언어입니다. 신문 같은 원본 게임 텍스트는 가져온 게임의 언어를 사용합니다."
+
+msgid "The pack.json file of an HD sprite pack. It replaces the look of the city sprites with full-color art. The GPU renderer shows it. Leave this empty to show the sprites of the graphics pack."
+msgstr "HD 스프라이트 팩의 pack.json 파일입니다. 도시 스프라이트를 풀컬러 그림으로 바꿔 보여 줍니다. GPU 렌더러에서만 표시됩니다. 비워 두면 그래픽 팩의 스프라이트를 표시합니다."

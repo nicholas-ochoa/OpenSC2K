@@ -326,6 +326,6 @@ func _test_pollution_and_invalid_city(reference_root: String) -> void:
 		0,
 	)
 	_check(
-		not invalid_result.ok and not invalid_result.error.is_empty(),
-		"The natural-disaster selector rejects an invalid saved difficulty",
+		invalid_result.ok and invalid_result.wait_months == 100,
+		"The natural-disaster selector uses the Easy wait for a saved difficulty of 0: %s" % invalid_result.error,
 	)

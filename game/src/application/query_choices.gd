@@ -118,7 +118,7 @@ func confirm_stadium_team() -> void:
 	)
 
 	if not result.ok:
-		app.interface.show_error("Cannot assign stadium team: %s" % result.error)
+		app.interface.show_error(tr("Cannot assign stadium team: %s") % result.error)
 		call_deferred("_restore_stadium_dialog")
 
 		return
@@ -132,7 +132,7 @@ func confirm_stadium_team() -> void:
 		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Assigned %s to the new stadium." % result.stadium_team_name
+	app.status_label.text = tr("Assigned %s to the new stadium.") % result.stadium_team_name
 
 
 func cancel_stadium_team() -> void:
@@ -180,14 +180,14 @@ func commit_sign() -> void:
 	app.tool_state.pending_sign_tile = Vector2i(-1, -1)
 
 	if not result.ok:
-		app.interface.show_error("Cannot change sign: %s" % result.error)
+		app.interface.show_error(tr("Cannot change sign: %s") % result.error)
 
 		return
 
 	app.tool_state.last_edit_command = result
 	app.static_render.refresh_after_city_edit(result)
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
+	app.status_label.text = "Sign removed." if result.new_overlay == 0 else tr("Sign saved as label %d.") % result.label_id
 
 
 func cancel_sign() -> void:
@@ -198,7 +198,7 @@ func open_query(point: Vector2i) -> void:
 	var result := Queries.inspect(app.document_state.city, point)
 
 	if not result.ok:
-		app.interface.show_error("Cannot query tile: %s" % result.error)
+		app.interface.show_error(tr("Cannot query tile: %s") % result.error)
 
 		return
 
@@ -206,11 +206,11 @@ func open_query(point: Vector2i) -> void:
 		var approval := app.simulation_state.simulation_engine.recalculate_mayor_house()
 
 		if not approval.ok:
-			app.interface.show_error("Cannot calculate mayor approval: %s" % approval.error)
+			app.interface.show_error(tr("Cannot calculate mayor approval: %s") % approval.error)
 
 			return
 
-		app.reports.show_news_items(approval.news_items)
+		app.reports.show_mayor_approval(approval)
 		result = Queries.inspect(app.document_state.city, point)
 
 	if (
@@ -228,12 +228,29 @@ func open_query(point: Vector2i) -> void:
 	if not action.is_empty():
 		action_text = str(QueryStrings.ACTIONS.get(action, ""))
 
-	var neighborhood := QueryNeighborhood.render(
-		app.document_state.city,
-		point,
-		app.asset_state.palette_index_encoding,
-		app.asset_state.large_sprites,
-	)
+	# the region views show HD art, and so does the query
+	var artwork: Array[Image] = []
+
+	if app.render_caches.region_cache != null:
+		artwork = QueryNeighborhood.render_artwork(app.document_state.city, point, app.asset_state.palette,
+			app.asset_state.large_sprites)
+
+	var neighborhood_texture: Texture2D = null
+	var selection_texture: Texture2D = null
+	var animation_palette: Sc2Palette = null
+
+	if not artwork.is_empty():
+		neighborhood_texture = HdArtworkTexture.create(artwork[0], QueryNeighborhood.SIZE)
+		selection_texture = HdArtworkTexture.create(artwork[1], QueryNeighborhood.SIZE)
+	else:
+		var neighborhood := QueryNeighborhood.render(
+			app.document_state.city,
+			point,
+			app.asset_state.palette_index_encoding,
+			app.asset_state.large_sprites,
+		)
+		neighborhood_texture = ImageTexture.create_from_image(neighborhood) if neighborhood != null else null
+		animation_palette = app.asset_state.palette
 	app.city_dialogs.query_dialog.neighborhood_view.blending_enabled = app.preferences.visual_enhancements.disaster_blending
 	app.city_dialogs.query_dialog.set_max_length(app.document_state.city.document.name_limit())
 	app.city_dialogs.query_dialog.show_query(
@@ -243,9 +260,10 @@ func open_query(point: Vector2i) -> void:
 		QueryText.format_text(result),
 		action_text,
 		result,
-		ImageTexture.create_from_image(neighborhood) if neighborhood != null else null,
-		app.asset_state.palette,
+		neighborhood_texture,
+		animation_palette,
 		app.palette_clock.cycle_ticks,
+		selection_texture,
 	)
 	app.effects_audio.play_sound_ids(result.sound_events)
 
@@ -265,7 +283,7 @@ func close_query(commit_rename := false) -> bool:
 		)
 
 		if not renamed.ok:
-			app.interface.show_error("Cannot rename facility: %s" % renamed.error)
+			app.interface.show_error(tr("Cannot rename facility: %s") % renamed.error)
 
 			return false
 
@@ -286,7 +304,7 @@ func run_query_action() -> void:
 			var analysis := QueryFacilityActions.city_analysis(app.document_state.city)
 
 			if not analysis.ok:
-				app.interface.show_error("Cannot analyze city: %s" % analysis.error)
+				app.interface.show_error(tr("Cannot analyze city: %s") % analysis.error)
 
 				return
 

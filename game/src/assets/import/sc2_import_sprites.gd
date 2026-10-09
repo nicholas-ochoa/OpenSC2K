@@ -2,235 +2,44 @@ class_name Sc2ImportSprites
 extends RefCounted
 ## Decode source sprite sets while retaining valid records from partial sets.
 
-@warning_ignore_start("integer_division")
-
 var archive := Sc2SpriteArchive.new()
 var warnings := PackedStringArray()
 var error := ""
 
 
+# The native formats library decodes the sets; see
+# native/core/assets/src/import/sprites.rs
 static func mac_tile_set(data: PackedByteArray) -> Sc2ImportSprites:
-	var result := Sc2ImportSprites.new()
-
-	if (data.size() < 34
-			or data.slice(0, 4).get_string_from_ascii() != "MIFF"
-			or BinaryData.read_u32_be(data, 4) != data.size() - 8
-			or data.slice(8, 16).get_string_from_ascii() != "SC2KINFO"):
-		result.error = "Invalid Macintosh tile-set header."
-		return result
-
-	if BinaryData.read_u32_be(
-		data,
-		16,
-	) != 4 or data.slice(20, 28).get_string_from_ascii() != "_MACTILE" or BinaryData.read_u32_be(data, 28) != 2:
-		result.error = "Unsupported Macintosh tile-set directory."
-		return result
-
-	# Mac TILE stores a count followed by SHAP chunks; it does not use the Windows MIF layout.
-	var count := BinaryData.read_u16_be(data, 32)
-	var cursor := 34
-	var total_pixels := 0
-
-	for index in count:
-		if not Sc2ImportContainer.has_range(data, cursor, 8) or data.slice(cursor, cursor + 4).get_string_from_ascii() != "SHAP":
-			result.warnings.append("The Macintosh tile set ends before shape %d. Kept preceding shapes." % index)
-			break
-
-		var length := BinaryData.read_u32_be(data, cursor + 4)
-		cursor += 8
-
-		if not Sc2ImportContainer.has_range(data, cursor, length):
-			result.warnings.append("Macintosh shape %d extends past the tile set. Kept preceding shapes." % index)
-			break
-
-		var start := cursor
-		cursor += length
-
-		# Empty SHAP chunks are placeholders with no ID or dimensions.
-		if length == 0:
-			continue
-
-		if length < 10 or BinaryData.read_u32_be(data, start + 6) != length - 10:
-			result.warnings.append("Macintosh shape %d has an invalid pixel length." % index)
-			continue
-
-		var entry := Sc2SpriteArchive.SpriteEntry.new()
-		entry.sprite_id = BinaryData.read_u16_be(data, start)
-		entry.width = BinaryData.read_u16_be(data, start + 2)
-		entry.height = BinaryData.read_u16_be(data, start + 4)
-
-		if (entry.width < 1
-				or entry.height < 1
-				or entry.width > 4096
-				or entry.height > 4096
-				or total_pixels + entry.width * entry.height > 16 * 1024 * 1024):
-			result.warnings.append("Macintosh shape %d exceeds the decoded image limits." % entry.sprite_id)
-			continue
-
-		total_pixels += entry.width * entry.height
-		entry.encoded_pixels = ScurkMif._normalize_pixel_end(data.slice(start + 10, cursor))
-		entry.allow_unpadded_odd_runs = true
-		var decoded := entry.decode_indices()
-
-		if not decoded.ok:
-			result.warnings.append(decoded.error)
-			continue
-
-		result.archive.entries.append(entry)
-		result.archive.entries_by_id[entry.sprite_id] = entry
-
-	if cursor != data.size():
-		result.warnings.append("The Macintosh tile-set size differs from its declared shapes.")
-
-	if result.archive.entries.is_empty():
-		result.error = "No readable Macintosh tile-set shapes were found."
-
-	return result
+	return _from_native(NativeSpriteImport.mac_tile_set(data))
 
 
 static func tiles_database(data: PackedByteArray) -> Sc2ImportSprites:
-	var result := Sc2ImportSprites.new()
-
-	if data.size() < 2:
-		result.error = "Truncated tile database."
-		return result
-
-	var count := int(data.decode_u16(0))
-	var sizes := 2 + count * 10
-	var cursor := sizes + count * 4
-
-	if count == 0 or cursor > data.size():
-		result.error = "Invalid tile database directory."
-		return result
-
-	for index in count:
-		var length := int(data.decode_u32(sizes + index * 4))
-		var metadata := 2 + index * 10
-		var entry := Sc2SpriteArchive.SpriteEntry.new()
-		entry.sprite_id = int(data.decode_u16(metadata))
-		entry.height = int(data.decode_u16(metadata + 6))
-		entry.width = int(data.decode_u16(metadata + 8))
-
-		if not Sc2ImportContainer.has_range(data, cursor, length):
-			result.warnings.append("Tile database ends before sprite %d. Kept preceding sprites." % entry.sprite_id)
-			break
-
-		var encoded := data.slice(cursor, cursor + length)
-		entry.encoded_pixels = ScurkMif._normalize_pixel_end(encoded)
-		entry.allow_unpadded_odd_runs = entry.encoded_pixels != encoded
-		cursor += length
-		var rows := _sprite_rows(entry.encoded_pixels)
-
-		if rows > entry.height and rows <= 4096:
-			result.warnings.append("Tile database sprite %d stores %d rows but declares %d. Recovered all rows." % [entry.sprite_id, rows,
-				entry.height])
-			entry.height = rows
-
-		if entry.width < 1 or entry.height < 1 or entry.width > 4096 or entry.height > 4096:
-			result.warnings.append("Tile database sprite %d has invalid dimensions." % entry.sprite_id)
-			continue
-
-		var decoded := entry.decode_indices()
-
-		if not decoded.ok:
-			result.warnings.append(decoded.error)
-			continue
-
-		result.archive.entries.append(entry)
-		result.archive.entries_by_id[entry.sprite_id] = entry
-
-	if result.archive.entries.is_empty():
-		result.error = "No readable tile database sprites were found."
-
-	return result
-
-
-static func _sprite_rows(bytes: PackedByteArray) -> int:
-	var cursor := 0
-	var rows := 0
-
-	while cursor + 2 <= bytes.size():
-		var size := int(bytes[cursor])
-		var mode := int(bytes[cursor + 1])
-		cursor += 2
-
-		if mode == 2:
-			return rows
-
-		if mode not in [0, 1] or not Sc2ImportContainer.has_range(bytes, cursor, size):
-			return -1
-
-		if mode == 1:
-			rows += 1
-
-		cursor += size
-
-	return -1
+	return _from_native(NativeSpriteImport.tiles_database(data))
 
 
 static func dos(header: PackedByteArray, data: PackedByteArray) -> Sc2ImportSprites:
+	return _from_native(NativeSpriteImport.dos(header, data))
+
+
+static func _from_native(fields: Dictionary) -> Sc2ImportSprites:
 	var result := Sc2ImportSprites.new()
+	result.error = fields.error
+	result.warnings = fields.warnings
 
-	if header.is_empty() or header.size() % 8 != 0 or header.size() / 8 > 65536:
-		result.error = "Invalid DOS sprite directory."
-		return result
+	for sprite: Dictionary in fields.sprites:
+		var entry: Sc2SpriteArchive.SpriteEntry
 
-	var offsets: Array[int] = []
-	var distinct: Dictionary[int, bool] = {}
+		if (sprite.indices as PackedInt32Array).is_empty():
+			entry = Sc2SpriteArchive.SpriteEntry.new()
+			entry.sprite_id = sprite.sprite_id
+			entry.width = sprite.width
+			entry.height = sprite.height
+			entry.encoded_pixels = sprite.encoded
+			entry.allow_unpadded_odd_runs = sprite.allow_unpadded_odd_runs
+		else:
+			entry = Sc2SpriteArchive.entry_from_indices(sprite.sprite_id, sprite.width, sprite.height, sprite.indices)
 
-	for index in header.size() / 8:
-		var offset := int(header.decode_u32(index * 8))
-
-		if offset < data.size() and not distinct.has(offset):
-			distinct[offset] = true
-			offsets.append(offset)
-
-	offsets.sort()
-	var ends: Dictionary[int, int] = {}
-
-	for index in offsets.size():
-		ends[offsets[index]] = offsets[index + 1] if index + 1 < offsets.size() else data.size()
-
-	for id in header.size() / 8:
-		var offset := int(header.decode_u32(id * 8))
-
-		if offset == 0xffffffff:
-			continue
-
-		var height := int(header[id * 8 + 4])
-		var width := int(header[id * 8 + 5])
-
-		if not ends.has(offset) or width == 0 or height == 0:
-			result.warnings.append("DOS sprite %d has an invalid offset or dimension." % id)
-			continue
-
-		var decoded := _dos_pixels(data, offset, ends[offset], width, height)
-
-		if not decoded.ok:
-			result.warnings.append("DOS sprite %d: %s" % [id, decoded.error])
-			continue
-
-		var entry := Sc2SpriteArchive.entry_from_indices(id, width, height, decoded.pixels)
 		result.archive.entries.append(entry)
-		result.archive.entries_by_id[id] = entry
-
-	if result.archive.entries.is_empty():
-		result.error = "No readable DOS sprites were found."
-
-	return result
-
-
-static func _dos_pixels(data: PackedByteArray, start: int, end: int, width: int, height: int) -> IndexedImageResult:
-	var decoded := NativeSpriteCodec.decode_dos(data, start, end, width, height)
-
-	if not decoded.ok:
-		return IndexedImageResult.failure(decoded.error)
-
-	var result := IndexedImageResult.new()
-	result.ok = true
-	result.width = width
-	result.height = height
-	result.rows = decoded.rows
-	result.pixels = decoded.pixels
+		result.archive.entries_by_id[sprite.sprite_id] = entry
 
 	return result

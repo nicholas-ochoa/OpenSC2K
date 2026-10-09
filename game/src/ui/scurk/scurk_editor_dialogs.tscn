@@ -73,6 +73,7 @@ layout_mode = 2
 tooltip_text = "Indexed formats keep the palette indices. The animated GIF shows the palette color cycle."
 
 [node name="PickCopy" parent="." instance=ExtResource("pick")]
+layout_mode = 1
 
 [node name="GenerateOptions" type="ConfirmationDialog" parent="."]
 title = "Generate smaller sizes"

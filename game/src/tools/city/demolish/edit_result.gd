@@ -6,7 +6,7 @@ var scurk_mode := false
 var action_count := 0
 var skipped_specialized := 0
 var skipped_insufficient := 0
-# forest protests keep the tree and add a saved news story
+# forest protests show a notice and add a saved news story
 var easter_events := 0
 var news_items: Array[NewsEvent] = []
 var news_queue_updated := false

@@ -15,73 +15,13 @@ const WATER_TOWER := Tiles.WATER_TOWER
 const CITY_HALL := Tiles.CITY_HALL
 const LIBRARY := Tiles.LIBRARY
 const MICROSIM_TYPE_BY_TILE := Facilities.MICROSIM_TYPE_BY_TILE
-const GRADE_NAMES := [
-	"F",
-	"D-",
-	"D",
-	"D+",
-	"C-",
-	"C",
-	"C+",
-	"B-",
-	"B",
-	"B+",
-	"A-",
-	"A",
-	"A+",
-]
+# the name tables of the native query; see native/core/sim/src/sim/tools/query/strings.rs
+static var _strings: Dictionary = NativeCityTools.query_strings()
+static var GRADE_NAMES: PackedStringArray = _strings.grade_names
 # the executable names unused zones 10 and 11 as Seaport and Airport
-const ZONE_NAMES := [
-	"Unzoned",
-	"Residential",
-	"Residential",
-	"Commercial",
-	"Commercial",
-	"Industrial",
-	"Industrial",
-	"Military",
-	"Airport",
-	"Seaport",
-	"Seaport",
-	"Airport",
-]
-const ZONE_DENSITIES := [
-	"",
-	"low-density",
-	"high-density",
-	"low-density",
-	"high-density",
-	"low-density",
-	"high-density",
-	"",
-	"",
-	"",
-]
-const UNDERGROUND_NAMES := [
-	"None",
-	"Subway (LR)", "Subway (TB)", "Subway (HTB)", "Subway (LHR)",
-	"Subway (THB)", "Subway (HLR)", "Subway (BR)", "Subway (BL)",
-	"Subway (TL)", "Subway (TR)", "Subway (RTB)", "Subway (LBR)",
-	"Subway (TLB)", "Subway (LTR)", "Subway (LTBR)",
-	"Pipes (LR)", "Pipes (TB)", "Pipes (HTB)", "Pipes (LHR)",
-	"Pipes (THB)", "Pipes (HLR)", "Pipes (BR)", "Pipes (BL)",
-	"Pipes (TL)", "Pipes (TR)", "Pipes (RTB)", "Pipes (LBR)",
-	"Pipes (TLB)", "Pipes (LTR)", "Pipes (LTBR)",
-	"Crossover (PIPESTB_SUBWAYLR)", "Crossover (PIPESLR_SUBWAYTB)",
-	"Unknown", "Missile Silo", "Subway Entrance",
-]
-const FLAG_LABELS := [
-	[Sc2TileFlags.POWERABLE, "powerable"], [Sc2TileFlags.POWERED, "powered"], [Sc2TileFlags.PIPED, "piped"],
-	[Sc2TileFlags.WATERED, "watered"], [Sc2TileFlags.MARK, "xvalmask"], [Sc2TileFlags.WATER, "water"],
-	[Sc2TileFlags.FLIPPED, "rotated"], [Sc2TileFlags.SALT_WATER, "saltwater"],
-]
-const THING_NAMES := [
-	"None", "Airplane", "Helicopter", "Cargo ship", "Bulldozer",
-	"Monster", "Explosion", "Police", "Fire", "Sailboat",
-	"Train engine", "Train car", "Subway engine", "Subway car",
-	"Military", "Tornado", "Maxis Man",
-]
-const DIRECTION_NAMES := [
-	"North", "Northeast", "East", "Southeast",
-	"South", "Southwest", "West", "Northwest",
-]
+static var ZONE_NAMES: PackedStringArray = _strings.zone_names
+static var ZONE_DENSITIES: PackedStringArray = _strings.zone_densities
+static var UNDERGROUND_NAMES: PackedStringArray = _strings.underground_names
+static var FLAG_LABELS: Array = _strings.flag_labels
+static var THING_NAMES: PackedStringArray = _strings.thing_names
+static var DIRECTION_NAMES: PackedStringArray = _strings.direction_names

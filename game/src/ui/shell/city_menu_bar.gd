@@ -19,6 +19,8 @@ const MENU_EXPORT_CITY_PNG := 8
 const MENU_RENAME_CITY := 9
 const MENU_UPGRADE_SC2X := 0x8303
 const MENU_CHECK_FOR_UPDATES := 0x8304
+const MENU_OPEN_AUTOSAVES := 0x8305
+const MENU_CONSOLE := 0x8306
 const MENU_ABOUT := 0
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
@@ -41,12 +43,25 @@ const MENU_VIEW_DATA_SEPARATOR := 0x810a
 const MENU_VIEW_SUBWAYS := 0x810b
 const MENU_VIEW_TUNNELS := 0x810c
 const MENU_SCURK_PLACE_PRINT := 0x8200
+# the name of each disaster type. the debug tools list all of them
 const DISASTER_ITEMS := [
 	["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
 	["Air Crash", 5], ["Earthquake", 6], ["Tornado", 7], ["Monster", 8],
 	["Meltdown", 9], ["Microwave", 10], ["Volcano", 11], ["Firestorm", 12],
 	["Mass Riots", 13], ["Mass Floods", 14], ["Pollution", 15],
 	["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
+]
+# the Disasters menu of SIMCITY.EXE. Air Crash starts the falling plane of
+# type 18
+const DISASTERS_MENU_ITEMS := [
+	["Fire", 1], ["Flood", 2], ["Air Crash", 18], ["Tornado", 7], ["Earthquake", 6], ["Monster", 8],
+	["Hurricane", 16], ["Rioters", 3],
+]
+# the disasters of the hidden SIMCITY.EXE Debug menu, and the pollution
+# disaster that only the simulation starts there. they follow a separator
+const DEBUG_DISASTER_ITEMS := [
+	["Melt Down", 9], ["Microwave", 10], ["Volcano", 11], ["Fire Storm", 12], ["Mass Riots", 13],
+	["Major Flood", 14], ["Toxic Spill", 4], ["Pollution", 15],
 ]
 
 # the menu item that each bindable action selects: [menu, item id]
@@ -68,6 +83,7 @@ const ACTION_ITEMS: Dictionary[String, Array] = {
 	"window_budget": ["windows", 0], "window_ordinances": ["windows", 1], "window_population": ["windows", 2],
 	"window_industry": ["windows", 3], "window_graphs": ["windows", 4], "window_neighbors": ["windows", 5],
 	"window_map": ["windows", 6], "window_debug": ["windows", 7], "window_scenario_goals": ["windows", MENU_SCENARIO_GOALS],
+	"window_console": ["windows", MENU_CONSOLE],
 }
 
 var bindings := ControlBindings.defaults()
@@ -98,7 +114,7 @@ func _ready() -> void:
 		["New City", 0], ["Open City", 1],
 		["", -1], ["Save City", MENU_SAVE_CITY], ["Save City As", 2],
 		["", -1], ["Rename City", MENU_RENAME_CITY],
-		["", -1], ["Export City as PNG", MENU_EXPORT_CITY_PNG],
+		["", -1], ["Export City as PNG", MENU_EXPORT_CITY_PNG], ["Open Autosave Folder", MENU_OPEN_AUTOSAVES],
 		["", -1], ["Load Tile Set", 3], ["Restore Original Tile Set", 4],
 		["", -1], ["SCURK Place & Print", MENU_SCURK_PLACE_PRINT],
 		["", -1], ["Main Menu", 5], ["Exit", 6],
@@ -166,27 +182,15 @@ func _ready() -> void:
 		view_menu.get_popup().add_check_item(view_item[0], view_item[1])
 
 	disasters_menu = _add_menu(
-		menu_row, "Disasters", DISASTER_ITEMS, _on_disaster_menu
+		menu_row, "Disasters", DISASTERS_MENU_ITEMS, _on_disaster_menu
 	)
 	disasters_menu.get_popup().add_separator()
+
+	for item in DEBUG_DISASTER_ITEMS:
+		disasters_menu.get_popup().add_item(item[0], item[1])
+
+	disasters_menu.get_popup().add_separator()
 	disasters_menu.get_popup().add_check_item("No Disasters", MENU_NO_DISASTERS)
-	var implemented_disasters := {
-		1: true, 2: true, 3: true, 4: true, 5: true, 6: true,
-		7: true, 8: true, 9: true, 10: true, 11: true, 12: true,
-		13: true, 14: true, 15: true, 16: true, 17: true, 18: true,
-	}
-
-	for item_index in disasters_menu.get_popup().item_count:
-		var disaster_id := disasters_menu.get_popup().get_item_id(item_index)
-
-		if disaster_id > 0 and disaster_id != MENU_NO_DISASTERS:
-			disasters_menu.get_popup().set_item_disabled(
-				item_index, not implemented_disasters.has(disaster_id)
-			)
-
-	disasters_menu.tooltip_text = (
-		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
-	)
 
 	windows_menu = _add_menu(menu_row, "Windows", [], _on_windows_menu)
 	set_scenario_available(false)
@@ -380,6 +384,7 @@ func set_scenario_available(available: bool) -> void:
 		popup.add_item("Show Scenario Goals", MENU_SCENARIO_GOALS)
 
 	popup.add_separator()
+	popup.add_item("Console", MENU_CONSOLE)
 	popup.add_item("Debug", 7)
 	refresh_shortcut_hints(bindings)
 
@@ -422,11 +427,11 @@ func set_newspapers(titles: PackedStringArray, subscribed := false, extras := fa
 
 
 func set_population(display_value: String, available := true) -> void:
-	population_label.text = "Population: %s" % display_value
+	population_label.text = tr("Population: %s") % display_value
 	population_label.set_meta(
 		"status_tooltip_text",
 		(
-			"Current city population: %s" % display_value
+			tr("Current city population: %s") % display_value
 			if available
 			else "Current city population is not available."
 		),
@@ -436,12 +441,12 @@ func set_population(display_value: String, available := true) -> void:
 
 func set_date(display_date: String) -> void:
 	date_label.text = display_date
-	date_label.tooltip_text = "Current city date: %s" % display_date
+	date_label.tooltip_text = tr("Current city date: %s") % display_date
 
 
 func set_money(display_money: String) -> void:
 	money_label.text = display_money
-	money_label.tooltip_text = "Current city funds: %s" % display_money
+	money_label.tooltip_text = tr("Current city funds: %s") % display_money
 
 
 func set_fps(frames_per_second: int) -> void:

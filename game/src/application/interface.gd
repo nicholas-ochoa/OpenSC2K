@@ -86,6 +86,8 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.map_view.viewport_changed.connect(app.reports.city_map.refresh_viewport)
 	app.city_status_bar = app.city_workspace.status_bar
 	app.city_status_bar.disaster_locate_requested.connect(app.camera_input.center_map_on_disaster)
+	app.city_status_bar.help_requested.connect(show_button_help)
+	app.city_toolbar.help_requested.connect(show_button_help)
 	app.status_label = app.city_status_bar.message_label
 	app.frame.sync_speed_ui()
 
@@ -183,6 +185,11 @@ func _build_main_menu() -> void:
 	app.main_overlays.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
 	app.main_overlays.settings_dialog.update_check_requested.connect(app.updates.check_now)
 	app.main_overlays.settings_dialog.controls_reset_requested.connect(app.settings.reset_controls)
+	var mods_panel := app.main_overlays.settings_dialog.mods_panel
+	mods_panel.mod_enabled_changed.connect(app.settings.set_mod_enabled)
+	mods_panel.reload_requested.connect(app.scripting.mods.reload)
+	mods_panel.open_folder_requested.connect(app.settings.open_mods_folder)
+	app.scripting.mods.changed.connect(app.settings.show_mods)
 	app.updates.bind_ui(app, app.main_overlays.update_dialog)
 	app.updates.running_changed.connect(app.main_overlays.settings_dialog.set_update_check_running)
 	app.updates.status_changed.connect(app.main_overlays.settings_dialog.set_update_status)
@@ -199,6 +206,16 @@ func _build_main_menu() -> void:
 func show_status(message: String) -> void:
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = message
+
+
+# the help of a toolbar button or the status bar, as a Shift-click shows it
+func show_button_help(topic: String) -> void:
+	var text := ButtonHelp.text(topic)
+
+	if text.is_empty():
+		return
+
+	app.city_dialogs.help_dialog.show_topic(topic, text)
 
 
 func show_main_menu() -> void:
@@ -218,6 +235,7 @@ func show_main_menu() -> void:
 	if app.asset_state.assets_ready:
 		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites, app.preferences.visual_enhancements)
 
+	app.effects_audio.stop_sound_loop()
 	app.main_menu.show_menu(app.document_state.city != null)
 	app.status_label.text = "Main menu."
 

@@ -1,0 +1,13 @@
+//! File and image codecs. This crate has no engine types, so `cargo test` runs
+//! it and any front end can use it.
+
+pub mod bmp;
+pub mod crc32;
+pub mod gif;
+pub mod json;
+pub mod pe;
+pub mod png;
+pub mod sha256;
+pub mod sprite;
+pub mod sprite_archive;
+pub mod zip;

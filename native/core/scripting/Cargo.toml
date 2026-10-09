@@ -1,0 +1,14 @@
+[package]
+name = "sc2k_scripting"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "QuickJS script runtime of OpenSC2K, without engine types"
+build = "build.rs"
+
+[dependencies]
+
+[build-dependencies]
+# compiles the vendored QuickJS C sources with the C compiler of the target
+cc = "1.2"

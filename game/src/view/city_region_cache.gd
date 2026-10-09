@@ -11,7 +11,12 @@ const GPU_OFFSCREEN_LIMIT := 384
 const GPU_PREFETCH_LIMIT := 256
 const GPU_REGION_EDGE := 256
 const GPU_SMALL_REGION_EDGE := 128
+# the fit zoom levels of a large map show thousands of small regions. larger
+# regions build the whole map with less overhead and fewer repeated edge tiles
+const GPU_FIT_REGION_EDGE := 512
 const GPU_WORKERS := 2
+# vertex color tags of palette_cycle.gdshader for the overlays of HD regions
+const OVERLAY_PIPE_FLOW_TAG := 52
 # chunks whose tile data the region renderers read
 const SOURCE_CHUNKS: Array[String] = ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "XUND", "XTRF"]
 # above this count, report the whole region as changed foreground geometry
@@ -19,6 +24,8 @@ const MAX_OCCLUDER_CHANGES := 32
 const MAX_PUBLISH_LOG := 512
 
 var region_edge := REGION_EDGE
+# set before `configure`: the view is below the first base zoom level
+var fit_zoom := false
 var gpu_enabled := gpu_supported()
 # A city preparation bank keeps complete region resources between camera moves.
 var resident := false
@@ -62,6 +69,10 @@ var _source_updates: Dictionary[Vector2i, bool] = {}
 var _task: CityRenderTask
 # the native painter of CPU regions. only the running region task uses it
 var _cpu_context := CityGpuBuildContext.new()
+var _artwork_context := CityGpuBuildContext.new()
+# the palette of HD art in CPU regions, or null to draw only the indexed sprites
+var artwork_palette: Sc2Palette
+var _artwork_palette: Sc2Palette
 var _job_key := Vector2i.ZERO
 var _job_generation := 0
 var _layout_generation := 0
@@ -105,12 +116,14 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		new_signature: Array, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
 		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true,
 		changed: Array[Rect2i] = [], changes_listed := false, show_tunnels := true) -> void:
-	if (signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes
-			and _show_subways == show_subways and _show_water_mains == show_water_mains and _show_tunnels == show_tunnels):
+	if (signature == new_signature and _palette == palette and _sprites == sprites and _artwork_palette == artwork_palette
+			and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes
+			and _show_subways == show_subways and _show_water_mains == show_water_mains and _show_tunnels == show_tunnels
+			and region_edge == _wanted_region_edge(new_view)):
 		return
 
 	var reset := _needs_reset(
-		city, new_view, new_mode, visibility, sprites, show_pipes, show_subways, show_water_mains, show_tunnels
+		city, palette, new_view, new_mode, visibility, sprites, show_pipes, show_subways, show_water_mains, show_tunnels
 	)
 
 	# no region shows the change, so the drawn snapshot still matches the city
@@ -146,7 +159,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				entry.generation = generation
 
 	if reset:
-		region_edge = (GPU_SMALL_REGION_EDGE if new_view == 0 else GPU_REGION_EDGE) if gpu_enabled else REGION_EDGE
+		region_edge = _wanted_region_edge(new_view)
 		_published_source = null
 		_edit_priority.clear()
 		_foreground_reset = true
@@ -169,6 +182,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_keep_source_payloads(city)
 	display_city = _snapshot
 	_palette = palette
+	_artwork_palette = artwork_palette
 	_sprites = sprites
 	_visibility = visibility.duplicate()
 	_show_water_mains = show_water_mains
@@ -210,14 +224,17 @@ func _region_keys(rects: Array[Rect2i]) -> Dictionary[Vector2i, bool]:
 # size, rotation, altitude cut, view scale, view mode, sprite set, or layer
 # visibility. other changes keep the regions and mark only the dirty ones
 func _needs_reset(
-	city: CityState, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
+	city: CityState, palette: Sc2Palette, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
 	sprites: Sc2SpriteArchive, show_pipes: bool, show_subways: bool, show_water_mains: bool, show_tunnels: bool
 ) -> bool:
 	if _snapshot == null:
 		return true
 
+	# the native atlas layout belongs to one palette and one sprite archive
 	return (
 		_snapshot.map_size != city.map_size
+		or _palette != palette
+		or _artwork_palette != artwork_palette
 		or view_size != new_view
 		or mode != new_mode
 		or (not resident and _snapshot.document.source_path != city.document.source_path)
@@ -229,7 +246,18 @@ func _needs_reset(
 		or _show_subways != show_subways
 		or _show_water_mains != show_water_mains
 		or _show_tunnels != show_tunnels
+		or region_edge != _wanted_region_edge(new_view)
 	)
+
+
+func _wanted_region_edge(view: int) -> int:
+	if not gpu_enabled:
+		return REGION_EDGE
+
+	if view != CityIsometricRenderer.VIEW_SMALL:
+		return GPU_REGION_EDGE
+
+	return GPU_FIT_REGION_EDGE if fit_zoom else GPU_SMALL_REGION_EDGE
 
 
 func update_viewport(source_rect: Rect2) -> void:
@@ -279,6 +307,10 @@ func tick() -> bool:
 			if result.season_image != null:
 				result.season_texture = ImageTexture.create_from_image(result.season_image)
 				result.season_image = null
+
+			if result.artwork_image != null:
+				result.artwork_texture = ImageTexture.create_from_image(result.artwork_image)
+				result.artwork_image = null
 			result.generation = _job_generation
 			if resident and result.water != null:
 				result.water.upload()
@@ -309,7 +341,8 @@ func tick() -> bool:
 			_task = CityRenderTask.new()
 			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
 			var error := _task.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared,
-				_show_pipes, _show_subways, _show_water_mains, _cpu_context, _job_generation, _show_tunnels))
+				_show_pipes, _show_subways, _show_water_mains, _cpu_context, _job_generation, _show_tunnels, _artwork_palette,
+				_artwork_context))
 
 			if error != OK:
 				_task = null
@@ -415,16 +448,34 @@ func texture() -> CityMapSource:
 			output.meshes.append(_mesh_entry(gpu))
 			continue
 
-		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor),
-			entry.texture))
+		# HD regions draw with the filtered full-color path of the shader
+		var artwork := entry.artwork_texture != null
+		var position := Vector2(entry.bounds.position * divisor)
+		var size := Vector2(entry.bounds.size * divisor)
+		output.tiles.append(CityMapSource.TileEntry.new(position, size, entry.artwork_texture if artwork else entry.texture,
+			CityDynamicSpriteCanvas.ARTWORK_TAG if artwork else Color.WHITE))
+
 		output.tiles[-1].emission = entry.emission_texture
 		output.tiles[-1].seasons = entry.season_texture
 		output.tiles[-1].water = entry.water
+
+		# the water of the pipes of the indexed region over its HD art
+		var overlay := _overlay_tag()
+
+		if artwork and overlay != Color.WHITE:
+			output.tiles.append(CityMapSource.TileEntry.new(position, size, entry.texture, overlay))
 
 	_source_updates.clear()
 	_published_viewport = _viewport_serial
 	_published_source = output
 	return output
+
+
+# The vertex color of the indexed overlay of a CPU HD region, or white for none:
+# only the underground view draws the water of its pipes over the art. Refer to
+# the tags of palette_cycle.gdshader.
+func _overlay_tag() -> Color:
+	return Color8(OVERLAY_PIPE_FLOW_TAG, 0, 0) if mode == CityViewMode.Mode.UNDERGROUND else Color.WHITE
 
 
 func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:
@@ -628,11 +679,12 @@ func close() -> void:
 
 static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int,
 		render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool,
-		water_mains: bool, context: CityGpuBuildContext, revision: int, tunnels := true) -> CityRegionResult:
+		water_mains: bool, context: CityGpuBuildContext, revision: int, tunnels := true, artwork_palette: Sc2Palette = null,
+		artwork_context: CityGpuBuildContext = null) -> CityRegionResult:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
 	var result := CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains,
-		context, revision, tunnels)
+		context, revision, tunnels, artwork_palette, artwork_context)
 	result.display_city = display
 	result.usec = Time.get_ticks_usec() - started
 

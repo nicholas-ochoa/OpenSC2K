@@ -122,7 +122,8 @@ func _run() -> void:
 	var cape := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPEQUES.SC2"))
 	var cape_before := cape.document.serialize().data
 	var cape_report := BudgetReport.capture(cape, Budget.funding_values(cape))
-	assert(CityValuePhase.calculate(cape).city_value == 221135, "CapeQuest city value: %d" % CityValuePhase.calculate(cape).city_value)
+	# the supplied screenshot shows $384,404,000; the uncorrected executable rules give 221,135
+	assert(CityValuePhase.calculate(cape).city_value == 386404, "CapeQuest city value: %d" % CityValuePhase.calculate(cape).city_value)
 	assert(cape_report.ytd_cash == -4508 and cape_report.estimated_cash == -5389)
 	assert(BudgetReport.group_amount(cape_report.year_to_date, 0) == 2081)
 	assert(BudgetReport.group_amount(cape_report.estimated, 0) == 2506)
@@ -139,9 +140,10 @@ func _run() -> void:
 	assert(transport_ytd == -683 and transport_estimate == -820)
 	assert(cape.document.serialize().data == cape_before)
 	var valuation_city := CityState.from_document(EmptyCityTemplate.create())
-	for entry in [[0xc6, 1, 4000], [0xc7, 1, 400], [0xc8, 1, 6600], [0xc9, 16, 6600],
-			[0xca, 16, 2000], [0xcb, 16, 15000], [0xcc, 16, 100], [0xcd, 16, 1300],
-			[0xce, 16, 28000], [0xcf, 16, 40000], [0xd7, 16, 3000], [0xda, 16, 5000]]:
+	# sc2kfix corrections: tool costs for power plants, zoo and stadium; a 2 by 2 water treatment plant
+	for entry in [[0xc6, 1, 400], [0xc7, 1, 400], [0xc8, 1, 100], [0xc9, 16, 2000],
+			[0xca, 16, 6600], [0xcb, 16, 15000], [0xcc, 16, 1300], [0xcd, 16, 28000],
+			[0xce, 16, 40000], [0xcf, 16, 4000], [0xd7, 16, 5000], [0xda, 16, 3000], [0xf4, 4, 500]]:
 		valuation_city.document.set_misc_u32(0x1f0 + entry[0] * 4, entry[1])
 		assert(CityValuePhase.calculate(valuation_city).city_value == entry[2])
 		valuation_city.document.set_misc_u32(0x1f0 + entry[0] * 4, 0)
@@ -193,7 +195,10 @@ func _test_advice() -> void:
 	_graph(5, 31)
 	assert(_advice(1, 100) == 14)
 	city.document.set_misc_u32(0xfa0, 0x80000)
+	assert(_advice(1, 99) == 0, "A city without power plants gets no advice to conserve power")
+	city.document.set_misc_u32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.COAL_POWER * 4, 16)
 	assert(_advice(1, 99) == 15)
+	city.document.set_misc_u32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.COAL_POWER * 4, 0)
 	_graph(5, 0)
 	_graph(7, 31)
 	assert(_advice(1) == 16 and _advice(3) == 16)

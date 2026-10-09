@@ -100,8 +100,13 @@ func _values(city: CityState) -> void:
 
 	var flags := city.tile_flags.duplicate()
 	flags[0] = Sc2TileFlags.MARK
-	var unusual := NativeDebugTiles.unusual_values(city.zones, city.terrain, city.underground, flags)
-	assert(unusual[0] == NativeDebugTiles.UNUSUAL_MARK and unusual.count(0) == 255)
+	var altitude := city.altitude_words.duplicate()
+	# dry land under a water level above the city's is sc2kfix bad terrain
+	altitude[0] = 0
+	altitude[1] = 1 | (9 << Sc2AltitudeLayout.WATER_SHIFT)
+	var unusual := NativeDebugTiles.unusual_values(city.zones, city.terrain, city.underground, flags, altitude, 4)
+	assert(unusual[0] == NativeDebugTiles.UNUSUAL_MARK and unusual[1] == NativeDebugTiles.UNUSUAL_BAD_TERRAIN)
+	assert(unusual.count(0) == 254)
 
 
 func _networks() -> void:

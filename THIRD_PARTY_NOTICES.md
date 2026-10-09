@@ -4,8 +4,8 @@ OpenSC2K is MIT licensed (see `LICENSE`). The OpenSC2K source code, including
 the Rust code in `native/audio` that loads FluidSynth, is MIT licensed.
 
 OpenSC2K packages also contain the separate works below. Each keeps its own
-license. The license texts are in `game/assets/licenses/fluidsynth` (in packages:
-`licenses/fluidsynth`, and in the game under **About > Licenses**). Developer details are in `docs/fluidsynth.md`.
+license. The license texts are in `game/assets/licenses` (in packages:
+`licenses`, and in the game under **About > Licenses**). Developer details are in `docs/fluidsynth.md`.
 
 ## Weather recordings
 
@@ -53,6 +53,28 @@ license. The license texts are in `game/assets/licenses/fluidsynth` (in packages
 | Signalsmith Audio linear | 0.3.1 | MIT | `signalsmith-linear-LICENSE.txt` |
 | Signalsmith Audio DSP | 1.7.1 | MIT | `signalsmith-dsp-LICENSE.txt` |
 | Signalsmith Audio Hilbert IIR | 1.0.0 | 0BSD | `signalsmith-hilbert-iir-LICENSE.txt` |
+
+## QuickJS-ng 0.17.0
+
+- File: inside the scripting library, `opensc2k_scripting.dll` (Windows),
+  `libopensc2k_scripting.dylib` (macOS) and `libopensc2k_scripting.so` (Linux).
+- License: MIT. Copyright (c) 2017-2026 Fabrice Bellard, Copyright (c)
+  2017-2024 Charlie Gordon, Copyright (c) 2023-2026 Ben Noordhuis, Copyright (c)
+  2023-2026 Saúl Ibarra Corretgé.
+- License text: `game/assets/licenses/quickjs/QuickJS-ng-LICENSE.txt` (in
+  packages: `licenses/quickjs`, and in the game under **About > Licenses**).
+- Source: <https://github.com/quickjs-ng/quickjs>, tag `v0.17.0`, unchanged.
+  The used files are in `native/core/scripting/quickjs`. See `docs/native-scripting.md`.
+
+## Rust crates and ported code in the native libraries
+
+| Work | Used in | License | License text |
+| --- | --- | --- | --- |
+| [miniz_oxide](https://github.com/Frommi/miniz_oxide) 0.9 | ZIP members (`opensc2k_formats`, `opensc2k_simulation`) | MIT, Zlib or Apache-2.0 (MIT chosen) | `game/assets/licenses/rust/miniz_oxide-LICENSE-MIT.txt` |
+| [adler2](https://github.com/oyvindln/adler2) 2.0 | Adler-32 for miniz_oxide | 0BSD, MIT or Apache-2.0 (0BSD chosen) | `game/assets/licenses/rust/adler2-LICENSE-0BSD.txt` |
+| [FastNoiseLite](https://github.com/Auburn/FastNoiseLite) | The 2D OpenSimplex2S noise of New City terrain, ported to `native/core/sim/src/sim/new_city/noise.rs` | MIT. Copyright (c) 2023 Jordan Peck and contributors | `game/assets/licenses/rust/FastNoiseLite-LICENSE.txt` |
+
+In packages, the license texts are in `licenses/rust`.
 
 ## FluidR3Mono GM SoundFont (Linux packages only)
 

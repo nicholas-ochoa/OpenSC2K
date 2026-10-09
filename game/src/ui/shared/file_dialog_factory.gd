@@ -7,7 +7,7 @@ static func city_open() -> FileDialog:
 		FileDialog.FILE_MODE_OPEN_FILE,
 		[
 			["*.SC2, *.sc2", "SimCity 2000 cities"],
-			["*.sc2x", "Experimental large cities"],
+			["*.sc2x", "Extended and sc2kfix cities"],
 			["*.SCN, *.scn", "SimCity 2000 scenarios"],
 		],
 	)
@@ -23,7 +23,7 @@ static func city_save() -> FileDialog:
 static func tile_set_open() -> FileDialog:
 	return _create(
 		FileDialog.FILE_MODE_OPEN_FILE,
-		[["*.MIF, *.mif", "SCURK tile sets"]],
+		[["*.MIF, *.mif", "SCURK tile sets"], ["*.TIL, *.til", "DOS SCURK tile sets"], ["*", "Macintosh SCURK tile sets"]],
 	)
 
 
@@ -38,6 +38,20 @@ static func city_pdf_save() -> FileDialog:
 	return _create(
 		FileDialog.FILE_MODE_SAVE_FILE,
 		[["*.PDF, *.pdf", "Printable PDF"]],
+	)
+
+
+static func console_log_save() -> FileDialog:
+	return _create(
+		FileDialog.FILE_MODE_SAVE_FILE,
+		[["*.log", "Log files"], ["*.txt", "Text files"]],
+	)
+
+
+static func script_open() -> FileDialog:
+	return _create(
+		FileDialog.FILE_MODE_OPEN_FILE,
+		[["*.js, *.mjs", "JavaScript files"]],
 	)
 
 

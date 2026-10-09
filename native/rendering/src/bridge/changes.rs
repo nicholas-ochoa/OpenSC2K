@@ -1,8 +1,8 @@
 //! Changed screen areas between two revisions of the region source chunks.
 
-use super::super::{Rect, changes};
 use super::{int, ints};
 use godot::prelude::*;
+use sc2k_render::{Rect, changes};
 
 /// Changed screen areas between two revisions of the region source chunks.
 /// See `changes.rs`.

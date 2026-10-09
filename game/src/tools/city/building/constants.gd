@@ -1,7 +1,7 @@
 class_name BuildingConstants
 extends BuildingTileIds
 ## Building tool tables. The placement rules run in the native simulation
-## library; see native/simulation/src/sim/tools/commands/building.rs.
+## library; see native/core/sim/src/sim/tools/commands/building.rs.
 
 const MICROSIM_DYNAMIC_FIRST := 10
 const MICROSIM_LABEL_BASE := 51

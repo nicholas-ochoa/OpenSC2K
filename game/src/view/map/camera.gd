@@ -23,7 +23,30 @@ func zoom_out(local_point := Vector2.INF) -> bool:
 
 
 func reset_zoom() -> bool:
-	return _change_zoom(DEFAULT_ZOOM_INDEX - _zoom_index(), Vector2.INF)
+	return _change_zoom(zoom_levels().find(ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]) - _zoom_index(), Vector2.INF)
+
+
+# the zoom levels of this city and view. a map that is larger than the view at
+# the first level gets smaller levels, so the furthest level shows the whole map
+func zoom_levels() -> Array[float]:
+	var levels: Array[float] = []
+	levels.assign(ZOOM_LEVELS)
+
+	if map.city_source == null or map.map_pixel_ratio <= 0.0:
+		return levels
+
+	var source_size := _camera_source_bounds().size
+	var view_size := _camera_rect().size
+
+	for _level in MAXIMUM_FIT_ZOOM_LEVELS:
+		var shown := source_size * levels[0] * map.map_pixel_ratio
+
+		if shown.x <= view_size.x and shown.y <= view_size.y:
+			break
+
+		levels.push_front(levels[0] / 2.0)
+
+	return levels
 
 
 func wheel_zoom(
@@ -57,7 +80,7 @@ func wheel_zoom(
 
 
 func can_zoom_in() -> bool:
-	return _zoom_index() < ZOOM_LEVELS.size() - 1
+	return _zoom_index() < zoom_levels().size() - 1
 
 
 func can_zoom_out() -> bool:
@@ -210,8 +233,9 @@ func _tile_at(local_point: Vector2) -> Vector2i:
 
 
 func _change_zoom(direction: int, local_point: Vector2) -> bool:
-	var old_index := _zoom_index()
-	var new_index := clampi(old_index + direction, 0, ZOOM_LEVELS.size() - 1)
+	var levels := zoom_levels()
+	var old_index := _zoom_index(levels)
+	var new_index := clampi(old_index + direction, 0, levels.size() - 1)
 
 	if new_index == old_index:
 		return false
@@ -227,7 +251,7 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	if old_scale > 0.0:
 		source_point = (anchor - _draw_offset(old_scale)) / old_scale
 
-	map.zoom_factor = ZOOM_LEVELS[new_index]
+	map.zoom_factor = levels[new_index]
 	map.signs._invalidate_sign_entries()
 	var new_scale := _view_scale()
 	map.source_center = source_point + (_camera_rect().get_center() - anchor) / new_scale
@@ -244,12 +268,12 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	return true
 
 
-func _zoom_index() -> int:
+func _zoom_index(levels := zoom_levels()) -> int:
 	var closest := 0
-	var distance := absf(map.zoom_factor - ZOOM_LEVELS[0])
+	var distance := absf(map.zoom_factor - levels[0])
 
-	for index in range(1, ZOOM_LEVELS.size()):
-		var candidate := absf(map.zoom_factor - ZOOM_LEVELS[index])
+	for index in range(1, levels.size()):
+		var candidate := absf(map.zoom_factor - levels[index])
 
 		if candidate < distance:
 			closest = index

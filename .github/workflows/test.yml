@@ -67,9 +67,15 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: native
+      # cpal in the native game links ALSA on Linux
+      - name: Install the ALSA headers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image
       - name: Build FluidSynth for the audio tests
         run: python3 tools/build_fluidsynth.py
+      - name: Check that the core crates build without Godot
+        working-directory: native
+        run: cargo xtask check-cores
       - name: Run cargo tests
         env:
           OPENSC2K_FLUIDSYNTH: ${{ github.workspace }}/game/bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3

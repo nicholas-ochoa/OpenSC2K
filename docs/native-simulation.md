@@ -1,8 +1,9 @@
 # Native simulation
 
-The city simulation is a Rust library in `native/simulation`. It uses
-[godot-rust](https://github.com/godot-rust/gdext) (`gdext`) to load into Godot as a
-GDExtension. Its only dependency is the `godot` crate.
+The city simulation is the Rust crate `sc2k_sim` in `native/core/sim`. It has no
+dependencies and no engine types. The bridge crate `opensc2k_simulation` in
+`native/simulation` uses [godot-rust](https://github.com/godot-rust/gdext) (`gdext`)
+to load it into Godot as a GDExtension. See [Native workspace](native-workspace.md).
 
 ## Build
 
@@ -18,9 +19,11 @@ this folder. `game/opensc2k_simulation.gdextension` names the library of each pl
 `--package` builds a universal library on macOS and the x86_64 library on Windows and Linux.
 
 `tools/validate_project.sh` builds the library and runs its unit tests (`cargo test`) before the
-Godot checks. Rebuild the library after each change to `native/simulation`.
+Godot checks. Rebuild the library after each change to `native/core/sim` or `native/simulation`.
 
 ## Layout
+
+The paths below are in `native/core/sim`, except `src/bridge`, which is in `native/simulation`.
 
 - `src/sim` is the simulation. It has no Godot types, so `cargo test` runs it.
   - `city.rs` holds the saved chunks that the simulation reads and writes.
@@ -32,20 +35,42 @@ Godot checks. Rebuild the library after each change to `native/simulation`.
     on-ramps, subway-to-rail connections, buildings and their facility records, zones, the bulldozer,
     the terrain and landscape tools, the terrain editor, and SCURK Place & Print.
     `tools/rotation.rs` turns the city for `CityRotationCommand`.
-    `tools/new_terrain.rs` runs the map-size stages of `NewCityTerrain` and the landscape
-    editor stream. GDScript still makes the 128 by 128 landform, because its layout features
-    use Godot noise and float vectors.
+    `tools/new_terrain.rs` runs the map-size stages of New City terrain and the landscape
+    editor stream.
+  - `new_city` makes the 128 by 128 landform of New City and its layout features, and the
+    empty city that New City starts from. `gd.rs` repeats the number rules of the Godot scripts
+    that it replaced (32-bit vectors, 64-bit numbers) and `noise.rs` repeats Godot's
+    `FastNoiseLite` defaults, so the terrain stays equal to the golden new-city corpus.
   - `testing.rs` has test cities and scripted random generators.
 - `src/formats` holds the city file codecs. `rle.rs` decodes and encodes the Maxis run-length
   code of compressed chunks. `MaxisRle` calls it through `NativeMaxisRle`.
+  - `document.rs` holds `Document`, the chunks of a city file and the SC2X state outside them.
+    `Document::parse` selects the reader by the file signature: `sc2.rs` (SC2, SCN and SCLG
+    IFF files), `sc2kfix.rs` (the sc2kfix archive) or `sc2x/document.rs` (SC2X version 4).
+    `serialize` writes the format of the document. `Sc2File`, `Sc2xDocument`,
+    `Sc2xMetadata` and `Sc2kfixArchive` call them through `NativeCityDocument`
+    (`src/bridge/document.rs`), which converts a document to and from a dictionary.
+  - `sc2x/metadata.rs` reads and checks `metadata.json`, and writes the same text as the
+    Godot JSON writer. JSON and ZIP are in the `sc2k_formats` crate.
+  - `corpus_tests.rs` loads, saves and converts the generated cities and the supplied cities
+    and compares the results with the golden corpus (see [Golden corpus](golden-corpus.md)).
 - `src/bridge` converts Godot values. `NativeSimulation.run` takes one request and runs one operation.
 
 ## Calls from GDScript
 
-`NativeSimulationBridge.run` in `game/src/simulation/native` sends copies of the saved chunks,
-the three random generator states, and the operation arguments. The library returns the chunks
-that it wrote, the new random states, and a result. The bridge stores the written chunks in the
-document, refreshes the city mirrors, and builds the GDScript result objects.
+`NativeSimulationBridge.run` in `game/src/simulation/native` sends the saved chunks with their
+revisions, the three random generator states, and the operation arguments. The library returns
+the chunks that it wrote with new revisions, the new random states, and a result. The bridge
+stores the written chunks in the document, refreshes the city mirrors, and builds the GDScript
+result objects.
+
+Each chunk revision is unique in the process (`NativeSimulation.next_revision`), so equal
+revisions mean equal bytes. A `CityState` has a `CityCacheHandle`: a native copy of its chunks
+that the simulation worker's snapshot shares. Operations in `CACHED_OPERATIONS` of
+`src/bridge/ops.rs` (the moving-object tick) copy only the chunks whose revisions changed since
+the last call; see `src/bridge/city_cache.rs`. Other operations can edit scratch data without
+marking it, so they still build a private city. A call that finds the cache busy also builds a
+private city, because the worker can wait for the main thread at a frame boundary.
 
 The GDScript phase classes, such as `GrowthScan`, `WaterPhase`, and `MovingThingPhase`, keep
 their public functions. Each function calls the bridge. `SimulationEngine` keeps the engine state

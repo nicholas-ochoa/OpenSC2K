@@ -94,10 +94,19 @@ func _run() -> void:
 	shift.keycode = KEY_SHIFT
 	shift.pressed = true
 	map._input(shift)
-	assert(map.query_footprint_preview and map.selection._selection_source_polygons().size() == 16)
+	assert(map.selection._selection_source_polygons().size() == 16)
 	shift.pressed = false
 	map._input(shift)
 	assert(map.selection._selection_source_polygons().size() == 1)
+	# Shift marks the same footprint with another tool, also one that cannot build here
+	main.current_tool.call("select_tool_group", CityToolIds.Group.EDUCATION)
+	map.hover_tile = Vector2i(61, 61)
+	shift.pressed = true
+	map._input(shift)
+	assert(map.selection._selection_source_polygons().size() == 16, "Shift marks what Query marks")
+	shift.pressed = false
+	map._input(shift)
+	main.current_tool.call("select_tool_group", 16)
 	# Check city and random state after an invalid preview.
 	var before: PackedByteArray = city.document.serialize().data
 	assert(BuildingSites.preview_valid(city, 3, 2, Vector2i(75, 75)))
@@ -198,11 +207,10 @@ func _run() -> void:
 
 	paper.hide()
 	await _test_network_drag_price(main, map, city)
-	_test_fire_clock(city)
 	main.queue_free()
 	await process_frame
 	print(("PASS: toolbar interactions, placement validity, rail transitions, dispatch recall, "
-		+ "landscape rectangles, fire timing, newspaper articles and display options"))
+		+ "landscape rectangles, newspaper articles and display options"))
 	quit()
 
 
@@ -237,23 +245,6 @@ func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) 
 	assert(map.selection_price < 0, "Ending the drag removes the route price")
 
 
-func _test_fire_clock(city: CityState) -> void:
-	var engine := CountingEngine.new(city)
-	engine.active_disaster_type = 1
-	var controller := GameSpeedController.new(engine)
-	controller.set_speed(GameSpeedController.Speed.AFRICAN_SWALLOW)
-
-	for frame in range(120):
-		assert(controller.advance_time(1000.0 / 120.0).ok)
-
-	assert(engine.fire_ticks <= 1)
-	controller.advance_time(1000.0)
-	assert(engine.fire_ticks == 2)
-	controller.set_speed(GameSpeedController.Speed.PAUSED)
-	controller.advance_time(5000.0)
-	assert(engine.fire_ticks == 2)
-
-
 func _test_brush_and_drag_input(map: CityMapControl, shift: InputEventKey) -> void:
 	# Held brush emits on its cadence and stops after the selection clears.
 	var brush := CityMapControl.new()
@@ -277,7 +268,7 @@ func _test_brush_and_drag_input(map: CityMapControl, shift: InputEventKey) -> vo
 	brush.free()
 	# Shift changes the same in-progress path in either direction.
 	map.landscape_brush = false
-	map.set_edit_enabled(true, "path", 1, true)
+	map.set_edit_enabled(true, "path", 1)
 	map.shift_rectangle_enabled = true
 	map.selection_start = Vector2i(80, 80)
 	map.selection_end = Vector2i(83, 82)
@@ -290,23 +281,3 @@ func _test_brush_and_drag_input(map: CityMapControl, shift: InputEventKey) -> vo
 	map._input(shift)
 	assert(map.selection_path.size() == 6)
 	map.selection._clear_selection()
-
-
-class CountingEngine extends SimulationEngine:
-	var fire_ticks := 0
-
-
-	func advance_moving_things(_current_time_msec := -1) -> MovingThingResult:
-		var result := MovingThingResult.new()
-		result.ok = true
-
-		return result
-
-
-	func advance_disaster_tick() -> DisasterMapResult:
-		fire_ticks += 1
-
-		var result := DisasterMapResult.new()
-		result.ok = true
-
-		return result

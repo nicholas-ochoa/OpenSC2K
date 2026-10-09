@@ -33,11 +33,47 @@ func open_import_settings() -> void:
 	app.main_overlays.settings_dialog.tabs.current_tab = AppSettingsDialog.DATA_TAB
 
 
+func open_mods_settings() -> void:
+	open_settings_dialog()
+	app.main_overlays.settings_dialog.tabs.current_tab = AppSettingsDialog.MODS_TAB
+
+
+## Shows the mods in the Mods tab of Settings.
+func show_mods() -> void:
+	if app.main_overlays == null or app.main_overlays.settings_dialog == null:
+		return
+
+	var mods := app.scripting.mods
+	app.main_overlays.settings_dialog.mods_panel.show_mods(mods.rows(), mods.folder)
+
+
+func set_mod_enabled(id: String, enabled: bool) -> void:
+	var error := app.scripting.mods.set_enabled(id, enabled)
+
+	if not error.is_empty():
+		ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, error)
+
+	# the check box of a mod that cannot change goes back
+	show_mods()
+
+
+## Opens the mods folder in the file manager. Makes it first when it is missing.
+func open_mods_folder() -> void:
+	var folder := app.scripting.mods.folder
+	DirAccess.make_dir_recursive_absolute(folder)
+	OS.shell_open(folder)
+
+
 func open_settings_dialog() -> void:
+	show_mods()
 	app.main_overlays.settings_dialog.loading_values = true
 	app.main_overlays.settings_dialog.visual_tab.show_values(preferences.visual_enhancements)
 	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
+	app.main_overlays.settings_dialog.sprite_corrections_check.button_pressed = preferences.sprite_corrections
+	app.main_overlays.settings_dialog.show_hd_graphics(preferences.hd_graphics)
+	app.main_overlays.settings_dialog.recent_autosaves_check.button_pressed = preferences.recent_autosaves
 	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
+	app.main_overlays.settings_dialog.language_selector.select(AppLocalization.codes().find(preferences.ui_language))
 	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
 	app.main_overlays.settings_dialog.ui_scale_selector.select(AppUiScale.option_index(preferences.ui_scale))
 	app.main_overlays.settings_dialog.default_mayor_edit.text = preferences.default_mayor_name
@@ -52,6 +88,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
 	app.main_overlays.settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.music_pack_folder)
 	app.main_overlays.settings_dialog.data_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.data_pack_folder)
+	app.main_overlays.settings_dialog.hd_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.hd_pack_folder)
 	app.main_overlays.settings_dialog.show_control_bindings(preferences.control_bindings)
 	app.main_overlays.settings_dialog.show_values(
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
@@ -75,6 +112,9 @@ func _refresh_settings_pack_names() -> void:
 		app.main_overlays.settings_dialog.set_loaded_pack("music", app.audio_controller.music_pack.pack_name, preferences.music_pack_folder)
 
 	app.main_overlays.settings_dialog.set_loaded_pack("data", app.asset_state.data_pack.pack_name, preferences.data_pack_folder)
+	app.main_overlays.settings_dialog.set_loaded_pack("hd",
+		app.asset_state.hd_pack.pack_name if app.asset_state.hd_pack != null else "", preferences.hd_pack_folder)
+	app.main_overlays.settings_dialog.set_hd_pack_loaded(app.asset_state.hd_pack != null)
 
 
 # apply the values in the Settings dialog. the dialog calls this for each
@@ -136,6 +176,15 @@ func apply_settings() -> void:
 			app.assets.show_graphics_source_error(selected.error)
 			_show_saved_pack(dialog.folder_edit, preferences.graphics_folder if preferences.graphics_source == "folder" else "")
 
+	if not _same_pack(values.hd_pack_folder, preferences.hd_pack_folder):
+		var hd_error := app.assets.set_hd_pack(values.hd_pack_folder)
+
+		if hd_error.is_empty():
+			preferences.hd_pack_folder = values.hd_pack_folder
+		else:
+			app.assets.show_graphics_source_error(hd_error, "HD sprite pack")
+			_show_saved_pack(dialog.hd_pack_edit, preferences.hd_pack_folder)
+
 	preferences.check_for_updates = bool(values.check_for_updates)
 
 	if not preferences.control_bindings.equals(values.control_bindings):
@@ -147,6 +196,14 @@ func apply_settings() -> void:
 	if preferences.dark_underground != bool(values.dark_underground):
 		preferences.dark_underground = bool(values.dark_underground)
 		app.menus.sync_map_style()
+
+	app.assets.set_hd_graphics(bool(values.hd_graphics))
+	app.assets.set_sprite_corrections(bool(values.sprite_corrections) and not app.asset_state.hd_active())
+	preferences.recent_autosaves = bool(values.recent_autosaves)
+
+	if preferences.ui_language != str(values.ui_language):
+		preferences.ui_language = AppLocalization.normalize(values.ui_language)
+		AppLocalization.select(preferences.ui_language)
 
 	if preferences.ui_theme != str(values.ui_theme) or preferences.translucent_menus != bool(values.translucent_menus):
 		preferences.ui_theme = str(values.ui_theme)
@@ -304,8 +361,15 @@ func load_app_settings() -> void:
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)
 	preferences.data_pack_folder = str(values.data_pack_folder)
+	preferences.hd_pack_folder = str(values.hd_pack_folder)
 	preferences.dark_underground = bool(values.dark_underground)
 	app.menus.sync_map_style()
+	preferences.hd_graphics = bool(values.hd_graphics)
+	app.asset_state.hd_enabled = preferences.hd_graphics
+	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
+	preferences.recent_autosaves = bool(values.recent_autosaves)
+	preferences.ui_language = AppLocalization.normalize(values.ui_language)
+	AppLocalization.select(preferences.ui_language)
 	preferences.ui_theme = str(values.ui_theme)
 	preferences.translucent_menus = bool(values.translucent_menus)
 	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)
@@ -368,6 +432,12 @@ func apply_ui_scale() -> void:
 func apply_control_bindings() -> void:
 	if app.map_view != null:
 		app.map_view.control_bindings = preferences.control_bindings
+
+	if app.city_toolbar != null:
+		app.city_toolbar.control_bindings = preferences.control_bindings
+
+	if app.city_status_bar != null:
+		app.city_status_bar.control_bindings = preferences.control_bindings
 
 	if app.city_menu_bar != null:
 		app.city_menu_bar.refresh_shortcut_hints(preferences.control_bindings)

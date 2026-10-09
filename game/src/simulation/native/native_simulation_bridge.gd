@@ -3,6 +3,10 @@ extends RefCounted
 ## Calls the native simulation library and stores its results in GDScript objects.
 ## The native call receives copies of the saved chunks and returns the chunks it wrote.
 
+@warning_ignore_start("integer_division")
+
+# the integers of one effect in a packed effect list
+const EFFECT_STRIDE := 14
 # chunks that the native simulation reads. other chunks stay in the document only
 const CHUNK_IDS: PackedStringArray = [
 	"CNAM", "MISC", "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT",
@@ -44,6 +48,15 @@ static var classes := {
 	"TransportTripReachResult": TransportTripReachResult,
 	"EffectEvent": EffectEvent,
 	"SimulationTiming": SimulationTiming,
+	"SimulationSchedule": SimulationSchedule,
+	"SimulationDayResult": SimulationDayResult,
+	"SimulationTickResult": SimulationTickResult,
+	"DispatchEditResult": DispatchEditResult,
+	"SignEditResult": SignEditResult,
+	"QueryResult": QueryResult,
+	"QueryThing": QueryThing,
+	"CityRecords.Microsim": CityRecords.Microsim,
+	"DispatchCommand.Availability": DispatchCommand.Availability,
 	"RouteEditResult": RouteEditResult,
 	"TunnelEditResult": TunnelEditResult,
 	"OnrampEditResult": OnrampEditResult,
@@ -73,8 +86,12 @@ static func run(
 	args := {},
 	commit_order := PackedStringArray(),
 ) -> Dictionary:
+	if city.native_cache == null:
+		city.native_cache = CityCacheHandle.new()
+
 	var request := {
 		"op": operation,
+		"cache": city.native_cache.handle,
 		"city": city_fields(city),
 		"randoms": PackedInt64Array([
 			random.state if random != null else 1,
@@ -103,7 +120,7 @@ static func run(
 	if game_random != null and game_random.get_script() == GameLcgRandom:
 		game_random.state = response.randoms[2]
 
-	response.failed_chunk = apply_written(city, response.written, commit_order)
+	response.failed_chunk = apply_written(city, response.written, commit_order, response.revisions)
 	city.disaster_damage_class = response.disaster_damage_class
 	response.result = decode(response.result)
 
@@ -120,25 +137,28 @@ static func _script(generator: RefCounted, base: Script) -> RefCounted:
 
 static func city_fields(city: CityState) -> Dictionary:
 	var chunks := {}
+	var revisions := {}
 
 	for chunk_id in CHUNK_IDS:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk != null:
 			chunks[chunk_id] = chunk.decoded_payload
+			revisions[chunk_id] = chunk.mutation_revision
 
 	return {
 		"map_size": city.map_size,
 		"large_version": city.document.large_version,
 		"disaster_damage_class": city.disaster_damage_class,
 		"chunks": chunks,
+		"revisions": revisions,
 	}
 
 
 # store each written chunk in `order`, then the others, and refresh their city
 # mirrors. a rejected store restores the chunks already stored and returns the
-# rejected chunk id
-static func apply_written(city: CityState, written: Dictionary, order := PackedStringArray()) -> String:
+# rejected chunk id. `revisions` gives the native revision of each written chunk
+static func apply_written(city: CityState, written: Dictionary, order := PackedStringArray(), revisions := {}) -> String:
 	if written.is_empty():
 		return ""
 
@@ -170,6 +190,10 @@ static func apply_written(city: CityState, written: Dictionary, order := PackedS
 		originals[chunk_id] = original
 		applied.append(chunk_id)
 
+		# the native cache holds these bytes with this revision
+		if revisions.has(chunk_id):
+			chunk.mutation_revision = revisions[chunk_id]
+
 	city.resync_mirrors(applied)
 
 	if applied.has("XTHG"):
@@ -182,6 +206,13 @@ static func apply_written(city: CityState, written: Dictionary, order := PackedS
 static func decode(value: Variant) -> Variant:
 	if value is Dictionary:
 		if value.has("__class"):
+			# a large demolition returns an effect for each tile, as one packed list
+			if value["__class"] == "EffectEventList":
+				return _effect_event_list(value)
+
+			if value["__class"] == "EffectEvent":
+				return _effect_event(value)
+
 			return _object(value)
 
 		var result := {}
@@ -200,6 +231,39 @@ static func decode(value: Variant) -> Variant:
 		return result
 
 	return value
+
+
+# 14 integers for each effect, in the order of native effect_packing.rs
+static func _effect_event_list(fields: Dictionary) -> Array[EffectEvent]:
+	var values: PackedInt64Array = fields.values
+	var types: PackedStringArray = fields.types
+	var events: Array[EffectEvent] = []
+	events.resize(values.size() / EFFECT_STRIDE)
+
+	for index in events.size():
+		var at := index * EFFECT_STRIDE
+		var event := EffectEvent.new(Vector2i(values[at + 1], values[at + 2]), values[at + 3],
+			Vector2i(values[at + 4], values[at + 5]), values[at + 6] != 0, values[at + 7], values[at + 8])
+		event.type = types[values[at]]
+		event.frames = values[at + 9]
+		event.frame_msec = values[at + 10]
+		event.distance = values[at + 11]
+		event.depth_point = Vector2i(values[at + 12], values[at + 13])
+		events[index] = event
+
+	return events
+
+
+# the native library sends every field of an effect event
+static func _effect_event(fields: Dictionary) -> EffectEvent:
+	var event := EffectEvent.new(fields.point, fields.sprite_id, fields.screen_offset, fields.flip, fields.frame, fields.altitude)
+	event.type = fields.type
+	event.frames = fields.frames
+	event.frame_msec = fields.frame_msec
+	event.distance = fields.distance
+	event.depth_point = fields.depth_point
+
+	return event
 
 
 static func _object(fields: Dictionary) -> Object:

@@ -82,3 +82,22 @@ func _check_camera_bounds(workspace: CityWorkspace, host: Control) -> void:
 	assert(map.camera._camera_rect() == Rect2(Vector2.ZERO, map.size))
 	workspace.set_editor_controls_visible(true)
 	assert(map.camera._camera_rect() == map.camera_view_rect and map.camera_view_rect.has_area())
+
+	# a large map adds half-size levels until the whole map fits the view
+	var base: Array[float] = []
+	base.assign(CityMapControl.ZOOM_LEVELS)
+	assert(map.camera.zoom_levels() == base)
+	map.city_source = CityMapSource.new(CityIsometricRenderer.output_size_for_view(CityIsometricRenderer.VIEW_LARGE, 4096))
+	var levels := map.camera.zoom_levels()
+	var view := map.camera._camera_rect().size
+	var source := map.camera._camera_source_bounds().size * map.map_pixel_ratio
+	assert(levels.size() > base.size() and levels.slice(levels.size() - base.size()) == base)
+	assert(source.x * levels[0] <= view.x and source.y * levels[0] <= view.y, "The furthest zoom level shows the whole map")
+	assert(source.x * levels[1] > view.x or source.y * levels[1] > view.y, "The fit levels stop at the first level that fits")
+	map.zoom_factor = 0.1
+
+	while map.zoom_out():
+		pass
+
+	assert(is_equal_approx(map.zoom_factor, levels[0]) and not map.can_zoom_out())
+	assert(map.reset_zoom() and is_equal_approx(map.zoom_factor, 1.0))

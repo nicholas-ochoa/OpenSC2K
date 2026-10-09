@@ -193,10 +193,10 @@ func _test_surface_demolition(reference_root: String, demolition_random: SimRand
 	_check(
 		forest_protest.ok
 		and forest_protest.easter_events == 1
-		and forest_protest.sound_events == [SOUND_FOREST_PROTEST]
+		and forest_protest.sound_events == [SOUND_EXPLODE, SOUND_FOREST_PROTEST]
 		and forest_protest.news_queue_updated
 		and NewsEvent.same_arrays(forest_protest.news_items, [NewsEvent.new(0x28, 0)]),
-		"The hidden tree branch reports its protest sound and newspaper story",
+		"The hidden tree branch reports its newspaper story and plays its protest sound last",
 	)
 	var copied_protest := forest_protest.copy() as DemolishEditResult
 	_check(NewsEvent.same_arrays(copied_protest.news_items, forest_protest.news_items),
@@ -205,11 +205,11 @@ func _test_surface_demolition(reference_root: String, demolition_random: SimRand
 	_check(forest_protest.news_items[0].argument == 0,
 		"Copied demolition news owns independent event values")
 	_check(
-		simple_city.building_id(10, 10) == 0x06
+		simple_city.building_id(10, 10) == Tiles.EMPTY
 		and simple_city.funds() == 9
 		and protest_story.type == 0x28
 		and protest_story.priority == NewsQueue.STORY_PRIORITIES[0x28],
-		"The forest protest charges one dollar, keeps the tree, and updates MISC",
+		"The forest protest charges one dollar, removes the tree, and updates MISC",
 	)
 	_check(
 		Demolish.undo(simple_city, forest_protest, forest_random).ok

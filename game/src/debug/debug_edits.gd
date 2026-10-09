@@ -99,18 +99,83 @@ func set_misc_word(offset: int, text: String, name := "") -> String:
 	return _replace(chunk, payload, "MISC 0x%04X%s = %d" % [offset, " (%s)" % name if not name.is_empty() else "", value])
 
 
+# Clear the text of each orphaned sign label (OrphanLabels)
+func remove_orphan_labels() -> String:
+	var city := app.document_state.city
+
+	if city == null:
+		return "Load a city before you remove its orphaned labels."
+
+	var found: Variant = OrphanLabels.find(city)
+
+	if found == null:
+		return "This city keeps its signs in sign records. It has no orphaned labels."
+
+	var ids: PackedInt32Array = found
+
+	if ids.is_empty():
+		return "No orphaned labels found."
+
+	var chunk := city.document.find_chunk("XLAB")
+	var labels := chunk.decoded_payload.duplicate()
+
+	for id in ids:
+		Sc2LabelLayout.clear(labels, id)
+
+	return _replace(chunk, labels, "removed %d orphaned labels" % ids.size())
+
+
+# Repair the bad terrain of sc2kfix (BadTerrain). One undo restores ALTM and XBIT
+func repair_bad_terrain() -> String:
+	var city := app.document_state.city
+
+	if city == null:
+		return "Load a city before you repair its terrain."
+
+	var repair := BadTerrain.repair(city)
+
+	if repair.tiles == 0:
+		return "No bad terrain found."
+
+	var altitude := city.document.find_chunk("ALTM")
+	var flags := city.document.find_chunk("XBIT")
+	var description := "repaired %d bad terrain tiles at water level %d" % [repair.tiles, repair.detected_level]
+	var flag_entry := Entry.new()
+	flag_entry.chunk = flags
+	flag_entry.chunk_id = "XBIT"
+	flag_entry.before = flags.decoded_payload
+
+	if not flags.set_decoded_payload(repair.flags, true):
+		return "The XBIT chunk keeps its size. The edit was not applied."
+
+	var status := _replace(altitude, repair.altitude, description)
+
+	if history.is_empty() or history[-1].chunk != altitude:
+		flags.set_decoded_payload(flag_entry.before, true)
+
+		return status
+
+	history[-1].group.append(flag_entry)
+	_after_edit("XBIT")
+
+	return status
+
+
 func undo() -> String:
 	if history.is_empty():
 		return "There is no debug edit to undo."
 
 	var entry: Entry = history.pop_back()
-	var chunk := app.document_state.city.document.find_chunk(entry.chunk_id) if app.document_state.city != null else null
 
-	if chunk == null or chunk != entry.chunk:
-		return "The edited city is closed. The edit cannot be undone."
+	for part in [entry] + entry.group:
+		var chunk := app.document_state.city.document.find_chunk(part.chunk_id) if app.document_state.city != null else null
 
-	chunk.set_decoded_payload(entry.before, true)
-	_after_edit(entry.chunk_id)
+		if chunk == null or chunk != part.chunk:
+			return "The edited city is closed. The edit cannot be undone."
+
+	for part in [entry] + entry.group:
+		part.chunk.set_decoded_payload(part.before, true)
+		_after_edit(part.chunk_id)
 
 	return "Undid the debug edit: %s." % entry.description
 
@@ -173,3 +238,5 @@ class Entry extends RefCounted:
 	var chunk_id := ""
 	var before := PackedByteArray()
 	var description := ""
+	# other chunks of the same edit, which undo restores together
+	var group: Array[Entry] = []

@@ -6,6 +6,10 @@ extends IsometricConstants
 
 
 const RASTER_BAND_HEIGHT := 128
+# Godot rejects an image with more pixels than this
+const MAXIMUM_IMAGE_PIXELS := 268435456
+# the largest band of the native full-color raster
+const MAXIMUM_ARTWORK_BAND_PIXELS := 16777216
 
 static var _patch_context: CityGpuBuildContext
 static var _patch_revision := 0
@@ -13,7 +17,8 @@ static var _patch_revision := 0
 
 # the whole city in the native painter. an index palette gives an LA8 image with
 # a transparent background, or an L8 image. moving objects and special overlays
-# are painted with their tiles. `progress` receives the painted fraction
+# are painted with their tiles. `progress` receives the painted fraction.
+# a nonzero `maximum_size` reduces the output by a whole factor until it fits
 static func create_image(
 	city: CityState,
 	palette: Sc2Palette,
@@ -24,7 +29,9 @@ static func create_image(
 	transparent_background := false,
 	validate_required_assets := true,
 	include_special_overlays := true,
-	progress := Callable()
+	progress := Callable(),
+	maximum_size := Vector2i.ZERO,
+	artwork_factor := 0
 ) -> AssetImageResult:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -42,7 +49,7 @@ static func create_image(
 
 	var context := CityGpuBuildContext.new()
 	var failure := context.prepare(city, palette, sprites, view_size, CityViewMode.Mode.CITY, true, true, true, 0, false,
-		include_special_overlays, animation_phase)
+		include_special_overlays, animation_phase, true, artwork_factor > 0)
 
 	if failure.is_empty() and include_moving_things:
 		failure = context.set_moving(city, palette, sprites, _moving_commands(city, sprites, view_size, animation_phase))
@@ -56,9 +63,24 @@ static func create_image(
 		if not asset_errors.is_empty():
 			return AssetImageResult.failure(asset_errors[0])
 
-	return paint_whole_city(context, IsometricGeometry.output_size_for_view(view_size, map_edge),
+	var size := IsometricGeometry.output_size_for_view(view_size, map_edge)
+
+	if artwork_factor > 0:
+		return paint_whole_city_artwork(context, size, Color.TRANSPARENT if transparent_background else Color("18242c"),
+			artwork_factor, progress)
+
+	return paint_whole_city(context, size,
 		Color.TRANSPARENT if transparent_background else Color("18242c"), palette.is_index_encoding and transparent_background,
-		palette.is_index_encoding and not transparent_background, progress)
+		palette.is_index_encoding and not transparent_background, progress, reduction_to_fit(size, maximum_size))
+
+
+# the smallest whole factor that makes `size` fit in `maximum_size`.
+# a zero maximum keeps the full size
+static func reduction_to_fit(size: Vector2i, maximum_size: Vector2i) -> int:
+	if maximum_size.x <= 0 or maximum_size.y <= 0:
+		return 1
+
+	return maxi(1, maxi(ceili(float(size.x) / maximum_size.x), ceili(float(size.y) / maximum_size.y)))
 
 
 # the draw commands of the moving objects, without the special overlays
@@ -108,19 +130,35 @@ static func missing_sprite_errors(city: CityState, sprites: Sc2SpriteArchive, vi
 
 
 # paint a prepared native painter over the whole output in bands, so a long
-# export reports its progress. index images convert to LA8 or L8
+# export reports its progress. index images convert to LA8 or L8. a
+# `reduction` above one shrinks each band by that factor before it is copied,
+# so the full-size image is never held. do not reduce index images
 static func paint_whole_city(context: CityGpuBuildContext, size: Vector2i, background: Color, index_alpha: bool,
-		index_opaque: bool, progress := Callable()) -> AssetImageResult:
-	var output := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+		index_opaque: bool, progress := Callable(), reduction := 1) -> AssetImageResult:
+	var output_size := Vector2i(ceili(float(size.x) / reduction), ceili(float(size.y) / reduction))
 
-	for top in range(0, size.y, RASTER_BAND_HEIGHT):
-		var band := Rect2i(0, top, size.x, mini(RASTER_BAND_HEIGHT, size.y - top))
+	if output_size.x <= 0 or output_size.y <= 0:
+		return AssetImageResult.failure("city image is empty")
+
+	if output_size.x * output_size.y > MAXIMUM_IMAGE_PIXELS:
+		return AssetImageResult.failure("city image of %d × %d pixels is too large" % [output_size.x, output_size.y])
+
+	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
+	var band_height := reduction * maxi(1, RASTER_BAND_HEIGHT / reduction)
+
+	for top in range(0, size.y, band_height):
+		var band := Rect2i(0, top, size.x, mini(band_height, size.y - top))
 		var painted := context.raster(band, background)
 
 		if painted.has("error"):
 			return AssetImageResult.failure(painted.error)
 
-		output.blit_rect(painted.image, Rect2i(Vector2i.ZERO, band.size), band.position)
+		var image: Image = painted.image
+
+		if reduction > 1:
+			image.resize(output_size.x, ceili(float(band.size.y) / reduction), Image.INTERPOLATE_TRILINEAR)
+
+		output.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(0, top / reduction))
 
 		if progress.is_valid():
 			progress.call(float(band.end.y) / size.y)
@@ -129,6 +167,51 @@ static func paint_whole_city(context: CityGpuBuildContext, size: Vector2i, backg
 		output.convert(Image.FORMAT_LA8)
 	elif index_opaque:
 		output.convert(Image.FORMAT_L8)
+
+	var result := AssetImageResult.new()
+	result.ok = true
+	result.image = output
+	result.error = ""
+
+	return result
+
+
+# The whole city with its full-color art, at `factor` (1, 2 or 4) pixels for
+# each view pixel. Call `prepare` with `with_artwork` first.
+static func paint_whole_city_artwork(context: CityGpuBuildContext, size: Vector2i, background: Color, factor: int,
+		progress := Callable()) -> AssetImageResult:
+	return paint_artwork(context, Rect2i(Vector2i.ZERO, size), background, factor, progress)
+
+
+# The view pixels of `bounds` with the full-color art, at `factor` (1, 2 or 4)
+# pixels for each view pixel. Call `prepare` with `with_artwork` first.
+static func paint_artwork(context: CityGpuBuildContext, bounds: Rect2i, background: Color, factor: int,
+		progress := Callable()) -> AssetImageResult:
+	var output_size := bounds.size * factor
+
+	if output_size.x <= 0 or output_size.y <= 0:
+		return AssetImageResult.failure("city image is empty")
+
+	if output_size.x * output_size.y > MAXIMUM_IMAGE_PIXELS:
+		return AssetImageResult.failure("city image of %d × %d pixels is too large" % [output_size.x, output_size.y])
+
+	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
+	# each native band holds at most MAXIMUM_ARTWORK_BAND_PIXELS output pixels
+	var band_height := clampi(MAXIMUM_ARTWORK_BAND_PIXELS / (output_size.x * factor), 1, RASTER_BAND_HEIGHT)
+
+	for top in range(bounds.position.y, bounds.end.y, band_height):
+		var band := Rect2i(bounds.position.x, top, bounds.size.x, mini(band_height, bounds.end.y - top))
+		var painted := context.raster_artwork(band, background, factor)
+
+		if painted.has("error"):
+			return AssetImageResult.failure(painted.error)
+
+		var image: Image = painted.image
+		var placed: Rect2i = painted.bounds
+		output.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), (placed.position - bounds.position) * factor)
+
+		if progress.is_valid():
+			progress.call(float(band.end.y - bounds.position.y) / bounds.size.y)
 
 	var result := AssetImageResult.new()
 	result.ok = true

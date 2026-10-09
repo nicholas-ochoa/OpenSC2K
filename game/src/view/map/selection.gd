@@ -25,13 +25,11 @@ func set_edit_enabled(
 	value: bool,
 	mode := "rectangle",
 	footprint_area := 1,
-	shift_queries := false
 ) -> void:
 	_hide_placement_error()
 	map.edit_enabled = value
 	map.selection_mode = mode
 	map.point_footprint_area = clampi(footprint_area, 1, 7)
-	map.shift_query_enabled = shift_queries
 	clear_selection_price()
 	map.mouse_default_cursor_shape = (
 		Control.CURSOR_CROSS if map.edit_enabled else Control.CURSOR_ARROW
@@ -137,8 +135,17 @@ func cancel_active_selection() -> bool:
 	return true
 
 
+# true while a click queries at once, as the held query modifier makes it.
+# the map then marks what the Query tool marks with every tool
+func query_preview_active() -> bool:
+	return not is_left_drag_active() and map.interaction.click_queries(map.interaction.query_held, map.interaction.shape_held)
+
+
 func _selection_preview_tiles() -> Array[Vector2i]:
 	var tiles: Array[Vector2i]
+
+	if query_preview_active():
+		return _query_footprint_tiles(map.hover_tile)
 
 	if not map.show_selection_preview or not map.edit_enabled:
 		return []
@@ -146,8 +153,6 @@ func _selection_preview_tiles() -> Array[Vector2i]:
 	if map.network_preview_active:
 		if map.hover_tile.x >= 0:
 			tiles.append(map.hover_tile)
-	elif map.query_footprint_preview and map.interaction.query_held:
-		tiles = _query_footprint_tiles(map.hover_tile)
 	elif map.brush_box_selection:
 		tiles = map.selection_path.duplicate()
 	elif map.selection_mode == "point":
@@ -155,7 +160,8 @@ func _selection_preview_tiles() -> Array[Vector2i]:
 		tiles = point_preview_tiles(preview_point)
 	elif map.selection_start.x >= 0 and map.selection_end.x >= 0:
 		tiles = map.selection_path
-	elif map.edit_enabled and map.selection_mode == "path" and map.hover_tile.x >= 0:
+	elif map.edit_enabled and map.selection_mode in ["path", "rectangle"] and map.hover_tile.x >= 0:
+		# a drag tool marks the tile under the cursor before the drag starts
 		tiles = [map.hover_tile]
 
 	if map.highway_preview and not map.network_preview_active:
@@ -191,10 +197,16 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 
 
 func _preview_polygon(tile: Vector2i) -> PackedVector2Array:
-	if map.terrain_diamond_preview:
+	if _diamond_preview():
 		return Renderer.tile_polygon(map.city, tile.x, tile.y)
 
 	return Renderer.terrain_surface_polygon(map.city, tile.x, tile.y)
+
+
+# the terrain tools mark the tile diamond. the query highlight marks the
+# ground surface, as the Query tool does
+func _diamond_preview() -> bool:
+	return map.terrain_diamond_preview and not query_preview_active()
 
 
 # draw all preview tiles as one fill mesh and one outline mesh. one canvas
@@ -218,7 +230,7 @@ func _sync_preview_meshes() -> bool:
 	if tiles.is_empty():
 		return false
 
-	var signature := [map.terrain_diamond_preview, map.city.mirror_signature(PREVIEW_CHUNKS)]
+	var signature := [_diamond_preview(), map.city.mirror_signature(PREVIEW_CHUNKS)]
 
 	if tiles != _preview_tiles or signature != _preview_signature:
 		_rebuild_preview_meshes(tiles)
@@ -417,7 +429,7 @@ func _get_tooltip(at_position: Vector2) -> String:
 
 	var reason := String(map.placement_error_provider.call(tile))
 
-	return "Cannot build here: " + reason if not reason.is_empty() else ""
+	return tr("Cannot build here: %s") % tr(reason) if not reason.is_empty() else ""
 
 
 func _show_placement_error(at_position: Vector2) -> void:

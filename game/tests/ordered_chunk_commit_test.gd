@@ -141,7 +141,8 @@ func _test_failure(operation: Callable, failure: String) -> void:
 	for id in IDS:
 		var chunk := city.document.find_chunk(id)
 		assert(chunk.decoded_payload == original[id])
-		assert(chunk.mutation_revision - int(revisions[id]) == (0 if id == "MISC" else 2))
+		# revisions are unique in the process; a write and its rollback each give a new one
+		assert((chunk.mutation_revision != int(revisions[id])) == (id != "MISC"))
 		assert(chunk.is_dirty == (id != "MISC"))
 	_check_mirrors(city)
 	assert(_bytes(city) == before)

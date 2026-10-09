@@ -44,6 +44,7 @@ layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="GameTitle" type="HBoxContainer" parent="Center/Panel/Content"]
+auto_translate_mode = 2
 layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 0

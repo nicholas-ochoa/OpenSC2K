@@ -107,7 +107,8 @@ func _check_dezone() -> void:
 		assert(ZoneCommand.undo(city, command).ok and city.document.serialize().data == before, "Undo restores the counts")
 
 
-# the fire drift that the original has: an explosion clears its tile without a count change
+# SIMCITY.EXE 0x004546f0 clears the text overlay of an explosion tile. The
+# building and the tile counts stay
 func _check_explosion() -> void:
 	for extended in [false, true]:
 		var document := Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2")
@@ -126,17 +127,20 @@ func _check_explosion() -> void:
 		var point := Vector2i(index / city.map_size, index % city.map_size)
 		var things := document.find_chunk("XTHG").decoded_payload.duplicate()
 		var text := city.text_overlays.duplicate()
+		# a fire marker under the explosion
+		OverlayData.write(text, index, 0xff)
 		_spawn_explosion(text, things, point, city.land_altitude(point.x, point.y), city.map_size)
 		assert(document.find_chunk("XTHG").set_decoded_payload(things))
 		assert(document.find_chunk("XTXT").set_decoded_payload(text))
 		city.resync_mirrors(["XTXT"])
+		var counts := _saved(city)
 
 		for tick in 3:
 			assert(engine.advance_moving_things(tick * 200).ok)
 
-		assert(city.building_id(point.x, point.y) == Tiles.EMPTY, "The explosion clears the selected building")
-
-		assert((_saved(city) == CityTileCounts.count(city)) == extended, "Only an extended city counts explosion clearing")
+		assert(city.building_id(point.x, point.y) == Tiles.LOWER_CLASS_HOMES_1X1_1, "The explosion keeps the building")
+		assert(OverlayData.read(city.text_overlays, index) == 0, "The explosion clears the overlay of its tile")
+		assert(_saved(city) == counts, "The explosion keeps the tile counts")
 
 
 # a new explosion record on `point`, linked from the text overlay

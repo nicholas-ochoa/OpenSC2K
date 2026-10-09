@@ -14,6 +14,9 @@ var _click_button := MOUSE_BUTTON_NONE
 var _click_action := ""
 var _press_position := Vector2.ZERO
 var _pan_button := MOUSE_BUTTON_NONE
+# true while a left drag that started with the query modifier can still end as
+# a query. it ends as a query when the pointer stays on the first tile
+var _query_on_release := false
 
 
 func _init(control: CityMapControl) -> void:
@@ -61,6 +64,15 @@ func _input(event: InputEvent) -> void:
 	map.queue_redraw()
 
 
+# true when a press queries at once. a tool that uses a held key for a line,
+# a rectangle, or a deferred terrain stretch keeps the key for the drag
+func click_queries(query: bool, shape: bool) -> bool:
+	if not query:
+		return false
+
+	return not (map.stretch_terrain or (shape and (map.shift_rectangle_enabled or map.shift_line_enabled)))
+
+
 # read the line or rectangle and query modifier keys from an event. returns
 # true when either one changed
 func update_modifiers(event: InputEvent) -> bool:
@@ -103,23 +115,27 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 
 		return
 
-	if not map.edit_enabled:
-		return
-
 	var tile := map.camera._tile_at(event.position)
 	shift_pressed = event.shift_pressed
 	update_modifiers(event)
 
+	# the query modifier queries with every tool, as Shift-click does in the
+	# original. a tool that uses the same key for a line, a rectangle, or a
+	# deferred stretch queries only when the pointer does not move
+	if event.pressed and click_queries(query_held, shape_held):
+		if tile.x >= 0:
+			map.hover_tile = tile
+			map.query_requested.emit(tile)
+
+		map.accept_event()
+
+		return
+
+	if not map.edit_enabled:
+		return
+
 	if event.pressed:
-		if map.shift_query_enabled and not map.shift_rectangle_enabled and not map.shift_line_enabled and query_held:
-			if tile.x >= 0:
-				map.hover_tile = tile
-				map.query_requested.emit(tile)
-
-			map.accept_event()
-
-			return
-
+		_query_on_release = query_held and map.selection_start.x < 0
 		map.selection._show_placement_error(event.position)
 
 		if tile.x >= 0:
@@ -146,6 +162,16 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			if map.repeat_placement:
 				map.selection._emit_repeat_placement(tile, false)
 	else:
+		if _query_on_release and map.selection_start.x >= 0 and not map.selection_moved and tile == map.selection_start:
+			_query_on_release = false
+			map.selection.cancel_active_selection()
+			map.query_requested.emit(tile)
+			map.accept_event()
+
+			return
+
+		_query_on_release = false
+
 		if map.selection_start.x >= 0:
 			if tile.x >= 0 and tile != map.selection_end:
 				map.selection_end = tile

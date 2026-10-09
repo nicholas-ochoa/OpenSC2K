@@ -1,0 +1,10 @@
+{
+  "id": "road-grid",
+  "name": "Road Grid",
+  "version": "1.0.0",
+  "description": "The grid command builds a grid of roads with the Road tool, at the normal cost.",
+  "main": "main.js",
+  "author": "OpenSC2K",
+  "website": "https://github.com/nicholas-ochoa/OpenSC2K",
+  "license": "MIT"
+}

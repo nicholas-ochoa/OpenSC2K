@@ -19,6 +19,8 @@ var include_moving_things := true
 var surface_visibility: Dictionary = ViewFilter.DEFAULT_VISIBILITY.duplicate()
 var show_underground_pipes := true
 var show_underground_water_mains := true
+# 0 for the indexed sprites, or 1, 2 or 4 pixels for each view pixel with HD art
+var artwork_factor := 0
 var path := ""
 var thread: Thread
 var _mutex := Mutex.new()
@@ -26,9 +28,17 @@ var _stage := STAGE_RENDER
 var _fraction := 0.0
 
 
-# output size in pixels. the export draws each graphics size 1:1
-static func output_size(map_edge: int, graphics_size: int) -> Vector2i:
-	return Renderer.output_size_for_view(graphics_size, map_edge)
+# output size in pixels. the export draws each graphics size 1:1, or HD art at
+# `artwork_factor` pixels for each view pixel
+static func output_size(map_edge: int, graphics_size: int, factor := 0) -> Vector2i:
+	return Renderer.output_size_for_view(graphics_size, map_edge) * maxi(1, factor)
+
+
+# a larger map at a larger graphics size makes more pixels than one image holds
+static func fits(map_edge: int, graphics_size: int, factor := 0) -> bool:
+	var size := output_size(map_edge, graphics_size, factor)
+
+	return size.x * size.y <= IsometricImageRender.MAXIMUM_IMAGE_PIXELS
 
 
 func start() -> Error:
@@ -63,6 +73,7 @@ func run() -> Result:
 	options.show_pipes = show_underground_pipes
 	options.show_water_mains = show_underground_water_mains
 	options.transparent_background = transparent_background
+	options.artwork_factor = artwork_factor if render_mode == "city" else 0
 	options.progress = _set_render_fraction
 	var rendered := ScurkCityOutput.render(city_snapshot, palette, sprites, view_size, options)
 
@@ -119,6 +130,7 @@ class Options extends RefCounted:
 	var transparent_background := false
 	var signs := true
 	var moving_things := true
+	var artwork_factor := 0
 
 
 class Progress extends RefCounted:

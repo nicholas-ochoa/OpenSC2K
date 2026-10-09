@@ -90,6 +90,3 @@ func _run() -> void:
 	await process_frame
 	print("PASS: five train shapes, mirrored fractional motion and zoom remove only detached dots; original/custom art and cache retained")
 	quit()
-
-
-

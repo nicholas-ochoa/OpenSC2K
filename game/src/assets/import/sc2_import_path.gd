@@ -12,17 +12,7 @@ static func key(name: String) -> String:
 
 ## Return the file name without an ISO 9660 version suffix or a final dot. Keep its case.
 static func original_name(name: String) -> String:
-	var result := name
-	var version := result.rfind(";")
-
-	if version > 0 and result.substr(version + 1).is_valid_int():
-		result = result.left(version)
-
-	# ISO 9660 names without an extension can end in a dot.
-	if result.ends_with(".") and result.length() > 1:
-		result = result.left(result.length() - 1)
-
-	return result
+	return NativeImportSource.original_name(name)
 
 
 ## Return the existing file or folder at the relative path below root, or an empty string.

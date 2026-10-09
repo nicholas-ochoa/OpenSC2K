@@ -110,6 +110,45 @@ static func window_size(position: Vector2i, size: Vector2i, pixels_per_unit := s
 	return result
 
 
+# a popup, such as a menu, that copies one pixel for one. a larger popup shows
+# empty space after its last item, so the fit can also move it by up to
+# POPUP_SHIFT interface pixels and grows it by at most POPUP_GROWTH. each axis
+# takes the smallest change, counting each pixel of movement as two pixels of
+# growth. an axis with no such fit keeps its place and size, and its copy can
+# repeat one row or column of screen pixels
+const POPUP_SHIFT := 2
+const POPUP_GROWTH := 2
+
+
+static func popup_rect(position: Vector2i, size: Vector2i, pixels_per_unit := scale) -> Rect2i:
+	var result := Rect2i(position, size)
+
+	if pixels_per_unit <= 0.0:
+		return result
+
+	for axis in 2:
+		var best_cost := -1
+
+		for shift in range(-POPUP_SHIFT, POPUP_SHIFT + 1):
+			var start := (position[axis] + shift) * pixels_per_unit
+			var sample := fposmod(0.5 - (start - floorf(start)), 1.0)
+
+			for units in range(size[axis], size[axis] + POPUP_GROWTH + 1):
+				var pixels := units * pixels_per_unit
+				var cost := units - size[axis] + absi(shift) * 2
+
+				if best_cost >= 0 and cost >= best_cost:
+					break
+
+				if sample + ceilf(pixels - 0.0001) - pixels < 0.9:
+					best_cost = cost
+					result.position[axis] = position[axis] + shift
+					result.size[axis] = units
+					break
+
+	return result
+
+
 # moves a point in the local space of item to the nearest screen pixel corner.
 # the main window draws each embedded window from its own texture with nearest
 # sampling, so a point aligns in the space of its own window

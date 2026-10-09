@@ -33,6 +33,25 @@ const LAUNCH_SHAKE: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(0, 0), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0),
 	Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, -1), Vector2i(0, 0),
 ]
+# presentation preference: the earthquake shake. SIMCITY.EXE 0x0045eb20 moves
+# the view 4 small view pixels to the side and back 24 times, at most 5 ms a
+# move, which is too short and fast to see. this shake plays EARTHQUAKE_FPS
+# offsets a second for EARTHQUAKE_SECONDS. it grows over EARTHQUAKE_RISE_SECONDS
+# and fades out over the last EARTHQUAKE_FADE_SECONDS
+const EARTHQUAKE_FPS := 15
+const EARTHQUAKE_SECONDS := 4.0
+const EARTHQUAKE_RISE_SECONDS := 0.4
+const EARTHQUAKE_FADE_SECONDS := 1.5
+# the largest offset, in view pixels. the map multiplies it by the zoom
+const EARTHQUAKE_DISTANCE := 8.0
+# the earthquake sound plays again after these seconds, while the view shakes
+const EARTHQUAKE_RUMBLE_SECONDS: Array[float] = [1.1, 2.2]
+# side and up offsets of the shake as parts of EARTHQUAKE_DISTANCE. the side
+# offsets change direction each frame. the irregular sizes keep the movement rough
+const EARTHQUAKE_PATTERN: Array[Vector2] = [
+	Vector2(1.0, 0.0), Vector2(-0.7, 0.25), Vector2(0.85, -0.2), Vector2(-1.0, 0.0), Vector2(0.6, 0.3),
+	Vector2(-0.9, -0.25), Vector2(1.0, 0.15), Vector2(-0.65, 0.0), Vector2(0.8, -0.3), Vector2(-0.95, 0.2),
+]
 
 
 static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEvent]:
@@ -80,6 +99,23 @@ static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEven
 		result.append(event)
 
 	return result
+
+
+# the earthquake view offsets, one each 1 / EARTHQUAKE_FPS seconds, as parts
+# of EARTHQUAKE_DISTANCE. the last offset is zero
+static func earthquake_offsets() -> Array[Vector2]:
+	var frames := roundi(EARTHQUAKE_SECONDS * EARTHQUAKE_FPS)
+	var offsets: Array[Vector2] = []
+
+	for frame in frames:
+		var seconds := float(frame) / EARTHQUAKE_FPS
+		var rise := minf(1.0, (seconds + 1.0 / EARTHQUAKE_FPS) / EARTHQUAKE_RISE_SECONDS)
+		var fade := clampf((EARTHQUAKE_SECONDS - seconds) / EARTHQUAKE_FADE_SECONDS, 0.0, 1.0)
+		offsets.append(EARTHQUAKE_PATTERN[frame % EARTHQUAKE_PATTERN.size()] * rise * fade)
+
+	offsets.append(Vector2.ZERO)
+
+	return offsets
 
 
 # the first frame of the flight, at LAUNCH_FPS

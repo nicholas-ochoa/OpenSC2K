@@ -1,5 +1,7 @@
 class_name PollutionPhase
-extends PollutionValues
+extends RefCounted
+## The pollution, land value, crime, and service maps. The native simulation
+## library runs them; see native/core/sim/src/sim/data_maps.
 
 
 @warning_ignore_start("integer_division")

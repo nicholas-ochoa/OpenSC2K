@@ -1,6 +1,9 @@
 extends SceneTree
 
 
+@warning_ignore_start("integer_division")
+
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -24,9 +27,6 @@ func _run() -> void:
 		var result := speed.advance_time(200.0, pulse * 200)
 		assert(result.ok, str(result))
 		status.set_city_status(engine, false)
-		status.update_report_rotation(0.2)
-		if not result.news_items.is_empty():
-			status.prepend_news_items(result.news_items)
 		for item in result.news_items:
 			if int(item.type) == 50:
 				shortage_day = city.age_in_days()
@@ -38,10 +38,7 @@ func _run() -> void:
 	assert(shortage_day == 24, "Babar shortage was not reported on day 24")
 	assert(city.age_in_days() == 25)
 	assert(engine.water_usage_percent == 100)
-	assert(status.recent_reports.has(CityStatusMessages.NEEDS[4]))
-	var before := document.serialize().data as PackedByteArray
-	status.update_report_rotation(CityStatusBar.REPORT_ROTATION_SECONDS)
-	assert(document.serialize().data == before, "Rotating reports changed saved data")
+	assert(status.reports_label.text == CityStatusMessages.NEEDS[4])
 	assert(FileAccess.get_file_as_bytes(path) == source_bytes)
 	_check_status_cases(status, engine)
 	_check_worker_state(speed)
@@ -60,10 +57,10 @@ func _check_status_cases(status: CityStatusBar, engine: SimulationEngine) -> voi
 		status.set_city_status(engine, false)
 		var expected := CityStatusMessages.NEEDS[need]
 		assert(status.reports_label.text == expected)
-		assert(CityStatusBar.report_name(46 + need) == expected)
-		status.prepend_reports(PackedStringArray(["Unrelated report"]))
-		status.update_report_rotation(8.0)
-		assert(status.reports_label.text == expected, "Rotating reports lost an active need")
+		assert(NewspaperDialog.STORY_NAMES[46 + need] == expected)
+		status.show_music_notice("Playing: Test")
+		status.update_music_notice(5.1)
+		assert(status.reports_label.text == expected, "A music notice lost an active need")
 
 	for weather in CityStatusMessages.WEATHER_COUNT:
 		var label := CityStatusMessages.text(33200 + weather)
@@ -84,7 +81,7 @@ func _check_status_cases(status: CityStatusBar, engine: SimulationEngine) -> voi
 		assert(status.reports_label.text == CityStatusMessages.PAUSED_TEXT)
 		status.show_music_notice("Playing: Test")
 		assert(status.reports_label.text == CityStatusMessages.PAUSED_TEXT)
-		status.update_report_rotation(5.1)
+		status.update_music_notice(5.1)
 
 	engine.active_disaster_type = 0
 	engine.city_status_resource_id = 269
@@ -93,8 +90,10 @@ func _check_status_cases(status: CityStatusBar, engine: SimulationEngine) -> voi
 	engine.city_status_resource_id = CityStatusMessages.monthly_resource(WeatherDisasterPhase.STATUS_NONE, 0)
 	status.set_city_status(engine, false)
 	assert(status.reports_label.text.is_empty(), "Cleared need restored an old report")
+	engine.city_status_resource_id = -1
+	status.set_city_status(engine, false)
+	assert(status.reports_label.text.is_empty(), "A city without a status check showed a report")
 	status.set_city_status(null, false)
-	status.set_reports(PackedStringArray())
 	assert(CityStatusMessages.text(CityStatusMessages.BROWNOUT) == CityStatusMessages.BROWNOUTS)
 	assert(CityStatusMessages.text(0).is_empty())
 	assert(CityStatusMessages.monthly_resource(WeatherDisasterPhase.STATUS_WEATHER, 255) == 0)
@@ -190,6 +189,41 @@ func _check_disaster_locate(main) -> void:
 	assert(thing_chunk.set_decoded_payload(things))
 	assert(DisasterFocus.find_point(city).x < 0, "Finished disaster still returned a location")
 
+	# mixed markers, with equal distances to the middle, match a check of each tile
+	var markers := {Vector2i(5, 9): DisasterMapConstants.FLOOD_OVERLAY, Vector2i(9, 5): DisasterMapConstants.TOXIC_OVERLAY,
+		Vector2i(7, 3): DisasterMapConstants.FIRE_OVERLAY, Vector2i(3, 7): DisasterMapConstants.FIRE_OVERLAY,
+		Vector2i(100, 2): DisasterStartConstants.RIOT_OVERLAY_FORWARD}
+
+	for point: Vector2i in markers:
+		assert(city.set_text_overlay_id(point.x, point.y, markers[point]))
+
+	assert(DisasterFocus.find_point(city) == _nearest_marker_reference(city, markers.keys()))
+
+	for point: Vector2i in markers:
+		assert(city.set_text_overlay_id(point.x, point.y, 0))
+
+
+# the marker nearest the middle of the markers, the first one in tile order on a tie
+func _nearest_marker_reference(city: CityState, markers: Array) -> Vector2i:
+	var total := Vector2i.ZERO
+
+	for point: Vector2i in markers:
+		total += point
+
+	var average := Vector2i(total.x / markers.size(), total.y / markers.size())
+	var nearest := Vector2i(-1, -1)
+	var nearest_distance := city.map_size * 2
+
+	for x in city.map_size:
+		for y in city.map_size:
+			var distance := absi(x - average.x) + absi(y - average.y)
+
+			if Vector2i(x, y) in markers and distance < nearest_distance:
+				nearest = Vector2i(x, y)
+				nearest_distance = distance
+
+	return nearest
+
 
 func _check_main_ui() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
@@ -203,6 +237,10 @@ func _check_main_ui() -> void:
 	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
 	main.set_process(false)
 	main.city_status_bar.music_notice_seconds = 0
+	main.frame.select_speed(GameSpeedController.Speed.TURTLE)
+	# a new city checks its status at once. an empty city needs a power plant first
+	assert(main.simulation_state.simulation_engine.city_status_resource_id == CityStatusMessages.NEED_FIRST)
+	assert(main.city_status_bar.reports_label.text == CityStatusMessages.NEEDS[0])
 	main.simulation_state.simulation_engine.city_status_resource_id = 269
 	main.frame.select_speed(GameSpeedController.Speed.TURTLE)
 	assert(main.city_status_bar.reports_label.text == CityStatusMessages.NEEDS[4])
@@ -220,5 +258,12 @@ func _check_main_ui() -> void:
 	main.interface.refresh_status_summary()
 	assert(not main.city_status_bar.locate_disaster_button.visible, "The locate button must leave with the disaster")
 	assert(main.city_status_bar.reports_label.text == CityStatusMessages.NEEDS[4])
+
+	# a disaster from the menu enables the Emergency button without another action
+	var dispatch: Button = main.city_toolbar.toolbar_buttons[CityToolIds.Group.DISPATCH]
+	assert(dispatch.disabled)
+	main.reports.on_disaster_menu(8)
+	assert(ToolAvailability.is_dispatch_enabled(main.document_state.city), "The monster did not start disaster mode")
+	assert(not dispatch.disabled, "The Emergency button waits for another tool")
 	main.queue_free()
 	await process_frame

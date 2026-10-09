@@ -4,7 +4,11 @@ extends RefCounted
 const GRAPHICS_ZOOMS := [25, 50, 100, 200, 300, 400]
 const GRAPHICS_SIZES := ["Small", "Medium", "Large"]
 const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
-const BINDINGS_VERSION := 1
+const BINDINGS_VERSION := 2
+# version 2 moves Budget to Command+B, the Ctrl+B of the original menu, so
+# that a held B can bulldoze
+const BUDGET_KEY := "key:B"
+const NEW_BUDGET_KEY := "key:Command+B"
 const BINDING_PREFIX := "binding/"
 
 
@@ -29,7 +33,11 @@ static func load_values(
 	result.visual_enhancements = VisualEnhancementOptions.normalize(config.get_value("visual_enhancements", "options", {}))
 
 	result.dark_underground = bool(config.get_value("display", "dark_underground", false))
+	result.sprite_corrections = bool(config.get_value("graphics", "sc2kfix_sprite_corrections", false))
+	result.hd_graphics = bool(config.get_value("graphics", "hd_graphics", true))
+	result.recent_autosaves = bool(config.get_value("general", "recent_autosaves", true))
 	result.ui_theme = normalize_theme(config.get_value("general", "ui_theme", "light"))
+	result.ui_language = AppLocalization.normalize(config.get_value("general", "ui_language", AppLocalization.DEFAULT))
 	result.translucent_menus = bool(config.get_value("general", "translucent_menus", true))
 	result.ui_scale = AppUiScale.normalize(config.get_value("general", "ui_scale", AppUiScale.DEFAULT))
 	result.default_mayor_name = str(config.get_value("general", "default_mayor_name", "Mayor"))
@@ -50,6 +58,7 @@ static func load_values(
 	result.sound_pack_folder = AppPaths.loaded_path(str(config.get_value("audio", "sound_pack_folder", result.sound_pack_folder)))
 	result.music_pack_folder = AppPaths.loaded_path(str(config.get_value("audio", "music_pack_folder", result.music_pack_folder)))
 	result.data_pack_folder = AppPaths.loaded_path(str(config.get_value("data", "pack_folder", result.data_pack_folder)))
+	result.hd_pack_folder = AppPaths.loaded_path(str(config.get_value("graphics", "hd_pack", result.hd_pack_folder)))
 
 	result.shuffle_music = bool(config.get_value("audio", "shuffle_music", false))
 	result.music_soundfont = SoundFontCatalog.normalize(str(config.get_value("audio", "music_soundfont", SoundFontCatalog.DEFAULT)))
@@ -118,10 +127,47 @@ static func load_bindings(config: ConfigFile) -> ControlBindings:
 
 		result.bindings[id] = list
 
-	if not config.has_section_key("controls", "bindings_version"):
+	var version := int(config.get_value("controls", "bindings_version", 0))
+
+	if version < 1:
 		_migrate_mouse_buttons(config, result)
 
+	if version < 2:
+		_migrate_budget_key(result)
+
+	_drop_used_defaults(config, result)
+
 	return result
+
+
+# Earlier versions opened the budget with B. The new key moves across only
+# when no other action uses it
+static func _migrate_budget_key(result: ControlBindings) -> void:
+	var old_key := ControlBinding.from_text(BUDGET_KEY)
+	var new_key := ControlBinding.from_text(NEW_BUDGET_KEY)
+
+	if not result.for_action("window_budget").any(func(binding: ControlBinding) -> bool: return binding.equals(old_key)):
+		return
+
+	result.remove_binding("window_budget", old_key)
+
+	if result.conflicts(new_key, "window_budget").is_empty():
+		result.add("window_budget", new_key)
+
+
+# An action that the file does not list yet, such as a new action, keeps only
+# the default bindings that no saved action uses
+static func _drop_used_defaults(config: ConfigFile, result: ControlBindings) -> void:
+	if not config.has_section("controls"):
+		return
+
+	for id in ControlActions.bindable_ids():
+		if config.has_section_key("controls", BINDING_PREFIX + id):
+			continue
+
+		for binding in result.for_action(id):
+			if not result.conflicts(binding, id).is_empty():
+				result.remove_binding(id, binding)
 
 
 # Earlier versions had one choice each for the right and middle buttons, and
@@ -176,6 +222,10 @@ static func normalize_zoom_graphics(value: Variant, overview_size := 0) -> Array
 
 
 static func graphics_size_at_zoom(sizes: Array[int], zoom_percent: int, overview_size := 0) -> int:
+	# the fit levels of a large map draw tiles smaller than a screen pixel
+	if zoom_percent < 10:
+		return 0
+
 	# retain the six existing saved preferences and store overview separately
 	if zoom_percent <= 10:
 		return clampi(overview_size, 0, 2)
@@ -206,8 +256,24 @@ static func save_values(
 	if options.dark_underground != null:
 		config.set_value("display", "dark_underground", bool(options.dark_underground))
 
+	if options.sprite_corrections != null:
+		config.set_value("graphics", "sc2kfix_sprite_corrections", bool(options.sprite_corrections))
+
+	if options.hd_graphics != null:
+		config.set_value("graphics", "hd_graphics", bool(options.hd_graphics))
+
+	# an HD pack shows every effect on its art: the old setting goes
+	if config.has_section_key("graphics", "hd_effects"):
+		config.erase_section_key("graphics", "hd_effects")
+
+	if options.recent_autosaves != null:
+		config.set_value("general", "recent_autosaves", bool(options.recent_autosaves))
+
 	if options.ui_theme != null:
 		config.set_value("general", "ui_theme", normalize_theme(options.ui_theme))
+
+	if options.ui_language != null:
+		config.set_value("general", "ui_language", AppLocalization.normalize(options.ui_language))
 
 	if options.translucent_menus != null:
 		config.set_value("general", "translucent_menus", bool(options.translucent_menus))
@@ -257,6 +323,9 @@ static func save_values(
 	if options.data_pack_folder != null:
 		config.set_value("data", "pack_folder", AppPaths.stored_path(str(options.data_pack_folder).strip_edges()))
 
+	if options.hd_pack_folder != null:
+		config.set_value("graphics", "hd_pack", AppPaths.stored_path(str(options.hd_pack_folder).strip_edges()))
+
 	if options.control_bindings != null:
 		_write_bindings(config, options.control_bindings)
 	if options.visual_enhancements != null:
@@ -282,6 +351,29 @@ static func save_debug_mode(enabled: bool, path := default_path()) -> Error:
 	return config.save(path)
 
 
+# the ids of the mods that the player turned off (ApplicationMods)
+static func load_disabled_mods(path := default_path()) -> PackedStringArray:
+	var config := ConfigFile.new()
+
+	if config.load(path) != OK:
+		return PackedStringArray()
+
+	var value: Variant = config.get_value("mods", "disabled", PackedStringArray())
+
+	return PackedStringArray(value) if value is PackedStringArray or value is Array else PackedStringArray()
+
+
+static func save_disabled_mods(ids: PackedStringArray, path := default_path()) -> Error:
+	var config := ConfigFile.new()
+
+	if FileAccess.file_exists(path):
+		config.load(path)
+
+	config.set_value("mods", "disabled", ids)
+
+	return config.save(path)
+
+
 static func save_update_state(
 	last_check: int, skipped_version: String, checked_at: int, error: String, path := default_path()
 ) -> Error:
@@ -302,9 +394,13 @@ class Values extends RefCounted:
 	var visual_enhancements := VisualEnhancementOptions.normalize({})
 	var default_mayor_name := "Mayor"
 	var ui_theme := "light"
+	var ui_language := AppLocalization.DEFAULT
 	var ui_scale := AppUiScale.DEFAULT
 	var translucent_menus := true
 	var dark_underground := false
+	var sprite_corrections := false
+	var hd_graphics := true
+	var recent_autosaves := true
 	var overview_graphics := 0
 	var music_volume := 0.8
 	var effects_volume := 0.8
@@ -322,6 +418,7 @@ class Values extends RefCounted:
 	var sound_pack_folder := ""
 	var music_pack_folder := ""
 	var data_pack_folder := ""
+	var hd_pack_folder := ""
 	var check_for_updates := false
 	var control_bindings := ControlBindings.defaults()
 
@@ -357,9 +454,14 @@ class SaveOptions extends RefCounted:
 	var default_mayor_name: Variant = null
 	var overview_graphics: Variant = null
 	var ui_theme: Variant = null
+	var ui_language: Variant = null
 	var dark_underground: Variant = null
+	var sprite_corrections: Variant = null
+	var hd_graphics: Variant = null
+	var recent_autosaves: Variant = null
 	var translucent_menus: Variant = null
 	var check_for_updates: Variant = null
 	var data_pack_folder: Variant = null
+	var hd_pack_folder: Variant = null
 	var ui_scale: Variant = null
 	var control_bindings: ControlBindings = null

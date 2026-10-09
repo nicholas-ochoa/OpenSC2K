@@ -1,6 +1,7 @@
 # Native region builder
 
-The region builder is a Rust GDExtension in `native/rendering`. It is the only city
+The region builder is the Rust crate `sc2k_render` in `native/core/render`. The bridge
+crate `opensc2k_rendering` in `native/rendering` loads it into Godot as a GDExtension. It is the only city
 painter: it builds GPU region meshes, and it rasterizes CPU pixels for the CPU region
 view, whole-city images, PNG and print exports, previews and edit patches. The builder
 uses an immutable display snapshot. It does not read or change native simulation
@@ -109,7 +110,7 @@ network placement preview.
 and toolchain selection. The renderer has no dependency on the simulation crate.
 
 Run `cargo fmt`, `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`,
-and `cargo test --release` from `native/rendering`. The project validator also builds
+and `cargo test --release` from `native/`. The project validator also builds
 both extensions and runs both sets of Rust unit tests.
 
 `city_native_region_test` compares GPU regions with the native CPU pixels of the same

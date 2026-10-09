@@ -3,6 +3,10 @@ extends CanvasGroup
 
 @warning_ignore_start("integer_division")
 
+# the traffic sprites of a view, from its sprite base
+const TRAFFIC_FIRST := 400
+const TRAFFIC_LAST := 449
+
 var worker: Thread
 var pending: Request
 var request_key := ""
@@ -18,6 +22,10 @@ var context_key := ""
 var render_key := ""
 var sprite_cache: Dictionary = {}
 var texture_cache: Dictionary[int, ImageTexture] = {}
+# HD art by sprite key (ID * 2, plus 1 when flipped)
+var artwork_cache: Dictionary[int, CanvasTexture] = {}
+# true to show the HD art of the sprites, as the GPU city view does
+var show_artwork := false
 var painter := Node2D.new()
 
 
@@ -41,6 +49,12 @@ func _process(_delta: float) -> void:
 			_read_price(result.command)
 			divisor = result.divisor
 			for draw_command in result.draws:
+				var artwork := _artwork_visual(draw_command, result.sprites, result.underground)
+
+				if artwork != null:
+					visuals.append(artwork)
+					continue
+
 				var source: Image = draw_command.image
 				var key := source.get_instance_id()
 
@@ -120,8 +134,9 @@ func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Ve
 	for chunk in city.document.chunks:
 		revisions += ":%d" % chunk.mutation_revision
 
-	var appearance := ("%d:%d:%d:%d:%d:%d:%s:%s"
-			% [city.get_instance_id(), group, tool, view, palette.get_instance_id(), sprites.get_instance_id(), underground, free_mode])
+	var appearance := ("%d:%d:%d:%d:%d:%d:%s:%s:%s"
+			% [city.get_instance_id(), group, tool, view, palette.get_instance_id(), sprites.get_instance_id(), underground, free_mode,
+				show_artwork])
 	var context := appearance + revisions
 	var key := "%s:%s:%s" % [context, start, finish]
 
@@ -137,6 +152,7 @@ func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Ve
 		# replace caches rather than mutating a cache still owned by the worker
 		sprite_cache = {}
 		texture_cache = {}
+		artwork_cache = {}
 		visuals.clear()
 		painter.queue_redraw()
 
@@ -170,7 +186,39 @@ func _read_price(command: EditCommandResult) -> void:
 
 func _draw_preview() -> void:
 	for visual in visuals:
-		painter.draw_texture_rect_region(visual.texture, Rect2(visual.position, visual.source.size), visual.source)
+		painter.draw_texture_rect_region(visual.texture, visual.rect, visual.source)
+
+
+# The HD art of a draw, or null. Masked traffic keeps its indexed pixels.
+func _artwork_visual(draw: CityGpuDrawList.Draw, sprites: Sc2SpriteArchive, underground: bool) -> Visual:
+	var id := int(draw.sprite_id)
+
+	var traffic := id % 500 >= TRAFFIC_FIRST and id % 500 <= TRAFFIC_LAST
+
+	if not show_artwork or underground or traffic or sprites == null or not sprites.high_resolution.has(id):
+		return null
+
+	var art := sprites.high_resolution[id]
+	var key := id * 2 + int(draw.flip)
+
+	if not artwork_cache.has(key):
+		var image: Image = art.image.duplicate()
+
+		if draw.flip:
+			image.flip_x()
+
+		image.generate_mipmaps()
+		var texture := CanvasTexture.new()
+		texture.diffuse_texture = ImageTexture.create_from_image(image)
+		texture.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		artwork_cache[key] = texture
+
+	var size := Vector2i(draw.source.size.x, art.height)
+	var visual := Visual.new(artwork_cache[key], Rect2i(Vector2i.ZERO, art.image.get_size()),
+		draw.position + Vector2i(0, draw.source.size.y - art.height))
+	visual.rect = Rect2(visual.position, size)
+
+	return visual
 
 
 static func apply_preview(
@@ -259,6 +307,8 @@ static func build(job: Request) -> Result:
 		points.append(tiles[key])
 
 	artwork.draws = [] if not failure.is_empty() else context.tile_draw_list(points).draws
+	artwork.sprites = job.sprites
+	artwork.underground = job.underground
 	artwork.divisor = config.divisor
 	artwork.candidate_count = candidates.size()
 	artwork.tile_count = tiles.size()
@@ -323,14 +373,19 @@ class Result extends RefCounted:
 	var divisor := 1
 	var candidate_count := 0
 	var tile_count := 0
+	var sprites: Sc2SpriteArchive
+	var underground := false
 
 
 class Visual extends RefCounted:
-	var texture: ImageTexture
+	var texture: Texture2D
 	var source: Rect2i
 	var position: Vector2i
+	# the drawn rectangle. HD art can be taller than its source sprite
+	var rect: Rect2
 
-	func _init(image_texture: ImageTexture, area: Rect2i, destination: Vector2i) -> void:
+	func _init(image_texture: Texture2D, area: Rect2i, destination: Vector2i) -> void:
 		texture = image_texture
 		source = area
 		position = destination
+		rect = Rect2(destination, area.size)

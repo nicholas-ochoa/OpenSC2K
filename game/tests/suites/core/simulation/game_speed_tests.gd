@@ -251,7 +251,7 @@ func _test_blocking_requests(reference_root: String) -> void:
 	_check(
 		monster_start.ok
 		and monster_start.day_results.size() == 1
-		and (SoundEvent.count_plain(monster_start.sound_events, DisasterStart.SOUND_SIREN) > 0)
+		and (SoundEvent.count_equal(monster_start.sound_events, _siren_loop()) > 0)
 		and not monster_start.view_center_requests.is_empty(),
 		"Controller forwards scenario monster start effects",
 	)

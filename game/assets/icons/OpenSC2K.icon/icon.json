@@ -1,0 +1,80 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.03922,0.30980,0.84706,1.00000",
+          "srgb:0.44706,0.80000,1.00000,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.04706,0.07059,0.31373,1.00000",
+          "srgb:1.00000,0.41569,0.29020,1.00000"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "name": "city",
+          "glass": true,
+          "image-name-specializations": [
+            {
+              "value": "city.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "city-dusk.svg"
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "specular": false
+    },
+    {
+      "layers": [
+        {
+          "name": "land",
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "land.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "land-dusk.svg"
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "none",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "specular": false
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

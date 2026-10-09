@@ -140,14 +140,14 @@ func _build_rows() -> void:
 		var history := Button.new()
 		history.icon = (preload("res://src/ui/city_windows/icons/budget_details.svg") if group in [1, 2]
 			else preload("res://src/ui/city_windows/icons/budget_history.svg"))
-		history.tooltip_text = ("Open the %s tab" % ("Ordinances" if group == 1 else "Bonds") if group in [1, 2]
-			else "Show monthly history for %s" % BudgetReport.GROUP_NAMES[group].to_lower())
+		history.tooltip_text = (tr("Open the %s tab") % tr("Ordinances" if group == 1 else "Bonds") if group in [1, 2]
+			else tr("Show monthly history for %s") % _budget_text(BudgetReport.GROUP_NAMES[group]).to_lower())
 		history.pressed.connect(_open_details.bind(group))
 		actions.add_child(history)
 		action_buttons.append(history)
 		var advice := Button.new()
 		advice.icon = ADVISOR_ICON
-		advice.tooltip_text = "Ask the %s advisor" % BudgetReport.GROUP_NAMES[group].to_lower()
+		advice.tooltip_text = tr("Ask the %s advisor") % _budget_text(BudgetReport.GROUP_NAMES[group]).to_lower()
 		advice.pressed.connect(advisor_requested.emit.bind(group))
 		actions.add_child(advice)
 		action_buttons.append(advice)
@@ -305,7 +305,7 @@ func refresh_report() -> void:
 		group_hints[group].text = "Mixed rates" if mixed else ""
 		group_hints[group].visible = mixed
 		if mixed:
-			group_controls[group].get_line_edit().text = "Mixed"
+			group_controls[group].get_line_edit().text = tr("Mixed")
 	refreshing = false
 
 	if city == null:
@@ -366,8 +366,8 @@ func _refresh_history() -> void:
 	var cumulative := 0
 	for month in 12:
 		var row := history_table.create_item(history_table.get_root())
-		row.set_text(0, BudgetReport.MONTHS[month])
-		row.set_text(1, "Recorded" if month < report.actual_months else "Projected")
+		row.set_text(0, tr(BudgetReport.MONTHS[month]))
+		row.set_text(1, tr("Recorded" if month < report.actual_months else "Projected"))
 		var amount := 0
 		if group == 2:
 			row.set_text(2, BudgetReport.currency(report.history_costs[4][month] * Bonds.BOND_VALUE))
@@ -378,7 +378,7 @@ func _refresh_history() -> void:
 			for index in ids.size():
 				var id: int = ids[index]
 				row.set_text(index + 2, BudgetReport.currency(report.history[id][month]))
-				row.set_tooltip_text(index + 2, "Rate: %d%%" % report.history_rates[id][month] if id != 3 else "Ordinance income and costs")
+				row.set_tooltip_text(index + 2, tr("Rate: %d%%") % report.history_rates[id][month] if id != 3 else tr("Ordinance income and costs"))
 				amount += report.history[id][month]
 		cumulative += amount
 		row.set_text(titles.size() - 1, BudgetReport.currency(cumulative))
@@ -396,7 +396,7 @@ func _refresh_bond_table() -> void:
 	for index in count:
 		var rate := city.document.misc_u32(Bonds.MISC_BOND_RATES + index * 4) & 0xffff
 		var row := bond_table.create_item(bond_table.get_root())
-		row.set_text(0, "%d%s" % [index + 1, " (oldest)" if index == 0 else ""])
+		row.set_text(0, "%d%s" % [index + 1, tr(" (oldest)") if index == 0 else ""])
 		row.set_text(1, BudgetReport.currency(Bonds.BOND_VALUE))
 		row.set_text(2, "%d%%" % rate)
 		row.set_text(3, BudgetReport.currency(-rate * 100))
@@ -406,7 +406,7 @@ func _refresh_bond_table() -> void:
 	var value := CityValuePhase.calculate(city)
 	var city_value := value.city_value if value.ok else city.document.misc_u32(Bonds.MISC_CITY_VALUE)
 	var credit := clampi(BudgetAdvice._signed_word(((count * 25000) & 0xffffffff) / maxi((city_value + 1) & 0xffffffff, 1)), 0, 6)
-	bond_summary_label.text = "Outstanding: %s   ·   Credit: %s   ·   Bank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s" % [
+	bond_summary_label.text = tr("Outstanding: %s   ·   Credit: %s   ·   Bank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s") % [
 		BudgetReport.currency(count * Bonds.BOND_VALUE),
 		["AAA", "AA", "A", "B", "C", "D", "F"][credit],
 		federal,
@@ -423,7 +423,7 @@ func set_bond_state(bond_count: int, funds: int, average_fixed: int, _oldest_rat
 
 
 func show_advice(index: int, advice: int, assets: OriginalGameAssets) -> void:
-	advisor_dialog.title = "%s advisor" % BudgetReport.GROUP_NAMES[index]
+	advisor_dialog.title = tr("%s advisor") % _budget_text(BudgetReport.GROUP_NAMES[index])
 	var portrait: TextureRect = $Advisor/Content/Portrait
 	portrait.texture = null
 	if assets != null and assets.city_ui_graphics != null and assets.city_ui_graphics.portraits.has(197 + index):
@@ -442,8 +442,8 @@ func open_bond_confirmation(action: String, rate: int) -> void:
 	pending_bond_action = action
 	bond_dialog.theme = AppUiTheme.current()
 	bond_dialog.title = "Issue Bond" if action == "issue" else "Repay Bond"
-	bond_dialog.dialog_text = ("Issue a $10,000 bond at %d%%?" % rate if action == "issue"
-		else "Repay the oldest $10,000 bond at %d%%?" % rate)
+	bond_dialog.dialog_text = (tr("Issue a $10,000 bond at %d%%?") % rate if action == "issue"
+		else tr("Repay the oldest $10,000 bond at %d%%?") % rate)
 	bond_dialog.popup_centered()
 
 
@@ -489,3 +489,9 @@ func _style_actions() -> void:
 
 	if report != null:
 		refresh_report()
+
+
+# Service spending shares English names with disasters and population graphs.
+# The "budget" context gives them their own translations. Report IDs stay English.
+func _budget_text(text: String) -> String:
+	return tr(text, "budget") if text in ["Police", "Fire", "Health"] else tr(text)

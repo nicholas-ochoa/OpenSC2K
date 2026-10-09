@@ -1,7 +1,8 @@
 # Native formats
 
-File and image codecs are a Rust GDExtension in `native/formats`. Its only dependency is
-the `godot` crate. It does not read city or simulation state.
+File and image codecs are the Rust crate `sc2k_formats` in `native/core/formats`. It has no
+engine types. The bridge crate `opensc2k_formats` in `native/formats` loads it into Godot.
+See [Native workspace](native-workspace.md). It does not read city or simulation state.
 
 ## Layout
 
@@ -17,15 +18,19 @@ the `godot` crate. It does not read city or simulation state.
 - `src/bmp.rs` reads and writes 8-bit indexed BMP files and DIBs, decodes 1-, 4- and 8-bit
   indexed DIBs, and maps colors to the city palette (`NativeIndexedBmp`, used by `IndexedBmp`,
   `Sc2ImportBitmap` and the SCURK image import).
+- `src/zip` reads and writes ZIP archives in memory: STORED and DEFLATE members, data
+  descriptors and ZIP64 records, with size limits and path checks (`NativeZip`, used by
+  `ZipArchive`). DEFLATE uses `miniz_oxide`. Two compressors can make different bytes from the
+  same members, so tests compare SC2X files by their members.
 - `src/pe.rs` reads the resource directories of 32-bit Windows executables: bitmaps, RLE8
   data, icons and cursors (`NativePeResources`, used by `PeBitmapResource`,
   `PeIconCursorResource` and `WindowsBitmapRle8`).
-- `src/bridge.rs` holds the Godot classes. The other modules have no Godot types, so
-  `cargo test` runs them.
+- `native/formats/src/bridge` holds the Godot classes. The codec modules have no Godot
+  types, so `cargo test` runs them.
 
 ## Build and checks
 
 `python3 tools/build_native.py` builds and installs every native library. Run `cargo fmt`,
 `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings` and
-`cargo test --release` from `native/formats`. The project validator also builds the library
+`cargo test --release` from `native/` (or run `cargo xtask lint` and `cargo xtask test`). The project validator also builds the library
 and runs its unit tests.

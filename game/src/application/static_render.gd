@@ -236,7 +236,7 @@ static func _collect_payload_changes(old_payloads: Dictionary, new_payloads: Dic
 
 # add the screen bounds of each tile whose region source data differs from `old_payloads`
 # returns false when the payloads cannot be compared or so much differs that a full redraw is better
-# the rendering library compares the chunks. see native/rendering/src/changes.rs
+# the rendering library compares the chunks. see native/core/render/src/changes.rs
 static func changed_source_rects(city: CityState, old_payloads: Dictionary, sprites: Sc2SpriteArchive, view_size: int,
 		rects: Array[Rect2i]) -> bool:
 	if city == null or city.document == null or old_payloads.is_empty():

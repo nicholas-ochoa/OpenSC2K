@@ -62,11 +62,15 @@ var zoom_out_button: Button
 var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var main_menu: MainMenuControl
+# hover and the mouse wheel go to the window under the cursor
+var hover_focus: HoverFocusRouter
 var scurk_editor: ScurkEditorControl
 var desktop_presentation: CityDesktopPresentation
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
 var debug_overlay: CityDebugOverlay
+# the engine output, also when the game does not start from a command line
+var console_window: ConsoleWindow
 # shared state for the controllers; rules and scene ownership stay elsewhere
 var assets: ApplicationAssets = ApplicationAssets.new(self)
 var interface: ApplicationInterface = ApplicationInterface.new(self)
@@ -97,6 +101,9 @@ var route_edits: ApplicationRouteEdits = ApplicationRouteEdits.new(self)
 var debug: ApplicationDebug = ApplicationDebug.new(self)
 var debug_tools: ApplicationDebugTools = ApplicationDebugTools.new(self)
 var updates := ApplicationUpdates.new(preferences)
+var autosave: ApplicationAutosave = ApplicationAutosave.new(self)
+# the JavaScript runtime of mods and developer scripts
+var scripting: ApplicationScripting = ApplicationScripting.new(self)
 
 
 func _ready() -> void:
@@ -107,12 +114,21 @@ func _ready() -> void:
 	add_child(preload("res://src/ui/shared/file_dialog_history.gd").new())
 	add_child(WindowPixelFit.new())
 	add_child(AppTooltips.new())
+	hover_focus = HoverFocusRouter.new()
+	add_child(hover_focus)
+	hover_focus.attach(get_window())
 	get_tree().auto_accept_quit = false
+	console_window = ConsoleWindow.new()
+	console_window.toggle_shortcut = controls.is_console_shortcut
+	add_child(console_window)
+	scripting.attach_console(console_window.commands)
+	scripting.apply_command_line(OS.get_cmdline_args() + OS.get_cmdline_user_args())
 
 	if asset_state.reference_root.is_empty():
 		asset_state.reference_root = DataPack.default_folder()
 
 	settings.load_app_settings()
+	scripting.mods.load_all(ModCatalog.default_folder(), preferences.settings_path)
 	get_window().size_changed.connect(_on_window_size_changed)
 	assets.build_reference_import_dialogs()
 	assets.initialize_runtime()
@@ -138,6 +154,7 @@ func _notification(what: int) -> void:
 		settings.apply_ui_scale()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		effects_audio.handle_application_focus_out()
+		current_tool.hold_tool(ApplicationCurrentTool.NO_TOOL)
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		effects_audio.handle_application_focus_in()
 
@@ -156,10 +173,14 @@ func _exit_tree() -> void:
 	simulation_state.frame_simulation = null
 	static_render.stop_render_job()
 	city_png_export.close()
+	autosave.close()
+	scripting.close()
 
 
 func _process(delta: float) -> void:
 	frame.process(delta)
+	autosave.process(delta)
+	scripting.process(delta)
 
 
 func _input(event: InputEvent) -> void:

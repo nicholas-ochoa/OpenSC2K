@@ -44,10 +44,14 @@ func test_dispatch_command(reference_root: String) -> void:
 	_check(available.fire == 2, "Fire availability is station tile count divided by eight")
 	_check(available.military == 3, "A navy base supplies three military units")
 
-	var police := Dispatch.apply(city, 2, 0, Vector2i(10, 10), 0, true)
-	_check(police.ok and police.slot_index == 1 and police.thing_index == 1, "Police dispatch resets old units and uses the first record")
+	var capacity := Dispatch.begin_disaster(city)
+	_check(capacity.ok and capacity.police == 1, "A disaster start fixes the dispatch counts")
+	_check(city.thing(5).type == 0 and city.text_overlay_id(5, 5) == 0, "A disaster start removes the units of an earlier disaster")
+
+	var police := Dispatch.apply(city, 2, 0, Vector2i(10, 10))
+	_check(police.ok and police.slot_index == 1 and police.thing_index == 1, "Police dispatch uses slot 1 and the first free record")
 	_check(city.thing(1).type == 7 and city.thing(1).x == 10 and city.thing(1).y == 10, "Police dispatch stores the XTHG unit")
-	_check(city.text_overlay_id(10, 10) == 202 and city.text_overlay_id(5, 5) == 0, "Police dispatch moves the XTXT unit marker")
+	_check(city.text_overlay_id(10, 10) == 202, "Police dispatch links the XTXT unit")
 	var graphics := FixtureGraphics.pack()
 	_check(NativeTileDraws.sprite_ids(city, graphics.large_sprites, IsometricRenderer.VIEW_LARGE, 10, 10).has(1382),
 		"Police dispatch selects the recovered large sprite")
@@ -55,27 +59,38 @@ func test_dispatch_command(reference_root: String) -> void:
 		"Police dispatch selects the native medium sprite")
 	_check(NativeTileDraws.sprite_ids(city, graphics.small_medium_sprites, IsometricRenderer.VIEW_SMALL, 10, 10).has(382),
 		"Police dispatch selects the native small sprite")
-	_check(Dispatch.undo(city, police).ok, "Police dispatch can be undone")
-	_check(city.thing(5).type == 7 and city.text_overlay_id(5, 5) == 206, "Dispatch undo restores units cleared at session start")
-	police = Dispatch.apply(city, 2, 0, Vector2i(10, 10), 0, true)
-	var moved_police := Dispatch.apply(city, 2, 0, Vector2i(11, 10), police.slot_index, false)
+	_check(Dispatch.undo(city, police).ok and city.text_overlay_id(10, 10) == 0, "Police dispatch can be undone")
+	police = Dispatch.apply(city, 2, 0, Vector2i(10, 10))
+	var moved_police := Dispatch.apply(city, 2, 0, Vector2i(11, 10), police.slot_index, {1: Vector2i(10, 10)})
 	_check(moved_police.ok and moved_police.slot_index == 1, "A second Police action wraps its one-unit cycle")
 	_check(city.text_overlay_id(10, 10) == 0 and city.text_overlay_id(11, 10) == 202, "Wrapped Police dispatch relocates its unit")
-	_check(Dispatch.undo(city, moved_police).ok, "Relocated Police dispatch can be undone")
 
-	var fire := Dispatch.apply(city, 2, 1, Vector2i(20, 20), 0, false)
+	# each type keeps its own slots. other types stay on the map
+	var fire := Dispatch.apply(city, 2, 1, Vector2i(20, 20))
 	_check(fire.ok and fire.available == 2 and city.thing(fire.thing_index).type == 8, "Fire dispatch adds an XTHG fire unit")
-	var military := Dispatch.apply(city, 2, 2, Vector2i(21, 20), 0, false)
+	var second_fire := Dispatch.apply(city, 2, 1, Vector2i(22, 20), fire.slot_index, {1: Vector2i(20, 20)})
+	_check(second_fire.ok and second_fire.slot_index == 2, "A second Fire action uses slot 2")
+	var fire_slots := {1: Vector2i(20, 20), 2: Vector2i(22, 20)}
+	var wrapped_fire := Dispatch.apply(city, 2, 1, Vector2i(23, 20), second_fire.slot_index, fire_slots)
 	_check(
-		military.ok and military.available == 3 and city.thing(military.thing_index).type == 14,
-		"Military dispatch adds an XTHG military unit",
+		wrapped_fire.ok and wrapped_fire.slot_index == 1 and city.text_overlay_id(20, 20) == 0
+			and OverlayData.is_thing(city.text_overlay_id(22, 20)) and city.text_overlay_id(11, 10) == 202,
+		"A wrapped Fire slot replaces only its own unit",
+	)
+	var military := Dispatch.apply(city, 2, 2, Vector2i(21, 20), 0, {1: Vector2i(11, 10)})
+	_check(
+		military.ok and military.available == 3 and city.thing(military.thing_index).type == 14
+			and city.text_overlay_id(11, 10) == 202,
+		"Military dispatch leaves a unit of another type on its slot tile",
 	)
 	_check(Dispatch.undo(city, military).ok, "Military dispatch can be undone")
 	_check(city.set_tile_flag(30, 30, 0x04, true), "Dispatch water fixture marks a water tile")
-	var water := Dispatch.apply(city, 2, 1, Vector2i(30, 30), fire.slot_index, false)
+	var water := Dispatch.apply(city, 2, 1, Vector2i(30, 30), wrapped_fire.slot_index)
 	_check(not water.ok and not water.error.is_empty(), "Dispatch rejects a water target")
+	var fixed := Dispatch.apply(city, 2, 0, Vector2i(31, 31), 0, {}, Vector3i(0, 2, 3))
+	_check(not fixed.ok, "The counts of the disaster start apply after the stations change")
 	_check(document.set_misc_u32(0x01f0 + 0xd2 * 4, 0), "Dispatch unavailable fixture removes police capacity")
-	var no_police := Dispatch.apply(city, 2, 0, Vector2i(31, 30), police.slot_index, false)
+	var no_police := Dispatch.apply(city, 2, 0, Vector2i(31, 30), police.slot_index)
 	_check(not no_police.ok and not no_police.error.is_empty(), "Dispatch rejects an unavailable unit type")
 
 

@@ -1,7 +1,7 @@
 class_name OrdinanceCommand
 extends RefCounted
 ## The ordinance window commands. The native simulation library holds the
-## rules; see native/simulation/src/sim/economy/ordinances.rs.
+## rules; see native/core/sim/src/sim/economy/ordinances.rs.
 
 
 @warning_ignore_start("integer_division")

@@ -7,6 +7,11 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const ATLAS_EDGE := 2048
+# Optional effects on HD art. Refer to `effects` in native/core/render/src/lib.rs.
+const HD_GRID := 1
+const HD_WATERFALL := 2
+const HD_PIPE_FLOW := 4
+const ALL_HD_EFFECTS := 7
 const RECORD_SIZE := 14
 
 var builder := NativeCityRegionBuilder.new()
@@ -68,6 +73,7 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	result.gpu_arrays.resize(Mesh.ARRAY_MAX)
 	result.gpu_arrays[Mesh.ARRAY_VERTEX] = data.vertices
 	result.gpu_arrays[Mesh.ARRAY_TEX_UV] = data.uvs
+	result.gpu_arrays[Mesh.ARRAY_COLOR] = data.colors
 	result.gpu_arrays[Mesh.ARRAY_INDEX] = data.indices
 	result.tile_builds = data.builds
 	result.tile_reuses = tile_reuses - prior_reuses
@@ -99,7 +105,7 @@ func build_water(bounds: Rect2i, divisor: int, sprites: Sc2SpriteArchive, mode: 
 # gdstyle:ignore=quality/max-parameters
 func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, view: int,
 		mode := CityViewMode.Mode.CITY, pipes := true, subways := true, water_mains := true, revision := 0,
-		pack_atlas := true, special_overlays := false, animation_phase := 0, tunnels := true) -> String:
+		pack_atlas := true, special_overlays := false, animation_phase := 0, tunnels := true, with_artwork := false) -> String:
 	if not error.is_empty():
 		return error
 
@@ -107,7 +113,8 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 		return "invalid native region assets"
 
 	var layout := [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
-		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels, sprites.visual_revision]
+		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels,
+		with_artwork, ALL_HD_EFFECTS, sprites.visual_revision]
 	var configuration := CityIsometricRenderer.view_configuration(view)
 
 	if configuration == null:
@@ -129,6 +136,11 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 					artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
 
 		var request := _snapshot(city)
+
+		# GPU regions and `raster_artwork` draw full-color art
+		if pack_atlas or with_artwork:
+			request.merge(artwork_request(sprites, configuration.sprite_base))
+
 		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
 			"individual_traffic": int(sprites.visual_city_life_traffic and not special_overlays),
 			"natural_forests": int(sprites.visual_nature_enabled and mode == CityViewMode.Mode.CITY),
@@ -136,7 +148,8 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains), "tunnels": int(tunnels),
 			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge,
 			"atlas": int(pack_atlas), "special_overlays": int(special_overlays), "animation_phase": animation_phase,
-			"shadow_colors": shadow_colors(palette)})
+			# an HD pack shows every effect on its art
+			"shadow_colors": shadow_colors(palette), "hd_effects": ALL_HD_EFFECTS})
 		var failure := builder.configure(request, artwork, palette.color(0xa1).to_rgba32())
 		atlas = null
 		atlas_revision = -1
@@ -206,6 +219,13 @@ func raster(bounds: Rect2i, background: Color) -> Dictionary:
 	return builder.raster(bounds, background.to_rgba32())
 
 
+# CPU pixels of `bounds` with the full-color art, at `factor` (1, 2 or 4) pixels
+# for each view pixel: `{image, bounds}`, or `{error}`. Call `prepare` with
+# `with_artwork` first. `frame` selects the frame of animation strips
+func raster_artwork(bounds: Rect2i, background: Color, factor: int, frame := 0) -> Dictionary:
+	return builder.raster_artwork(bounds, background.to_rgba32(), factor, frame)
+
+
 # `{records, images}` of the draws that meet `bounds`, or `{error}`
 func draw_records(bounds: Rect2i) -> Dictionary:
 	return builder.draw_records(bounds)
@@ -254,6 +274,33 @@ static func foreground_commands(records: PackedInt64Array, region_orders := fals
 
 # Shadows darken 0x5f to 0x64 and the 0x74 to 0x7e band to 0x7e. When colors
 # repeat, the first rule wins, so it is inserted last
+# The full-color art of the sprites of one view, for `NativeCityRegionBuilder.configure`.
+static func artwork_request(sprites: Sc2SpriteArchive, sprite_base: int) -> Dictionary:
+	var stills: Dictionary[int, Image] = {}
+	var heights: Dictionary[int, int] = {}
+	var animations: Dictionary[int, Image] = {}
+	var frames: Dictionary[int, int] = {}
+	var rates: Dictionary[int, int] = {}
+
+	for id: int in sprites.high_resolution:
+		if id < sprite_base or id >= sprite_base + 500 or not sprites.entries_by_id.has(id):
+			continue
+
+		var art := sprites.high_resolution[id]
+		stills[id] = art.image
+		heights[id] = art.height
+
+		if art.animation != null:
+			animations[id] = art.animation
+			frames[id] = art.frames
+			rates[id] = art.fps
+
+	if stills.is_empty():
+		return {}
+
+	return {"hd_sprites": stills, "hd_heights": heights, "hd_animations": animations, "hd_frames": frames, "hd_fps": rates}
+
+
 static func shadow_colors(palette: Sc2Palette) -> PackedInt32Array:
 	var pairs := PackedInt32Array()
 

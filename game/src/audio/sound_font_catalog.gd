@@ -29,50 +29,20 @@ const BUNDLED_SOUND_SET := "FluidR3Mono_GM.sf3"
 
 ## The sound set of this operating system, or an empty string when it has none.
 static func system_path() -> String:
-	for path in sound_set_paths(OS.get_name(), OS.get_executable_path().get_base_dir()):
-		if FileAccess.file_exists(path):
-			return path
-
-	return ""
+	return NativeSoundFonts.first_existing(sound_set_paths(OS.get_name(), OS.get_executable_path().get_base_dir()))
 
 
 ## The sound sets to try on an operating system, in order.
 static func sound_set_paths(os_name: String, executable_folder: String) -> PackedStringArray:
-	var paths := PackedStringArray()
-
-	match os_name:
-		"macOS":
-			paths.append(MACOS_SOUND_SET)
-		"Windows":
-			var windows_folder := OS.get_environment("SystemRoot")
-			paths.append((windows_folder if not windows_folder.is_empty() else "C:/Windows").path_join(WINDOWS_SOUND_SET))
-		"Linux", "FreeBSD", "NetBSD", "OpenBSD", "BSD":
-			paths.append_array(LINUX_SOUND_SETS)
-			paths.append(executable_folder.path_join(BUNDLED_SOUND_SET))
-
-	return paths
+	return NativeSoundFonts.sound_set_paths(os_name, executable_folder, OS.get_environment("SystemRoot"))
 
 
 static func is_bundled(path: String) -> bool:
-	return path.get_file() == BUNDLED_SOUND_SET
+	return NativeSoundFonts.is_bundled(path)
 
 
 static func label(choice: String) -> String:
-	if choice == CUSTOM:
-		return "Custom SoundFont"
-
-	match OS.get_name():
-		"macOS":
-			return "macOS GS Sound Set"
-		"Windows":
-			return "Microsoft GS Wavetable Sound Set"
-
-	var path := system_path()
-
-	if is_bundled(path):
-		return "Bundled SoundFont (FluidR3 Mono)"
-
-	return "System SoundFont (%s)" % path.get_file() if not path.is_empty() else "System SoundFont (not installed)"
+	return NativeSoundFonts.label(choice, OS.get_name(), "" if choice == CUSTOM else system_path())
 
 
 ## Every choice, in menu order.
@@ -83,20 +53,10 @@ static func choices() -> PackedStringArray:
 ## A stored preference, or the default when the stored value is unknown, such
 ## as a choice that earlier versions offered.
 static func normalize(choice: String) -> String:
-	return choice if choice in choices() else DEFAULT
+	return NativeSoundFonts.normalize(choice)
 
 
 ## The SoundFont paths to try, in order. A custom SoundFont that fails falls
 ## back to the system sound set. An empty list means that no SoundFont exists.
 static func candidates(choice: String, custom_path: String) -> PackedStringArray:
-	var result := PackedStringArray()
-
-	if normalize(choice) == CUSTOM and not custom_path.strip_edges().is_empty():
-		result.append(custom_path.strip_edges())
-
-	var system := system_path()
-
-	if not system.is_empty() and system not in result:
-		result.append(system)
-
-	return result
+	return NativeSoundFonts.candidates(choice, custom_path, system_path())

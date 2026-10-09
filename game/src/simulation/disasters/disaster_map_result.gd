@@ -11,6 +11,8 @@ var ended_type := 0
 var counters: Dictionary[String, int] = {}
 var active_markers: Dictionary[String, bool] = {}
 var dispatch_map: DisasterMapResult
+# the neighbor connection counts that burned connection markers lower
+var connection_count_changes: Array[MovingThingResult.ConnectionChange] = []
 
 
 static func failure(message: String) -> DisasterMapResult:

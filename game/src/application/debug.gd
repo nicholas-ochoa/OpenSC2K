@@ -225,9 +225,12 @@ func debug_end_disaster() -> ActionResult:
 
 	app.tool_state.last_edit_command = null
 	app.simulation_state.simulation_map_dirty = false
+	app.simulation_state.simulation_engine.refresh_city_status()
+	app.effects_audio.stop_sound_loop()
 	app.map_render.refresh_map(false)
 	app.moving_sprites.refresh_moving_things()
 	app.interface.refresh_details()
+	app.scripting.check_disaster()
 
 	return ActionResult.new(
 		true,

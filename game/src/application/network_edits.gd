@@ -67,19 +67,19 @@ func apply_network_selection(
 			(
 				"Build a %s connection to a neighboring city?\n"
 				+ "The route and connection are free in Place & Print."
-			) % tool_name.to_lower()
+			) % tr(tool_name).to_lower()
 			if free_mode
 			else (
 				"Build a %s connection to a neighboring city for $%s?\n"
 				+ "The %d-tile route costs $%s and remains if you cancel."
 			) % [
-				tool_name.to_lower(),
+				tr(tool_name).to_lower(),
 				app.interface.format_number(network.connection_cost),
 				network.dry_points.size(),
 				app.interface.format_number(network.dry_cost),
 			]
 		)
-		app.city_dialogs.network_connection_dialog.show_message(message, "Keep %s" % tool_name)
+		app.city_dialogs.network_connection_dialog.show_message(message, tr("Keep %s") % tr(tool_name))
 
 		return
 
@@ -91,7 +91,7 @@ func apply_network_selection(
 			free_mode,
 		)
 		app.interface.show_error(
-			"Cannot build %s: %s"
+			tr("Cannot build %s: %s")
 			% [tool_name, network.error]
 		)
 
@@ -106,31 +106,31 @@ func apply_network_selection(
 	var dry_count := network.dry_points.size()
 
 	if network.bridge_count > 1:
-		app.status_label.text = ("Built %d %s tiles and %d bridges for $%s."
-				% [dry_count, tool_name, network.bridge_count, app.interface.format_number(int(network.cost))])
+		app.status_label.text = (tr("Built %d %s tiles and %d bridges for $%s.")
+				% [dry_count, tr(tool_name), network.bridge_count, app.interface.format_number(int(network.cost))])
 	elif network.bridge_built:
 		if dry_count > 0:
-			app.status_label.text = "Built %d %s tiles and a %s across %d water tiles for $%s." % [
+			app.status_label.text = tr("Built %d %s tiles and a %s across %d water tiles for $%s.") % [
 				dry_count,
-				tool_name,
-				network.bridge_name,
+				tr(tool_name),
+				tr(network.bridge_name),
 				network.bridge_span_length,
 				app.interface.format_number(network.cost),
 			]
 		else:
-			app.status_label.text = "Built a %s across %d water tiles for $%s." % [
-				network.bridge_name,
+			app.status_label.text = tr("Built a %s across %d water tiles for $%s.") % [
+				tr(network.bridge_name),
 				network.bridge_span_length,
 				app.interface.format_number(network.cost),
 			]
 	elif network.connection_built:
-		app.status_label.text = "Built %d %s tiles and a neighboring-city connection for $%s." % [
+		app.status_label.text = tr("Built %d %s tiles and a neighboring-city connection for $%s.") % [
 			dry_count,
-			tool_name,
+			tr(tool_name),
 			app.interface.format_number(network.cost),
 		]
 	else:
-		app.status_label.text = "Built %d %s tiles for $%s." % [
+		app.status_label.text = tr("Built %d %s tiles for $%s.") % [
 			dry_count, tool_name, app.interface.format_number(network.cost),
 		]
 
@@ -139,14 +139,14 @@ func apply_network_selection(
 		elif network.connection_cancelled:
 			app.status_label.text += " The neighbor connection was canceled."
 		elif not network.bridge_error.is_empty():
-			app.status_label.text += " The bridge was not built: %s." % network.bridge_error
+			app.status_label.text += tr(" The bridge was not built: %s.") % network.bridge_error
 		elif not network.connection_error.is_empty():
 			app.status_label.text += " The connection was not offered because funds are too low."
 		elif network.stopped_early:
 			app.status_label.text += " The route stopped at an obstruction."
 
 	if not network.continuation_error.is_empty():
-		app.status_label.text += " Route stopped: %s." % network.continuation_error
+		app.status_label.text += tr(" Route stopped: %s.") % network.continuation_error
 	elif network.bridge_built and network.stopped_early:
 		app.status_label.text += " The route stopped at an obstruction."
 

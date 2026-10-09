@@ -1,7 +1,7 @@
 class_name DemolishCommand
 extends DemolishConstants
 # Bulldozer paths. The native simulation library demolishes each point; see
-# native/simulation/src/sim/tools/commands/demolish.rs.
+# native/core/sim/src/sim/tools/commands/demolish.rs.
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -15,7 +15,9 @@ static func apply_path(
 	points: Array[Vector2i],
 	random: SimRandom,
 	underground_view := false,
-	scurk_mode := false
+	scurk_mode := false,
+	effect_window := Rect2i(),
+	effect_tile_limit := 0
 ) -> DemolishEditResult:
 	if city == null or not city.is_valid():
 		return DemolishEditResult.rejected("city is invalid")
@@ -30,6 +32,9 @@ static func apply_path(
 	args.points = points
 	args.underground_view = underground_view
 	args.scurk_mode = scurk_mode
+	# a nonzero limit returns the dust of an even spread of tiles in the window
+	args.effect_window = effect_window
+	args.effect_tile_limit = effect_tile_limit
 
 	return NativeToolEdit.run("tool.demolish", city, args, PAYLOAD_IDS, random)
 

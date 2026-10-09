@@ -10,5 +10,6 @@ description = "Native MIDI synthesizer for OpenSC2K"
 crate-type = ["cdylib"]
 
 [dependencies]
+sc2k_audio = { path = "../core/audio" }
 # The music thread calls the synthesizer. Each synthesizer belongs to one player.
 godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }

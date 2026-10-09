@@ -6,6 +6,7 @@ extends RefCounted
 var app := CityApplication.new()
 var map: CityMapControl
 var needs_render := false
+var artwork_window: MainMenuCityBackground.ArtworkWindow
 
 
 func _init(parent: Control, city: CityState, controller: GameSpeedController,
@@ -42,6 +43,7 @@ func _init(parent: Control, city: CityState, controller: GameSpeedController,
 
 static func copy_graphics(source: Sc2SpriteArchive) -> Sc2SpriteArchive:
 	var copy := Sc2SpriteArchive.new()
+	copy.high_resolution.assign(source.high_resolution)
 	copy.entries.assign(source.entries)
 	copy.entries_by_id.assign(source.entries_by_id)
 	copy.redraw_small_highway_ground = source.redraw_small_highway_ground
@@ -80,7 +82,22 @@ func publish(image: Image, texture: ImageTexture, city: CityState, commands: Arr
 	app.moving_sprites.set_static_occlusion_commands(commands, CityIsometricRenderer.VIEW_LARGE)
 	var source := CityMapSource.new(image.get_size())
 	source.texture = texture
+	artwork_window = null
 	map.set_city_view(city, source, null, true)
+
+
+# Keep the indexed picture for masks and animation; HD replaces only the
+# current camera window. It uses the same environmental shader and view transform.
+func set_artwork_window(window: MainMenuCityBackground.ArtworkWindow) -> void:
+	if window == artwork_window or map.city_source == null:
+		return
+	artwork_window = window
+	var source := CityMapSource.new(map.city_source.size, map.city_source.texture)
+	if window != null:
+		source.tiles.append(CityMapSource.TileEntry.new(Vector2(window.bounds.position), Vector2(window.bounds.size),
+			window.texture, CityDynamicSpriteCanvas.ARTWORK_TAG))
+	map.city_source = source
+	map.layers._sync_base_layer()
 
 
 func animate(palette: ImageTexture) -> void:
@@ -93,6 +110,7 @@ func advance(delta: float, offset: Vector2, zoom: float) -> void:
 	map.zoom_factor = zoom
 	map.source_center = (map.size / 2.0 - offset) / zoom
 	map.layers._sync_base_layer()
+	map.advance_artwork_animation(delta)
 	app.visual_environment.process(delta)
 	app.city_life.process(delta)
 	app.moving_sprites.process(delta)

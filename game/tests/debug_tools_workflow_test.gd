@@ -90,6 +90,66 @@ func _check_edits(main: CityApplication, city: CityState) -> void:
 	assert(edits.undo() == "There is no debug edit to undo.")
 	assert(DebugEdits.parse_number("12 / 0x0C") == 12 and DebugEdits.parse_number("-0x10") == -16)
 	assert(DebugEdits.parse_number("$1,000") == 1000 and DebugEdits.parse_number("x") == null)
+	_check_bad_terrain(main, city)
+	_check_orphan_labels(main, city)
+
+
+# a sign label that no tile shows is orphaned. removing it is one debug edit
+func _check_orphan_labels(main: CityApplication, city: CityState) -> void:
+	var labels := city.document.find_chunk("XLAB")
+	var original := labels.decoded_payload.duplicate()
+	var free_id := -1
+
+	for id in range(Sc2OverlayLayout.ORIGINAL_SIGN_FIRST, Sc2OverlayLayout.ORIGINAL_SIGN_LAST + 1):
+		if Sc2LabelLayout.read(labels.decoded_payload, id).is_empty() and OverlayData.find(city.text_overlays, id) < 0:
+			free_id = id
+			break
+
+	assert(free_id > 0)
+	var changed := labels.decoded_payload.duplicate()
+	Sc2LabelLayout.write(changed, free_id, "Lost Sign")
+	labels.set_decoded_payload(changed)
+	assert(OrphanLabels.find(city) == PackedInt32Array([free_id]))
+	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_FIND_ORPHAN_LABELS)
+	assert(main.status_label.text.contains("'Lost Sign'"), main.status_label.text)
+	assert(labels.decoded_payload == changed, "Finding orphaned labels changes nothing")
+	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_REMOVE_ORPHAN_LABELS)
+	assert(Sc2LabelLayout.read(labels.decoded_payload, free_id).is_empty() and OrphanLabels.find(city).is_empty())
+	assert(main.debug_tools.edits.undo().begins_with("Undid") and labels.decoded_payload == changed)
+	labels.set_decoded_payload(original)
+
+
+# sc2kfix bad terrain: the Unusual Values layer marks it, and one undo reverts the repair
+func _check_bad_terrain(main: CityApplication, city: CityState) -> void:
+	var altitude := city.document.find_chunk("ALTM")
+	var flags := city.document.find_chunk("XBIT")
+	var original_altitude := altitude.decoded_payload.duplicate()
+	var original_flags := flags.decoded_payload.duplicate()
+	var level := BadTerrain.city_water_level(city)
+	var index := 0
+
+	while city.tile_flags[index] & Sc2TileFlags.WATER != 0:
+		index += 1
+
+	var damaged := altitude.decoded_payload.duplicate()
+	BinaryData.write_u16_be(damaged, index * 2, 0 | (mini(level + 2, 31) << Sc2AltitudeLayout.WATER_SHIFT))
+	altitude.set_decoded_payload(damaged)
+	city.resync_mirrors(PackedStringArray(["ALTM"]))
+	var layer := DebugLayerValues.build(DebugLayerValues.source(city, DebugTileLayers.Layer.UNUSUAL_VALUES),
+		DebugTileLayers.Layer.UNUSUAL_VALUES)
+	assert(layer.values[index] & 0x10 != 0, "The Unusual Values layer marks bad terrain")
+	var detected := BadTerrain.detected_water_level(city)
+	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_REPAIR_BAD_TERRAIN)
+	assert(main.status_label.text.contains("bad terrain"), main.status_label.text)
+	assert((city.altitude_words[index] >> Sc2AltitudeLayout.WATER_SHIFT) & 0x1f == detected)
+	assert(not BadTerrain.is_bad(city.altitude_words[index], city.tile_flags[index], level))
+	assert(main.debug_tools.edits.undo().begins_with("Undid"))
+	assert(altitude.decoded_payload == damaged and flags.decoded_payload == original_flags, "One undo restores ALTM and XBIT")
+	assert(main.debug_tools.edits.repair_bad_terrain() != "No bad terrain found.")
+	assert(main.debug_tools.edits.undo().begins_with("Undid"))
+	altitude.set_decoded_payload(original_altitude)
+	city.resync_mirrors(PackedStringArray(["ALTM"]))
+	assert(BadTerrain.repair(city).tiles == 0, "The generated city has no bad terrain")
 
 
 func _check_chunks(main: CityApplication) -> void:

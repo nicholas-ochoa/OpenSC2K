@@ -1,0 +1,14 @@
+[package]
+name = "opensc2k_scripting"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Godot class of the QuickJS script runtime of OpenSC2K"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+sc2k_scripting = { path = "../core/scripting" }
+godot = { version = "0.5.5", features = ["api-4-7"] }

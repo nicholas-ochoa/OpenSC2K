@@ -256,7 +256,7 @@ class PackageTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / 'source'
-            for folder in ('fluidsynth', 'fluidr3mono'):
+            for folder in ('fluidsynth', 'fluidr3mono', 'quickjs', 'rust'):
                 (source / 'game/assets/licenses' / folder).mkdir(parents=True)
                 (source / 'game/assets/licenses' / folder / 'NOTICE.txt').write_text(folder)
             (source / 'THIRD_PARTY_NOTICES.md').write_text('notices')
@@ -269,8 +269,97 @@ class PackageTest(unittest.TestCase):
                 packages.install_soundfont(soundfont, folder, platform)
                 linux = platform.startswith('linux')
                 self.assertTrue((folder / 'licenses/fluidsynth/NOTICE.txt').is_file())
+                self.assertTrue((folder / 'licenses/quickjs/NOTICE.txt').is_file())
+                self.assertTrue((folder / 'licenses/rust/NOTICE.txt').is_file())
                 self.assertEqual((folder / 'licenses/fluidr3mono/NOTICE.txt').is_file(), linux, platform)
                 self.assertEqual((folder / packages.SOUNDFONT[2]).is_file(), linux, platform)
+
+
+class DiskImageTest(unittest.TestCase):
+    # usage lines of `diskutil image create from --help` on the macOS 15 runner and on macOS 27
+    MACOS_15 = ('USAGE: diskutil image create from [--encrypt] [--verbose] [--stdinpassphrase] [--plist] '
+                '[--format <format>] <source> <destination>\n')
+    MACOS_27 = ('USAGE: diskutil image create from [--encrypt] [--verbose] [--stdinpassphrase] [--plist] '
+                '[--format <format>] [--volumeName <volumeName>] [--shadow <shadow> ...] <source> <destination>\n')
+
+    def make_image(self, help_text, failures=0):
+        """Run make_disk_image with `failures` failed create attempts. Return the commands."""
+        commands = []
+        attempts = []
+
+        def run(command, **_):
+            commands.append(command)
+            if command[-1] == str(image) and command[1] != 'verify':
+                # each attempt starts without the partial image of a failed attempt
+                self.assertFalse(image.exists())
+                attempts.append(command)
+                if len(attempts) <= failures:
+                    image.write_bytes(b'partial')
+                    return subprocess.CompletedProcess(command, 1)
+            return subprocess.CompletedProcess(command, 0, help_text, '')
+
+        with tempfile.TemporaryDirectory() as temporary:
+            image = Path(temporary) / 'OpenSC2K.dmg'
+            with patch.object(packages.subprocess, 'run', run), patch.object(packages.time, 'sleep'):
+                packages.make_disk_image(Path(temporary), 'OpenSC2K 1.0', image)
+        return commands
+
+    def test_disk_image_keeps_the_volume_name_with_either_tool(self):
+        probe, command, verify = self.make_image(self.MACOS_15)
+        self.assertEqual(command[:2], ['hdiutil', 'create'])
+        self.assertEqual(command[command.index('-volname') + 1], 'OpenSC2K 1.0')
+        self.assertEqual(verify[:2], ['hdiutil', 'verify'])
+        probe, command, verify = self.make_image(self.MACOS_27)
+        self.assertEqual(command[:4], ['diskutil', 'image', 'create', 'from'])
+        self.assertEqual(command[command.index('--volumeName') + 1], 'OpenSC2K 1.0')
+
+    def test_busy_disk_image_is_retried_then_fails(self):
+        commands = self.make_image(self.MACOS_15, failures=2)
+        self.assertEqual([command[1] for command in commands[1:]], ['create', 'create', 'create', 'verify'])
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.make_image(self.MACOS_15, failures=packages.DISK_IMAGE_ATTEMPTS)
+
+
+class SigningTest(unittest.TestCase):
+    LISTING = ('  1) 0123456789ABCDEF0123456789ABCDEF01234567 "Apple Development: A B (TEAM1)"\n'
+               '  2) 89ABCDEF0123456789ABCDEF0123456789ABCDEF "Developer ID Application: A B (TEAM2)"\n'
+               '     2 valid identities found\n')
+    NO_SIGNING = {name: '' for name in ('MACOS_SIGNING_IDENTITY', 'APPLE_NOTARY_PROFILE',
+                                        *packages.NOTARY_KEY_VARIABLES)}
+
+    def test_notary_credentials_come_from_a_profile_or_a_complete_api_key(self):
+        with patch.dict('os.environ', self.NO_SIGNING):
+            self.assertIsNone(packages.notary_arguments())
+            self.assertEqual(packages.signing_identity(), packages.AD_HOC)
+        with patch.dict('os.environ', dict(self.NO_SIGNING, APPLE_NOTARY_PROFILE='opensc2k')):
+            self.assertEqual(packages.notary_arguments(), ['--keychain-profile', 'opensc2k'])
+        key = dict(zip(packages.NOTARY_KEY_VARIABLES, ('/k.p8', 'KEY', 'ISSUER')))
+        with patch.dict('os.environ', dict(self.NO_SIGNING, **key)):
+            self.assertEqual(packages.notary_arguments(), ['--key', '/k.p8', '--key-id', 'KEY', '--issuer', 'ISSUER'])
+        with patch.dict('os.environ', dict(self.NO_SIGNING, APPLE_API_KEY_ID='KEY')):
+            with self.assertRaisesRegex(ValueError, 'Set all of'):
+                packages.notary_arguments()
+
+    def test_identity_is_found_by_name_or_hash(self):
+        name = 'Developer ID Application: A B (TEAM2)'
+        self.assertEqual(packages.identity_name(name, self.LISTING), name)
+        self.assertEqual(packages.identity_name('89ABCDEF0123456789ABCDEF0123456789ABCDEF', self.LISTING), name)
+        self.assertIsNone(packages.identity_name('Developer ID Application: C D (TEAM3)', self.LISTING))
+
+    def test_signing_settings_that_cannot_notarize_fail_before_the_export(self):
+        notary = ['--keychain-profile', 'opensc2k']
+        packages.check_signing(packages.AD_HOC, None, False)
+        with self.assertRaisesRegex(ValueError, 'require-notarization'):
+            packages.check_signing(packages.AD_HOC, None, True)
+        with self.assertRaisesRegex(ValueError, 'needs MACOS_SIGNING_IDENTITY'):
+            packages.check_signing(packages.AD_HOC, notary, False)
+        with patch.object(packages.subprocess, 'check_output', return_value=self.LISTING):
+            packages.check_signing('Developer ID Application: A B (TEAM2)', notary, True)
+            packages.check_signing('Apple Development: A B (TEAM1)', None, False)
+            with self.assertRaisesRegex(ValueError, 'needs a Developer ID Application identity'):
+                packages.check_signing('Apple Development: A B (TEAM1)', notary, False)
+            with self.assertRaisesRegex(ValueError, 'No valid code signing identity.*\n  Apple Development: A B'):
+                packages.check_signing('Developer ID Application: C D (TEAM3)', None, False)
 
 
 class NativePackageTest(unittest.TestCase):
@@ -304,6 +393,20 @@ class NativePackageTest(unittest.TestCase):
             (native / 'opensc2k_audio/linux-x86_64/libfluidsynth.so.3').unlink()
             with self.assertRaisesRegex(ValueError, 'Missing FluidSynth library'):
                 packages.install_native(native, project)
+            # a macOS build needs only the macOS libraries
+            missing.unlink()
+            subset = root / 'subset'
+            packages.install_native(native, subset, ['windows-x64'])
+            self.assertTrue((subset / 'bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll').is_file())
+            self.assertFalse((subset / 'bin/opensc2k_audio/macos').exists())
+
+    def test_platform_selection_takes_package_or_native_folder_names(self):
+        self.assertEqual(packages.selected_packages([]), list(packages.PACKAGES))
+        self.assertEqual([package[0] for package in packages.selected_packages(['macos'])], ['macos-universal'])
+        selected = packages.selected_packages(['linux-arm64', 'windows-x86_64', 'linux-arm64'])
+        self.assertEqual([package[0] for package in selected], ['windows-x64', 'linux-arm64'])
+        with self.assertRaisesRegex(ValueError, 'Unknown platform amiga'):
+            packages.selected_packages(['amiga'])
 
 
 if __name__ == '__main__':

@@ -11,11 +11,23 @@ var selected_tool_available := false
 var previous_group := -1
 # last subtool chosen in each group
 var group_subtools: Dictionary = {}
+# the tool that a held key gives the map, as B and Option do in the Macintosh
+# version, or (-1, -1). the toolbar keeps the chosen tool, which comes back
+# when the key is released
+var held_tool := Vector2i(-1, -1)
+var chosen_tool := Vector2i(-1, -1)
+# a held tool change waits for the end of a drag
+var held_tool_pending := false
+var pending_held_tool := Vector2i(-1, -1)
 # edit state
 var last_edit_command: EditCommandResult
 var tool_random := Random.new(1)
+# the last slot of each dispatch type, and the tile that each slot used. the
+# original keeps the tiles in zeroed arrays that a new disaster does not clear
 var dispatch_cycles := PackedInt32Array([0, 0, 0])
-var dispatch_initialized := false
+var dispatch_slot_points: Array[Dictionary] = [{}, {}, {}]
+# the disaster start whose counts the cycles follow
+var dispatch_epoch := -1
 # landscape editing
 var landscape_brush_command: EditCommandResult
 var level_brush_altitude := -1

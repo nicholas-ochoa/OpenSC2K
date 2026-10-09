@@ -19,6 +19,8 @@ var scurk_print: ScurkPrintControl
 var about_dialog: AboutDialog
 var save_changes_dialog: SaveChangesDialog
 var update_dialog: UpdateCheckDialog
+# loading and saving a city
+var busy_overlay: BusyOverlay
 
 
 func _ready() -> void:
@@ -46,6 +48,10 @@ func _create_overlays() -> void:
 
 	update_dialog = UpdateCheckDialog.new()
 	_register(update_dialog, self, CityDialogRegistry.Modality.BLOCKING)
+
+	busy_overlay = BusyOverlay.new()
+	busy_overlay.z_index = 990
+	_register(busy_overlay, self, CityDialogRegistry.Modality.BLOCKING)
 
 
 # true when a visible registered overlay suspends the simulation

@@ -8,6 +8,16 @@ extends RefCounted
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const EFFECT_CACHE_LIMIT := 2048
+# one call shows at most this many effect sprites. a large demolition makes one
+# dust cloud for each tile, and each masked cloud needs its own texture
+const EFFECT_VISUAL_LIMIT := 1024
+# a large edit shows the effects of an even spread of at most this many tiles
+const EFFECT_TILE_LIMIT := 512
+# tiles around the view where an effect can start. tall sprites and altitude
+# move an effect away from its tile
+const EFFECT_TILE_MARGIN := 48
+# large view pixels around the view where an effect can start
+const EFFECT_VIEW_MARGIN := 256.0
 # large view pixels above a launching arcology that a structure in front can reach
 const LAUNCH_MASK_REACH := 320
 # draw layers at one depth: a launching arcology, then fire, then dust and smoke
@@ -16,6 +26,7 @@ const LAYER_FIRE := 1
 const LAYER_SMOKE := 2
 # large view pixels below a launching arcology that its exhaust can reach
 const EXHAUST_REACH := 64
+const EARTHQUAKE_SOUNDS: Array[int] = [504]
 
 var document_state: ActiveDocumentState
 var view_state: ViewState
@@ -100,12 +111,17 @@ func stop_sound_effects() -> void:
 		audio_controller.stop_sound_effects()
 
 
+func stop_sound_loop() -> void:
+	if audio_controller != null:
+		audio_controller.stop_sound_loop()
+
+
 # `simulation` paces the sounds of a simulation tick. player actions pass false
 func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[SoundEvent], simulation := false) -> void:
 	if document_state.city == null:
 		return
 
-	effect_events = CityEffectTiming.expand_launch_fires(CityEffectTiming.parallel_dust_events(effect_events))
+	effect_events = CityEffectTiming.expand_launch_fires(CityEffectTiming.parallel_dust_events(_sampled_effect_events(effect_events)))
 	if disaster_effects != null:
 		effect_events = disaster_effects.consume_effects(effect_events, simulation)
 	var visuals: Array[CityTransientEffectVisual] = []
@@ -116,21 +132,23 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 				disaster_effects.shake_view()
 				continue
 			map_view.shake_view(
-				int(effect.frames),
-				float(effect.frame_msec) / 1000.0,
-				float(effect.distance) * (preferences.visual_enhancements.disaster_shake if preferences.visual_enhancements.disaster_enabled else 1.0),
+				CityEffectTiming.earthquake_offsets(),
+				1.0 / CityEffectTiming.EARTHQUAKE_FPS,
+				CityEffectTiming.EARTHQUAKE_DISTANCE * (preferences.visual_enhancements.disaster_shake if preferences.visual_enhancements.disaster_enabled else 1.0),
 			)
+			_repeat_earthquake_sound()
 
 	if view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var view_size: int = current_view_size.call()
 		var sprite_archive: Sc2SpriteArchive = sprites_for_view.call(view_size)
 
-		if _effect_textures.size() > EFFECT_CACHE_LIMIT:
-			_effect_textures.clear()
-
 		var launches: Array[CityTransientEffectVisual] = []
+		var shown := map_view.visible_source_rect().grow(EFFECT_VIEW_MARGIN)
 
 		for effect in effect_events:
+			if _effect_textures.size() > EFFECT_CACHE_LIMIT:
+				_effect_textures.clear()
+
 			if effect.type == "earthquake":
 				continue
 
@@ -138,7 +156,10 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 				launches.append_array(_launch_visuals(effect, view_size, sprite_archive))
 				continue
 
-			var visual := _effect_visual(effect, view_size, sprite_archive)
+			if visuals.size() >= EFFECT_VISUAL_LIMIT:
+				continue
+
+			var visual := _effect_visual(effect, view_size, sprite_archive, shown)
 
 			if visual != null:
 				visuals.append(visual)
@@ -153,9 +174,52 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 	play_sound_events(sound_events, simulation)
 
 
+# the tiles near the view whose effects can show. a demolition passes it to
+# the native library, which then returns the effects of only these tiles
+func effect_tile_window() -> Rect2i:
+	if document_state.city == null:
+		return Rect2i()
+
+	return CityDebugTileLayer.visible_window(map_view.visible_tile_outline(), document_state.city.map_size, EFFECT_TILE_MARGIN)
+
+
+# the tile effects near the view, from an even spread of at most
+# EFFECT_TILE_LIMIT tiles. effects without a tile, such as an earthquake or a
+# launch, stay
+func _sampled_effect_events(events: Array[EffectEvent]) -> Array[EffectEvent]:
+	if events.size() <= EFFECT_TILE_LIMIT:
+		return events
+
+	var window := effect_tile_window()
+	var tiles: Dictionary[Vector2i, bool] = {}
+
+	for event in events:
+		if event.type.is_empty() and window.has_point(event.point):
+			tiles[event.point] = true
+
+	var stride := ceili(float(tiles.size()) / EFFECT_TILE_LIMIT)
+	var kept: Dictionary[Vector2i, bool] = {}
+	var index := 0
+
+	for point in tiles:
+		if index % stride == 0:
+			kept[point] = true
+
+		index += 1
+
+	var result: Array[EffectEvent] = []
+
+	for event in events:
+		if not event.type.is_empty() or event.point == Vector2i(-1, -1) or kept.has(event.point):
+			result.append(event)
+
+	return result
+
+
 # the effect sprite at its view position, without the pixels of the
-# structures in front of its depth tile
-func _effect_visual(effect: EffectEvent, view_size: int, sprite_archive: Sc2SpriteArchive) -> CityTransientEffectVisual:
+# structures in front of its depth tile. an effect outside `shown` gives null
+func _effect_visual(effect: EffectEvent, view_size: int, sprite_archive: Sc2SpriteArchive, shown: Rect2
+) -> CityTransientEffectVisual:
 	var divisor := IsometricRenderer.view_configuration(view_size).divisor
 	var sprite_id := IsometricRenderer.effect_sprite_id(int(effect.sprite_id), view_size)
 	var image := _effect_image(sprite_archive, sprite_id, effect.flip, divisor)
@@ -171,6 +235,10 @@ func _effect_visual(effect: EffectEvent, view_size: int, sprite_archive: Sc2Spri
 		return null
 
 	var origin := position * divisor
+
+	if not shown.intersects(Rect2(origin, image.get_size())):
+		return null
+
 	var depth_tile: Vector2i = effect.depth_point if effect.depth_point.x >= 0 else effect.point
 	var mask: Image = occluder_mask.call(origin, image.get_size(), depth_tile, view_size) if occluder_mask.is_valid() else null
 	var key := "%d:%d:%d:%d" % [sprite_id, int(effect.flip), divisor, mask.get_instance_id() if mask != null else 0]
@@ -359,6 +427,16 @@ func _effect_image(sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool,
 	_effect_images[key] = image
 
 	return image
+
+
+# the simulation requests the earthquake sound once for each move of its short
+# shake. play it again while the longer shake of the view continues
+func _repeat_earthquake_sound() -> void:
+	if not map_view.is_inside_tree():
+		return
+
+	for seconds in CityEffectTiming.EARTHQUAKE_RUMBLE_SECONDS:
+		map_view.get_tree().create_timer(seconds).timeout.connect(play_sound_ids.bind(EARTHQUAKE_SOUNDS))
 
 
 func play_sound_ids(sound_ids: Array[int]) -> void:

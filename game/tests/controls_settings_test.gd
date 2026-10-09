@@ -196,6 +196,38 @@ func _test_immediate_apply() -> void:
 	dialog.dark_underground_check.button_pressed = dark
 	assert(main.preferences.dark_underground == dark)
 	assert(AppSettingsStore.load_values(settings_path).dark_underground == dark)
+	var autosaves := not main.preferences.recent_autosaves
+	dialog.recent_autosaves_check.button_pressed = autosaves
+	assert(main.preferences.recent_autosaves == autosaves)
+	assert(AppSettingsStore.load_values(settings_path).recent_autosaves == autosaves)
+	var corrections := not main.preferences.sprite_corrections
+	dialog.sprite_corrections_check.button_pressed = corrections
+	assert(main.preferences.sprite_corrections == corrections)
+	assert(AppSettingsStore.load_values(settings_path).sprite_corrections == corrections)
+	assert((main.asset_state.large_sprites != main.asset_state.base_large_sprites) == corrections,
+		"The sc2kfix corrections change the original sprites only while they are on")
+	assert((main.asset_state.palette.colors[0xea] != Color.BLACK) == corrections, "The corrections add the DOS colours")
+	dialog.sprite_corrections_check.button_pressed = not corrections
+	assert(main.asset_state.large_sprites == main.asset_state.base_large_sprites or corrections == false)
+	# HD graphics need an HD pack: without one the check box is off and
+	# disabled, and the saved choice stays
+	dialog.loading_values = true
+	dialog.show_hd_graphics(true)
+	dialog.set_hd_pack_loaded(false)
+	assert(dialog.hd_graphics_check.disabled and not dialog.hd_graphics_check.button_pressed)
+	assert(dialog.selected_values().hd_graphics, "A disabled check box keeps the HD graphics choice")
+	# with a pack, HD graphics turn the sc2kfix corrections off and disable them
+	dialog.sprite_corrections_check.button_pressed = true
+	dialog.set_hd_pack_loaded(true)
+	assert(dialog.hd_graphics_check.button_pressed and not dialog.hd_graphics_check.disabled)
+	assert(dialog.sprite_corrections_check.disabled and not dialog.sprite_corrections_check.button_pressed)
+	assert(not dialog.selected_values().sprite_corrections)
+	dialog.hd_graphics_check.button_pressed = false
+	assert(not dialog.sprite_corrections_check.disabled and not dialog.selected_values().hd_graphics)
+	dialog.set_hd_pack_loaded(false)
+	dialog.show_hd_graphics(main.preferences.hd_graphics)
+	dialog.sprite_corrections_check.button_pressed = main.preferences.sprite_corrections
+	dialog.loading_values = false
 	# a text field applies on Enter, and the Close button applies a field that has focus
 	dialog.default_mayor_edit.text = "Entered Mayor"
 	assert(main.preferences.default_mayor_name != "Entered Mayor", "Typing alone does not apply")

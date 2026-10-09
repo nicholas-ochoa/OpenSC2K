@@ -24,6 +24,8 @@ var flood_points: Array[Vector2i] = []
 var accepted_points: Array[Vector2i] = []
 var counters: Dictionary[String, int] = {}
 var maxis_man_response: MaxisManArrival
+# the neighbor connection counts that burned connection markers lower
+var connection_count_changes: Array[MovingThingResult.ConnectionChange] = []
 # the disaster update that runs with a started disaster
 var first_update: DisasterMapResult
 

@@ -332,6 +332,7 @@ func _sync_base_nodes() -> void:
 		for entry in map.city_source.tiles:
 			var tile := TextureRect.new()
 			tile.texture = entry.texture
+			tile.self_modulate = entry.draw_color
 			tile.set_meta("source_position", entry.position)
 			tile.set_meta("source_size", entry.size)
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -375,9 +376,13 @@ func _sync_base_nodes() -> void:
 	base_layer.texture = map.city_source.texture
 	base_layer.material = visual_material(map.city_source.emission, map.city_source.seasons)
 
+	# Neighboring tiles round the same shared edge, so no pixel row or column
+	# between them is left empty at a fractional scale
 	for tile in _tile_layers:
-		tile.position = Vector2(tile.get_meta("source_position")) * scale
-		tile.size = Vector2(tile.get_meta("source_size")) * scale
+		var first := (Vector2(tile.get_meta("source_position")) * scale).round()
+		var last := ((Vector2(tile.get_meta("source_position")) + Vector2(tile.get_meta("source_size"))) * scale).round()
+		tile.position = first
+		tile.size = last - first
 
 	if not is_equal_approx(_mesh_view_scale, scale):
 		for mesh in _mesh_layers:
@@ -440,6 +445,18 @@ func _update_region_meshes(scale: float) -> bool:
 	return true
 
 
+func sync_artwork_animation() -> void:
+	if _base_material != null:
+		_base_material.set_shader_parameter("artwork_animation_seconds", map.artwork_animation_seconds)
+
+	if _dynamic_material != null:
+		_dynamic_material.set_shader_parameter("artwork_animation_seconds", map.artwork_animation_seconds)
+
+
+	for material: ShaderMaterial in _visual_materials.values():
+		material.set_shader_parameter("artwork_animation_seconds", map.artwork_animation_seconds)
+
+
 func _sync_base_material() -> void:
 	if _foreground_palette_material != null:
 		_foreground_palette_material.set_shader_parameter("foreground_palette", map.animated_palette_texture)
@@ -467,7 +484,7 @@ func _sync_base_material() -> void:
 		)
 		_dynamic_material.set_shader_parameter("palette_lookup_all", true)
 	for material: ShaderMaterial in _visual_materials.values():
-		for key in ["dark_underground", "dark_underground_palette", "palette_indices", "animated_palette", "palette_cycle_enabled", "palette_lookup_all"]:
+		for key in ["dark_underground", "dark_underground_palette", "palette_indices", "animated_palette", "palette_cycle_enabled", "palette_lookup_all", "artwork_animation_seconds"]:
 			material.set_shader_parameter(key, _base_material.get_shader_parameter(key))
 	set_environment(environment_parameters)
 
