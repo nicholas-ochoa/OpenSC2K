@@ -6,6 +6,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_check_moving_cache_budget()
 	var view := CityMapControl.new()
 	root.add_child(view)
 	var mesh_a := QuadMesh.new()
@@ -217,6 +218,25 @@ func _check_sign_layout_tokens(view: CityMapControl) -> void:
 	)
 	view.set_city_view(copy, _source([]), null, false, true, [2])
 	assert(not view.layers._base_material.get_shader_parameter("palette_cycle_enabled"))
+
+
+func _check_moving_cache_budget() -> void:
+	var caches := RenderCaches.new()
+	var visual := CityDynamicVisual.new()
+	for index in 4200:
+		var key := str(index)
+		caches.dynamic_visual_cache[key] = visual
+		caches.dynamic_occluder_cache[key] = RenderCaches.OccluderMask.new(Rect2i(index, 0, 1, 1), null)
+	# Visible sprites can be old cache entries and must survive budget eviction.
+	caches.dynamic_active_keys["0"] = true
+	caches.dynamic_active_keys["5"] = true
+	caches.trim_moving()
+	assert(caches.dynamic_visual_cache.size() == 3840 and caches.dynamic_occluder_cache.size() == 3840)
+	assert(caches.dynamic_visual_cache["0"] == visual and caches.dynamic_visual_cache["5"] == visual)
+	assert(not caches.dynamic_visual_cache.has("1") and caches.dynamic_visual_cache.has("4199"))
+	assert(not caches.dynamic_occluder_cache.has("0") and caches.dynamic_occluder_cache.has("4199"))
+	caches.trim_moving()
+	assert(caches.dynamic_visual_cache.size() == 3840 and caches.dynamic_occluder_cache.size() == 3840)
 
 
 func _source(meshes: Array[CityMapSource.MeshEntry]) -> CityMapSource:

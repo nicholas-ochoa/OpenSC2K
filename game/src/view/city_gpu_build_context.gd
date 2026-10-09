@@ -18,6 +18,10 @@ var builder := NativeCityRegionBuilder.new()
 var atlas_edge := ATLAS_EDGE
 # Sprite images by painter key, for sign masks and the native artwork.
 var images: Dictionary = {}
+var season_atlas: Image
+var _seasons: Dictionary = {}
+var emission_atlas: Image
+var _emission: Dictionary = {}
 var atlas: Image
 var atlas_revision := -1
 var tile_builds := 0
@@ -53,6 +57,8 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 
 	if data.has("atlas"):
 		atlas = data.atlas
+		emission_atlas = builder.auxiliary_atlas(_emission)
+		season_atlas = builder.auxiliary_atlas(_seasons)
 
 	atlas_edge = data.atlas_edge
 	atlas_revision = data.atlas_revision
@@ -75,11 +81,22 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	result.atlas_edge = atlas_edge
 	# Native atlas images are new objects, so a result can share one.
 	result.atlas_image = atlas if copy_atlas and atlas_revision != uploaded_revision else null
+	result.emission_image = emission_atlas if copy_atlas and atlas_revision != uploaded_revision else null
+	result.season_image = season_atlas if copy_atlas and atlas_revision != uploaded_revision else null
 	result.draw_records = data.records
 	result.draw_images.assign(data.images)
 	result.draws = data.draws
+	result.water = build_water(bounds, configuration.divisor, sprites, mode)
 
 	return result
+
+
+func build_water(bounds: Rect2i, divisor: int, sprites: Sc2SpriteArchive, mode: CityViewMode.Mode) -> WaterReflectionRegion:
+	if not sprites.water_reflections or mode != CityViewMode.Mode.CITY:
+		return null
+	var data: Dictionary = builder.water_reflections(bounds.grow(WaterReflectionRegion.PADDING), sprites.water_indices,
+			sprites.visual_emission, sprites.visual_seasons)
+	return WaterReflectionRegion.from_native(data, bounds, divisor)
 
 
 # Configure the builder for a layout, or pass a new city revision to it. GPU
@@ -97,18 +114,26 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 
 	var layout := [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
 		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels,
-		with_artwork, ALL_HD_EFFECTS]
+		with_artwork, ALL_HD_EFFECTS, sprites.visual_revision]
 	var configuration := CityIsometricRenderer.view_configuration(view)
 
 	if configuration == null:
 		return "invalid native region view"
 
 	if layout != _layout:
+		_emission = sprites.visual_emission
+		_seasons = sprites.visual_seasons
 		var artwork: Dictionary[int, Image] = {}
 
 		for id: int in sprites.entries_by_id:
 			if id >= configuration.sprite_base and id < configuration.sprite_base + 500:
 				artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
+		if (sprites.visual_nature_enabled or sprites.visual_terrain_enabled) and mode == CityViewMode.Mode.CITY:
+			for id: int in sprites.visual_nature:
+				if (id % CityNatureArtwork.SPAN) / 500 == view:
+					if (id % 500 >= 256 and not sprites.visual_terrain_enabled) or (id % 500 < 256 and not sprites.visual_nature_enabled):
+						continue
+					artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
 
 		var request := _snapshot(city)
 
@@ -117,6 +142,9 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 			request.merge(artwork_request(sprites, configuration.sprite_base))
 
 		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
+			"individual_traffic": int(sprites.visual_city_life_traffic and not special_overlays),
+			"natural_forests": int(sprites.visual_nature_enabled and mode == CityViewMode.Mode.CITY),
+			"natural_terrain": int(sprites.visual_terrain_enabled and mode == CityViewMode.Mode.CITY),
 			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains), "tunnels": int(tunnels),
 			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge,
 			"atlas": int(pack_atlas), "special_overlays": int(special_overlays), "animation_phase": animation_phase,

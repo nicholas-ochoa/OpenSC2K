@@ -24,6 +24,14 @@ static func configure(main: Node, skip_menu_city := false) -> void:
 	assert(settings.save(main.preferences.settings_path) == OK)
 
 
+static func wait_for_visuals(main: CityApplication) -> void:
+	var started := Time.get_ticks_msec()
+	while not main.visual_preparation.ready:
+		assert(main.visual_preparation.failure.is_empty())
+		assert(Time.get_ticks_msec() - started < 60000, "City visual preparation timed out")
+		await main.get_tree().process_frame
+
+
 # Use only when the test does not exercise menu visibility or its private simulation.
 class NoMenuInterface extends ApplicationInterface:
 	func show_main_menu() -> void:

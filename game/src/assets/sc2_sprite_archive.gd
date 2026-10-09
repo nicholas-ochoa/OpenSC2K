@@ -3,6 +3,16 @@ extends RefCounted
 
 var entries: Array[SpriteEntry] = []
 var entries_by_id: Dictionary[int, SpriteEntry] = {}
+var visual_emission: Dictionary[int, Image] = {}
+var visual_seasons: Dictionary[int, Image] = {}
+var visual_nature: Dictionary[int, SpriteEntry] = {}
+var visual_nature_masks: Dictionary[int, Image] = {}
+var visual_nature_enabled := false
+var visual_terrain_enabled := false
+var visual_revision := 0
+var water_reflections := false
+var water_indices := PackedByteArray()
+var visual_city_life_traffic := false
 var parse_error := ""
 # alternate art can leave the ground visible below its small highway pieces
 var redraw_small_highway_ground := false
@@ -67,6 +77,8 @@ static func combine(archives: Array[Sc2SpriteArchive]) -> Sc2SpriteArchive:
 func parse(bytes: PackedByteArray) -> bool:
 	entries.clear()
 	entries_by_id.clear()
+	visual_nature.clear()
+	visual_nature_masks.clear()
 	high_resolution.clear()
 	parse_error = ""
 	redraw_small_highway_ground = false
@@ -122,7 +134,7 @@ func is_valid() -> bool:
 
 
 func find_sprite(sprite_id: int) -> SpriteEntry:
-	return entries_by_id.get(sprite_id) as SpriteEntry
+	return visual_nature.get(sprite_id, entries_by_id.get(sprite_id)) as SpriteEntry
 
 
 func _fail(message: String) -> bool:

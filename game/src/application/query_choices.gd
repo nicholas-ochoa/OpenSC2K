@@ -251,6 +251,7 @@ func open_query(point: Vector2i) -> void:
 		)
 		neighborhood_texture = ImageTexture.create_from_image(neighborhood) if neighborhood != null else null
 		animation_palette = app.asset_state.palette
+	app.city_dialogs.query_dialog.neighborhood_view.blending_enabled = app.preferences.visual_enhancements.disaster_blending
 	app.city_dialogs.query_dialog.set_max_length(app.document_state.city.document.name_limit())
 	app.city_dialogs.query_dialog.show_query(
 		str(result.title),

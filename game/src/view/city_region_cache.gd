@@ -27,6 +27,10 @@ var region_edge := REGION_EDGE
 # set before `configure`: the view is below the first base zoom level
 var fit_zoom := false
 var gpu_enabled := gpu_supported()
+# A city preparation bank keeps complete region resources between camera moves.
+var resident := false
+# Limit background uploads and worker queues while the player uses another view.
+var background_preparation := false
 # Shared with CityRegionScheduling; each cache owns its worker lifetime.
 var gpu_workers: Array[RegionWorker] = []
 var entries: Dictionary[Vector2i, CityRegionResult] = {}
@@ -79,6 +83,8 @@ var _viewport_valid := false
 var foreground_changes: Array[Rect2i] = []
 # the parts of `foreground_changes` where the static foreground silhouettes changed
 var occluder_changes: Array[Rect2i] = []
+# Actual silhouette publications, excluding mere camera visibility changes.
+var lighting_changes: Array[Rect2i] = []
 # regions that became visible since the last tick. occlusion reads only visible
 # regions, so a moving sprite cached beside the view lacks their silhouettes
 var _visibility_changes: Array[Rect2i] = []
@@ -193,13 +199,22 @@ func _keep_source_payloads(city: CityState) -> void:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk != null:
-			source_payloads[chunk_id] = chunk.decoded_payload
+			# Native tile setters can mutate borrowed payloads in place. Permanent
+			# banks need an owned before-image to detect later offscreen edits.
+			source_payloads[chunk_id] = chunk.decoded_payload.duplicate() if resident else chunk.decoded_payload
 
 
 func _region_keys(rects: Array[Rect2i]) -> Dictionary[Vector2i, bool]:
 	var result: Dictionary[Vector2i, bool] = {}
 
-	for key in NativeRegionPlan.keys_for(rects, region_edge):
+	var affected := rects
+	if _sprites != null and _sprites.water_reflections:
+		var limit := CityIsometricRenderer.maximum_sprite_size(_sprites)
+		var reach := limit.y + limit.x + 62 * CityIsometricRenderer.view_configuration(view_size).altitude_step
+		affected = []
+		for rect in rects:
+			affected.append(Rect2i(rect.position - Vector2i(0, reach), rect.size + Vector2i(0, 2 * reach)))
+	for key in NativeRegionPlan.keys_for(affected, region_edge):
 		result[key] = true
 
 	return result
@@ -222,7 +237,7 @@ func _needs_reset(
 		or _artwork_palette != artwork_palette
 		or view_size != new_view
 		or mode != new_mode
-		or _snapshot.document.source_path != city.document.source_path
+		or (not resident and _snapshot.document.source_path != city.document.source_path)
 		or _snapshot.compass_rotation() != city.compass_rotation()
 		or _snapshot.visible_altitude_levels != city.visible_altitude_levels
 		or _visibility != visibility
@@ -254,12 +269,14 @@ func _trim_retained_regions() -> void:
 
 
 func tick() -> bool:
+	lighting_changes.clear()
 	foreground_changes.clear()
 	foreground_changes.append_array(_visibility_changes)
 	_visibility_changes.clear()
 
 	if _foreground_reset:
 		foreground_changes.append(Rect2i(Vector2i.ZERO, native_size * divisor))
+		lighting_changes.append(Rect2i(Vector2i.ZERO, native_size * divisor))
 		_foreground_reset = false
 
 	occluder_changes.assign(foreground_changes)
@@ -284,11 +301,19 @@ func tick() -> bool:
 
 			result.display_city = null
 			result.texture = ImageTexture.create_from_image(result.image)
+			if result.emission_image != null:
+				result.emission_texture = ImageTexture.create_from_image(result.emission_image)
+				result.emission_image = null
+			if result.season_image != null:
+				result.season_texture = ImageTexture.create_from_image(result.season_image)
+				result.season_image = null
 
 			if result.artwork_image != null:
 				result.artwork_texture = ImageTexture.create_from_image(result.artwork_image)
 				result.artwork_image = null
 			result.generation = _job_generation
+			if resident and result.water != null:
+				result.water.upload()
 			publish_changes(entries.get(_job_key), result)
 			entries[_job_key] = result
 			completed_regions += 1
@@ -348,11 +373,13 @@ func publish_changes(before: CityRegionResult, after: CityRegionResult) -> void:
 
 	if before == null or changed.size() > MAX_OCCLUDER_CHANGES:
 		occluder_changes.append(region)
+		lighting_changes.append(region)
 
 		return
 
 	for rect in changed:
 		occluder_changes.append(Rect2i(rect.position * divisor, rect.size * divisor))
+		lighting_changes.append(Rect2i(rect.position * divisor, rect.size * divisor))
 
 
 # return the native bounds of the foreground commands that differ between two results of one region
@@ -428,6 +455,10 @@ func texture() -> CityMapSource:
 		output.tiles.append(CityMapSource.TileEntry.new(position, size, entry.artwork_texture if artwork else entry.texture,
 			CityDynamicSpriteCanvas.ARTWORK_TAG if artwork else Color.WHITE))
 
+		output.tiles[-1].emission = entry.emission_texture
+		output.tiles[-1].seasons = entry.season_texture
+		output.tiles[-1].water = entry.water
+
 		# the water of the pipes of the indexed region over its HD art
 		var overlay := _overlay_tag()
 
@@ -450,6 +481,9 @@ func _overlay_tag() -> Color:
 func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:
 	if gpu.source_entry == null:
 		gpu.source_entry = CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor)
+		gpu.source_entry.emission = gpu.emission_texture
+		gpu.source_entry.seasons = gpu.season_texture
+		gpu.source_entry.water = gpu.water
 		gpu.source_entry.immutable = true
 	return gpu.source_entry
 
@@ -477,13 +511,13 @@ func _updated_source() -> CityMapSource:
 	return _published_source
 
 
-func occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
+func occlusion_candidates(bounds: Rect2i, include_cached := false) -> Array[CityStaticCommand]:
 	var found: Dictionary[int, CityStaticCommand] = {}
 	var versions: Dictionary[int, int] = {}
 	var native := Rect2(Vector2(bounds.position) / divisor, Vector2(bounds.size) / divisor)
 
 	for key in _keys_for_bounds(bounds):
-		if not entries.has(key) or key not in visible:
+		if not entries.has(key) or (not include_cached and key not in visible):
 			continue
 
 		var entry: CityRegionResult = entries[key]
@@ -676,6 +710,8 @@ func _gpu_atlas_bytes() -> int:
 class RegionWorker extends RefCounted:
 	var task: CityRenderTask
 	var context: CityGpuBuildContext
+	var seasons: ImageTexture
+	var emission: ImageTexture
 	var atlas: ImageTexture
 	var atlas_revision := -1
 	var layout := -1
@@ -729,13 +765,20 @@ class RegionWorker extends RefCounted:
 
 		return count
 
-	func take_regions() -> Array[CityGpuRegionResult]:
+	func take_regions(limit := 0) -> Array[CityGpuRegionResult]:
 		mutex.lock()
-		var regions := outbox
-		outbox = []
+		var count := mini(limit, outbox.size()) if limit > 0 else outbox.size()
+		var regions: Array[CityGpuRegionResult] = outbox.slice(0, count)
+		outbox = outbox.slice(count)
 		mutex.unlock()
 
 		return regions
+
+	func has_regions() -> bool:
+		mutex.lock()
+		var pending := not outbox.is_empty()
+		mutex.unlock()
+		return pending
 
 	# Stop the stream after its current region.
 	func cancel() -> void:

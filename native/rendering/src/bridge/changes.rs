@@ -11,6 +11,23 @@ use sc2k_render::{Rect, changes};
 pub struct NativeCityChanges {}
 #[godot_api]
 impl NativeCityChanges {
+    /// Changed cells of equal-sized display geometry planes, in source order.
+    #[func]
+    fn changed_cells(before: PackedByteArray, after: PackedByteArray, stride: i64, mask: i64) -> PackedInt32Array {
+        if stride <= 0 || before.len() != after.len() {
+            return PackedInt32Array::new();
+        }
+        let stride = stride as usize;
+        let changed: Vec<i32> = before
+            .as_slice()
+            .chunks_exact(stride)
+            .zip(after.as_slice().chunks_exact(stride))
+            .enumerate()
+            .filter_map(|(index, (a, b))| a.iter().zip(b).any(|(x, y)| (x ^ y) & mask as u8 != 0).then_some(index as i32))
+            .collect();
+        PackedInt32Array::from(changed.as_slice())
+    }
+
     /// `request` has `edge`, `visible`, `rotation`, `view` (tile width and height,
     /// half width and height, altitude step, side and top margins), `output`,
     /// `sprite_limit`, `building_sprites`, `object_overrides`, and `before` and

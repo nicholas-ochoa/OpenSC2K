@@ -508,23 +508,19 @@ func update_palette_cycle_texture() -> void:
 		palette_clock.toolbar_palette.colors.append(app.asset_state.palette.colors[color_index])
 
 	app.camera_input.refresh_child_tool_icons()
-	var image := app.asset_state.palette.animation_image(palette_clock.cycle_ticks)
+	update_palette_blending(true)
 
-	if palette_clock.cycle_texture == null:
-		palette_clock.cycle_texture = ImageTexture.create_from_image(image)
-	else:
-		palette_clock.cycle_texture.update(image)
 
-	var underground_image := app.asset_state.palette.underground_animation_image(palette_clock.cycle_ticks)
-
-	if palette_clock.underground_cycle_texture == null:
-		palette_clock.underground_cycle_texture = ImageTexture.create_from_image(underground_image)
-	else:
-		palette_clock.underground_cycle_texture.update(underground_image)
-
+func update_palette_blending(force := false) -> void:
+	var fraction := palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC if app.preferences.visual_enhancements.disaster_blending else 0.0
+	if not palette_clock.update_textures(app.asset_state.palette, fraction, true, force):
+		return
 	if app.map_view != null:
-		app.map_view.set_animated_palette(palette_clock.cycle_texture)
-		app.map_view.set_dark_underground_palette(palette_clock.underground_cycle_texture)
+		# Update texture contents in place; do not rebind every region each frame.
+		if app.map_view.animated_palette_texture != palette_clock.cycle_texture:
+			app.map_view.set_animated_palette(palette_clock.cycle_texture)
+		if app.map_view.dark_underground_palette_texture != palette_clock.underground_cycle_texture:
+			app.map_view.set_dark_underground_palette(palette_clock.underground_cycle_texture)
 
 
 func _city_graphics_size() -> int:
@@ -536,10 +532,17 @@ func _city_graphics_size() -> int:
 
 
 func city_view_size() -> int:
+	if app.visual_preparation.preparing_view >= 0:
+		return app.visual_preparation.preparing_view
 	return mini(_city_graphics_size(), IsometricRenderer.VIEW_LARGE)
 
 
 func sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
+	var prepared := app.visual_preparation.archive_for_view(view_size)
+	return prepared if prepared != null else original_archive_for_view(view_size)
+
+
+func original_archive_for_view(view_size: int) -> Sc2SpriteArchive:
 	return app.asset_state.small_medium_sprites if view_size < IsometricRenderer.VIEW_LARGE else app.asset_state.large_sprites
 
 
@@ -561,6 +564,7 @@ func restart_static_render() -> void:
 
 # discards every rendered image of the city after an artwork or document change
 func invalidate_rendered_city() -> void:
+	app.visual_preparation.reset()
 	app.map_render.close_region_cache()
 	state.epoch += 1
 	caches.static_city_image = null

@@ -58,7 +58,10 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	result.occlusion_commands = foreground
 	result.occlusion_grid = Renderer.build_occlusion_grid(foreground, configuration.divisor)
 	result.image = image
+	result.emission_image = context.builder.auxiliary_raster(bounds, sprites.visual_emission, true)
+	result.season_image = context.builder.auxiliary_raster(bounds, sprites.visual_seasons, false)
 	result.bounds = bounds
+	result.water = context.build_water(bounds, configuration.divisor, sprites, mode)
 
 	# HD art paints with the colors of the palette, not with its indices
 	if artwork_palette != null and not sprites.high_resolution.is_empty():

@@ -94,6 +94,9 @@ impl Regions {
             mains: options.water_mains,
             redraw_ground: art.hd.as_ref().is_some_and(|hd| hd.redraw_small_highway_ground),
             specials: false,
+            individual_traffic: false,
+            natural_forests: false,
+            natural_terrain: false,
             phase: 0,
             effects: 0,
         };
@@ -139,6 +142,9 @@ impl Regions {
             mains: options.water_mains,
             redraw_ground: false,
             specials: false,
+            individual_traffic: false,
+            natural_forests: false,
+            natural_terrain: false,
             phase: 0,
             effects: 0,
         };

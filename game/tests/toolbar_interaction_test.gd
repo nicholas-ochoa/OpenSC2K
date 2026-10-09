@@ -13,6 +13,7 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	assert(main.city_session.activate_document(EmptyCityTemplate.create()))
 	main.frame.call("select_speed", GameSpeedController.Speed.PAUSED)
+	await preload("res://tests/support/app_fixture.gd").wait_for_visuals(main)
 	var toolbar := main.get("city_toolbar") as CityToolbar
 	var map := main.get("map_view") as CityMapControl
 

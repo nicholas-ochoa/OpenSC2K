@@ -187,8 +187,94 @@ fn city(d: &VarDictionary) -> Result<City, String> {
     Ok(c)
 }
 
+fn auxiliary_images(images: &VarDictionary) -> HashMap<u64, Sprite> {
+    images
+        .iter_shared()
+        .filter_map(|(key, value)| {
+            let id = key.try_to::<i64>().ok()?;
+            let image = value.try_to::<Gd<Image>>().ok()?;
+            Some((id as u64 * 2, sprite_from_image(&image).ok()?))
+        })
+        .collect()
+}
+
 #[godot_api]
 impl NativeCityRegionBuilder {
+    #[func]
+    fn auxiliary_atlas(&self, images: VarDictionary) -> Option<Gd<Image>> {
+        if images.is_empty() {
+            return None;
+        }
+        let core = self.core.as_ref()?;
+        let pixels = sc2k_render::visual_auxiliary::atlas(core.atlas.edge, &core.atlas.slots, &core.sprites, &auxiliary_images(&images));
+        Image::create_from_data(
+            core.atlas.edge,
+            core.atlas.edge,
+            false,
+            Format::RGBA8,
+            &PackedByteArray::from(pixels.as_slice()),
+        )
+    }
+
+    #[func]
+    fn auxiliary_raster(&mut self, bounds: Rect2i, images: VarDictionary, emission: bool) -> Option<Gd<Image>> {
+        if images.is_empty() {
+            return None;
+        }
+        let core = self.core.as_mut()?;
+        let rect = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y);
+        if !rect.area() {
+            return None;
+        }
+        let draws = core.collect(rect).ok()?;
+        let pixels = sc2k_render::visual_auxiliary::raster(rect, &draws, &core.sprites.images, &auxiliary_images(&images), emission);
+        Image::create_from_data(rect.w, rect.h, false, Format::RGBA8, &PackedByteArray::from(pixels.as_slice()))
+    }
+
+    #[func]
+    fn water_reflections(
+        &mut self,
+        bounds: Rect2i,
+        water_indices: PackedByteArray,
+        emission: VarDictionary,
+        seasons: VarDictionary,
+    ) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        let Some(core) = self.core.as_mut() else { return result };
+        let rect = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y);
+        if !rect.area() || rect.w > 2048 || rect.h > 2048 || water_indices.len() != 256 {
+            result.set("error", "invalid water reflection bounds or palette");
+            return result;
+        }
+        let pixels = match core.water_pixels(
+            rect,
+            water_indices.as_slice(),
+            &auxiliary_images(&emission),
+            &auxiliary_images(&seasons),
+        ) {
+            Ok(pixels) => pixels,
+            Err(error) => {
+                result.set("error", &GString::from(&error));
+                return result;
+            }
+        };
+        if !pixels.surface.chunks_exact(4).any(|p| p[3] != 0) {
+            return result;
+        }
+        for (name, bytes) in [
+            ("surface", pixels.surface),
+            ("reflected", pixels.reflected),
+            ("emission", pixels.emission),
+            ("seasons", pixels.seasons),
+            ("seabed", pixels.seabed),
+        ] {
+            let image = Image::create_from_data(rect.w, rect.h, false, Format::RGBA8, &PackedByteArray::from(bytes.as_slice()))
+                .expect("validated water bounds");
+            result.set(name, &image);
+        }
+        result
+    }
+
     #[func]
     fn configure(&mut self, request: VarDictionary, images: VarDictionary, target: i64) -> GString {
         let previous_revision = self.core.as_ref().map_or(0, |core| core.atlas.revision + 1);
@@ -211,6 +297,9 @@ impl NativeCityRegionBuilder {
                 mains: int(&request, "mains", 1) != 0,
                 redraw_ground: int(&request, "redraw_ground", 0) != 0,
                 specials: int(&request, "special_overlays", 0) != 0,
+                individual_traffic: int(&request, "individual_traffic", 0) != 0,
+                natural_forests: int(&request, "natural_forests", 0) != 0,
+                natural_terrain: int(&request, "natural_terrain", 0) != 0,
                 phase: int(&request, "animation_phase", 0) as i32,
                 effects: int(&request, "hd_effects", 0) as i32,
             };

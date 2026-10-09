@@ -4,7 +4,10 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 
 func _initialize() -> void:
+	_check_train_support()
+	_check_shadow_receivers()
 	_check_packed_masks()
+	_check_neighbor_masks()
 	var host := CityApplication.new()
 	host.moving_sprites = TestSprites.new(host)
 
@@ -152,6 +155,47 @@ func _initialize() -> void:
 	quit()
 
 
+func _check_neighbor_masks() -> void:
+	var host := CityApplication.new()
+	host.moving_sprites = TestSprites.new(host)
+	var size := Vector2i(13, 9)
+	var world := Rect2i(-64, -64, 160, 160)
+	var reference := Image.create(world.size.x, world.size.y, false, Image.FORMAT_RGBA8)
+	reference.fill(Color.TRANSPARENT)
+	for i in 3:
+		var pixels := Image.create(40, 60, false, Image.FORMAT_RGBA8)
+		for y in 60:
+			for x in 40:
+				pixels.set_pixel(x, y, Color8(x * 5, y * 4, i * 70, [0, 80, 255][(x + y) % 3]))
+		var command := CityStaticCommand.new()
+		command.position = Vector2i(i * 23 - 45, i * 19 - 39)
+		command.size = pixels.get_size()
+		command.depth_order = 12
+		command.sprite_id = i
+		host.render_caches.static_occlusion_commands.append(command)
+		host.moving_sprites.images[i] = pixels
+		reference.blend_rect(pixels, Rect2i(Vector2i.ZERO, pixels.get_size()), Vector2i(command.position) - world.position)
+	for y in [-33, -32, -1, 0, 31, 32]:
+		for x in range(-33, 34):
+			var position := Vector2i(x, y)
+			var actual := host.moving_sprites._dynamic_occluder_image(null, 1, position, size, 10)
+			var expected := reference.get_region(Rect2i(position - world.position, size))
+			if actual == null:
+				assert(expected.is_invisible())
+			else:
+				# Invisible RGB is irrelevant; masks consume alpha only.
+				for py in size.y:
+					for px in size.x:
+						assert(actual.get_pixel(px, py).a == expected.get_pixel(px, py).a,
+							"Neighbor mask changed alpha at a negative coordinate or cache boundary")
+	assert(host.render_caches.dynamic_occluder_cache.size() == 16, "Neighboring positions rebuilt individual masks")
+	var changed: Array[Rect2i] = [Rect2i(-4, -4, 8, 8)]
+	host.map_render._invalidate_region_foregrounds(changed, changed)
+	for entry: RenderCaches.OccluderMask in host.render_caches.dynamic_occluder_cache.values():
+		assert(not entry.bounds.intersects(changed[0]), "A changed silhouette retained a shared neighbor mask")
+	host.free()
+
+
 func _check_packed_masks() -> void:
 	for format in [Image.FORMAT_RGBA8, Image.FORMAT_RGBAF]:
 		var sprite := Image.create(13, 7, false, format)
@@ -176,6 +220,67 @@ func _check_packed_masks() -> void:
 		assert(IsometricPixelOperations.occlude_dynamic_with_mask(sprite, null, Vector2i.ZERO).image == sprite)
 		mask.fill(Color.TRANSPARENT)
 		assert(IsometricPixelOperations.occlude_dynamic_with_mask(sprite, mask, Vector2i.ZERO).image == sprite)
+
+
+func _check_train_support() -> void:
+	var host := CityApplication.new()
+	host.moving_sprites = TestSprites.new(host)
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	host.document_state.city = city
+	city.set_land_altitude(64, 64, 0)
+	city.set_land_altitude(65, 64, 0)
+	city.set_terrain_id(65, 64, TerrainTileIds.FLAT)
+	city.set_land_altitude(64, 65, 2)
+	var start := (64 + 64) * 128 + 64
+	var end := (65 + 64) * 128 + 64
+	var ids := [1256, 1120, 1045, 1077, 1257, 1269]
+	for index in ids.size():
+		var sprite := Image.create(8, 4, false, Image.FORMAT_RGBA8)
+		sprite.set_pixel(index, 1, Color.WHITE)
+		host.moving_sprites.images[ids[index]] = sprite
+		var command := CityStaticCommand.new()
+		command.sprite_id = ids[index]
+		command.size = sprite.get_size()
+		command.depth_order = end + 1 if index == 4 else end
+		if index == 3:
+			command.train_foreground_reference_sprite_id = -1
+			command.train_foreground_requires_depth = true
+		host.render_caches.static_occlusion_commands.append(command)
+	var original := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), start, true)
+	assert(original.get_pixel(0, 1).a > 0.0 and original.get_pixel(2, 1).a > 0.0)
+	var moving := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), start, true, 1, null, -1, PackedInt32Array([start, end]))
+	assert(moving.get_pixel(0, 1).a == 0.0 and moving.get_pixel(2, 1).a == 0.0, "Supporting ground and track must not cover a moving train")
+	for index in [1, 3, 4, 5]:
+		assert(moving.get_pixel(index, 1).a > 0.0, "Train support rule removed a building, deck, higher terrain or cliff mask")
+	host.free()
+
+
+func _check_shadow_receivers() -> void:
+	var host := CityApplication.new()
+	host.moving_sprites = TestSprites.new(host)
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	host.document_state.city = city
+	for tile in [Vector2i(64, 64), Vector2i(65, 64)]:
+		city.set_land_altitude(tile.x, tile.y, 0)
+		city.set_terrain_id(tile.x, tile.y, TerrainTileIds.FLAT)
+	city.set_land_altitude(64, 65, 2)
+	var start := 128 * 128 + 64
+	var ids := [1256, 1045, 1291, 1270, 1120, 1077, 1257, 1269, 1006]
+	for i in ids.size():
+		var pixels := Image.create(12, 4, false, Image.FORMAT_RGBA8)
+		pixels.set_pixel(i, 1, Color.WHITE)
+		host.moving_sprites.images[ids[i]] = pixels
+		var command := CityStaticCommand.new()
+		command.sprite_id = ids[i]
+		command.size = pixels.get_size()
+		command.depth_order = start + 129 if i == 6 else start + 128
+		host.render_caches.static_occlusion_commands.append(command)
+	var ordinary := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(12, 4), start)
+	var shadow := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(12, 4), start, false, 1, null, -1, PackedInt32Array(), true)
+	for i in ids.size():
+		assert(ordinary.get_pixel(i, 1).a > 0.0)
+		assert((shadow.get_pixel(i, 1).a > 0.0) == (i >= 4), "Shadow receiver masking lost a surface or foreground structure")
+	host.free()
 
 
 class TestSprites extends ApplicationMovingSprites:

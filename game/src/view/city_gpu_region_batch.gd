@@ -81,6 +81,8 @@ static func stream(request: Request, worker: CityRegionCache.RegionWorker, uploa
 		# Copies share the image data until the context writes a new sprite.
 		if context.atlas != null and context.atlas_revision != published:
 			result.atlas_image = context.atlas.duplicate()
+			result.emission_image = context.emission_atlas
+			result.season_image = context.season_atlas
 			published = context.atlas_revision
 
 		result.atlas_revision = published

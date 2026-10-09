@@ -207,6 +207,8 @@ func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
 		retained.append(visual.copy())
 
 	map.dynamic_sprites = retained
+	if map.layers.water_layer != null:
+		map.layers.water_layer.set_moving(retained)
 
 	if map.layers.dynamic_canvas != null:
 		map.layers.dynamic_canvas.set_visuals(

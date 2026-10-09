@@ -32,6 +32,10 @@ var timing_state := TimingState.new()
 var render_caches := RenderCaches.new()
 var static_render_state := StaticRenderState.new()
 var palette_clock := PaletteAnimationClock.new()
+var visual_environment := CityVisualEnvironment.new(self)
+var visual_preparation := CityVisualPreparation.new(self)
+var city_life := CityLifeController.new(self)
+var disaster_effects := CityDisasterEffects.new(self)
 # scene controls and pending ui workflows
 var audio_controller: CityAudioController
 var map_view: CityMapControl
@@ -103,6 +107,7 @@ var scripting: ApplicationScripting = ApplicationScripting.new(self)
 
 
 func _ready() -> void:
+	effects_audio.disaster_effects = disaster_effects
 	# the window samples embedded dialogs with nearest filtering. keep the
 	# earlier linear default for the application contents
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -155,6 +160,7 @@ func _notification(what: int) -> void:
 
 
 func _exit_tree() -> void:
+	visual_preparation.reset()
 	if new_city_state.preview_job != null and new_city_state.preview_job.thread.is_started():
 		new_city_state.preview_job.thread.wait_to_finish()
 	new_city_state.preview_job = null

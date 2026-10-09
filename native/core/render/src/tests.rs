@@ -1,4 +1,102 @@
+use super::ids::building_tile_ids as tiles;
+use super::painter::TRAFFIC;
 use super::*;
+
+#[test]
+fn forests_keep_density_clearings_and_local_cache_invalidation() {
+    for view in 0..3 {
+        let mut b = fixture(16, view);
+        b.config.natural_forests = true;
+        for id in 6..=12 {
+            let original = b.sprites.images[&((view * 500 + id) as u64 * 2)].clone();
+            for variant in 0..128 {
+                b.sprites.images.insert(
+                    ((nature::FIRST + variant * nature::SPAN + view * 500 + id) * 2) as u64,
+                    original.clone(),
+                );
+            }
+        }
+        for x in 4..10 {
+            for y in 4..10 {
+                let i = b.city.index(x, y);
+                b.city.buildings[i] = tiles::TREES_7;
+            }
+        }
+        let clearing = b.city.index(7, 7);
+        b.city.buildings[clearing] = 0;
+        let before = b.city.clone();
+        assert_eq!(b.paint(7, 7).unwrap().len(), 1, "empty clearing acquired trees");
+        for density in 6..=12 {
+            b.city.buildings[clearing] = density;
+            let id = b.paint(7, 7).unwrap()[1].sprite;
+            assert_eq!(nature::original(id), view * 500 + i32::from(density));
+            assert_eq!((id - nature::FIRST) / nature::SPAN / 8, 15);
+        }
+        b.city.buildings[clearing] = 0;
+        let full = Rect::new(0, 0, 4096, 4096);
+        let original = b.region(full).unwrap();
+        let total = b.builds;
+        let atlas_revision = b.atlas.revision;
+        let again = b.region(full).unwrap();
+        assert_eq!(b.builds, total);
+        assert_eq!(b.atlas.revision, atlas_revision);
+        assert_eq!(original.vertices, again.vertices);
+        assert_eq!(original.uvs, again.uvs);
+        let old_neighbor = b.forest_sprite(6, 6, view * 500 + 12);
+        let far = b.forest_sprite(9, 9, view * 500 + 12);
+        let mut edited = b.city.clone();
+        let cut = edited.index(6, 5);
+        edited.buildings[cut] = 0;
+        b.update(edited);
+        b.region(full).unwrap();
+        assert_eq!(b.builds - total, 9);
+        assert_ne!(b.forest_sprite(6, 6, view * 500 + 12), old_neighbor);
+        assert_eq!(b.forest_sprite(9, 9, view * 500 + 12), far);
+        assert_eq!(b.city.terrain, before.terrain);
+        assert_eq!(b.city.altitude, before.altitude);
+        assert_eq!(b.city.zones, before.zones);
+        assert_eq!(b.city.flags, before.flags);
+        b.config.natural_forests = false;
+        assert_eq!(b.paint(6, 6).unwrap()[1].sprite, view * 500 + 12);
+        b.config.natural_forests = true;
+        for (x, y) in [(0, 0), (15, 0), (0, 15), (15, 15)] {
+            let i = b.city.index(x, y);
+            b.city.buildings[i] = tiles::TREES_7;
+            assert_eq!((b.forest_sprite(x, y, view * 500 + 12) - nature::FIRST) / nature::SPAN / 8, 0);
+        }
+    }
+}
+
+#[test]
+fn individual_traffic_replaces_supported_patterns_without_changing_the_city() {
+    let mut original = fixture(8, 2);
+    original.city.traffic = vec![255; 16];
+    original.city.buildings[3 * 8 + 3] = 0x1d;
+    original.city.buildings[3 * 8 + 4] = 0x57;
+    let before = original.city.clone();
+    let classic = original.paint(3, 3).unwrap();
+    original.config.individual_traffic = true;
+    let enhanced = original.paint(3, 3).unwrap();
+    assert!(classic.iter().any(|draw| draw.image >= 1_u64 << 32));
+    assert!(!enhanced.iter().any(|draw| draw.image >= 1_u64 << 32));
+    assert!(!original.paint(3, 4).unwrap().iter().any(|draw| draw.image >= 1_u64 << 32));
+    for tile in
+        (tiles::ROAD_STRAIGHT_1..=tiles::REINFORCED_HIGHWAY_BRIDGE).filter(|tile| TRAFFIC[usize::from(tile - tiles::ROAD_STRAIGHT_1)] != 0)
+    {
+        original.city.buildings[3 * 8 + 3] = tile;
+        original.city.zones[3 * 8 + 3] = 0x80;
+        original.config.individual_traffic = false;
+        let classic = original.paint(3, 3).unwrap();
+        original.config.individual_traffic = true;
+        let enhanced = original.paint(3, 3).unwrap();
+        assert!(classic.iter().any(|draw| draw.image >= 1_u64 << 32), "classic tile {tile:#x}");
+        assert!(!enhanced.iter().any(|draw| draw.image >= 1_u64 << 32), "enhanced tile {tile:#x}");
+    }
+    original.city.buildings = before.buildings.clone();
+    original.city.zones = before.zones.clone();
+    assert_eq!(before.traffic, original.city.traffic);
+    assert_eq!(before.buildings, original.city.buildings);
+}
 
 fn fixture(edge: i32, view: i32) -> Builder {
     let cells = (edge * edge) as usize;
@@ -41,6 +139,9 @@ fn fixture(edge: i32, view: i32) -> Builder {
             mains: true,
             redraw_ground: false,
             specials: false,
+            individual_traffic: false,
+            natural_forests: false,
+            natural_terrain: false,
             phase: 0,
             effects: 0,
         },
@@ -907,4 +1008,57 @@ fn waterfalls_have_the_waterfall_tag_with_the_effect() {
     assert_eq!(tag(&out, 0)[..2], [49, 2]);
     // blue and alpha give the position of each corner in the sprite
     assert_eq!(out.colors[2][2..], [1.0, 1.0]);
+}
+
+#[test]
+fn building_emission_tracks_power_per_instance_and_cached_revision() {
+    use ids::sc2tile_flags::POWERED;
+    for view in 0..3 {
+        for rotation in 0..4 {
+            let mut b = fixture(8, view);
+            b.city.rotation = rotation;
+            let id = view * 500 + 112;
+            let bounds = Rect::new(0, 0, 4096, 4096);
+            place(&mut b, 2, 3, 112, 0xf0);
+            place(&mut b, 5, 3, 112, 0xf0);
+            let a = b.city.index(2, 3);
+            let z = b.city.index(5, 3);
+            b.city.flags[a] = POWERED;
+            for supplied in [false, true, false] {
+                let mut next = b.city.clone();
+                next.flags[z] = if supplied { POWERED } else { 0 };
+                let before = next.flags.clone();
+                b.update(next);
+                let region = b.region(bounds).unwrap();
+                let buildings: Vec<_> = region.draws.iter().filter(|d| d.sprite == id).collect();
+                assert_eq!(buildings.len(), 2);
+                assert_eq!(buildings.iter().filter(|d| d.emission_disabled).count(), usize::from(!supplied));
+                assert_eq!(
+                    region.colors.iter().filter(|c| (c[0] * 255.0).round() == 128.0).count(),
+                    if supplied { 0 } else { 4 }
+                );
+                assert_eq!(b.city.flags, before, "lighting must not change the power flags");
+                assert!(region.draws.iter().filter(|d| d.sprite != id).all(|d| !d.emission_disabled));
+            }
+        }
+    }
+}
+
+#[test]
+fn unpowered_hd_buildings_keep_animation_metadata() {
+    let mut b = fixture(4, 2);
+    for frames in [1, 2] {
+        b.sprites.artwork.insert(2224, artwork(4, 4 * i32::from(frames), frames, 2));
+        let mut draw = Draw::new(2224, Rect::new(0, 0, 2, 2));
+        draw.sprite = 1112;
+        let mut lit = region::Region::default();
+        b.artwork_quad(&mut lit, &draw, 2224, false, Rect::new(0, 0, 10, 10)).unwrap();
+        draw.emission_disabled = true;
+        let mut dark = region::Region::default();
+        b.artwork_quad(&mut dark, &draw, 2224, false, Rect::new(0, 0, 10, 10)).unwrap();
+        assert_eq!(tag(&dark, 0)[0], tag(&lit, 0)[0] + 128);
+        assert_eq!(tag(&dark, 0)[1..], tag(&lit, 0)[1..]);
+        assert_eq!(lit.uvs, dark.uvs);
+        assert_eq!(lit.vertices, dark.vertices);
+    }
 }

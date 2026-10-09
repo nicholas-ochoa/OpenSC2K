@@ -134,6 +134,7 @@ func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 	app.effects_audio.show_effect_events(
 		result.effect_events, result.sound_events
 	)
+	app.disaster_effects.disaster_started(result)
 	app.interface.refresh_status_summary()
 	show_notices(result.notice_ids)
 	var first_update := result.first_update

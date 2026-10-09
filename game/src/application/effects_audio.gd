@@ -38,6 +38,7 @@ var sprites_for_view: Callable
 var audio_controller: CityAudioController
 var map_view: CityMapControl
 var main_menu: MainMenuControl
+var disaster_effects: CityDisasterEffects
 # (position, size, depth tile, view size) -> the static silhouettes over an
 # effect sprite, or null. see ApplicationMovingSprites.effect_occluder_mask
 var occluder_mask: Callable
@@ -121,14 +122,19 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 		return
 
 	effect_events = CityEffectTiming.expand_launch_fires(CityEffectTiming.parallel_dust_events(_sampled_effect_events(effect_events)))
+	if disaster_effects != null:
+		effect_events = disaster_effects.consume_effects(effect_events, simulation)
 	var visuals: Array[CityTransientEffectVisual] = []
 
 	for effect in effect_events:
 		if effect.type == "earthquake":
+			if disaster_effects != null and disaster_effects.active():
+				disaster_effects.shake_view()
+				continue
 			map_view.shake_view(
 				CityEffectTiming.earthquake_offsets(),
 				1.0 / CityEffectTiming.EARTHQUAKE_FPS,
-				CityEffectTiming.EARTHQUAKE_DISTANCE,
+				CityEffectTiming.EARTHQUAKE_DISTANCE * (preferences.visual_enhancements.disaster_shake if preferences.visual_enhancements.disaster_enabled else 1.0),
 			)
 			_repeat_earthquake_sound()
 

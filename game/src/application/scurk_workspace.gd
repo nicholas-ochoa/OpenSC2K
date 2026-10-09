@@ -471,6 +471,7 @@ func _apply_scurk_tile_sets(
 	app.asset_state.active_scurk_tile_sets = tile_sets.duplicate()
 	app.asset_state.active_scurk_name = display_name
 	app.asset_state.active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
+	app.visual_environment.reload_brightmaps(false)
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(
@@ -587,6 +588,7 @@ func restore_original_tile_set() -> void:
 	app.asset_state.active_scurk_name = ""
 	app.asset_state.active_scurk_path = ""
 	app.assets.use_default_sprites()
+	app.visual_environment.reload_brightmaps(false)
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, {}, app.asset_state.scurk_graphics)

@@ -10,6 +10,7 @@ var visuals: Array[CityDynamicVisual] = []
 var view_scale := 1.0
 var view_offset := Vector2.ZERO
 var visual_revision := 0
+var detail_lights_visible := true
 
 
 func _draw() -> void:
@@ -21,13 +22,25 @@ func _draw() -> void:
 
 		var source_position: Vector2 = visual.position
 		var source_size: Vector2 = visual.size
+		if visual.hazard_animation != null:
+			var animation := visual.hazard_animation
+			# Reserved blue values select the eight-frame indexed atlas in the palette shader.
+			draw_texture_rect(texture, Rect2(source_position, source_size), false,
+				Color(animation.phase / 8.0, animation.opacity, 0.25 if visual.toxic_cloud else (0.125 if visual.warm_cloud else (0.5 if visual.fullbright else 0.75))))
+			continue
 
 		draw_texture_rect(
 			texture,
 			Rect2(source_position, source_size),
 			false,
-			ARTWORK_TAG if visual.literal_artwork else Color.WHITE,
+			Color(1, 0, 1) if visual.transparent_shadow else (Color(1, 0, 0) if visual.toxic_cloud else (Color(1, 0.5, 0) if visual.warm_cloud else (Color(1, 1, 0) if visual.fullbright else (ARTWORK_TAG if visual.literal_artwork else Color.WHITE)))),
 		)
+
+		if visual.emission_texture != null and (detail_lights_visible or not visual.vehicle_light):
+			# Palette-address masks use LA8; authored color masks remain RGBA8.
+			var indexed := visual.emission_texture is ImageTexture and (visual.emission_texture as ImageTexture).get_format() == Image.FORMAT_LA8
+			draw_texture_rect(visual.emission_texture, Rect2(source_position, source_size), false,
+				Color(0, 1, 0) if indexed else Color(0, 1, 1))
 
 
 func set_visuals(
@@ -38,6 +51,12 @@ func set_visuals(
 	set_view_transform(scale_value, offset_value)
 	visible = not visuals.is_empty()
 	queue_redraw()
+
+
+func set_detail_lights_visible(value: bool) -> void:
+	if detail_lights_visible != value:
+		detail_lights_visible = value
+		queue_redraw()
 
 
 func set_view_transform(scale_value: float, offset_value: Vector2) -> void:
@@ -59,7 +78,7 @@ static func batch_special_visuals(
 	var pending_bounds := Rect2i()
 
 	for visual in value:
-		if not visual.special_overlay:
+		if not visual.special_overlay or visual.emission_texture != null:
 			_append_special_batch(result, pending, batch_cache)
 			pending.clear()
 			pending_bounds = Rect2i()
@@ -75,6 +94,9 @@ static func batch_special_visuals(
 				pending.size() >= MAX_SPECIAL_VISUALS_PER_BATCH
 				or merged.get_area() * int(visual.texture_factor) * int(visual.texture_factor) > MAX_SPECIAL_BATCH_AREA
 				or int(visual.texture_factor) != int(pending[0].texture_factor)
+				or visual.fullbright != pending[0].fullbright
+				or visual.toxic_cloud != pending[0].toxic_cloud
+				or visual.warm_cloud != pending[0].warm_cloud
 				or visual.literal_artwork != pending[0].literal_artwork
 			)
 		):
@@ -144,6 +166,9 @@ static func _append_special_batch(
 	batch.size = Vector2(bounds.size)
 	batch.image = image
 	batch.special_batch = true
+	batch.fullbright = pending[0].fullbright
+	batch.toxic_cloud = pending[0].toxic_cloud
+	batch.warm_cloud = pending[0].warm_cloud
 	result.append(batch)
 
 	if not cache_key.is_empty():

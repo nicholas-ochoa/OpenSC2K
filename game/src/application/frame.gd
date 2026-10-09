@@ -14,6 +14,12 @@ func _init(application: CityApplication) -> void:
 
 
 func process(delta: float) -> void:
+	var preparing := app.visual_preparation.process()
+	if not preparing:
+		app.visual_environment.process(delta)
+		app.city_life.process(delta)
+		app.disaster_effects.process(delta)
+		app.moving_sprites.process(delta)
 	app.new_city.poll_new_city_preview()
 	app.current_tool.update_network_preview()
 	app.camera_input.update_keyboard_camera(delta)
@@ -31,15 +37,16 @@ func process(delta: float) -> void:
 	if app.city_status_bar != null:
 		app.city_status_bar.update_music_notice(delta)
 
-	app.static_render.poll_static_render()
-	app.static_render.start_pending_static_render()
+	if not preparing:
+		app.static_render.poll_static_render()
+		app.static_render.start_pending_static_render()
 	app.city_png_export.poll_export()
 
 	if app.simulation_state.speed_controller == null or app.document_state.city == null:
 		return
 
 	app.simulation_state.simulation_engine.midi_playback_active = app.effects_audio.music_playback_is_active()
-	var interaction_suspended := _simulation_suspended()
+	var interaction_suspended := preparing or _simulation_suspended()
 	var result: SimulationTickResult
 
 	if app.simulation_state.frame_simulation != null:
@@ -81,13 +88,10 @@ func _simulation_suspended() -> bool:
 
 func _advance_palette_animation(delta: float, suspended: bool) -> void:
 	# Keep palette animation running while the simulation worker is busy.
-	if suspended or app.simulation_state.speed_controller.speed == GameSpeed.Speed.PAUSED or app.debug_tools.state.palette_frozen:
-		return
-
-	if app.map_view != null:
-		app.map_view.advance_artwork_animation(delta)
-
-	palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
+	if not suspended and app.simulation_state.speed_controller.speed != GameSpeed.Speed.PAUSED and not app.debug_tools.state.palette_frozen:
+		if app.map_view != null:
+			app.map_view.advance_artwork_animation(delta)
+		palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
 	var ticks := int(palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC)
 
 	if ticks > 0:
@@ -95,8 +99,12 @@ func _advance_palette_animation(delta: float, suspended: bool) -> void:
 		palette_clock.cycle_ticks += ticks
 		app.static_render.update_palette_cycle_texture()
 
+	else:
+		app.static_render.update_palette_blending()
+
 
 func consume_simulation_result(result: SimulationTickResult) -> void:
+	app.disaster_effects.observe_simulation_result(result)
 	if result.base_ticks > 0:
 		sync_speed_ui()
 
@@ -167,6 +175,12 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 
 	for point in result.view_center_requests:
 		app.map_view.center_on_tile(point)
+
+	# Resolve visible effects after applying the disaster's camera requests.
+	for day in result.day_results:
+		var started: DisasterStartResult = day.phase_results.get("disaster_start")
+		if started != null:
+			app.disaster_effects.disaster_started(started)
 
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
 		app.effects_audio.show_effect_events(result.effect_events, app.moving_sprites.audible_sound_events(result.sound_events), true)

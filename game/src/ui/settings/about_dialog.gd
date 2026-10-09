@@ -57,6 +57,7 @@ func _update_animation(restart := true) -> void:
 func _build_licenses() -> void:
 	_add_license("OpenSC2K — MIT", FileAccess.get_file_as_string("res://assets/licenses/OpenSC2K-MIT.txt"))
 	_add_license("sc2kfix — MIT", FileAccess.get_file_as_string("res://assets/licenses/sc2kfix-MIT.txt"))
+	_add_license("Weather recordings — CC0", FileAccess.get_file_as_string("res://assets/licenses/Weather-Audio-CC0.txt"))
 	_add_license("Godot Engine — MIT", Engine.get_license_text())
 	var engine_notices := "Godot Engine third-party components\n\n"
 	for component in Engine.get_copyright_info():

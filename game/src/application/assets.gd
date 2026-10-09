@@ -102,6 +102,7 @@ func initialize_runtime() -> void:
 	app.asset_state.base_small_medium_sprites = original_assets.small_medium_sprites
 	_load_startup_hd_pack()
 	use_default_sprites()
+	app.visual_environment.reload_brightmaps()
 	app.camera_input.refresh_child_tool_icons()
 
 	app.interface.show_main_menu()
@@ -289,6 +290,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 
 	app.static_render.invalidate_rendered_city()
 	app.static_render.update_palette_cycle_texture()
+	app.visual_environment.reload_brightmaps()
 	app.city_toolbar.replace_artwork(assets.toolbar_art)
 	app.camera_input.refresh_child_tool_icons()
 	app.main_overlays.about_dialog.set_assets(assets)
@@ -314,7 +316,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.main_menu.city_background.replace_graphics(app.asset_state.palette, app.asset_state.large_sprites)
 
 	if app.main_menu.visible:
-		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
+		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites, app.preferences.visual_enhancements)
 
 	app.map_render.refresh_map(false)
 
@@ -405,6 +407,7 @@ func _reload_sprites() -> void:
 	else:
 		app.scurk_workspace.combine_tile_sets(app.asset_state.active_scurk_tile_sets)
 
+	app.visual_environment.reload_brightmaps(false)
 	app.static_render.invalidate_rendered_city()
 	app.main_menu.city_background.replace_graphics(app.asset_state.palette, app.asset_state.large_sprites)
 
@@ -478,7 +481,7 @@ func apply_data_pack(pack: DataPack) -> void:
 	app.main_overlays.about_dialog.set_assets(app.asset_state.asset_source.assets)
 
 	if app.main_menu.visible and app.asset_state.assets_ready:
-		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
+		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites, app.preferences.visual_enhancements)
 
 
 # imported packs that need a new import because they are missing or out of date

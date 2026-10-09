@@ -10,6 +10,7 @@ pub mod floating;
 pub mod ids;
 pub mod index;
 pub mod minimap;
+pub mod nature;
 pub mod painter;
 pub mod raster;
 pub mod rect_index;
@@ -17,6 +18,8 @@ pub mod region;
 pub mod region_plan;
 pub mod sprites;
 pub mod surface_grid;
+pub mod visual_auxiliary;
+pub mod water_reflections;
 
 use sprites::Sprite;
 use std::collections::HashMap;
@@ -230,6 +233,11 @@ pub struct Config {
     /// Draw the animated fire, flood and radiation markers as tile sprites.
     /// Previews use this; the city view draws them as moving sprites.
     pub specials: bool,
+    /// Cosmetic cars replace the classic patterns on supported road tiles.
+    pub individual_traffic: bool,
+    /// Display-only natural terrain and woodland variants.
+    pub natural_forests: bool,
+    pub natural_terrain: bool,
     /// The animation phase of special overlays.
     pub phase: i32,
     /// The optional HD effects: the bits of `effects`.
@@ -302,6 +310,8 @@ pub struct Draw {
     pub floating: i32,
     /// The grid lines of HD ground. Refer to `surface_grid`.
     pub surface_grid: u16,
+    /// Only building emission is disabled; its silhouette and seasonal art remain.
+    pub emission_disabled: bool,
 }
 
 impl Draw {
@@ -322,6 +332,7 @@ impl Draw {
             shadow: false,
             floating: -1,
             surface_grid: 0,
+            emission_disabled: false,
         }
     }
 }
@@ -368,7 +379,8 @@ impl Builder {
         for (key, sprite) in &images {
             let id = (*key / 2) as i32;
 
-            if *key & 1 == 0 && id >= config.base() && id < config.base() + 500 {
+            let original = nature::original(id);
+            if *key & 1 == 0 && original >= config.base() && original < config.base() + 500 {
                 sprite_limit = (sprite_limit.0.max(sprite.w), sprite_limit.1.max(sprite.h));
                 artwork.push(*key);
             }

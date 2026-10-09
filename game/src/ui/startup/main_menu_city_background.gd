@@ -22,47 +22,40 @@ var refresh_elapsed := 0.0
 var render_thread: Thread
 var demo_palette: Sc2Palette
 var demo_sprites: Sc2SpriteArchive
-var static_layer: Sprite2D
 var cycle_texture: ImageTexture
+var palette_clock := PaletteAnimationClock.new()
 var static_image: Image
-var occlusion_commands: Array[CityStaticCommand] = []
-var occlusion_grid: NativeRectIndex
-var sprite_cache := {}
-var dynamic_visuals: Array[CityDynamicVisual] = []
 var animation_elapsed := 0.0
 var animation_revision := 0
 var city_name_label: Label
 var _discard_render := false
-# HD art: a layer over the indexed image that shows the window of the camera
-# shot, and the moving sprites by sprite ID, flip and density
-var artwork_layer: Sprite2D
 var artwork_windows: Dictionary[int, ArtworkWindow] = {}
-var artwork_sprites: Dictionary[Vector3i, Image] = {}
+var presentation: MainMenuPresentation
+var visual_options := VisualEnhancementOptions.normalize({})
+var launch_conditions: Dictionary
+
+
+func _init() -> void:
+	var random := RandomNumberGenerator.new()
+	random.randomize()
+	launch_conditions = random_conditions(random)
+
+
+static func random_conditions(random: RandomNumberGenerator) -> Dictionary:
+	var season := random.randi_range(0, 3)
+	var weather := [CityVisualWeather.Kind.SUNNY, CityVisualWeather.Kind.LIGHT_RAIN,
+		CityVisualWeather.Kind.HEAVY_RAIN, CityVisualWeather.Kind.RAIN_STORM, CityVisualWeather.Kind.DRY_STORM]
+	if season == 3:
+		weather.append_array([CityVisualWeather.Kind.LIGHT_SNOW, CityVisualWeather.Kind.HEAVY_SNOW])
+	return {"day_mode": 1, "day_hour": random.randf_range(0.0, 23.99),
+		"season_mode": 2, "season_fixed": season,
+		"weather_mode": 2, "weather_fixed": weather[random.randi_range(0, weather.size() - 1)]}
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	static_layer = Sprite2D.new()
-	static_layer.centered = false
-	static_layer.show_behind_parent = true
-	var shader_material := ShaderMaterial.new()
-	shader_material.shader = CityMapControl.PALETTE_CYCLE_SHADER
-	shader_material.set_shader_parameter("palette_lookup_all", true)
-	shader_material.set_shader_parameter("palette_cycle_enabled", true)
-	static_layer.material = shader_material
-	add_child(static_layer)
-	artwork_layer = Sprite2D.new()
-	artwork_layer.centered = false
-	artwork_layer.show_behind_parent = true
-	artwork_layer.visible = false
-	var artwork_material := ShaderMaterial.new()
-	artwork_material.shader = CityMapControl.PALETTE_CYCLE_SHADER
-	artwork_layer.material = artwork_material
-	# the vertex color selects the filtered full-color path of the shader
-	artwork_layer.self_modulate = CityDynamicSpriteCanvas.ARTWORK_TAG
-	add_child(artwork_layer)
 	city_name_label = Label.new()
 	city_name_label.name = "HighlightedCityName"
 	city_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -90,10 +83,9 @@ func _process(delta: float) -> void:
 		if result.ok and not _discard_render:
 			static_image = result.image
 			demo_texture = ImageTexture.create_from_image(static_image)
-			static_layer.texture = demo_texture
-			occlusion_commands.assign(result.occlusion_commands)
-			occlusion_grid = Renderer.build_occlusion_grid(occlusion_commands, 1)
 			_keep_artwork_windows(result.artwork_windows)
+			if presentation != null:
+				presentation.publish(static_image, demo_texture, result.city, result.occlusion_commands)
 			_refresh_animation()
 
 		_discard_render = false
@@ -113,20 +105,25 @@ func _process(delta: float) -> void:
 	if controller.engine.pending_disaster_type != 0 or controller.engine.active_disaster_type != 0:
 		Cleanup.end_disaster(demo_city, demo_city.document, controller.engine)
 
+	if presentation != null and presentation.needs_render:
+		refresh_elapsed = 10.0
+		presentation.needs_render = false
 	if refresh_elapsed >= 10.0 and render_thread == null:
 		refresh_elapsed = 0.0
 		_start_render()
-	elif render_thread == null and not _artwork_shots().is_empty():
+
+	if render_thread == null and not _artwork_shots().is_empty():
 		_start_render()
 
+	_refresh_palette()
 	if animation_elapsed >= 0.1:
 		animation_elapsed = fmod(animation_elapsed, 0.1)
 		_refresh_animation()
 
 	var camera := _camera()
-	static_layer.position = camera.offset
-	static_layer.scale = Vector2.ONE * float(camera.scale)
 	_place_artwork_layer(camera)
+	if presentation != null:
+		presentation.advance(delta, camera.offset, camera.scale)
 	queue_redraw()
 
 
@@ -134,25 +131,20 @@ func _draw() -> void:
 	if demo_texture == null or demo_city == null:
 		return
 
-	var camera := _camera()
-
-	for visual in dynamic_visuals:
-		draw_texture_rect(
-			visual.texture,
-			Rect2(camera.offset + visual.position * float(camera.scale), visual.size * float(camera.scale)),
-			false,
-		)
-
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.14))
 
 
 func _exit_tree() -> void:
+	if presentation != null:
+		presentation.close()
+		presentation = null
 	if render_thread != null:
 		render_thread.wait_to_finish()
 		render_thread = null
 
 
-func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
+func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive, options: Dictionary = {}) -> void:
+	set_visual_options(options)
 	if demo_city != null:
 		if static_image == null and render_thread == null:
 			_start_render()
@@ -201,6 +193,7 @@ func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteAr
 	Cleanup.end_disaster(demo_city, demo_city.document, engine)
 	controller = GameSpeedController.new(engine)
 	controller.set_speed(GameSpeedController.Speed.TURTLE)
+	presentation = MainMenuPresentation.new(self, demo_city, controller, palette, sprites, visual_options)
 
 	# _process starts the render after it drains a worker from the released city
 	if render_thread == null:
@@ -223,19 +216,12 @@ static func _collect_cities(folder: String, paths: PackedStringArray) -> void:
 
 func _start_render() -> void:
 	var snapshot := CityState.from_document(demo_city.document.duplicate_document())
-	# a periodic render draws the windows of the current and the next shot again
-	var shots := _artwork_shots()
-
-	if (refresh_elapsed == 0.0 or static_image == null) and not demo_sprites.high_resolution.is_empty():
-		shots = _upcoming_shots()
-
 	var windows: Array[ArtworkWindow] = []
-
-	for shot in shots:
-		windows.append(_artwork_window(shot))
-
+	for shot in _upcoming_shots():
+		if not demo_sprites.high_resolution.is_empty():
+			windows.append(_artwork_window(shot))
 	render_thread = Thread.new()
-	var error := render_thread.start(_render.bind(snapshot, demo_palette, demo_sprites, windows), Thread.PRIORITY_LOW)
+	var error := render_thread.start(_render.bind(snapshot, demo_palette, MainMenuPresentation.copy_graphics(presentation.app.asset_state.large_sprites), windows), Thread.PRIORITY_LOW)
 
 	if error != OK:
 		render_thread = null
@@ -248,6 +234,7 @@ static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2Sprite
 	result.ok = rendered.ok
 	result.error = rendered.error
 	result.image = rendered.image
+	result.city = snapshot
 	result.occlusion_commands = Renderer.static_occlusion_commands(snapshot, sprites)
 
 	if windows.is_empty() or not result.ok:
@@ -331,22 +318,23 @@ func _place_artwork_layer(camera: CameraFrame) -> void:
 	var view := Rect2(-camera.offset / camera.scale, size / camera.scale).intersection(map)
 
 	if window == null or not Rect2(window.bounds).grow(1.0).encloses(view):
-		artwork_layer.visible = false
+		if presentation != null:
+			presentation.set_artwork_window(null)
 
 		return
 
-	artwork_layer.visible = true
-	artwork_layer.texture = window.texture
-	artwork_layer.position = camera.offset + Vector2(window.bounds.position) * camera.scale
-	artwork_layer.scale = Vector2.ONE * camera.scale / window.factor
+	if presentation != null:
+		presentation.set_artwork_window(window)
 
 
 func _camera() -> CameraFrame:
 	# hold each framing for 24 seconds. integral scales preserve source pixels;
 	# fractional continuous zoom makes nearest-neighbor artwork shimmer
 	var shot := int(elapsed / SHOT_SECONDS) % SHOT_CENTERS.size()
-	var travel := fmod(elapsed, SHOT_SECONDS) / SHOT_SECONDS * 2.0 - 1.0
-	var center := _shot_center(shot) + SHOT_TRAVEL * travel
+	var point: Vector2i = SHOT_CENTERS[shot]
+	var center := Renderer.tile_polygon(demo_city, point.x, point.y)[2]
+	var travel := fmod(elapsed, 24.0) - 12.0
+	center += Vector2(travel * 2.0, travel)
 	var pixel_scale := maxf(0.001, get_viewport_transform().get_scale().x)
 	var zoom_factor := camera_zoom(shot, pixel_scale)
 	var offset := ((size / 2.0 - center * zoom_factor) * pixel_scale).round() / pixel_scale
@@ -363,152 +351,42 @@ func _refresh_animation() -> void:
 		return
 
 	animation_revision += 1
-	var ticks := int(elapsed * 5.0)
-	var colors := Sc2Palette.new()
+	_refresh_palette()
 
-	for index in demo_palette.animation_index_map(ticks):
-		colors.colors.append(demo_palette.colors[index])
-
-	var cycle_image := demo_palette.animation_image(ticks)
-
-	if cycle_texture == null:
-		cycle_texture = ImageTexture.create_from_image(cycle_image)
-	else:
-		cycle_texture.update(cycle_image)
-
-	static_layer.material.set_shader_parameter("animated_palette", cycle_texture)
-	dynamic_visuals.clear()
-
-	for command in Renderer.dynamic_draw_commands(demo_city, demo_sprites, Renderer.VIEW_LARGE, int(elapsed * 10.0)):
-		var sprite = demo_sprites.find_sprite(int(command.sprite_id))
-
-		if sprite == null:
-			continue
-
-		var rendered := sprite.create_image(colors)
-
-		if not rendered.ok:
-			continue
-
-		var image: Image = rendered.image
-
-		if command.flip:
-			image.flip_x()
-
-		var sprite_position := Vector2i(command.position)
-		var occluder: Image = null
-
-		if command.shadow:
-			image = NativeSpriteCompositor.palette_shadow(image, static_image, sprite_position, colors.to_rgba_bytes())
-
-		if command.static_occlusion:
-			occluder = _occluder(image, sprite_position, int(command.depth_order), int(command.floating_altitude))
-			image = NativeSpriteCompositor.occlude(image, occluder, null, Vector2i.ZERO, PackedInt32Array()).image
-
-		var texture: Texture2D = ImageTexture.create_from_image(image)
-
-		if not command.shadow and artwork_layer.visible and demo_sprites.high_resolution.has(int(command.sprite_id)):
-			texture = _artwork_sprite(int(command.sprite_id), bool(command.flip), image.get_size(), occluder)
-
-		dynamic_visuals.append(CityDynamicVisual.new(texture, Vector2(sprite_position), Vector2(image.get_size())))
+	if presentation != null:
+		presentation.animate(cycle_texture)
 
 
-# The HD art of a moving sprite at the density of the HD layer, with the pixels
-# that `occluder` covers removed. It draws with filtering.
-func _artwork_sprite(sprite_id: int, flip: bool, native_size: Vector2i, occluder: Image) -> Texture2D:
-	var factor := 1
-	var window: ArtworkWindow = artwork_windows.get(int(elapsed / SHOT_SECONDS) % SHOT_CENTERS.size())
-
-	if window != null:
-		factor = window.factor
-
-	var key := Vector3i(sprite_id, int(flip), factor)
-
-	if not artwork_sprites.has(key):
-		var art := HdSprite.scaled(demo_sprites.high_resolution[sprite_id].image, native_size * factor)
-
-		if flip:
-			art.flip_x()
-
-		artwork_sprites[key] = art
-
-	var image: Image = artwork_sprites[key]
-
-	if occluder != null:
-		var mask: Image = occluder.duplicate()
-		mask.resize(image.get_width(), image.get_height(), Image.INTERPOLATE_NEAREST)
-		image = NativeSpriteCompositor.occlude(image, mask, null, Vector2i.ZERO, PackedInt32Array()).image
-
-	var texture := CanvasTexture.new()
-	texture.diffuse_texture = ImageTexture.create_from_image(image)
-	texture.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-
-	return texture
+func _refresh_palette() -> void:
+	if demo_palette == null or static_image == null:
+		return
+	var phase := elapsed * 5.0
+	palette_clock.cycle_ticks = int(phase)
+	palette_clock.update_textures(demo_palette, fposmod(phase, 1.0) if visual_options.disaster_blending else 0.0, false)
+	cycle_texture = palette_clock.cycle_texture
 
 
-# ships and sailboats pass `floating_altitude`; see IsometricFloatingOcclusion
-# The later static silhouettes that cover a moving sprite at `sprite_position`.
-func _occluder(image: Image, sprite_position: Vector2i, order: int, floating_altitude := -1) -> Image:
-	var bounds := Rect2i(sprite_position, image.get_size())
-	# later foreground silhouettes, combined in the sprite's frame
-	var occluder := Image.create(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8)
-	occluder.fill(Color.TRANSPARENT)
-	var floating := floating_altitude >= 0
-	var waterline := IsometricFloatingOcclusion.waterline(image) if floating else PackedInt32Array()
+func set_visual_options(options: Dictionary) -> void:
+	visual_options = VisualEnhancementOptions.normalize(options)
+	# Keep one menu atmosphere for this launch, including menu re-entry and asset
+	# reloads. Only this private copy overrides the player's time/weather sources.
+	visual_options.merge(launch_conditions, true)
+	if presentation != null:
+		presentation.set_options(visual_options)
 
-	for index in Renderer.occlusion_candidate_indices(occlusion_grid, bounds):
-		var command := occlusion_commands[index]
 
-		if floating:
-			if IsometricFloatingOcclusion.is_water_surface(int(command.sprite_id)):
-				continue
-		elif int(command.depth_order) <= order:
-			continue
-
-		var origin := Vector2i(command.position)
-		var overlap := bounds.intersection(Rect2i(origin, command.size))
-
-		if overlap.get_area() == 0:
-			continue
-
-		var key := Vector2i(int(command.sprite_id), int(command.flip))
-
-		if not sprite_cache.has(key):
-			var sprite = demo_sprites.find_sprite(key.x)
-
-			if sprite == null:
-				continue
-
-			var rendered := sprite.create_image(demo_palette)
-
-			if not rendered.ok:
-				continue
-
-			var rendered_mask: Image = rendered.image
-
-			if command.flip:
-				rendered_mask.flip_x()
-
-			sprite_cache[key] = rendered_mask
-
-		var mask: Image = sprite_cache[key]
-
-		if floating:
-			var hidden := IsometricFloatingOcclusion.hidden_columns(waterline, Vector2(sprite_position), 1.0,
-				Renderer.view_configuration(Renderer.VIEW_LARGE), floating_altitude, demo_city.map_size,
-				IsometricFloatingOcclusion.depth_tile(int(command.depth_order), demo_city.map_size))
-			IsometricFloatingOcclusion.blend_hidden_columns(occluder, mask, Rect2i(overlap.position - origin, overlap.size),
-				overlap.position - sprite_position, hidden)
-		else:
-			occluder.blend_rect(mask, Rect2i(overlap.position - origin, overlap.size), overlap.position - sprite_position)
-
-	return occluder
+func reload_visual_assets() -> void:
+	if presentation != null:
+		presentation.reload_visual_assets()
 
 
 # Release the private city, its simulation, and its render buffers while
 # playing. The next menu visit loads a new city. An in-flight render is drained
 # by _process; hiding the menu must not wait for a worker or upload its image.
 func release_city() -> void:
+	if presentation != null:
+		presentation.close()
+		presentation = null
 	_discard_render = render_thread != null
 	demo_city = null
 	controller = null
@@ -524,27 +402,12 @@ func release_city() -> void:
 
 func _clear_render_data() -> void:
 	demo_texture = null
-	static_layer.texture = null
 	static_image = null
 	cycle_texture = null
-	static_layer.material.set_shader_parameter("animated_palette", null)
-	occlusion_commands.clear()
-	occlusion_grid = null
-	sprite_cache.clear()
-	dynamic_visuals.clear()
+	palette_clock = PaletteAnimationClock.new()
 	artwork_windows.clear()
-	artwork_sprites.clear()
-	artwork_layer.texture = null
-	artwork_layer.visible = false
 	RenderingServer.canvas_item_clear(get_canvas_item())
 	queue_redraw()
-
-
-# the view point at the middle of a shot
-func _shot_center(shot: int) -> Vector2:
-	var point: Vector2i = SHOT_CENTERS[shot]
-
-	return Renderer.tile_polygon(demo_city, point.x, point.y)[2]
 
 
 static func camera_zoom(shot: int, pixel_scale: float) -> float:
@@ -568,7 +431,16 @@ func replace_graphics(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
 
 	demo_palette = palette
 	demo_sprites = sprites
+	if presentation != null:
+		presentation.close()
+	presentation = MainMenuPresentation.new(self, demo_city, controller, palette, sprites, visual_options)
 	_start_render()
+
+
+func _shot_center(shot: int) -> Vector2:
+	var point: Vector2i = SHOT_CENTERS[shot]
+
+	return Renderer.tile_polygon(demo_city, point.x, point.y)[2]
 
 
 class CameraFrame extends RefCounted:
@@ -577,6 +449,7 @@ class CameraFrame extends RefCounted:
 
 
 class RenderResult extends AssetImageResult:
+	var city: CityState
 	var occlusion_commands: Array[CityStaticCommand] = []
 	var artwork_windows: Array[ArtworkWindow] = []
 

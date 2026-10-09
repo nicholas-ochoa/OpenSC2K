@@ -163,6 +163,11 @@ func _check_gpu_pixels(result: CityGpuRegionResult, expected: Image) -> void:
 		instance.texture = ImageTexture.create_from_image(result.atlas_image)
 
 	instance.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# Vertex colors now carry per-building lighting metadata, so decode them
+	# through the production shader even for this ungraded indexed comparison.
+	var material := ShaderMaterial.new()
+	material.shader = CityMapControl.PALETTE_CYCLE_SHADER
+	instance.material = material
 	viewport.add_child(instance)
 	await RenderingServer.frame_post_draw
 	var actual := viewport.get_texture().get_image()

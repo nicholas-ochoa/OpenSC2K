@@ -30,7 +30,8 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 
 	if not rect.has_area():
 		cache._changed = cache._changed or not cache.entries.is_empty()
-		cache.entries.clear()
+		if not cache.resident:
+			cache.entries.clear()
 
 		return
 
@@ -57,6 +58,12 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 	cache.wanted.append_array(cache.visible)
 	cache.wanted.append_array(nearby.slice(0, CityRegionCache.GPU_PREFETCH_LIMIT if cache.gpu_enabled else CityRegionCache.OFFSCREEN_LIMIT))
 	_index_wanted(cache)
+	if cache.resident:
+		# Retained offscreen regions also receive edits, before the camera returns.
+		for key in cache.entries:
+			if not cache.wanted_keys.has(key):
+				cache.wanted.append(key)
+				cache.wanted_keys[key] = true
 
 	if cache.gpu_enabled:
 		for key in cache.visible:
@@ -64,7 +71,7 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 				cache.entries[key].last_visible = cache._viewport_serial
 
 		cache._trim_retained_regions()
-	else:
+	elif not cache.resident:
 		for key in cache.entries.keys():
 			if not cache.wanted_keys.has(key):
 				cache.entries.erase(key)
@@ -79,6 +86,8 @@ static func _index_wanted(cache: CityRegionCache) -> void:
 
 
 static func _trim_retained_regions(cache: CityRegionCache) -> void:
+	if cache.resident:
+		return
 	var excess := cache.entries.size() - cache.visible.size() - cache.offscreen_limit()
 
 	if excess <= 0:
@@ -138,8 +147,12 @@ static func _disable_gpu(cache: CityRegionCache, error: String) -> void:
 
 
 static func _tick_gpu(cache: CityRegionCache) -> bool:
+	if cache.gpu_workers.is_empty() and not cache._gpu_has_work:
+		var changed := cache._changed
+		cache._changed = false
+		return changed
 	if cache.gpu_workers.is_empty():
-		for index in mini(CityRegionCache.GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
+		for index in mini(1 if cache.background_preparation else CityRegionCache.GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
 			cache.gpu_workers.append(CityRegionCache.RegionWorker.new())
 
 	for worker in cache.gpu_workers:
@@ -153,7 +166,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		if not current:
 			worker.cancel()
 
-		var regions := worker.take_regions()
+		var regions := worker.take_regions(4 if cache.background_preparation and current else 0)
 
 		if current:
 			if not regions.is_empty() and worker.generation == cache.generation and not cache._prepared:
@@ -181,6 +194,20 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 					worker.atlas_revision = int(region.atlas_revision)
 
+				if region.emission_image != null:
+					if worker.emission == null or worker.emission.get_size() != Vector2(region.emission_image.get_size()):
+						worker.emission = ImageTexture.create_from_image(region.emission_image)
+					else:
+						worker.emission.update(region.emission_image)
+				elif region.atlas_image != null:
+					worker.emission = null
+				if region.season_image != null:
+					if worker.seasons == null or worker.seasons.get_size() != Vector2(region.season_image.get_size()):
+						worker.seasons = ImageTexture.create_from_image(region.season_image)
+					else:
+						worker.seasons.update(region.season_image)
+				elif region.atlas_image != null:
+					worker.seasons = null
 				_publish_region(cache, worker, region)
 
 			if pending != null:
@@ -191,7 +218,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		if not regions.is_empty():
 			cache._gpu_has_work = true
 
-		if running:
+		if running or worker.has_regions():
 			continue
 
 		var result: CityGpuRegionBatch.Result = worker.task.finish()
@@ -275,7 +302,8 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		if worker.task != null:
 			# Top up a current stream. A stale stream finishes its queue, and
 			# the worker then starts again with the new snapshot.
-			var room := CityGpuRegionBatch.STREAM_QUEUE - worker.queued()
+			var room := (8 - worker.keys.size() if cache.background_preparation
+				else CityGpuRegionBatch.STREAM_QUEUE - worker.queued())
 
 			if not _streams_current(cache, worker) or room <= 0:
 				continue
@@ -295,7 +323,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 			continue
 
-		var keys := _claim_gpu_keys(cache, queue, active, worker_index, CityGpuRegionBatch.STREAM_QUEUE)
+		var keys := _claim_gpu_keys(cache, queue, active, worker_index, 8 if cache.background_preparation else CityGpuRegionBatch.STREAM_QUEUE)
 
 		if keys.is_empty():
 			continue
@@ -360,11 +388,17 @@ static func _publish_region(cache: CityRegionCache, worker: CityRegionCache.Regi
 
 	region.mesh = mesh
 	region.atlas_texture = worker.atlas
+	region.emission_texture = worker.emission
+	region.season_texture = worker.seasons
+	region.season_image = null
+	region.emission_image = null
 	region.generation = worker.generation
 	region.last_visible = (cache._viewport_serial if cache.visible_keys.has(key)
 		else (cache.entries[key].last_visible if cache.entries.has(key) else 0))
 	region.gpu_arrays = []
 	region.atlas_image = null
+	# Keep prepared water images in CPU memory. Only the visible water layer
+	# uploads them; whole-city banks must not fill VRAM with hidden textures.
 	cache.publish_changes(cache.entries.get(key), region)
 	cache.entries[key] = region
 

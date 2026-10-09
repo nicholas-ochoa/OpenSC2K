@@ -124,6 +124,16 @@ func _run() -> void:
 	var initial_colors := palette.animation_image(dialog.neighborhood_view.ticks).get_data()
 	dialog.neighborhood_view._process(0.2)
 	assert(dialog.neighborhood_view.ticks == 1)
+	dialog.neighborhood_view.blending_enabled = true
+	dialog.neighborhood_view._process(0.1)
+	# The headless dummy renderer does not reflect texture updates in get_image().
+	var preview_colors: Image = dialog.neighborhood_view.palette_clock._blended
+	var preview_a := palette.animation_image(1)
+	var preview_b := palette.animation_image(2)
+	for index in [171, 180, 195, 200, 224]:
+		var expected := preview_a.get_pixel(index, 0).lerp(preview_b.get_pixel(index, 0), 0.5)
+		var actual := preview_colors.get_pixel(index, 0)
+		assert(abs(actual.r8 - expected.r8) <= 1 and abs(actual.g8 - expected.g8) <= 1 and abs(actual.b8 - expected.b8) <= 1, "Preview index %d: actual %s expected %s phase %f tick %d" % [index, actual, expected, dialog.neighborhood_view.palette_clock._fraction, dialog.neighborhood_view.ticks])
 	assert(palette.animation_image(dialog.neighborhood_view.ticks).get_data() != initial_colors)
 	assert(indexed_texture.get_image().get_data() == animated_image.get_data(), "Animation changed palette indices or highlight alpha")
 	dialog.hide()

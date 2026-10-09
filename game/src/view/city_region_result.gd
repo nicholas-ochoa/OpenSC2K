@@ -3,6 +3,7 @@ extends AssetImageResult
 # a rendered region and its cache publication state. workers own each result
 
 var bounds := Rect2i()
+var water: WaterReflectionRegion
 var occlusion_commands: Array[CityStaticCommand] = []
 var occlusion_grid: NativeRectIndex
 # A positive screen scale leaves `occlusion_grid` to the first query. Most
@@ -13,6 +14,10 @@ var usec := 0
 var key := Vector2i.ZERO
 var generation := 0
 var last_visible := 0
+var season_image: Image
+var season_texture: ImageTexture
+var emission_image: Image
+var emission_texture: ImageTexture
 var texture: ImageTexture
 # the region with HD art, at CityRegionRenderer.ARTWORK_FACTOR pixels for each
 # view pixel, or null. `image` keeps the indexed pixels for masks and shadows

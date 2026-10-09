@@ -20,6 +20,7 @@ func _run() -> void:
 	main.interface.hide_main_menu()
 	main.frame.select_speed(GameSpeed.Speed.PAUSED)
 	await process_frame
+	await preload("res://tests/support/app_fixture.gd").wait_for_visuals(main)
 	assert(main.camera_input.camera_keys_allowed(), "The city view accepts map keys")
 
 	_test_speed_keys()

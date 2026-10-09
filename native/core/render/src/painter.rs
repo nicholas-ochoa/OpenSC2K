@@ -117,6 +117,54 @@ fn wireframe(t: u8) -> i32 {
 }
 
 impl Builder {
+    /// Uncovered terrain for coastal distance queries, even beneath developed
+    /// lots. Buildings and their cached draw bounds cannot hide the shoreline.
+    pub(super) fn coastal_terrain(&mut self, bounds: Rect) -> Result<Vec<Draw>, String> {
+        let c = self.config;
+        let origin = c.side() + self.city.edge * c.hw();
+        let first = ((bounds.y - c.top() - c.height()).div_euclid(c.hh()) - 2).max(0);
+        let last = ((bounds.y + bounds.h - c.top() + 31 * c.step()).div_euclid(c.hh()) + 4).min(2 * (self.city.edge - 1));
+        let diff_first = (bounds.x - origin - 2 * c.hw()).div_euclid(c.hw());
+        let diff_last = (bounds.x + bounds.w - origin).div_euclid(c.hw()) + 1;
+        let mut out = Vec::new();
+        for diagonal in first..=last {
+            let first_y = 0.max(diagonal - self.city.edge + 1).max((diagonal - diff_last + 1).div_euclid(2));
+            let last_y = (self.city.edge - 1).min(diagonal).min((diagonal - diff_first).div_euclid(2));
+            for y in first_y..=last_y {
+                let x = diagonal - y;
+                let i = self.city.index(x, y);
+                let t = self.city.surface(x, y);
+                let offset = terrain_sprite(t, self.city.wet(i));
+                if offset == WATER_SIDE_SPRITE {
+                    continue;
+                }
+                let altitude = if t >= terrain::DEEP_WATER_FIRST {
+                    self.city.water(i)
+                } else {
+                    self.city.land(i)
+                };
+                let baseline = c.top() + diagonal * c.hh() + c.height() - altitude * c.step();
+                let sx = origin + (x - y) * c.hw();
+                // Avoid requiring artwork for candidates outside the band.
+                if !Rect::new(sx, baseline - 4 * c.hh() - c.step(), 2 * c.hw(), 4 * c.hh() + c.step())
+                    .clip(bounds)
+                    .area()
+                {
+                    continue;
+                }
+                let mut tile = Vec::new();
+                self.add(&mut tile, c.base() + offset, false, sx, baseline)?;
+                for mut draw in tile {
+                    draw.depth = i64::from(diagonal * self.city.edge + y);
+                    if draw.rect.clip(bounds).area() {
+                        out.push(draw);
+                    }
+                }
+            }
+        }
+        Ok(out)
+    }
+
     fn add(&mut self, draws: &mut Vec<Draw>, id: i32, flip: bool, x: i32, baseline: i32) -> Result<u64, String> {
         let key = self.sprites.get(id, flip)?;
         let sprite = &self.sprites.images[&key];
@@ -170,7 +218,7 @@ impl Builder {
 
         let t = self.city.surface(x, y);
         let b = self.city.buildings[i];
-        let sprite = c.base() + i32::from(b);
+        let sprite = self.forest_sprite(x, y, c.base() + i32::from(b));
         let sx = c.side() + (self.city.edge + x - y) * c.hw();
         let flat = c.top() + (x + y) * c.hh() + c.height();
         let base = flat
@@ -196,7 +244,7 @@ impl Builder {
 
         if !developed && !composite {
             let ground = self.ground(i, t);
-            self.add(&mut draws, c.base() + ground, false, sx, base)?;
+            self.add(&mut draws, self.nature_ground(c.base() + ground), false, sx, base)?;
             let draw = draws.last_mut().expect("the ground draw was added");
 
             if SHORE_SPRITES.iter().any(|range| range.contains(&ground)) {
@@ -229,7 +277,8 @@ impl Builder {
             }
 
             // An odd compass rotation mirrors buildings, not networks.
-            let flip = (self.city.flags[i] & flags::FLIPPED != 0) ^ (developed && self.city.rotation & 1 != 0);
+            let flip =
+                sprite < crate::nature::FIRST && ((self.city.flags[i] & flags::FLIPPED != 0) ^ (developed && self.city.rotation & 1 != 0));
             let image = self.sprites.get(sprite, flip)?;
             let width = self.sprites.images[&image].w;
             let offset = if composite {
@@ -244,6 +293,7 @@ impl Builder {
 
             let baseline = flat - self.city.object(i) * c.step() + offset;
             self.add(&mut draws, sprite, flip, sx, baseline)?;
+            draws.last_mut().expect("building draw was added").emission_disabled = developed && self.city.flags[i] & flags::POWERED == 0;
 
             if let Some((id, traffic_flip)) = self.traffic_sprite(x, y, b) {
                 let traffic = self.sprites.get(id, traffic_flip)?;
@@ -341,6 +391,14 @@ impl Builder {
     }
 
     fn traffic_sprite(&self, x: i32, y: i32, b: u8) -> Option<(i32, bool)> {
+        if self.config.individual_traffic
+            && ((tiles::ROAD_STRAIGHT_1..=tiles::ROAD_CROSSROADS).contains(&b)
+                || (tiles::TUNNEL_ENTRANCE_1..=tiles::TUNNEL_ENTRANCE_2).contains(&b)
+                || (tiles::ROAD_POWER_CROSSING_1..=tiles::RAISING_BRIDGE_CLOSED).contains(&b)
+                || (tiles::HIGHWAY_ONRAMP_1..=tiles::REINFORCED_HIGHWAY_BRIDGE).contains(&b))
+        {
+            return None;
+        }
         let mut variant = *TRAFFIC.get(usize::from(b.checked_sub(tiles::ROAD_STRAIGHT_1)?))?;
 
         if variant == 0 {

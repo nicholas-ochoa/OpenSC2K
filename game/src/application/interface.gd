@@ -94,6 +94,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_dialogs = CityDialogsView.new(original_assets)
 	app.city_dialogs.name = "CityDialogs"
 	app.add_child(app.city_dialogs)
+	app.city_dialogs.visual_preparation_progress.avoid_footer(app.city_status_bar)
 
 	app.city_dialogs.city_open_dialog.file_selected.connect(app.city_files.load_city)
 	app.city_dialogs.city_save_dialog.file_selected.connect(app.city_files.on_save_path_selected)
@@ -178,6 +179,8 @@ func _build_main_menu() -> void:
 
 	app.main_overlays.settings_dialog.button_clicked.connect(play_toolbar_click)
 	app.main_overlays.settings_dialog.settings_changed.connect(app.settings.apply_settings)
+	app.main_overlays.settings_dialog.brightmaps_reload_requested.connect(app.visual_environment.reload_brightmaps)
+	app.main_overlays.settings_dialog.brightmaps_export_requested.connect(app.visual_environment.export_brightmaps)
 	app.main_overlays.settings_dialog.confirmed.connect(play_toolbar_click)
 	app.main_overlays.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
 	app.main_overlays.settings_dialog.update_check_requested.connect(app.updates.check_now)
@@ -230,7 +233,7 @@ func show_main_menu() -> void:
 	app.main_menu.set_assets_ready(app.asset_state.assets_ready)
 
 	if app.asset_state.assets_ready:
-		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
+		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites, app.preferences.visual_enhancements)
 
 	app.effects_audio.stop_sound_loop()
 	app.main_menu.show_menu(app.document_state.city != null)

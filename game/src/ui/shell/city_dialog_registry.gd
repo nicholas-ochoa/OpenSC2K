@@ -44,6 +44,7 @@ var city_rename_dialog: CityRenameDialog
 var tile_set_dialog: FileDialog
 var png_export_dialog: CityPngExportDialog
 var png_export_progress: ProgressOverlay
+var visual_preparation_progress: ProgressOverlay
 var new_city_dialog: NewCityTerrainDialog
 var sign_dialog: CitySignDialog
 var bridge_dialog: BridgeSelectionDialog
@@ -99,6 +100,9 @@ func _create_file_dialogs() -> void:
 	_register(png_export_dialog, "Files", Modality.BLOCKING)
 	png_export_progress = ProgressOverlayView.instantiate()
 	_register(png_export_progress, "Files", Modality.BLOCKING)
+	visual_preparation_progress = ProgressOverlayView.instantiate()
+	_register(visual_preparation_progress, "Files", Modality.MODELESS)
+	visual_preparation_progress.use_bottom_strip()
 
 
 func _create_tool_dialogs() -> void:

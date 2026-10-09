@@ -65,6 +65,9 @@ func _initialize() -> void:
 	assert(request.hd_heights[1029] == road.height + 3 and request.hd_frames[1029] == 3 and request.hd_fps[1029] == 5)
 	assert(CityGpuBuildContext.artwork_request(shown, 500).is_empty())
 
+	var menu_copy := MainMenuPresentation.copy_graphics(shown)
+	assert(menu_copy.high_resolution.keys() == shown.high_resolution.keys(), "Menu copies must preserve HD art")
+	assert(menu_copy != shown)
 	_check_region_quads(shown)
 	_check_export(shown)
 	_check_cpu_region(shown)
