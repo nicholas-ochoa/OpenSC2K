@@ -112,6 +112,20 @@ func _run() -> void:
 	assert(autumn_pine.g > autumn_pine.r, "Evergreen became autumn foliage")
 	assert(autumn_oak.r > autumn_oak.g and autumn_birch.g > autumn_oak.g, "Broadleaf autumn species lost their colors")
 	assert(seasons[3].get_pixel(128, 80).get_luminance() > summer.get_pixel(128, 80).get_luminance(), "Winter ground did not receive snow shading")
+	# Reference pixels captured before the foliage contrast correction. Snow
+	# and autumn broadleaves must retain their approved colors, while spring
+	# receives a smaller lift than summer and autumn conifers stay green.
+	var original_spring := [Color("1e510c"), Color("326b18"), Color("326b18")]
+	var original_winter := [Color("647b6b"), Color("97a1aa"), Color("97a1aa")]
+	for species in 3:
+		var x := species * 64 + 32
+		assert(seasons[1].get_pixel(x, 32).get_luminance() > Color("1d490c").get_luminance() + 0.05)
+		assert(seasons[0].get_pixel(x, 32).get_luminance() > original_spring[species].get_luminance() + 0.02)
+		assert(_color_distance(seasons[3].get_pixel(x, 32), original_winter[species]) < 0.008,
+			"Foliage correction changed the approved winter palette")
+	assert(_color_distance(autumn_oak, Color("794514")) < 0.008)
+	assert(_color_distance(autumn_birch, Color("726021")) < 0.008)
+	assert(autumn_pine.get_luminance() > Color("1c440b").get_luminance() + 0.05)
 	material.set_shader_parameter("environment_enabled", false)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == summer.get_data(), "Seasons off did not restore the nature artwork")
@@ -119,3 +133,7 @@ func _run() -> void:
 	await process_frame
 	print("PASS: native GPU terrain masks, quiet patches, stationary texture, all tree species and terrain in four seasons, field edges and exact off state")
 	quit()
+
+
+func _color_distance(a: Color, b: Color) -> float:
+	return maxf(absf(a.r - b.r), maxf(absf(a.g - b.g), absf(a.b - b.b)))

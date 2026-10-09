@@ -73,6 +73,11 @@ void fragment() {
 		// lookup, which otherwise makes the imported greens unnaturally vivid.
 		float leaf = clamp((COLOR.g - 0.15) / 0.85, 0.0, 1.0);
 		COLOR.rgb = mix(vec3(0.01, 0.10, 0.04), vec3(0.28, 0.58, 0.06), leaf);
+		// With environmental grading off, display the same softened summer
+		// palette. Otherwise season_color retains the original winter shades.
+		if (!environment_enabled) {
+			COLOR.rgb = nature_foliage_color(COLOR.rgb, 0.40);
+		}
 	}
 	if (nature_terrain_enabled && nature_terrain_strength > 0.0 && natural_mask.g > 0.5 && !dark_underground) {
 		// Broad related meadow/dry-soil patches, with narrow pixel-dither
