@@ -647,7 +647,7 @@ func dynamic_sprite_resource(
 	if not indexed.ok:
 		return null
 
-	var image: Image = indexed.image
+	var image := CityTrainArtwork.clean(entry, indexed.image)
 
 	if flip or divisor > 1 or image.get_size() != native_size * texture_factor:
 		image = image.duplicate()
