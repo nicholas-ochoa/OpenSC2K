@@ -1,64 +1,92 @@
-# OpenSC2K
+# OpenSC2K — German Translation
 
-An open-source remake of SimCity 2000, built with Godot.
+OpenSC2K is an open-source remake of SimCity 2000, built with Godot. This fork's
+**`feature/german-translation`** branch adds German text and adapts the interface
+to translated labels. It is based directly on upstream OpenSC2K 0.3.0.
 
-Join our [Discord community](https://discord.gg/k9S6c3AqcX).
+## What this branch adds
 
-[![OpenSC2K main menu over a waterfront city](.github/screenshots/image1-preview.png)](.github/screenshots/image1.png)
+- German menus, settings, tool names, tooltips, city dialogs, budget labels,
+  ordinances and month names.
+- German newspaper templates, original text resources, matched scenario
+  briefings and library text, available from the bundled text catalogs.
+- Terminology and wording from the original German SimCity 2000 and SCURK
+  editions. New OpenSC2K functions use German translations where the original
+  has no corresponding text.
+- Toolbar sizing that accommodates long translated names and the original
+  artwork, plus localized formatted labels and dialog updates.
+
+The catalogs are [de.po](game/assets/localization/de.po) for the interface and
+[de_original.po](game/assets/localization/de_original.po) for original-game text.
+Historical spelling and original newspaper price labels are retained. Displayed
+Pf/DM labels are text; they do not change the city's economy or numeric values.
+
+## Enable German
+
+1. Open **Settings > General > Language**.
+2. Select **Deutsch**. In German, the path is **Einstellungen > Allgemein > Sprache**.
+3. Open the city, newspaper or dialog you want to use. The language preference is
+   local to your installation; cities do not need conversion.
+
+The bundled German text does **not** require a separate German graphics or data
+pack. You still need the supported original game for artwork, sound and music,
+as described below. User-written city names and signs remain as entered.
+
+## Scope and compatibility
+
+This is the standalone translation branch. It does not contain the separate
+[Visual Enhancements](https://github.com/Realm667/OpenSC2K/tree/feature/visual-enhancements-package)
+or [Multiplayer](https://github.com/Realm667/OpenSC2K/tree/feature/multiplayer)
+features, and their additional interface text is outside this branch's scope.
+Simulation rules, balancing and city file formats are unchanged by the translation.
 
 ## Screenshots
 
-Click a thumbnail to view the full screenshot.
+Real application captures. Click an image to open it at full size.
 
-<p>
-  <a href=".github/screenshots/image1.png"><img src=".github/screenshots/thumbnails/image1.png" width="260" alt="Main menu" /></a>
-  <a href=".github/screenshots/image2.png"><img src=".github/screenshots/thumbnails/image2.png" width="260" alt="City and terrain overview" /></a>
-  <a href=".github/screenshots/image3.png"><img src=".github/screenshots/thumbnails/image3.png" width="260" alt="Waterfront city with bridges and a seaport" /></a>
-  <br />
-  <a href=".github/screenshots/image4.png"><img src=".github/screenshots/thumbnails/image4.png" width="260" alt="Water supply data view" /></a>
-  <a href=".github/screenshots/image5.png"><img src=".github/screenshots/thumbnails/image5.png" width="260" alt="Transport routes in the trip query view" /></a>
-  <a href=".github/screenshots/image6.png"><img src=".github/screenshots/thumbnails/image6.png" width="260" alt="SCURK sprite editor" /></a>
-</p>
+**German budget dialog and localized financial labels**
 
-## Run
+[![German budget dialog and localized financial labels](.github/screenshots/german-translation/budget.png)](.github/screenshots/german-translation/budget.png)
 
-Download a package from [GitHub Releases](https://github.com/nicholas-ochoa/OpenSC2K/releases).
-See the [installation instructions](docs/install.md) for Windows, Linux, and macOS.
-The packages include the engine. You do not need to install Godot.
+**German newspaper using the bundled text catalog**
 
-To run from source:
+[![German newspaper using the bundled text catalog](.github/screenshots/german-translation/newspaper.png)](.github/screenshots/german-translation/newspaper.png)
 
-Use Godot 4.7 and provide your own copy of SimCity 2000 Special Edition for Windows 95 (1996).
-The simulation is a native library written in Rust. Install Rust with [rustup](https://rustup.rs).
-`rust-toolchain.toml` selects the Rust version.
+## Run this branch
 
-Before the first run of a fresh checkout, build the native simulation from the repository root:
+Build this branch from source, or use a package explicitly built from it. The
+[upstream releases](https://github.com/nicholas-ochoa/OpenSC2K/releases) are the
+base game; they do not include this fork's branch-specific additions.
+
+Use **Godot 4.7**, Python 3, and Rust installed through [rustup](https://rustup.rs).
+The repository's `rust-toolchain.toml` selects the Rust version. Native audio also
+requires CMake. See [installation](docs/install.md) and
+[native build details](docs/native-simulation.md) for platform requirements.
 
 ```sh
+git clone --branch feature/german-translation --single-branch https://github.com/Realm667/OpenSC2K.git OpenSC2K-german-translation
+cd OpenSC2K-german-translation
 python3 tools/build_native.py
-```
-
-Then run this command:
-
-```sh
 godot --headless --audio-driver Dummy --path game --editor --import
-```
-
-Wait for the command to finish. It builds the local `game/.godot` cache, including the script class index
-and imported resources. Git excludes this generated folder. Without this step, a fresh checkout can show
-a black screen with script errors. Opening `game/project.godot` in the Godot editor also builds the cache.
-
-Then start the game:
-
-```sh
 godot --path game
 ```
 
-At the import prompt, navigate to the location where your copy of SimCity 2000 is stored, then select `SIMCITY.EXE`.
-The app checks the supported version and imports the game files. These files supply the original graphics, text,
-sound, and music.
+On Windows, use `python` if that is the name of your Python executable, and the
+path to your Godot executable if `godot` is not on PATH. Wait for the native build
+and resource import to finish before starting the game. Opening
+`game/project.godot` in the Godot editor also imports resources.
 
-## Extensions
+You must provide your own **SimCity 2000 Special Edition for Windows 95 (1996)**.
+At the import prompt, select that copy's `SIMCITY.EXE`. The importer checks the
+supported version and imports the graphics, text, sound and music locally.
+Original game data is not included in the source checkout.
+
+## Upstream project
+
+Based on [nicholas-ochoa/OpenSC2K](https://github.com/nicholas-ochoa/OpenSC2K).
+Join the upstream [Discord community](https://discord.gg/k9S6c3AqcX).
+
+## Base-game features
 
 - Larger cities: 256, 384, and 512 tiles per side, alongside the original 128
 - Smaller cities: 16, 32 and 64 tiles per side

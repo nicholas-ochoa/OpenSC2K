@@ -143,7 +143,7 @@ func start_import() -> void:
 	if error != OK:
 		_worker = null
 		_set_busy(false)
-		result_text.text = "Cannot start the import: " + error_string(error)
+		result_text.text = tr("Cannot start the import: ") + error_string(error)
 		return
 
 	set_process(true)

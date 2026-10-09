@@ -309,11 +309,12 @@ func run_query_action() -> void:
 
 			app.city_dialogs.analysis_dialog.show_categories(analysis.categories)
 		"library_ruminate":
-			if text_resources.library_texts.is_empty():
+			var display_texts := OriginalTextLocalization.library_texts(text_resources.library_texts)
+			if display_texts.is_empty():
 				app.interface.show_error("The Library text resources are missing or invalid.")
 
 				return
 
 			app.city_dialogs.library_windows.show_texts(
-				text_resources.library_texts, Vector2i(app.get_viewport_rect().size)
+				display_texts, Vector2i(app.get_viewport_rect().size)
 			)

@@ -176,7 +176,7 @@ func _build_actions(tabs: TabContainer) -> void:
 		spin.min_value = field[1]
 		spin.max_value = field[2]
 		spin.value = field[1]
-		spin.tooltip_text = "%s of the date to pause on. Days run from 1 to 25 in each month." % field[0]
+		spin.tooltip_text = tr("%s of the date to pause on. Days run from 1 to 25 in each month.") % field[0]
 		run_to.add_child(spin)
 		_date_fields.append(spin)
 
@@ -483,7 +483,7 @@ func _refresh_metrics() -> void:
 
 	_metrics_tree.refresh(_metrics)
 	var file: Dictionary = _metrics.get("file", {})
-	file_format_label.text = "File: %s" % str(file.get("format", "No city"))
+	file_format_label.text = tr("File: %s") % str(file.get("format", "No city"))
 	file_format_label.tooltip_text = "%s\n%s" % [file.get("format_detail", ""), file.get("source_path", "")]
 	_refresh_record_tab()
 

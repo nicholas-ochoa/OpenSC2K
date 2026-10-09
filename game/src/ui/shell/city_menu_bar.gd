@@ -450,7 +450,7 @@ func set_money(display_money: String) -> void:
 
 
 func set_fps(frames_per_second: int) -> void:
-	fps_label.text = "FPS: %d" % frames_per_second
+	fps_label.text = tr("FPS: %d") % frames_per_second
 
 
 static func disaster_name(disaster_id: int) -> String:

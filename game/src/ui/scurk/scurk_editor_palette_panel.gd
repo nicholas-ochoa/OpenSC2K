@@ -93,8 +93,8 @@ func set_selected_color(index: int) -> void:
 	palette_control.set_selected_color(index)
 	texture_control.set_selected_color(index)
 	selected_color.color = palette.color(index) if palette != null and palette.is_valid() else Color.MAGENTA
-	selected_color_label.text = "Color %d (0x%02X)" % [index, index]
-	selected_color.tooltip_text = "Selected color: %d (0x%02X)" % [index, index]
+	selected_color_label.text = tr("Color %d (0x%02X)") % [index, index]
+	selected_color.tooltip_text = tr("Selected color: %d (0x%02X)") % [index, index]
 	selected_color_label.tooltip_text = selected_color.tooltip_text
 	set_cycle_tick(palette_control.palette_cycle_ticks)
 

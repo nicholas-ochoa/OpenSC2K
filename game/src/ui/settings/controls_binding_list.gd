@@ -99,7 +99,7 @@ func _action_row(action: ControlActions.Action) -> HBoxContainer:
 
 	if action.scope == ControlActions.SCOPE_FIXED:
 		var fixed := Label.new()
-		fixed.text = "%s (fixed)" % (action.fixed_text if not action.fixed_text.is_empty()
+		fixed.text = tr("%s (fixed)") % (action.fixed_text if not action.fixed_text.is_empty()
 			else ControlBinding.from_text(action.defaults[0]).display_text())
 		fixed.theme_type_variation = &"HelpLabel"
 		fixed.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -117,7 +117,7 @@ func _action_row(action: ControlActions.Action) -> HBoxContainer:
 	add.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	add.name = "Add"
 	add.text = "+"
-	add.tooltip_text = "Add a key or mouse button for %s" % action.label
+	add.tooltip_text = tr("Add a key or mouse button for %s") % action.label
 	add.custom_minimum_size = Vector2(28, 28)
 	add.pressed.connect(start_capture.bind(action.id))
 	add.pressed.connect(button_clicked.emit)
@@ -142,7 +142,7 @@ func _chip(id: String, index: int, binding: ControlBinding) -> PanelContainer:
 	remove.name = "Remove"
 	remove.text = "✕"
 	remove.flat = true
-	remove.tooltip_text = "Remove %s" % binding.display_text()
+	remove.tooltip_text = tr("Remove %s") % binding.display_text()
 	remove.pressed.connect(remove_binding.bind(id, index))
 	remove.pressed.connect(button_clicked.emit)
 	content.add_child(remove)

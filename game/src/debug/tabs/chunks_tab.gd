@@ -218,7 +218,7 @@ func _show_page() -> void:
 		for offset in found.offsets as PackedInt32Array:
 			changed[start + offset] = true
 
-	summary.tooltip_text = "%s: %d bytes, %s" % [_selected, data.size(), "no mark" if mark == null else "%s changed since the mark" % (
+	summary.tooltip_text = tr("%s: %d bytes, %s") % [_selected, data.size(), "no mark" if mark == null else "%s changed since the mark" % (
 		_rows[_selected].get_text(4) if _rows.has(_selected) else "?")]
 	summary.text = summary.tooltip_text
 	hex.text = page_text(data, start, end, changed)

@@ -251,7 +251,7 @@ func _update_total(shown: int) -> void:
 
 	if record_limit >= 0:
 		total.text += ". Limit: %d" % record_limit
-		total.tooltip_text = "The city can hold %d records. Record 0 is not used." % record_limit
+		total.tooltip_text = tr("The city can hold %d records. Record 0 is not used.") % record_limit
 
 
 func _sorted_rows() -> PackedInt32Array:

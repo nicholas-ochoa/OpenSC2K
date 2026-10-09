@@ -11,8 +11,12 @@ extends RefCounted
 const DEFAULT := "en"
 # language code -> name in that language. Each code other than English has a
 # translation in res://assets/localization
-const LANGUAGES: Dictionary[String, String] = { "en": "English", "ko": "한국어" }
-const TRANSLATIONS: Dictionary[String, String] = { "ko": "res://assets/localization/ko.po" }
+const LANGUAGES: Dictionary[String, String] = { "en": "English", "de": "Deutsch", "ko": "한국어" }
+const TRANSLATIONS: Dictionary[String, String] = {
+	"de": "res://assets/localization/de.po",
+	"ko": "res://assets/localization/ko.po",
+}
+const ORIGINAL_TRANSLATIONS: Dictionary[String, String] = { "de": "res://assets/localization/de_original.po" }
 const REGULAR_FONT = preload("res://assets/fonts/pretendard/Pretendard-Regular.otf")
 const BOLD_FONT = preload("res://assets/fonts/pretendard/Pretendard-Bold.otf")
 
@@ -32,6 +36,9 @@ static func select(value: String) -> void:
 	if not _loaded:
 		for code: String in TRANSLATIONS:
 			TranslationServer.add_translation(load(TRANSLATIONS[code]) as Translation)
+
+		for code: String in ORIGINAL_TRANSLATIONS:
+			TranslationServer.add_translation(load(ORIGINAL_TRANSLATIONS[code]) as Translation)
 
 		_loaded = true
 

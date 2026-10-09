@@ -21,6 +21,8 @@ const BUDGET_NAMES := BudgetReport.NAMES
 # drawn width of the action icons, independent of the imported artwork size
 const ICON_WIDTH := 20
 
+var budget_labels: Array[Label] = []
+
 var notice_label: Label
 var controls: Array[SpinBox] = []
 var auto_budget_check: CheckBox
@@ -101,7 +103,7 @@ func _ready() -> void:
 		total_labels.append(amount)
 
 	for caption: String in BudgetReport.GROUP_NAMES:
-		history_category.add_item(caption)
+		history_category.add_item(_budget_text(caption))
 
 	_setup_table(bond_table, ["Bond", "Principal", "Interest rate", "Annual interest"])
 
@@ -115,7 +117,7 @@ func _build_rows() -> void:
 	controls.resize(Budget.BUDGET_COUNT)
 
 	for group in BudgetReport.GROUPS.size():
-		rows.add_child(_label(BudgetReport.GROUP_NAMES[group]))
+		rows.add_child(_budget_label(BudgetReport.GROUP_NAMES[group]))
 		var field := VBoxContainer.new()
 		rows.add_child(field)
 		var spin := _spin(22 if group == 0 else 100)
@@ -167,7 +169,7 @@ func _build_rows() -> void:
 				control.hide()
 				field.add_child(control)
 			else:
-				var name_label := _label("    " + BudgetReport.NAMES[id])
+				var name_label := _budget_label(BudgetReport.NAMES[id], "    ")
 				for node: Control in [name_label, control, _label(""), _label(""), _label("")]:
 					rows.add_child(node)
 					detail_nodes.append(node)
@@ -200,11 +202,7 @@ func set_city(value: CityState) -> void:
 
 func open_budget(values: PackedInt32Array, annual: bool, auto_budget: bool) -> void:
 	title = "Annual Budget" if annual else "Budget"
-	$Margin/Content/Heading.text = title if city == null else "%s · %s %d" % [
-		city.display_name(),
-		BudgetReport.MONTHS[city.current_month() - 1],
-		city.current_year(),
-	]
+	_refresh_heading()
 	notice_label.text = "Review last year’s totals." if annual else "Review income, service funding and the year-end forecast."
 	auto_budget_check.button_pressed = auto_budget
 	get_cancel_button().disabled = annual
@@ -494,4 +492,32 @@ func _style_actions() -> void:
 # Service spending shares English names with disasters and population graphs.
 # The "budget" context gives them their own translations. Report IDs stay English.
 func _budget_text(text: String) -> String:
-	return tr(text, "budget") if text in ["Police", "Fire", "Health"] else tr(text)
+	var contextual := tr(text, "budget")
+	return tr(text) if contextual == text else contextual
+
+
+# Keep contextual service names and composed headings current after a language change.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		for label in budget_labels:
+			label.text = str(label.get_meta("budget_prefix")) + _budget_text(str(label.get_meta("budget_source")))
+		for index in history_category.item_count:
+			history_category.set_item_text(index, _budget_text(BudgetReport.GROUP_NAMES[index]))
+		_refresh_heading()
+
+
+func _budget_label(source: String, prefix := "") -> Label:
+	var label := _label(prefix + _budget_text(source))
+	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	label.set_meta("budget_source", source)
+	label.set_meta("budget_prefix", prefix)
+	budget_labels.append(label)
+	return label
+
+
+func _refresh_heading() -> void:
+	$Margin/Content/Heading.text = tr(title) if city == null else tr("{city} · {month} {year}").format({
+		"city": city.display_name(),
+		"month": tr(BudgetReport.MONTHS[city.current_month() - 1]),
+		"year": city.current_year(),
+	})

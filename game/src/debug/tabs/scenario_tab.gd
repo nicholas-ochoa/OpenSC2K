@@ -75,7 +75,7 @@ func refresh(force := false) -> void:
 	var goals := scenario.evaluate_goals(engine.city)
 	var disaster := CityMenuBar.disaster_name(scenario.disaster_type) if scenario.disaster_type > 0 else "None"
 	_scenario_disaster = Vector2i(scenario.disaster_x, scenario.disaster_y) if scenario.disaster_type > 0 else Vector2i(-1, -1)
-	heading.text = "%d months left. Scenario disaster: %s%s. %s" % [scenario.time_limit_months, disaster,
+	heading.text = tr("%d months left. Scenario disaster: %s%s. %s") % [scenario.time_limit_months, disaster,
 		" at %d, %d" % [scenario.disaster_x, scenario.disaster_y] if scenario.disaster_type > 0 else "",
 		("All goals are met." if goals.met else "%d goals are not met." % goals.unmet.size()) if goals.ok else goals.error]
 	var root := table.create_item()

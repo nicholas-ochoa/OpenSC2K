@@ -44,7 +44,7 @@ func refresh(force := false) -> void:
 		return
 
 	var steps := app.debug_tools.steps
-	next_label.text = "Next step: " + steps.next_actions()
+	next_label.text = tr("Next step: ") + steps.next_actions()
 
 	if not force and steps.serial == _shown:
 		return

@@ -84,7 +84,7 @@ const STORY_NAMES := {
 	0x20c: "Train report",
 	0x20f: "Sailboat distress",
 }
-const NewspaperTextGenerator = preload("res://src/simulation/reports/newspaper_text.gd")
+const NewspaperTextGenerator = preload("res://src/ui/shared/localized_newspaper_text.gd")
 const MONTH_NAMES := [
 	"January", "February", "March", "April", "May", "June",
 	"July", "August", "September", "October", "November", "December",
@@ -257,7 +257,7 @@ func _populate_page() -> void:
 		)
 		var headline: String = news_names.get(story_type, tr("City report"))
 
-		if story_seed >= 0 and newspaper_data != null and newspaper_data.is_valid():
+		if story_seed >= 0 and NewspaperTextGenerator.has_data(newspaper_data):
 			var rendered := NewspaperTextGenerator.render_headline(
 				newspaper_data,
 				record,
@@ -276,7 +276,7 @@ func _populate_page() -> void:
 		if slot < 5:
 			var report := _local_report(slot)
 
-			if newspaper_data != null and newspaper_data.is_valid():
+			if NewspaperTextGenerator.has_data(newspaper_data):
 				var article := NewspaperTextGenerator.render_story(
 					newspaper_data,
 					record,
@@ -298,7 +298,7 @@ func _populate_page() -> void:
 			var weather_name: String = RciAftermathPhase.WEATHER_NAMES[clampi(city.weather_type(), 0, 11)]
 			weather_article = tr("Current weather: %s.") % tr(weather_name)
 
-			if newspaper_data != null and newspaper_data.is_valid():
+			if NewspaperTextGenerator.has_data(newspaper_data):
 				var forecast := NewspaperTextGenerator.render_story(
 					newspaper_data, record, story_seed, city.display_name(), city.mayor_name(), teams
 				)
@@ -312,7 +312,7 @@ func _populate_page() -> void:
 			opinion_article = tr("Residents are concerned about %s. The mayor can review current city conditions in the "
 				+ "graphs and city maps.") % tr(subjects[subject])
 
-			if newspaper_data != null and newspaper_data.is_valid():
+			if NewspaperTextGenerator.has_data(newspaper_data):
 				var opinion := NewspaperTextGenerator.render_story(
 					newspaper_data, record, story_seed, city.display_name(), city.mayor_name(), teams
 				)
@@ -353,7 +353,7 @@ func _populate_page() -> void:
 func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[NewspaperContent.ExtraStory]:
 	var stories: Array[NewspaperContent.ExtraStory] = []
 
-	if newspaper_data == null or not newspaper_data.is_valid():
+	if not NewspaperTextGenerator.has_data(newspaper_data):
 		return stories
 
 	# reading the newspaper mustn't spend the city's random numbers
@@ -427,7 +427,7 @@ static func newspaper_titles(city_value: CityState, document_value: Sc2File) -> 
 static func _paper_title(
 	city_value: CityState, paper_index: int, paper: NewsQueue.PaperRecord
 ) -> String:
-	var paper_name := PAPER_NAMES[clampi(int(paper.name), 0, 5)]
+	var paper_name := String(TranslationServer.translate(PAPER_NAMES[clampi(int(paper.name), 0, 5)]))
 
 	if paper_index < int(NewsQueue.PAPER_COUNT / 2):
 		return THE + paper_name
@@ -440,12 +440,10 @@ static func _paper_title(
 func _date_text() -> String:
 	var month_index := clampi(city.current_month() - 1, 0, MONTH_NAMES.size() - 1)
 
-	return "%s%s %d, %d" % [
-		SUNDAY,
-		MONTH_NAMES[month_index],
-		city.current_day(),
-		city.current_year(),
-	]
+	return tr("{weekday}{month} {day}, {year}").format({
+		"weekday": tr(SUNDAY), "month": tr(MONTH_NAMES[month_index]),
+		"day": city.current_day(), "year": city.current_year(),
+	})
 
 
 func _price_text(paper: NewsQueue.PaperRecord) -> String:
@@ -570,3 +568,9 @@ func _on_cancel() -> void:
 		reader.hide()
 	else:
 		hide()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready() and visible and city != null:
+		_populate_page()
+		paper_view.show_content(page, selected_newspaper)

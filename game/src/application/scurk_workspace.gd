@@ -491,7 +491,7 @@ func _apply_scurk_tile_sets(
 		replacements += loaded.overrides.entries.size()
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Loaded tile set %s: %d graphic replacements and %d names." % [
+	app.status_label.text = tr("Loaded tile set %s: %d graphic replacements and %d names.") % [
 		app.asset_state.active_scurk_name, replacements, names.size(),
 	]
 
@@ -573,7 +573,7 @@ func restore_city_tile_sets(document: Sc2File) -> int:
 
 	var status := app.status_label.text
 	_apply_scurk_tile_sets(tile_sets, last_path.get_file(), last_path)
-	app.status_label.text = "%s Loaded %d of %d sc2kfix tile sets." % [status, tile_sets.size(), saved_paths.size()]
+	app.status_label.text = tr("%s Loaded %d of %d sc2kfix tile sets.") % [status, tile_sets.size(), saved_paths.size()]
 
 	return tile_sets.size()
 
