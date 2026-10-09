@@ -20,7 +20,9 @@ static func prepare(archive: Sc2SpriteArchive, palette: Sc2Palette) -> void:
 		var offset := id % 500
 		var trees := offset >= 6 and offset <= 12
 		var power_warning := offset == 386
-		var ground := (offset >= 256 and offset <= 268) or (offset >= 270 and offset <= 283)
+		# Channel and connecting-water sprites contain land banks too. Their
+		# soil mask also carries terrain variation; water pixels stay unmarked.
+		var ground := (offset >= 256 and offset <= 268) or (offset >= 270 and offset <= 283) or (offset >= 285 and offset <= 290)
 		var zone_ground := offset >= 291 and offset <= 299
 		if not trees and not ground and not zone_ground and not power_warning:
 			continue
