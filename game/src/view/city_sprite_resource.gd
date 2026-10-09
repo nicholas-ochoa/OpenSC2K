@@ -3,6 +3,8 @@ extends RefCounted
 # cached indexed sprite pixels and their display texture
 
 var image: Image
+# Optional original hull/wake source when the display uses neutral foam.
+var floating_source: Image
 var native_size := Vector2i.ZERO
 var texture: ImageTexture
 var index_texture: ImageTexture
@@ -15,10 +17,10 @@ var _reflection_palette: Sc2Palette
 var _unlit_reflection_emission: Image
 
 
-# the waterline rows of `image`, for floating sprites. see IsometricFloatingOcclusion
+# Waterline rows for floating occlusion; display foam must not move the anchor.
 func waterline() -> PackedInt32Array:
 	if _waterline.is_empty() and image != null:
-		_waterline = IsometricFloatingOcclusion.waterline(image)
+		_waterline = IsometricFloatingOcclusion.waterline(floating_source if floating_source != null else image)
 
 	return _waterline
 
@@ -39,7 +41,7 @@ func light_texture() -> ImageTexture:
 
 func reflection(origin: Vector2i, level: int, palette: Sc2Palette, lights_enabled := true) -> WaterReflectionSprite:
 	if _reflection == null or _reflection_palette != palette:
-		_reflection = WaterReflectionSprite.create(image, _light_mask, Vector2i.ZERO, 0, palette)
+		_reflection = WaterReflectionSprite.create(floating_source if floating_source != null else image, _light_mask, Vector2i.ZERO, 0, palette)
 		_reflection_palette = palette
 	var result := WaterReflectionSprite.new()
 	result.position = origin

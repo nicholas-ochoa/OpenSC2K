@@ -631,7 +631,7 @@ func demolish_brush_visual(tile: Vector2i, direction: int) -> CityDynamicVisual:
 func dynamic_sprite_resource(
 	sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int, texture_factor := 1
 ) -> CitySpriteResource:
-	var key := "%d:%d:%d:%d:%d" % [sprite_id, int(flip), divisor, texture_factor, sprite_archive.get_instance_id()]
+	var key := "%d:%d:%d:%d:%d:%d" % [sprite_id, int(flip), divisor, texture_factor, sprite_archive.get_instance_id(), int(sprite_archive.water_reflections)]
 
 	if caches.dynamic_sprite_cache.has(key):
 		return caches.dynamic_sprite_cache[key]
@@ -648,12 +648,18 @@ func dynamic_sprite_resource(
 		return null
 
 	var image := CityTrainArtwork.clean(entry, indexed.image)
+	image = CityShipArtwork.clean(entry, image, app.asset_state.palette, sprite_archive.water_reflections)
+	# Neutral foam is not part of the hull. Retain the original indexed source
+	# for the existing waterline/reflection calculation, with identical transforms.
+	var floating_source: Image = indexed.image.duplicate() if image != indexed.image and CityShipArtwork.SOURCES.has(sprite_id) else null
 
 	if flip or divisor > 1 or image.get_size() != native_size * texture_factor:
 		image = image.duplicate()
 
 	if flip:
 		image.flip_x()
+		if floating_source != null:
+			floating_source.flip_x()
 
 	if image.get_size() != native_size * texture_factor:
 		image.resize(
@@ -662,9 +668,13 @@ func dynamic_sprite_resource(
 			Image.INTERPOLATE_NEAREST
 		)
 
+	if floating_source != null and floating_source.get_size() != image.get_size():
+		floating_source.resize(image.get_width(), image.get_height(), Image.INTERPOLATE_NEAREST)
+
 	var texture := ImageTexture.create_from_image(image)
 	var resource := CitySpriteResource.new()
 	resource.image = image
+	resource.floating_source = floating_source
 	resource.native_size = native_size
 	resource.texture = texture
 	resource.index_texture = texture

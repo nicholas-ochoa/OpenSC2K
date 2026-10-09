@@ -36,7 +36,7 @@ static func create(source: Image, lights: Image, origin: Vector2i, water_level: 
 
 ## Sprite wakes already lie on the water plane. They are neither a reflecting
 ## object nor an anchor for the hull. Use the connected body, not scattered foam.
-## This mask affects reflections only; floating occlusion and original art stay intact.
+## Enhanced ship artwork also uses these spans to separate the hull from baked water.
 static func hull_columns(source: Image, palette: Sc2Palette) -> Array[Vector2i]:
 	var columns: Array[Vector2i] = []
 	columns.resize(source.get_width())
