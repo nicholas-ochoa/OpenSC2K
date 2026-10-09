@@ -136,12 +136,16 @@ vec3 environment_ambient(vec3 base) {
 	return mix(color, max(color, fill), environment_ambient_lift * (1.0 - smoothstep(0.12, 0.65, shade)));
 }
 
-vec3 environment_color(vec3 base, vec2 uv) {
+vec3 environment_color_emission(vec3 base, vec2 uv, float emission_amount) {
 	if (!environment_enabled) { return base; }
 	vec3 color = environment_ambient(season_color(base, uv));
 	if (environment_has_emission) {
 		vec4 emission = texture(environment_emission, uv);
-		color = mix(color, emission.rgb, emission.a * environment_night);
+		color = mix(color, emission.rgb, emission.a * environment_night * emission_amount);
 	}
 	return color;
+}
+
+vec3 environment_color(vec3 base, vec2 uv) {
+	return environment_color_emission(base, uv, 1.0);
 }

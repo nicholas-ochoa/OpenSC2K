@@ -217,7 +217,7 @@ impl NativeCityRegionBuilder {
     }
 
     #[func]
-    fn auxiliary_raster(&mut self, bounds: Rect2i, images: VarDictionary) -> Option<Gd<Image>> {
+    fn auxiliary_raster(&mut self, bounds: Rect2i, images: VarDictionary, emission: bool) -> Option<Gd<Image>> {
         if images.is_empty() {
             return None;
         }
@@ -227,7 +227,7 @@ impl NativeCityRegionBuilder {
             return None;
         }
         let draws = core.collect(rect).ok()?;
-        let pixels = sc2k_render::visual_auxiliary::raster(rect, &draws, &core.sprites.images, &auxiliary_images(&images));
+        let pixels = sc2k_render::visual_auxiliary::raster(rect, &draws, &core.sprites.images, &auxiliary_images(&images), emission);
         Image::create_from_data(rect.w, rect.h, false, Format::RGBA8, &PackedByteArray::from(pixels.as_slice()))
     }
 

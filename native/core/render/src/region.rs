@@ -266,7 +266,7 @@ impl Builder {
         ];
 
         let fps_tag = if artwork.fps == 5 { SLOW_ANIMATION_TAG } else { ANIMATION_TAG };
-        let color = if let Some(mask) = self.sprites.traffic_masks.get(&draw.image) {
+        let mut color = if let Some(mask) = self.sprites.traffic_masks.get(&draw.image) {
             let mask_slot = self.atlas.mask_slot(draw.image, mask)?;
             let record = self.atlas.record_slot(
                 draw.image,
@@ -330,6 +330,9 @@ impl Builder {
             [byte(i32::from(ARTWORK_TAG)), 0.0, 0.0, 1.0]
         };
 
+        if draw.emission_disabled {
+            color[0] += byte(128);
+        }
         quad(out, clipped, uv, bounds, color);
         Ok(())
     }
@@ -417,7 +420,13 @@ impl Builder {
                         clipped.w as f32,
                         clipped.h as f32,
                     ];
-                    quad(&mut out, clipped, uv, bounds, INDEXED);
+                    // Red bit 7 disables emission on this building, not its shared atlas sprite.
+                    let color = if draw.emission_disabled {
+                        [byte(128), 1.0, 1.0, 1.0]
+                    } else {
+                        INDEXED
+                    };
+                    quad(&mut out, clipped, uv, bounds, color);
                 }
             }
 

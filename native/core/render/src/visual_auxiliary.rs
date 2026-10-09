@@ -72,7 +72,7 @@ pub fn atlas(edge: i32, slots: &HashMap<u64, Rect>, sprites: &Sprites, artwork: 
     out
 }
 
-pub fn raster(bounds: Rect, draws: &[Draw], sprites: &HashMap<u64, Sprite>, artwork: &HashMap<u64, Sprite>) -> Vec<u8> {
+pub fn raster(bounds: Rect, draws: &[Draw], sprites: &HashMap<u64, Sprite>, artwork: &HashMap<u64, Sprite>, emission: bool) -> Vec<u8> {
     let mut out = vec![0; bounds.w as usize * bounds.h as usize * 4];
     for draw in draws {
         if draw.shadow {
@@ -89,7 +89,12 @@ pub fn raster(bounds: Rect, draws: &[Draw], sprites: &HashMap<u64, Sprite>, artw
                 }
                 let at = (((y - bounds.y) * bounds.w + x - bounds.x) * 4) as usize;
                 // An opaque non-emissive foreground pixel clears lights behind it.
-                out[at..at + 4].copy_from_slice(&sample(draw.image, sprite, artwork, sx, sy));
+                let color = if emission && draw.emission_disabled {
+                    [0; 4]
+                } else {
+                    sample(draw.image, sprite, artwork, sx, sy)
+                };
+                out[at..at + 4].copy_from_slice(&color);
             }
         }
     }
@@ -123,9 +128,24 @@ mod tests {
         let artwork = HashMap::from([(2, sprite(vec![255; 8], &[255, 255]))]);
         let bounds = Rect::new(0, 0, 2, 1);
         let draws = [Draw::new(2, bounds), Draw::new(4, bounds)];
-        assert_eq!(raster(bounds, &draws, &sprites, &artwork), vec![0, 0, 0, 0, 255, 255, 255, 255]);
+        assert_eq!(
+            raster(bounds, &draws, &sprites, &artwork, true),
+            vec![0, 0, 0, 0, 255, 255, 255, 255]
+        );
         let slots = HashMap::from([(2, bounds)]);
         assert_eq!(atlas(2, &slots, &Sprites::new(sprites, [0; 4]), &artwork)[..8], [255; 8]);
+    }
+
+    #[test]
+    fn unpowered_foreground_blocks_lights_but_keeps_seasons() {
+        let sprites = HashMap::from([(2, sprite(vec![0; 8], &[255, 255]))]);
+        let masks = HashMap::from([(2, sprite(vec![255; 8], &[255, 255]))]);
+        let bounds = Rect::new(0, 0, 2, 1);
+        let mut front = Draw::new(2, Rect::new(0, 0, 1, 1));
+        front.emission_disabled = true;
+        let draws = [Draw::new(2, bounds), front];
+        assert_eq!(raster(bounds, &draws, &sprites, &masks, true), [vec![0; 4], vec![255; 4]].concat());
+        assert_eq!(raster(bounds, &draws, &sprites, &masks, false), vec![255; 8]);
     }
 
     #[test]

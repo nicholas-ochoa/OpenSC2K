@@ -58,8 +58,8 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	result.occlusion_commands = foreground
 	result.occlusion_grid = Renderer.build_occlusion_grid(foreground, configuration.divisor)
 	result.image = image
-	result.emission_image = context.builder.auxiliary_raster(bounds, sprites.visual_emission)
-	result.season_image = context.builder.auxiliary_raster(bounds, sprites.visual_seasons)
+	result.emission_image = context.builder.auxiliary_raster(bounds, sprites.visual_emission, true)
+	result.season_image = context.builder.auxiliary_raster(bounds, sprites.visual_seasons, false)
 	result.bounds = bounds
 	result.water = context.build_water(bounds, configuration.divisor, sprites, mode)
 

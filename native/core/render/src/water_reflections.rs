@@ -296,7 +296,11 @@ impl Builder {
                         let fade = (255 - distance * self.config.divisor()).max(0) as u8;
                         owners[pixel] = draw.order;
                         out.reflected[dst..dst + 4].copy_from_slice(&[sprite.rgba[src], 0, 0, fade]);
-                        out.emission[dst..dst + 4].copy_from_slice(&auxiliary(emission, draw, sprite, sx, sy));
+                        out.emission[dst..dst + 4].copy_from_slice(&if draw.emission_disabled {
+                            [0; 4]
+                        } else {
+                            auxiliary(emission, draw, sprite, sx, sy)
+                        });
                         out.seasons[dst..dst + 4].copy_from_slice(&auxiliary(seasons, draw, sprite, sx, sy));
                     }
                 }
@@ -570,6 +574,34 @@ mod tests {
             assert_eq!(builder.city.terrain, original_terrain);
             let disabled = builder.water_pixels(bounds, &[0; 256], &HashMap::new(), &HashMap::new()).unwrap();
             assert!(disabled.surface.iter().all(|v| *v == 0));
+        }
+    }
+
+    #[test]
+    fn power_changes_remove_only_reflected_building_emission() {
+        for view in 0..3 {
+            let mut b = fixture(view);
+            let c = b.config;
+            let bounds = Rect::new(c.side(), c.top() - 32 / c.divisor(), 160 / c.divisor(), 160 / c.divisor());
+            let key = ((c.base() + 112) * 2) as u64;
+            let mut mask = b.sprites.images[&key].clone();
+            mask.rgba.fill(255);
+            let masks = HashMap::from([(key, mask)]);
+            let mut indices = [0; 256];
+            indices[96] = 1;
+            let mut city = b.city.clone();
+            city.flags[0] |= crate::ids::sc2tile_flags::POWERED;
+            b.update(city);
+            let on = b.water_pixels(bounds, &indices, &masks, &masks).unwrap();
+            assert!(on.emission.iter().any(|p| *p != 0));
+            let mut city = b.city.clone();
+            city.flags[0] &= !crate::ids::sc2tile_flags::POWERED;
+            b.update(city);
+            let off = b.water_pixels(bounds, &indices, &masks, &masks).unwrap();
+            assert!(off.emission.iter().all(|p| *p == 0));
+            assert_eq!(on.reflected, off.reflected);
+            assert_eq!(on.seasons, off.seasons);
+            assert_eq!(on.surface, off.surface);
         }
     }
 

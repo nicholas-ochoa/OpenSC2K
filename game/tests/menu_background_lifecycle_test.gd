@@ -16,6 +16,7 @@ func _run() -> void:
 	var fixture := CityState.from_document(EmptyCityTemplate.create(128))
 	fixture.set_building_id(64, 64, 112)
 	fixture.set_building_corners(64, 64, 0xf0)
+	fixture.set_tile_flag(64, 64, Sc2TileFlags.POWERED, true)
 	file.store_buffer(fixture.document.serialize().data)
 	file.close()
 

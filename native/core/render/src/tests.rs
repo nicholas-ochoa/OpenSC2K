@@ -1009,3 +1009,56 @@ fn waterfalls_have_the_waterfall_tag_with_the_effect() {
     // blue and alpha give the position of each corner in the sprite
     assert_eq!(out.colors[2][2..], [1.0, 1.0]);
 }
+
+#[test]
+fn building_emission_tracks_power_per_instance_and_cached_revision() {
+    use ids::sc2tile_flags::POWERED;
+    for view in 0..3 {
+        for rotation in 0..4 {
+            let mut b = fixture(8, view);
+            b.city.rotation = rotation;
+            let id = view * 500 + 112;
+            let bounds = Rect::new(0, 0, 4096, 4096);
+            place(&mut b, 2, 3, 112, 0xf0);
+            place(&mut b, 5, 3, 112, 0xf0);
+            let a = b.city.index(2, 3);
+            let z = b.city.index(5, 3);
+            b.city.flags[a] = POWERED;
+            for supplied in [false, true, false] {
+                let mut next = b.city.clone();
+                next.flags[z] = if supplied { POWERED } else { 0 };
+                let before = next.flags.clone();
+                b.update(next);
+                let region = b.region(bounds).unwrap();
+                let buildings: Vec<_> = region.draws.iter().filter(|d| d.sprite == id).collect();
+                assert_eq!(buildings.len(), 2);
+                assert_eq!(buildings.iter().filter(|d| d.emission_disabled).count(), usize::from(!supplied));
+                assert_eq!(
+                    region.colors.iter().filter(|c| (c[0] * 255.0).round() == 128.0).count(),
+                    if supplied { 0 } else { 4 }
+                );
+                assert_eq!(b.city.flags, before, "lighting must not change the power flags");
+                assert!(region.draws.iter().filter(|d| d.sprite != id).all(|d| !d.emission_disabled));
+            }
+        }
+    }
+}
+
+#[test]
+fn unpowered_hd_buildings_keep_animation_metadata() {
+    let mut b = fixture(4, 2);
+    for frames in [1, 2] {
+        b.sprites.artwork.insert(2224, artwork(4, 4 * i32::from(frames), frames, 2));
+        let mut draw = Draw::new(2224, Rect::new(0, 0, 2, 2));
+        draw.sprite = 1112;
+        let mut lit = region::Region::default();
+        b.artwork_quad(&mut lit, &draw, 2224, false, Rect::new(0, 0, 10, 10)).unwrap();
+        draw.emission_disabled = true;
+        let mut dark = region::Region::default();
+        b.artwork_quad(&mut dark, &draw, 2224, false, Rect::new(0, 0, 10, 10)).unwrap();
+        assert_eq!(tag(&dark, 0)[0], tag(&lit, 0)[0] + 128);
+        assert_eq!(tag(&dark, 0)[1..], tag(&lit, 0)[1..]);
+        assert_eq!(lit.uvs, dark.uvs);
+        assert_eq!(lit.vertices, dark.vertices);
+    }
+}

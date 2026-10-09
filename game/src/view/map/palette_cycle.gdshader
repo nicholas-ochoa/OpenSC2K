@@ -43,6 +43,7 @@ const float MAX_FOOTPRINT = 4.0;
 // 0: indexed sprite. 1: full-color art. 2: full-color traffic with a road mask.
 // 3: grid line. 4: palette animation over art. 5: water in underground pipes.
 varying flat float artwork_kind;
+varying flat float building_emission;
 varying flat float grid_width;
 // The view of waterfall art, or -1, and the position in its sprite in large
 // view pixels.
@@ -90,6 +91,9 @@ void vertex() {
 
 	vec4 bytes = round(COLOR * 255.0);
 	float tag = bytes.r;
+	// Native building quads reserve red bit 7; plain indexed white (255) is unchanged.
+	building_emission = float(tag < 128.0 || tag == 255.0);
+	if (building_emission < 0.5) { tag -= 128.0; }
 	artwork_kind = 0.0;
 	power_warning = 0.0;
 	artwork_frames = vec3(1.0, 8.0, 0.0);
@@ -324,7 +328,7 @@ void fragment() {
 					COLOR.rgb = water_body_tone(COLOR.rgb, 0.0, 0.0);
 				}
 			}
-			COLOR.rgb = environment_color(cloud_shadow(COLOR.rgb, cloud_ground_grid), UV);
+			COLOR.rgb = environment_color_emission(cloud_shadow(COLOR.rgb, cloud_ground_grid), UV, building_emission);
 		}
 	} else if (artwork_kind > 2.5 && artwork_kind < 3.5) {
 		// an antialiased line along the edge of a tile
@@ -396,7 +400,7 @@ void fragment() {
 		}
 
 		if (!dark_underground && power_warning < 0.5) {
-			COLOR.rgb = environment_color(cloud_shadow(COLOR.rgb, cloud_ground_grid), center * TEXTURE_PIXEL_SIZE);
+			COLOR.rgb = environment_color_emission(cloud_shadow(COLOR.rgb, cloud_ground_grid), center * TEXTURE_PIXEL_SIZE, building_emission);
 		}
 
 		if (power_warning > 0.5 && palette_cycle_enabled) {

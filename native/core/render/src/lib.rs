@@ -310,6 +310,8 @@ pub struct Draw {
     pub floating: i32,
     /// The grid lines of HD ground. Refer to `surface_grid`.
     pub surface_grid: u16,
+    /// Only building emission is disabled; its silhouette and seasonal art remain.
+    pub emission_disabled: bool,
 }
 
 impl Draw {
@@ -330,6 +332,7 @@ impl Draw {
             shadow: false,
             floating: -1,
             surface_grid: 0,
+            emission_disabled: false,
         }
     }
 }

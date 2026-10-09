@@ -286,7 +286,7 @@ func _sync_whole_masks() -> void:
 	for pair in [[sprites.visual_emission, "emission"], [sprites.visual_seasons, "seasons"]]:
 		var artwork: Dictionary = {}
 		artwork.merge(pair[0])
-		var image: Image = context.builder.auxiliary_raster(bounds, artwork)
+		var image: Image = context.builder.auxiliary_raster(bounds, artwork, pair[1] == "emission")
 		if image == null:
 			source.set(pair[1], null)
 			for tile in source.tiles:

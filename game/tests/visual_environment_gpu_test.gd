@@ -5,6 +5,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	await _check_building_power()
 	await _check_hd_environment()
 	await _check_hd_animation_masks()
 	await _check_dispatch_lights()
@@ -775,3 +776,55 @@ func _check_hd_animation_masks() -> void:
 	assert(second.b > 0.9 and second.r < 0.1, "HD animation must advance the emission UV together with its artwork")
 	viewport.queue_free()
 	await process_frame
+
+
+func _check_building_power() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(16, 8)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var art := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	art.fill(Color(0.4, 0.6, 0.8))
+	var mask := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	mask.fill(Color(1.0, 0.5, 0.1))
+	var texture := ImageTexture.create_from_image(art)
+	var light := ImageTexture.create_from_image(mask)
+	var material := ShaderMaterial.new()
+	var sprites: Array[Sprite2D] = []
+	for i in 2:
+		var sprite := Sprite2D.new()
+		sprite.centered = false
+		sprite.position.x = i * 8
+		sprite.texture = texture
+		sprite.material = material
+		viewport.add_child(sprite)
+		sprites.append(sprite)
+	for tags in [[255, 128], [2, 130], [64, 192], [65, 193]]:
+		for i in 2:
+			sprites[i].self_modulate = Color(float(tags[i]) / 255.0, 1.0 / 255.0, 0.0, 1.0)
+		material.shader = CityMapControl.PALETTE_CYCLE_SHADER
+		material.set_shader_parameter("environment_enabled", true)
+		material.set_shader_parameter("environment_night", 1.0)
+		material.set_shader_parameter("environment_tint", Vector3(0.2, 0.3, 0.4))
+		material.set_shader_parameter("environment_has_emission", true)
+		material.set_shader_parameter("environment_emission", light)
+		await process_frame
+		await RenderingServer.frame_post_draw
+		var night := viewport.get_texture().get_image()
+		assert(night.get_pixel(4, 4).r > 0.9 and night.get_pixel(12, 4).r < 0.1,
+			"One unpowered building must not disable its powered neighbor sharing the same atlas")
+		material.set_shader_parameter("environment_enabled", false)
+		await RenderingServer.frame_post_draw
+		var day := viewport.get_texture().get_image()
+		assert(day.get_pixel(4, 4).is_equal_approx(day.get_pixel(12, 4)), "Power changed daytime art")
+		material.shader = preload("res://src/view/environment/night_emission.gdshader")
+		material.set_shader_parameter("has_emission", true)
+		material.set_shader_parameter("emission", light)
+		await RenderingServer.frame_post_draw
+		var glow := viewport.get_texture().get_image()
+		assert(glow.get_pixel(4, 4).r > 0.9 and glow.get_pixel(12, 4).r == 0.0, "Unpowered window left a glow")
+		assert(glow.get_pixel(12, 4).a == 1.0, "Unpowered building must still hide lights behind it")
+	viewport.queue_free()
+	await process_frame
+	print("PASS: per-building power gates indexed, HD and animated lights and glow; day art and occlusion preserved")
