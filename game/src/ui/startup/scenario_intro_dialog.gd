@@ -21,11 +21,11 @@ func _ready() -> void:
 
 
 func set_briefing(scenario_name: String, picture: Image, description: String) -> void:
-	title = "Scenario: %s" % scenario_name
+	title = tr("Scenario: %s") % scenario_name
 	picture_view.texture = (
 		PixelArtTexture.wrap(ImageTexture.create_from_image(picture)) if picture != null else null
 	)
-	var briefing := description.replace("\r\n", "\n").replace("\r", "\n").strip_edges()
+	var briefing := OriginalTextLocalization.scenario(description)
 	text_view.text = briefing.trim_prefix("Extended Description:").strip_edges()
 	text_scroll.scroll_vertical = 0
 
@@ -34,7 +34,7 @@ func show_briefing(
 	scenario_name: String, picture: Image, description: String, starting := true
 ) -> void:
 	starts_scenario = starting
-	ok_button_text = "Begin Scenario" if starting else "OK"
+	ok_button_text = tr("Begin Scenario") if starting else tr("OK")
 	set_briefing(scenario_name, picture, description)
 
 	if starting:

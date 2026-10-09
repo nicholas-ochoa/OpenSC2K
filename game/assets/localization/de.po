@@ -1,7 +1,7 @@
 # German interface translation for OpenSC2K.
 # Existing text follows the German SimCity 2000 1.10 / SCURK 1.0 release.
 # New OpenSC2K strings are translated only where no original counterpart exists.
-# Original game assets and newspaper story resources are imported separately.
+# Original text translations are in de_original.po; no German asset pack is required.
 msgid ""
 msgstr ""
 "Language: de\n"
@@ -3017,7 +3017,7 @@ msgid "HD sprite pack"
 msgstr "HD-Grafikpaket"
 
 msgid "The language of menus and windows. Original game text, such as newspapers, uses the language of the imported game."
-msgstr "Die Sprache von Menüs und Fenstern. Originalspieltexte, etwa Zeitungen, verwenden die Sprache des importierten Spiels."
+msgstr "Die Sprache von Menüs und Fenstern. Deutsche Originaltexte, einschließlich der Zeitungen, sind in der Übersetzung enthalten."
 
 msgid "The pack.json file of an HD sprite pack. It replaces the look of the city sprites with full-color art. The GPU renderer shows it. Leave this empty to show the sprites of the graphics pack."
 msgstr "Die Datei pack.json eines HD-Grafikpakets. Es ersetzt die Stadtgrafiken durch Echtfarbgrafiken. Diese werden vom GPU-Renderer angezeigt. Leer lassen, um die Grafiken des Grafikpakets zu verwenden."
@@ -3939,3 +3939,13 @@ msgstr "Stadtverordnungen"
 
 msgid "The adjacent amount shows the estimated annual budget effect."
 msgstr "Der danebenstehende Betrag zeigt die geschätzte jährliche Auswirkung auf das Budget."
+
+msgid "Sunday "
+msgstr "Sonntag "
+
+msgid "{weekday}{month} {day}, {year}"
+msgstr "{weekday}{day}. {month} {year}"
+
+#. OpenSC2K scenario confirmation button; no matching German original button.
+msgid "Begin Scenario"
+msgstr "Szenario beginnen"

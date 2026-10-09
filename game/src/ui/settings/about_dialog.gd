@@ -9,6 +9,7 @@ var license_picker: OptionButton
 var license_text: RichTextLabel
 var license_documents: Array[String] = []
 var original_credits_index := -1
+var source_credits := ""
 
 
 func _ready() -> void:
@@ -40,7 +41,8 @@ func _ready() -> void:
 
 func set_assets(assets: OriginalGameAssets) -> void:
 	artwork.set_assets(assets)
-	license_documents[original_credits_index] = _original_credits_document("" if assets == null else assets.original_credits)
+	source_credits = "" if assets == null else assets.original_credits
+	license_documents[original_credits_index] = _original_credits_document(OriginalTextLocalization.text(128, source_credits))
 	if license_picker.selected == original_credits_index:
 		_select_license(original_credits_index)
 	$Content/Tabs/About/Scene/MissingArtwork.visible = not artwork.available
@@ -120,7 +122,7 @@ ORIGINAL GAME
 		+ "\n"
 	))
 	original_credits_index = license_documents.size()
-	_add_license("Original SimCity 2000 credits", _original_credits_document(""))
+	_add_license("Original SimCity 2000 credits", _original_credits_document(OriginalTextLocalization.text(128)))
 	_select_license(0)
 
 
@@ -175,3 +177,10 @@ func _fit_to_viewport() -> void:
 	max_size = Vector2i(0, height_limit)
 	size = Vector2i(mini(760, int(viewport_size.x * 0.95)), mini(550, height_limit))
 	position = (viewport_size - size) / 2
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready() and original_credits_index >= 0:
+		license_documents[original_credits_index] = _original_credits_document(OriginalTextLocalization.text(128, source_credits))
+		if license_picker.selected == original_credits_index:
+			_select_license(original_credits_index)

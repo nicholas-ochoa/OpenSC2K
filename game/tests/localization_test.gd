@@ -67,6 +67,7 @@ func _run() -> void:
 	AppLocalization.select("de")
 	await process_frame
 	assert(TranslationServer.get_locale() == "de")
+	_check_original_texts()
 	assert(tr("Water Pipes") != "Water Pipes")
 	assert(button.text.begins_with(tr("Water Pipes")), "The existing palette updates to German")
 	assert(button.tooltip_text.contains(tr("Cost: %s").get_slice("%s", 0)))
@@ -146,3 +147,84 @@ func _has_char(font: Font, character: int) -> bool:
 			return true
 
 	return false
+
+
+# German prose works without German assets; translated choices never enter saves.
+func _check_original_texts() -> void:
+	assert(not OriginalTextLocalization.text(1000).is_empty())
+	assert(OriginalTextLocalization.library_texts({}).size() == 4)
+	var imported := DataUsaResource.new()
+	imported.bases.resize(250)
+	imported.counts.resize(250)
+	imported.offsets.resize(2500)
+	imported.grammar = PackedByteArray([0])
+	imported.grammar.append_array("English headline+English article.".to_ascii_buffer())
+	imported.grammar.append(0)
+	imported.offsets[1] = 1
+	for table in 250:
+		imported.bases[table] = 1
+		imported.counts[table] = 1
+	var glyphs := LocalizedNewspaperText._compile("äöüÄÖÜß – Köln")
+	var literal_data := DataUsaResource.new()
+	literal_data.bases = imported.bases.duplicate()
+	literal_data.counts = imported.counts.duplicate()
+	literal_data.offsets = imported.offsets.duplicate()
+	literal_data.grammar = PackedByteArray([0])
+	literal_data.grammar.append_array(glyphs)
+	literal_data.grammar.append(0)
+	var literal_record := NewsQueue.StoryRecord.new(2, 0, PackedByteArray([255, 255, 255]))
+	var literal_result := NewspaperText.render_story(literal_data, literal_record, 1, "", "", PackedStringArray())
+	assert(literal_result.ok, literal_result.error)
+	assert(not LocalizedNewspaperText._restore_literals(literal_result.headline, "", "", "").contains("�"))
+	var original_grammar := imported.grammar.duplicate()
+	for story_type in 80:
+		if not LocalizedNewspaperText.TABLES.has(story_type):
+			continue
+		for seed_value in [1, 17, 12345]:
+			var record := NewsQueue.StoryRecord.new(story_type, 0, PackedByteArray([255, 255, 255]))
+			var plain := NewspaperText.render_story(imported, record, seed_value, "Köln", "Bürgermeister", PackedStringArray(["Löwen"]))
+			var localized := LocalizedNewspaperText.render_story(imported, record, seed_value, "Köln", "Bürgermeister", PackedStringArray(["Löwen"]))
+			assert(localized.ok, localized.error)
+			assert(localized.argument == plain.argument and localized.auxiliary == plain.auxiliary)
+			assert(localized.random_state == plain.random_state)
+			assert(localized.headline != plain.headline, "German story %d must not fall back to English" % story_type)
+			assert(not (localized.headline + localized.article).contains("�"))
+			var independent := LocalizedNewspaperText.render_story(null, record, seed_value, "Köln", "Bürgermeister", PackedStringArray(["Löwen"]))
+			assert(independent.ok, "German story %d needs no imported data: %s" % [story_type, independent.error])
+			assert(independent.argument == record.argument and independent.auxiliary == record.auxiliary)
+	assert(imported.grammar == original_grammar)
+	var baseline := EmptyCityTemplate.create()
+	var misc := baseline.find_chunk("MISC").decoded_payload.duplicate()
+	assert(NewsQueue.insert(misc, 3, 0).ok)
+	assert(baseline.find_chunk("MISC").set_decoded_payload(misc))
+	var english_document := baseline.duplicate_document()
+	var german_document := baseline.duplicate_document()
+	var english_city := CityState.from_document(english_document)
+	var german_city := CityState.from_document(german_document)
+	var paper := NewspaperDialog.new()
+	root.add_child(paper)
+	AppLocalization.select("en")
+	paper.open_reports(english_city, english_document, imported, {}, 1234, 0)
+	paper.hide()
+	AppLocalization.select("de")
+	paper.open_reports(german_city, german_document, imported, {}, 1234, 0)
+	assert(english_document.serialize().data == german_document.serialize().data,
+		"German newspaper display must preserve the English substitution/save behavior")
+	var before_switch := german_document.serialize().data
+	AppLocalization.select("en")
+	AppLocalization.select("de")
+	assert(german_document.serialize().data == before_switch)
+	paper.hide()
+	paper.free()
+	var scenario_document := Sc2File.load_path("res://../references/SIMCITY2000/SCENARIO/ATLANTA.SCN")
+	assert(scenario_document.is_valid())
+	var description := ScenarioState.from_document(scenario_document).opening_description()
+	assert(OriginalTextLocalization.scenario(description) != description.strip_edges())
+	assert(OriginalTextLocalization.scenario("Custom description") == "Custom description")
+	AppLocalization.select("en")
+	assert(OriginalTextLocalization.text(1000, "source") == "source")
+	assert(OriginalTextLocalization.library_texts({}).is_empty())
+	assert(not LocalizedNewspaperText.has_data(null))
+	var english := LocalizedNewspaperText.render_story(imported, literal_record, 1, "Town", "Mayor", PackedStringArray())
+	assert(english.ok and english.headline == "English Headline")
+	AppLocalization.select("de")

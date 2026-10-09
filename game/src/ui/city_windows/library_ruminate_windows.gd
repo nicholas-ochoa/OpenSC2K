@@ -44,7 +44,7 @@ func show_texts(texts: Dictionary, size_limit: Vector2i) -> void:
 
 	for resource_id: int in TEXT_RESOURCE_IDS:
 		if texts.has(resource_id):
-			pages.append(str(texts[resource_id]).replace("\r\n", "\n").replace("\r", "\n"))
+			pages.append(OriginalTextLocalization.text(resource_id, str(texts[resource_id])).replace("\r\n", "\n").replace("\r", "\n"))
 			page_ids.append(resource_id)
 
 	viewport_size = size_limit
