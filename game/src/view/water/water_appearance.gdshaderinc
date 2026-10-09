@@ -54,8 +54,7 @@ float water_light_lines(vec2 world, float axis, float clock, float rain) {
 vec3 water_body(vec3 original, vec4 bottom, float depth, vec2 world, bool show_bottom) {
 	float known = bottom.a;
 	float shallows = exp(-depth * 0.55) * known;
-	vec3 color = original * (0.92 + 0.09 * shallows + water_field(world) * 0.075);
-	color = mix(color, vec3(original.r * 0.9, original.g * 1.45, original.b * 0.94), shallows * 0.22);
+	vec3 color = water_body_tone(original, shallows, water_field(world));
 	if (show_bottom) {
 		float transmission = 0.42 * exp(-depth * 0.48) * known;
 		// Actual triangle slopes provide the relief. Small fixed grain only

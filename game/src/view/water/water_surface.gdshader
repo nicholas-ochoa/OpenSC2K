@@ -1,19 +1,15 @@
 shader_type canvas_item;
 #include "res://src/view/environment/environment_color.gdshaderinc"
 #include "res://src/view/clouds/cloud_field.gdshaderinc"
+#include "res://src/view/water/water_color.gdshaderinc"
 #include "res://src/view/water/water_appearance.gdshaderinc"
 
 uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disable;
 uniform sampler2D water_surface : filter_nearest, repeat_disable;
 uniform sampler2D water_seabed : filter_nearest, repeat_disable;
-uniform bool water_enabled = false;
-uniform bool water_reflections_enabled = true;
-uniform bool water_topography = true;
-uniform bool water_waves_enabled = false;
 uniform bool water_has_seabed = false;
 uniform float water_clock = 0.0;
 uniform float water_rain = 0.0;
-uniform float water_season_strength = 0.0;
 uniform vec2 water_origin = vec2(0.0);
 uniform float water_divisor = 1.0;
 uniform float water_padding = 3.0;
@@ -37,24 +33,6 @@ vec4 mirror_sample(vec4 source, vec2 uv, float level, float shade) {
 			|| abs(receiver.r - level) > 0.001 || receiver.a < 0.5) { return vec4(0.0); }
 	if (source.a <= 0.0) { return vec4(0.0); }
 	return vec4(environment_color(palette_color(source.r) * shade, uv) * source.a, source.a);
-}
-
-// Seasonal water color is independent of the reflected art's vegetation mask.
-// Work in numeric sRGB before ambient light, weather and the optional LUT.
-vec3 water_season_color(vec3 base) {
-	if (!environment_enabled || water_season_strength <= 0.0) { return base; }
-	vec3 input_color = environment_lut_linear_canvas ? lut_srgb(base) : base;
-	float blue = max(input_color.b - min(input_color.r, input_color.g), 0.0);
-	vec3 spring = input_color + blue * vec3(0.015, 0.28, -0.10);
-	vec3 summer = input_color + blue * vec3(0.0, 0.14, -0.025);
-	vec3 autumn = input_color + blue * vec3(0.13, 0.20, -0.20);
-	vec3 winter = input_color + blue * vec3(0.11, 0.22, -0.07);
-	vec3 seasonal = spring * environment_seasons.x + summer * environment_seasons.y
-		+ autumn * environment_seasons.z + winter * environment_seasons.w;
-	vec3 colored = mix(input_color, clamp(seasonal, vec3(0.0), vec3(1.0)), water_season_strength);
-	if (environment_lut_linear_canvas) { colored = lut_linear(colored); }
-	return lut_four(environment_season_luts, colored, environment_season_lut_weights,
-		environment_season_lut_strength * water_season_strength);
 }
 
 // Reflected trees and lights keep their own masks and authored emission colors.

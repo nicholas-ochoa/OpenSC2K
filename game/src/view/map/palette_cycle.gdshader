@@ -2,6 +2,7 @@
 shader_type canvas_item;
 #include "res://src/view/environment/environment_color.gdshaderinc"
 #include "res://src/view/clouds/cloud_field.gdshaderinc"
+#include "res://src/view/water/water_color.gdshaderinc"
 
 uniform sampler2D palette_indices : filter_nearest, repeat_disable;
 uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disable;
@@ -129,6 +130,14 @@ void fragment() {
 	} else if (dark_underground) {
 		COLOR.rgb = texture(dark_underground_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
 	} else if (fullbright_draw < 0.5 && !power_warning) {
+		if (water_enabled && natural_mask.b > 0.2 && natural_mask.b < 0.3) {
+			// Water sides keep their original shading/animation and painter
+			// occlusion. Only share the surface tint; no flat waves or mirrors.
+			COLOR.rgb = water_season_color(COLOR.rgb);
+			if (water_reflections_enabled || water_topography || water_waves_enabled) {
+				COLOR.rgb = water_body_tone(COLOR.rgb, 0.0, 0.0);
+			}
+		}
 		COLOR.rgb = environment_color(cloud_shadow(COLOR.rgb, cloud_ground_grid), UV);
 	}
 }

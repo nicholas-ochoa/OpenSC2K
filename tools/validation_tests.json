@@ -84,6 +84,14 @@
     "requires": ["ext/graphics/pack.json"]
   },
   {
+    "id": "water_edge_color_gpu_test",
+    "script": "tests/water_edge_color_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch",
+    "requires": ["ext/graphics/pack.json"]
+  },
+  {
     "id": "seasonal_shore_gpu_test",
     "script": "tests/seasonal_shore_gpu_test.gd",
     "domain": "rendering",
@@ -1813,6 +1821,14 @@
     "requires": ["ext/graphics/pack.json"]
   },
   {
+    "id": "train_artwork_gpu_test",
+    "script": "tests/train_artwork_gpu_test.gd",
+    "requires": ["ext/graphics/pack.json"],
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
     "id": "traffic_shadow_gpu_test",
     "script": "tests/traffic_shadow_gpu_test.gd",
     "domain": "rendering",
@@ -1847,3 +1863,4 @@
     "lane": "product"
   }
 ]
+
