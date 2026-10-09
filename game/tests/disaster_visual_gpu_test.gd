@@ -194,6 +194,38 @@ func _check_hazard_blending() -> void:
 	tornado.set_shader_parameter("mask_offset", Vector2.ZERO)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().is_invisible(), "Foreground must cover both tornado frames")
+	# Both sprite frames resolve through the same already-blended palette.
+	# No second palette blend may distort these independent frame weights.
+	var colors := Sc2Palette.index_encoding()
+	colors.colors[171] = Color.RED
+	colors.colors[172] = Color.BLUE
+	colors.colors[180] = Color.GREEN
+	colors.colors[181] = Color.YELLOW
+	var clock := PaletteAnimationClock.new()
+	clock.update_textures(colors, 0.25, false)
+	for frame in 8:
+		atlas.fill_rect(Rect2i(0, frame * 8, 8, 8), Color8(171 if frame % 2 == 0 else 180, 0, 0))
+	(visual.texture as ImageTexture).update(atlas)
+	material.set_shader_parameter("animated_palette", clock.cycle_texture)
+	visual.fullbright = true
+	visual.hazard_animation.phase = 0.5
+	visual.hazard_animation.opacity = 0.6
+	sprite.hide()
+	canvas.show()
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	var fire := viewport.get_texture().get_image().get_pixel(3, 3)
+	assert(absf(fire.r - 0.3) < 0.02 and absf(fire.g - 0.3) < 0.02 and absf(fire.b - 0.075) < 0.02
+		and absf(fire.a - 0.6) < 0.02, "Palette blending overlapped fire frame blending or opacity")
+	canvas.hide()
+	sprite.show()
+	sprite.texture = ImageTexture.create_from_image(atlas.get_region(Rect2i(0, 0, 8, 16)))
+	tornado.set_shader_parameter("animated_palette", clock.cycle_texture)
+	tornado.set_shader_parameter("has_foreground", false)
+	await RenderingServer.frame_post_draw
+	var funnel := viewport.get_texture().get_image().get_pixel(3, 3)
+	assert(absf(funnel.r - 0.5) < 0.02 and absf(funnel.g - 0.5) < 0.02 and absf(funnel.b - 0.125) < 0.02,
+		"Palette blending overlapped tornado frame blending")
 	viewport.queue_free()
 	await process_frame
 

@@ -3,6 +3,8 @@ extends Control
 var zoom := 3.5
 var palette: Sc2Palette
 var palette_texture: ImageTexture
+var palette_clock := PaletteAnimationClock.new()
+var blending_enabled := false
 var ticks := 0
 var elapsed := 0.0
 var texture: Texture2D:
@@ -18,12 +20,10 @@ func _process(delta: float) -> void:
 	elapsed += delta
 	var steps := int(elapsed / 0.2)
 
-	if steps == 0:
-		return
-
 	elapsed -= steps * 0.2
 	ticks += steps
-	palette_texture.update(palette.animation_image(ticks))
+	palette_clock.cycle_ticks = ticks
+	palette_clock.update_textures(palette, elapsed / 0.2 if blending_enabled else 0.0, false)
 
 
 func _ready() -> void:
@@ -49,7 +49,10 @@ func configure_animation(source: Sc2Palette, start_ticks: int) -> void:
 	if source == null:
 		return
 
-	palette_texture = ImageTexture.create_from_image(source.animation_image(ticks))
+	palette_clock = PaletteAnimationClock.new()
+	palette_clock.cycle_ticks = ticks
+	palette_clock.update_textures(source, 0.0, false)
+	palette_texture = palette_clock.cycle_texture
 	var lookup := ShaderMaterial.new()
 	lookup.shader = CityMapControl.PALETTE_CYCLE_SHADER
 	lookup.set_shader_parameter("animated_palette", palette_texture)

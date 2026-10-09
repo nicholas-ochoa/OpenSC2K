@@ -47,7 +47,7 @@ const HINTS := {
 	"nature_forests_enabled": "Varied tree shapes and connected forest edges follow the existing tree density. Empty ground and clearings stay open. Does not change tree counts or the simulation.",
 	"nature_terrain_enabled": "Quiet, continuous variations across natural ground. Terrain height, water and zoning markings stay unchanged.",
 	"nature_terrain_strength": "Blend the terrain variation over the original ground. 0% shows the original colors; 100% applies the full variation. Seasons still apply.",
-	"disaster_blending": "Blend animation frames for power warnings, fire, toxic clouds, floods, tornadoes, smoke, explosion clouds and demolition dust. Fire also fades in and out. Disaster blending requires Enhanced disaster visuals. Power warnings always stay fullbright. The initial explosion flash stays immediate.",
+	"disaster_blending": "Smooth palette color cycles across city graphics, including water and power warnings, and blend sprite frames for fire, toxic clouds, floods, tornadoes, smoke, explosion clouds and demolition dust. Palette colors are blended once, separately from sprite frames. Fire also fades in and out. Disaster blending requires Enhanced disaster visuals. Power warnings always stay fullbright. The initial explosion flash stays immediate.",
 	"night_daytime_enabled": "Keep building brightmaps, glow, street lamps, junction signals and vehicle lights on at any hour, even with the day-night cycle off. Daylight colors and individual light strengths stay unchanged.",
 	"night_ambient": "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate.",
 	"night_glow": "Soft colored light around visible brightmaps. Zero keeps only the sharp original lights.",

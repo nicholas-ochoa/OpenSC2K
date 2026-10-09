@@ -57,6 +57,7 @@ func _run() -> void:
 	var before := DocumentState.capture(main.document_state.city.document)
 	var engine := main.simulation_state.simulation_engine
 	var random_before := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
+	_check_palette_colors()
 	_check_power_warning_clock(main)
 	main.preferences.visual_enhancements = defaults.duplicate()
 	main.preferences.visual_enhancements.pause_freezes = false
@@ -544,7 +545,7 @@ func _check_changed_light_occlusion(main: CityApplication, ground: CityNightGrou
 	var resource := CitySpriteResource.new()
 	resource.image = Image.create(128, 128, false, Image.FORMAT_RGBA8)
 	resource.image.fill(Color.WHITE)
-	var resource_key := "42:0:%d:1:%d" % [divisor, archive.get_instance_id()]
+	var resource_key := "42:0:%d:1:%d:%d" % [divisor, archive.get_instance_id(), int(archive.water_reflections)]
 	main.render_caches.dynamic_sprite_cache[resource_key] = resource
 	var changed: Array[Rect2i] = [Rect2i(original.origin, Vector2i(64, 64))]
 	# Streamed publications report possible changes. A new actual silhouette
@@ -671,15 +672,23 @@ func _check_light_graphics_caches(main: CityApplication) -> void:
 
 
 func _check_power_warning_clock(main: CityApplication) -> void:
+	var saved_palette := main.asset_state.palette
+	if saved_palette == null:
+		main.asset_state.palette = Sc2Palette.index_encoding()
 	var clock := main.palette_clock
 	clock.cycle_ticks = 0
 	clock.elapsed_msec = 0.0
+	var first := main.asset_state.palette.animation_image(0)
+	var next := main.asset_state.palette.animation_image(1)
+	var blended := first.duplicate()
+	for index in 256:
+		blended.set_pixel(index, 0, first.get_pixel(index, 0).lerp(next.get_pixel(index, 0), 0.5))
 	main.static_render.update_palette_cycle_texture()
 	main.simulation_state.speed_controller.speed = GameSpeedController.Speed.TURTLE
 	main.preferences.visual_enhancements.disaster_enabled = false
 	main.preferences.visual_enhancements.disaster_blending = true
 	main.frame._advance_palette_animation(GameSpeedController.BASE_TICK_MSEC / 2000.0, false)
-	assert(is_equal_approx(main.map_view.layers._power_warning_blend, 0.5))
+	assert(clock._blended.get_data() == blended.get_data())
 	var ticks := clock.cycle_ticks
 	var elapsed := clock.elapsed_msec
 	main.frame._advance_palette_animation(1.0, true)
@@ -689,10 +698,11 @@ func _check_power_warning_clock(main: CityApplication) -> void:
 	assert(clock.cycle_ticks == ticks and clock.elapsed_msec == elapsed)
 	main.preferences.visual_enhancements.disaster_blending = false
 	main.frame._advance_palette_animation(0.0, true)
-	assert(main.map_view.layers._power_warning_blend == 0.0)
+	assert(clock._blended.get_data() == first.get_data())
 	main.preferences.visual_enhancements.disaster_blending = true
 	main.frame._advance_palette_animation(0.0, true)
-	assert(is_equal_approx(main.map_view.layers._power_warning_blend, 0.5))
+	assert(clock._blended.get_data() == blended.get_data())
+	main.asset_state.palette = saved_palette
 
 
 func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
@@ -947,3 +957,41 @@ func _check_visual_save(main: CityApplication, tab: VisualEnhancementsTab) -> vo
 	tab.show_values(original)
 	tab.changed.emit()
 	main.settings.flush_visual_save()
+
+
+func _check_palette_colors() -> void:
+	var palette := Sc2Palette.new()
+	for index in 256:
+		palette.colors.append(Color8((index * 23) % 256, (index * 61) % 256, (index * 113) % 256))
+	var clock := PaletteAnimationClock.new()
+	var retained: ImageTexture
+	for tick in [0, 1, 6, 7, 8, 15, 16, 23, 24]:
+		clock.cycle_ticks = tick
+		var first := palette.animation_image(tick)
+		var next := palette.animation_image(tick + 1)
+		var dark_first := palette.underground_animation_image(tick)
+		var dark_next := palette.underground_animation_image(tick + 1)
+		for blend in [0.0, 0.25, 0.5, 1.0, 0.0]:
+			assert(clock.update_textures(palette, blend))
+			assert(not clock.update_textures(palette, blend), "An unchanged palette was uploaded twice")
+			if retained == null:
+				retained = clock.cycle_texture
+			assert(clock.cycle_texture == retained, "Palette animation replaced retained texture identity")
+			var actual := clock._blended
+			var dark := clock._dark_blended
+			for index in 256:
+				var expected := first.get_pixel(index, 0).lerp(next.get_pixel(index, 0), blend)
+				var expected_dark := dark_first.get_pixel(index, 0).lerp(dark_next.get_pixel(index, 0), blend)
+				var value := actual.get_pixel(index, 0)
+				var dark_value := dark.get_pixel(index, 0)
+				# RGBA8 image writes truncate; Color's packed conversion rounds.
+				assert(abs(value.r8 - expected.r8) <= 1 and abs(value.g8 - expected.g8) <= 1 and abs(value.b8 - expected.b8) <= 1,
+					"Palette colors did not interpolate at the requested phase")
+				assert(abs(dark_value.r8 - expected_dark.r8) <= 1 and abs(dark_value.g8 - expected_dark.g8) <= 1
+					and abs(dark_value.b8 - expected_dark.b8) <= 1, "Underground endpoints were not remapped before blending")
+				if first.get_pixel(index, 0) == next.get_pixel(index, 0):
+					assert(value == first.get_pixel(index, 0), "A stationary palette entry changed")
+	# Replacing artwork at the same tick invalidates cached colors.
+	var replacement := Sc2Palette.index_encoding()
+	assert(clock.update_textures(replacement, 0.0))
+	assert(clock._blended.get_data() == replacement.animation_image(clock.cycle_ticks).get_data())

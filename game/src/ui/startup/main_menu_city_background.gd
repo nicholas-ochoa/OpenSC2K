@@ -17,6 +17,7 @@ var render_thread: Thread
 var demo_palette: Sc2Palette
 var demo_sprites: Sc2SpriteArchive
 var cycle_texture: ImageTexture
+var palette_clock := PaletteAnimationClock.new()
 var static_image: Image
 var animation_elapsed := 0.0
 var animation_revision := 0
@@ -103,6 +104,7 @@ func _process(delta: float) -> void:
 		refresh_elapsed = 0.0
 		_start_render()
 
+	_refresh_palette()
 	if animation_elapsed >= 0.1:
 		animation_elapsed = fmod(animation_elapsed, 0.1)
 		_refresh_animation()
@@ -246,16 +248,19 @@ func _refresh_animation() -> void:
 		return
 
 	animation_revision += 1
-	var ticks := int(elapsed * 5.0)
-	var cycle_image := demo_palette.animation_image(ticks)
-
-	if cycle_texture == null:
-		cycle_texture = ImageTexture.create_from_image(cycle_image)
-	else:
-		cycle_texture.update(cycle_image)
+	_refresh_palette()
 
 	if presentation != null:
 		presentation.animate(cycle_texture)
+
+
+func _refresh_palette() -> void:
+	if demo_palette == null or static_image == null:
+		return
+	var phase := elapsed * 5.0
+	palette_clock.cycle_ticks = int(phase)
+	palette_clock.update_textures(demo_palette, fposmod(phase, 1.0) if visual_options.disaster_blending else 0.0, false)
+	cycle_texture = palette_clock.cycle_texture
 
 
 func set_visual_options(options: Dictionary) -> void:
@@ -296,6 +301,7 @@ func _clear_render_data() -> void:
 	demo_texture = null
 	static_image = null
 	cycle_texture = null
+	palette_clock = PaletteAnimationClock.new()
 	RenderingServer.canvas_item_clear(get_canvas_item())
 	queue_redraw()
 

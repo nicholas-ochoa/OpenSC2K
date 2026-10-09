@@ -10,8 +10,6 @@ uniform bool palette_cycle_enabled = false;
 uniform bool palette_lookup_all = false;
 uniform bool dark_underground = false;
 uniform sampler2D dark_underground_palette : source_color, filter_nearest, repeat_disable;
-uniform sampler2D power_warning_palette : source_color, filter_nearest, repeat_disable;
-uniform float power_warning_blend = 0.0;
 // One tiny shared texture, no extra draw pass or per-tile frame updates.
 uniform bool nature_terrain_enabled = false;
 uniform bool nature_forests_enabled = false;
@@ -65,10 +63,7 @@ void fragment() {
 	} else {
 		COLOR = base_color;
 	}
-	if (power_warning && palette_cycle_enabled && power_warning_blend > 0.0) {
-		vec3 next_color = texture(power_warning_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
-		COLOR.rgb = mix(COLOR.rgb, next_color, power_warning_blend);
-	}
+
 	if (nature_forests_enabled && natural_mask.r > 0.5 && natural_mask.g > 0.05 && natural_mask.g < 0.35 && !dark_underground) {
 		// Restore the selected artwork's dark greens after indexed palette
 		// lookup, which otherwise makes the imported greens unnaturally vivid.

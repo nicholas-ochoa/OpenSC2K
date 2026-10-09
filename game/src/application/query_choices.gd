@@ -234,6 +234,7 @@ func open_query(point: Vector2i) -> void:
 		app.asset_state.palette_index_encoding,
 		app.asset_state.large_sprites,
 	)
+	app.city_dialogs.query_dialog.neighborhood_view.blending_enabled = app.preferences.visual_enhancements.disaster_blending
 	app.city_dialogs.query_dialog.set_max_length(app.document_state.city.document.name_limit())
 	app.city_dialogs.query_dialog.show_query(
 		str(result.title),

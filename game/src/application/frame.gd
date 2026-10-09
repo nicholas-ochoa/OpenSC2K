@@ -97,10 +97,8 @@ func _advance_palette_animation(delta: float, suspended: bool) -> void:
 		palette_clock.cycle_ticks += ticks
 		app.static_render.update_palette_cycle_texture()
 
-	if app.map_view != null:
-		app.map_view.layers.set_power_warning_animation(palette_clock.next_cycle_texture,
-			palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC
-			if app.preferences.visual_enhancements.disaster_blending else 0.0)
+	else:
+		app.static_render.update_palette_blending()
 
 
 func consume_simulation_result(result: SimulationTickResult) -> void:

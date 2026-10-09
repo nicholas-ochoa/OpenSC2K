@@ -508,29 +508,19 @@ func update_palette_cycle_texture() -> void:
 		palette_clock.toolbar_palette.colors.append(app.asset_state.palette.colors[color_index])
 
 	app.camera_input.refresh_child_tool_icons()
-	var image := app.asset_state.palette.animation_image(palette_clock.cycle_ticks)
+	update_palette_blending(true)
 
-	if palette_clock.cycle_texture == null:
-		palette_clock.cycle_texture = ImageTexture.create_from_image(image)
-	else:
-		palette_clock.cycle_texture.update(image)
 
-	var next_image := app.asset_state.palette.animation_image(palette_clock.cycle_ticks + 1)
-	if palette_clock.next_cycle_texture == null:
-		palette_clock.next_cycle_texture = ImageTexture.create_from_image(next_image)
-	else:
-		palette_clock.next_cycle_texture.update(next_image)
-
-	var underground_image := app.asset_state.palette.underground_animation_image(palette_clock.cycle_ticks)
-
-	if palette_clock.underground_cycle_texture == null:
-		palette_clock.underground_cycle_texture = ImageTexture.create_from_image(underground_image)
-	else:
-		palette_clock.underground_cycle_texture.update(underground_image)
-
+func update_palette_blending(force := false) -> void:
+	var fraction := palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC if app.preferences.visual_enhancements.disaster_blending else 0.0
+	if not palette_clock.update_textures(app.asset_state.palette, fraction, true, force):
+		return
 	if app.map_view != null:
-		app.map_view.set_animated_palette(palette_clock.cycle_texture)
-		app.map_view.set_dark_underground_palette(palette_clock.underground_cycle_texture)
+		# Update texture contents in place; do not rebind every region each frame.
+		if app.map_view.animated_palette_texture != palette_clock.cycle_texture:
+			app.map_view.set_animated_palette(palette_clock.cycle_texture)
+		if app.map_view.dark_underground_palette_texture != palette_clock.underground_cycle_texture:
+			app.map_view.set_dark_underground_palette(palette_clock.underground_cycle_texture)
 
 
 func _city_graphics_size() -> int:

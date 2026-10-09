@@ -120,13 +120,14 @@ func _check_power_warnings() -> void:
 			var indices := entry.decode_indices().pixels
 			sprite.texture = ImageTexture.create_from_image(entry.create_image(Sc2Palette.index_encoding()).image)
 			material.set_shader_parameter("environment_season_mask", ImageTexture.create_from_image(mask))
+			var clock := PaletteAnimationClock.new()
 			for tick in 8:
+				clock.cycle_ticks = tick
 				var first := pack.palette.animation_image(tick)
 				var next := pack.palette.animation_image(tick + 1)
-				material.set_shader_parameter("animated_palette", ImageTexture.create_from_image(first))
-				material.set_shader_parameter("power_warning_palette", ImageTexture.create_from_image(next))
 				for blend in [0.0, 0.5, 1.0]:
-					material.set_shader_parameter("power_warning_blend", blend)
+					clock.update_textures(pack.palette, blend, false)
+					material.set_shader_parameter("animated_palette", clock.cycle_texture)
 					await process_frame
 					await RenderingServer.frame_post_draw
 					var actual := viewport.get_texture().get_image()
