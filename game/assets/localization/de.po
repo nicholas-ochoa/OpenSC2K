@@ -3949,3 +3949,775 @@ msgstr "{weekday}{day}. {month} {year}"
 #. OpenSC2K scenario confirmation button; no matching German original button.
 msgid "Begin Scenario"
 msgstr "Szenario beginnen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Day & Night"
+msgstr "Tag & Nacht"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Set the time of day and the appearance of the night."
+msgstr "Tageszeit und nächtliche Darstellung einstellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Lighting"
+msgstr "Beleuchtung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Building, vehicle and street lights. Keep lights on during the day with the daytime override."
+msgstr "Gebäude-, Fahrzeug- und Straßenbeleuchtung. Mit der Tageslichtoption bleiben die Lichter auch tagsüber an."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Seasons"
+msgstr "Jahreszeiten"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Follow the city calendar, run a visual cycle or choose one season."
+msgstr "Dem Stadtkalender folgen, einen eigenen Zyklus verwenden oder eine Jahreszeit festlegen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather & Clouds"
+msgstr "Wetter & Wolken"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather and clouds have separate switches. Fog is part of Clouds. Fixed weather can show snow in any season."
+msgstr "Wetter und Wolken lassen sich getrennt einschalten. Nebel gehört zu den Wolken. Festgelegtes Wetter kann zu jeder Jahreszeit Schnee zeigen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Environment"
+msgstr "Umgebung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Forests, subtle terrain variation and water appearance. Seasonal water colors require Seasons."
+msgstr "Wälder, dezente Bodenvariationen und Wasseroberflächen. Saisonale Wasserfarben erfordern aktivierte Jahreszeiten."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Traffic & Movement"
+msgstr "Verkehr & Bewegung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Decorative cars and pedestrians, plus smoother movement for existing vehicles."
+msgstr "Dekorative Autos und Fußgänger sowie flüssigere Bewegungen vorhandener Fahrzeuge."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Disaster Effects"
+msgstr "Katastropheneffekte"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Extra effects for disasters and demolition. These settings do not change disaster frequency, damage or emergency response."
+msgstr "Zusätzliche Effekte für Katastrophen und Abrisse. Diese Einstellungen ändern weder Häufigkeit und Schäden noch die Wirkung der Einsatzkräfte."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Animation"
+msgstr "Animation"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cycle durations use Turtle speed when linked; otherwise they use real time. Weather and clouds always pause with the game. The pause option below controls the other environment cycles."
+msgstr "Bei Kopplung an die Spielgeschwindigkeit beziehen sich die Zykluszeiten auf das Schildkrötentempo, sonst auf Echtzeit. Wetter und Wolken pausieren immer mit dem Spiel. Die folgende Pausenoption steuert die übrigen Umgebungszyklen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enhanced disaster visuals"
+msgstr "Erweiterte Katastrophendarstellung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Additional effect intensity"
+msgstr "Stärke zusätzlicher Effekte"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Animated riot crowds"
+msgstr "Animierte Menschenmengen bei Unruhen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fire and impact lighting"
+msgstr "Licht durch Feuer und Einschläge"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Earthquake camera shake"
+msgstr "Kamerabeben bei Erdbeben"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Pause environment cycles with the game"
+msgstr "Umgebungszyklen mit dem Spiel pausieren"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Time source"
+msgstr "Zeitsteuerung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fixed time (HH:MM)"
+msgstr "Feste Uhrzeit (HH:MM)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Day cycle duration"
+msgstr "Dauer des Tageszyklus"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Time-of-day color strength"
+msgstr "Stärke der Tageszeitfarben"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Night darkness"
+msgstr "Dunkelheit bei Nacht"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Building and vehicle lights"
+msgstr "Gebäude- und Fahrzeuglichter"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Light brightness"
+msgstr "Lichthelligkeit"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Year cycle duration"
+msgstr "Dauer des Jahreszyklus"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Season blend duration"
+msgstr "Dauer des Jahreszeitenübergangs"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Season color strength"
+msgstr "Stärke der Jahreszeitenfarben"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather change interval"
+msgstr "Intervall des Wetterwechsels"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather blend duration"
+msgstr "Dauer des Wetterübergangs"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather intensity"
+msgstr "Wetterintensität"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather color strength"
+msgstr "Stärke der Wetterfarben"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Car density"
+msgstr "Autodichte"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Pedestrian density"
+msgstr "Fußgängerdichte"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Custom color filter (LUT PNG)"
+msgstr "Eigener Farbfilter (LUT-PNG)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Custom light masks (brightmaps)"
+msgstr "Eigene Lichtmasken (Brightmaps)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Varied tree shapes and connected forest edges follow the existing tree density. Empty ground and clearings stay open. Does not change tree counts or the simulation."
+msgstr "Unterschiedliche Baumformen und zusammenhängende Waldränder folgen der vorhandenen Baumdichte. Freie Flächen und Lichtungen bleiben offen. Baumanzahl und Simulation ändern sich nicht."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Quiet, continuous variations across natural ground. Terrain height, water and zoning markings stay unchanged."
+msgstr "Dezente, fließende Variationen auf natürlichem Boden. Geländehöhe, Wasser und Gebietsmarkierungen bleiben unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Blend the terrain variation over the original ground. 0% shows the original colors; 100% applies the full variation. Seasons still apply."
+msgstr "Die Bodenvariation wird über den ursprünglichen Boden gelegt. 0% zeigt die Originalfarben; 100% wendet die Variation vollständig an. Jahreszeiten wirken weiterhin."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Smooth palette color cycles across city graphics, including water and power warnings, and blend sprite frames for fire, toxic clouds, floods, tornadoes, smoke, explosion clouds and demolition dust. Palette colors are blended once, separately from sprite frames. Fire also fades in and out. Disaster blending requires Enhanced disaster visuals. Power warnings always stay fullbright. The initial explosion flash stays immediate."
+msgstr "Weiche Farbwechsel der Stadtgrafik einschließlich Wasser und Stromwarnungen sowie fließende Bildübergänge für Feuer, Giftwolken, Überflutungen, Tornados, Rauch, Explosionswolken und Abrissstaub. Palettenfarben werden einmalig und getrennt von den Einzelbildern überblendet. Feuer wird zusätzlich ein- und ausgeblendet. Katastrophenübergänge erfordern die erweiterte Katastrophendarstellung. Stromwarnungen bleiben stets voll beleuchtet. Der erste Explosionsblitz erscheint sofort."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Keep building brightmaps, glow, street lamps, junction signals and vehicle lights on at any hour, even with the day-night cycle off. Daylight colors and individual light strengths stay unchanged."
+msgstr "Gebäudelichter, Lichtschein, Straßenlaternen, Kreuzungssignale und Fahrzeuglichter bleiben zu jeder Uhrzeit an, auch ohne Tag-Nacht-Zyklus. Tagesfarben und einzelne Lichtstärken bleiben unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cool fill light reveals dark surfaces at night. Window and vehicle light brightness stays separate."
+msgstr "Kühles Umgebungslicht macht dunkle Flächen nachts sichtbar. Die Helligkeit von Fenster- und Fahrzeuglichtern wird getrennt eingestellt."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Soft colored light around visible brightmaps. Zero keeps only the sharp original lights."
+msgstr "Weicher farbiger Lichtschein um sichtbare Lichtmasken. Bei null bleiben nur die scharfen ursprünglichen Lichter."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Street lamps, warm road lighting, cosmetic junction signals and selected shop approaches. Signals do not control traffic. Zero disables these lights."
+msgstr "Straßenlaternen, warmes Straßenlicht, dekorative Kreuzungssignale und ausgewählte Ladenzugänge. Die Signale steuern keinen Verkehr. Null schaltet diese Lichter aus."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Show street, junction and vehicle lights at this zoom or closer. Below it, their light rendering and preparation stop. Building lights remain available."
+msgstr "Straßen-, Kreuzungs- und Fahrzeuglichter ab dieser Zoomstufe anzeigen. Darunter werden diese Lichter weder vorbereitet noch gezeichnet. Gebäudelichter bleiben verfügbar."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Smooth movement of helicopters, airplanes, ships, sailboats and trains."
+msgstr "Flüssige Bewegung von Hubschraubern, Flugzeugen, Schiffen, Segelbooten und Zügen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Moving waves and breaking surf along the terrain shoreline. Turn off for a still water surface."
+msgstr "Bewegte Wellen und brechende Brandung entlang der Küste. Für eine ruhige Wasseroberfläche ausschalten."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable additional presentation effects. Turning this off restores the original disaster visuals; disasters still occur."
+msgstr "Zusätzliche Darstellungseffekte einschalten. Ausschalten stellt die ursprüngliche Katastrophendarstellung wieder her; Katastrophen treten weiterhin auf."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Intensity of added visual effects. At 0%, added crowds, dust and lighting are off. Tornado smoothing and camera shake remain separate."
+msgstr "Stärke zusätzlicher Bildeffekte. Bei 0% sind zusätzliche Menschenmengen, Staub und Beleuchtung aus. Tornadoglättung und Kamerabeben bleiben getrennt einstellbar."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Animated riot crowds use the city pedestrian artwork. Does not change population, riot spread or treatment targets."
+msgstr "Animierte Menschenmengen verwenden die Fußgängergrafiken der Stadt. Bevölkerung, Ausbreitung von Unruhen und Einsatzziele bleiben unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Dust from demolition and damage. Dust from player demolition continues to settle while the game is paused."
+msgstr "Staub durch Abrisse und Schäden. Vom Spieler ausgelöster Abrissstaub setzt sich auch bei pausiertem Spiel weiter ab."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Smooth the displayed tornado movement between completed simulation positions. Does not change its route or damage."
+msgstr "Die sichtbare Tornadobewegung zwischen abgeschlossenen Simulationspositionen glätten. Weg und Schäden bleiben unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Local fire and impact lighting. Requires enhanced disaster visuals and effect intensity above 0%."
+msgstr "Örtliche Beleuchtung durch Feuer und Einschläge. Erfordert die erweiterte Katastrophendarstellung und eine Effektstärke über 0%."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Strength of earthquake camera movement. Set to 0% to remove camera shake while enhanced disaster visuals are enabled."
+msgstr "Stärke der Kamerabewegung bei Erdbeben. Bei 0% entfällt das Kamerabeben auch mit eingeschalteter erweiterter Katastrophendarstellung."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Pause day, season, water and enhanced disaster animations. Weather, clouds and weather sounds always pause with the game. Dust from player demolition can continue."
+msgstr "Tages-, Jahreszeiten-, Wasser- und erweiterte Katastrophenanimationen pausieren. Wetter, Wolken und Wettergeräusche pausieren immer mit dem Spiel. Vom Spieler ausgelöster Abrissstaub kann weiterlaufen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fixed weather can show snow in any season. Game weather and automatic weather show snow only in winter."
+msgstr "Festgelegtes Wetter kann zu jeder Jahreszeit Schnee zeigen. Spielwetter und automatisches Wetter zeigen Schnee nur im Winter."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enter a 24-hour time, for example 07:30. Up and Down adjust by 15 minutes."
+msgstr "Eine Uhrzeit im 24-Stunden-Format eingeben, zum Beispiel 07:30. Die Pfeiltasten nach oben und unten ändern sie um 15 Minuten."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Seconds for one complete day/night cycle. The Animation section controls speed and pause behavior."
+msgstr "Sekunden für einen vollständigen Tag-Nacht-Zyklus. Geschwindigkeit und Pausenverhalten werden unter Animation eingestellt."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Seconds for one complete visual year. The city calendar is unchanged."
+msgstr "Sekunden für ein vollständiges visuelles Jahr. Der Stadtkalender bleibt unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Part of each season used to blend into the next season. Higher values make the transition longer."
+msgstr "Anteil jeder Jahreszeit, der für den Übergang zur nächsten verwendet wird. Höhere Werte verlängern den Übergang."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Time between automatic weather selections. The Animation section controls speed; weather always stops while the game is paused."
+msgstr "Zeit zwischen automatischen Wetterwechseln. Animation steuert die Geschwindigkeit; bei pausiertem Spiel hält das Wetter immer an."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Strength of the time-of-day color filter. 0% disables this filter."
+msgstr "Stärke des Tageszeit-Farbfilters. 0% schaltet diesen Filter aus."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Strength of seasonal color filters. 0% disables these filters."
+msgstr "Stärke der Jahreszeiten-Farbfilter. 0% schaltet diese Filter aus."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Strength of weather color filters. 0% disables these filters."
+msgstr "Stärke der Wetter-Farbfilter. 0% schaltet diese Filter aus."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Strength of the seasonal water tint. Enable Seasons to use this setting."
+msgstr "Stärke der jahreszeitlichen Wasserfärbung. Hierfür Jahreszeiten einschalten."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable clouds, their shadows and ground-level fog together. Weather effects have their own switch."
+msgstr "Wolken, ihre Schatten und bodennahen Nebel gemeinsam einschalten. Wettereffekte haben einen eigenen Schalter."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Automatic follows the weather. Choose Cumulus for puffy clouds, Stratus for low sheets, Altostratus for higher sheets, Cirrus for wisps, Cirrocumulus for small cloudlets, or Fog for ground-level clouds. Fog fades above low terrain, leaving hilltops clear. Fixed types stay selected during rain, snow and storms."
+msgstr "Automatik folgt dem Wetter. Cumulus zeigt Haufenwolken, Stratus tiefe Schichtwolken, Altostratus höhere Schichtwolken, Cirrus Federwolken, Cirrocumulus kleine Schäfchenwolken und Nebel bodennahe Wolken. Nebel nimmt oberhalb tiefer Geländelagen ab und lässt Hügelkuppen frei. Festgelegte Wolkentypen bleiben auch bei Regen, Schnee und Gewitter bestehen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Amount of decorative cloud and fog coverage. With aerial clouds enabled, rain, snow and storms keep minimum cloud coverage, even at 0%."
+msgstr "Bedeckung durch dekorative Wolken und Nebel. Bei eingeschalteten Höhenwolken bleibt bei Regen, Schnee und Gewitter auch mit 0% eine Mindestbewölkung erhalten."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Multiplier for cloud and fog movement. 1× is the standard speed; 0× stops movement."
+msgstr "Geschwindigkeitsfaktor für Wolken und Nebel. 1× ist die normale Geschwindigkeit; 0× hält die Bewegung an."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Decorative car density. 1× is the standard amount; does not change simulated traffic."
+msgstr "Dichte dekorativer Autos. 1× ist die normale Anzahl; der simulierte Verkehr bleibt unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Decorative pedestrian density. 1× is the standard amount; does not change population."
+msgstr "Dichte dekorativer Fußgänger. 1× ist die normale Anzahl; die Bevölkerung bleibt unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Brightness of building and vehicle lights. 100% uses the original brightness; 0% turns the lights off without changing night colors."
+msgstr "Helligkeit von Gebäude- und Fahrzeuglichtern. 100% verwendet die ursprüngliche Helligkeit; 0% schaltet die Lichter ohne Änderung der Nachtfarben aus."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Leave empty for the included standard light masks. Custom folders replace the standard set. Relative to the data folder, for example brightmaps-standard. Absolute paths are also supported. Requires active lighting."
+msgstr "Für die enthaltenen Standardlichtmasken leer lassen. Eigene Ordner ersetzen den Standardsatz. Pfade sind relativ zum Datenordner, zum Beispiel brightmaps-standard. Absolute Pfade sind ebenfalls möglich. Erfordert aktive Beleuchtung."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Optional PNG lookup table (LUT) for custom color grading. Leave empty for standard colors."
+msgstr "Optionale PNG-Farbtabelle (LUT) für eigene Farbgebung. Für Standardfarben leer lassen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Visual Enhancements"
+msgstr "Grafikeffekte"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Visual effects only. Changes apply immediately."
+msgstr "Nur Darstellungseffekte. Änderungen werden sofort angewendet."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Clouds & Fog"
+msgstr "Wolken & Nebel"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Disable all"
+msgstr "Alles ausschalten"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Reset this category"
+msgstr "Kategorie zurücksetzen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Reset all visual settings"
+msgstr "Alle Grafikeinstellungen zurücksetzen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Turn off all visual enhancements. Keep effect strengths and custom file paths."
+msgstr "Alle Grafikeffekte ausschalten. Effektstärken und eigene Dateipfade bleiben erhalten."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Reset only the open category."
+msgstr "Nur die geöffnete Kategorie zurücksetzen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Reset every category, including custom file paths. Undo restores the previous values."
+msgstr "Alle Kategorien einschließlich eigener Dateipfade zurücksetzen. Rückgängig stellt die vorherigen Werte wieder her."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Undo the last reset or Disable all, before making another edit."
+msgstr "Das letzte Zurücksetzen oder Ausschalten rückgängig machen, bevor eine weitere Einstellung geändert wird."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Undo restores the last reset or Disable all."
+msgstr "Rückgängig stellt die Werte vor dem letzten Zurücksetzen oder Ausschalten wieder her."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Automatic cycle"
+msgstr "Automatischer Zyklus"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Visual automation"
+msgstr "Visuelle Automatik"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Optional - leave empty for standard effects"
+msgstr "Optional – für Standardeffekte leer lassen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "All effects disabled. Undo restores previous settings."
+msgstr "Alle Effekte ausgeschaltet. Rückgängig stellt die vorherigen Einstellungen wieder her."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "%s reset. Other categories unchanged."
+msgstr "%s zurückgesetzt. Andere Kategorien bleiben unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "All settings reset, including custom paths. Undo is available."
+msgstr "Alle Einstellungen einschließlich eigener Pfade zurückgesetzt. Rückgängig ist verfügbar."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Previous visual settings restored."
+msgstr "Vorherige Grafikeinstellungen wiederhergestellt."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Automatic follows rain, snow and storms."
+msgstr "Automatik folgt Regen, Schnee und Gewittern."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "This cloud type stays fixed during rain, snow and storms."
+msgstr "Dieser Wolkentyp bleibt bei Regen, Schnee und Gewittern unverändert."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather is off. Automatic shows calm Cumulus clouds."
+msgstr "Wetter ist ausgeschaltet. Automatik zeigt ruhige Haufenwolken."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable terrain variation to adjust its strength."
+msgstr "Bodenvariation einschalten, um ihre Stärke einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Day and night to adjust the time and night appearance."
+msgstr "Tag und Nacht einschalten, um Uhrzeit und Nachtdarstellung einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Seasons to use these settings."
+msgstr "Jahreszeiten einschalten, um diese Einstellungen zu verwenden."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Weather to adjust weather effects."
+msgstr "Wetter einschalten, um Wettereffekte einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Clouds and fog to adjust their appearance."
+msgstr "Wolken und Nebel einschalten, um ihre Darstellung einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Building and vehicle lights to use lighting controls."
+msgstr "Gebäude- und Fahrzeuglichter einschalten, um die Beleuchtung einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Building and vehicle lights in Lighting."
+msgstr "Gebäude- und Fahrzeuglichter unter Beleuchtung einschalten."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Day and night or Keep lights on during daytime."
+msgstr "Tag und Nacht oder Lichter auch tagsüber einschalten."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Day and night to adjust ambient night light."
+msgstr "Tag und Nacht einschalten, um das nächtliche Umgebungslicht einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Raise Light brightness above 0% to use glow and street lighting."
+msgstr "Lichthelligkeit über 0% einstellen, um Lichtschein und Straßenbeleuchtung zu verwenden."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Individual cars to adjust car density."
+msgstr "Einzelne Autos einschalten, um die Autodichte einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Pedestrians to adjust pedestrian density."
+msgstr "Fußgänger einschalten, um die Fußgängerdichte einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Enable Enhanced disaster visuals to adjust additional effects."
+msgstr "Erweiterte Katastrophendarstellung einschalten, um zusätzliche Effekte einzustellen."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Raise Additional effect intensity above 0% to use crowds, dust and lighting."
+msgstr "Stärke zusätzlicher Effekte über 0% einstellen, um Menschenmengen, Staub und Beleuchtung zu verwenden."
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Connected forests and tree variants"
+msgstr "Zusammenhängende Wälder und Baumvarianten"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Subtle terrain variation"
+msgstr "Dezente Bodenvariation"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Terrain overlay strength"
+msgstr "Stärke der Bodenüberlagerung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Disaster effects"
+msgstr "Katastropheneffekte"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Effect strength"
+msgstr "Effektstärke"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Use city pedestrians for riots"
+msgstr "Stadtfußgänger für Unruhen verwenden"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Demolition and damage dust"
+msgstr "Staub durch Abrisse und Schäden"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Smooth tornado movement"
+msgstr "Flüssige Tornadobewegung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Smooth effect transitions"
+msgstr "Weiche Effektübergänge"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fire and impact light strength"
+msgstr "Lichtstärke von Feuer und Einschlägen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Earthquake shake strength"
+msgstr "Stärke des Erdbeben-Kamerabebens"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Water reflections"
+msgstr "Wasserspiegelungen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Subtle"
+msgstr "Dezent"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Underwater terrain"
+msgstr "Unterwassergelände"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Waves and coastal surf"
+msgstr "Wellen und Küstenbrandung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Clouds and fog"
+msgstr "Wolken und Nebel"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cloud type"
+msgstr "Wolkentyp"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Automatic (weather)"
+msgstr "Automatisch (Wetter)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cumulus"
+msgstr "Cumulus (Haufenwolken)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Stratus"
+msgstr "Stratus (Schichtwolken)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Altostratus"
+msgstr "Altostratus (hohe Schichtwolken)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cirrus"
+msgstr "Cirrus (Federwolken)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cirrocumulus"
+msgstr "Cirrocumulus (Schäfchenwolken)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fog"
+msgstr "Nebel"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cloud and fog coverage"
+msgstr "Wolken- und Nebelbedeckung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cloud shadow strength"
+msgstr "Stärke der Wolkenschatten"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cloud and fog movement"
+msgstr "Wolken- und Nebelbewegung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Individual cars"
+msgstr "Einzelne Autos"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Car amount"
+msgstr "Autoanzahl"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Pedestrians"
+msgstr "Fußgänger"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Pedestrian amount"
+msgstr "Fußgängeranzahl"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Smooth vehicles"
+msgstr "Flüssige Fahrzeugbewegungen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Transparent aircraft shadows"
+msgstr "Transparente Flugzeugschatten"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Day and night"
+msgstr "Tag und Nacht"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Time of day"
+msgstr "Tageszeit"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Cycle"
+msgstr "Zyklus"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fixed time"
+msgstr "Feste Uhrzeit"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fixed hour"
+msgstr "Feste Stunde"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Full cycle (seconds at Turtle)"
+msgstr "Vollständiger Zyklus (Sekunden bei Schildkrötentempo)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Time of day LUT strength"
+msgstr "Stärke des Tageszeit-Farbfilters"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Follow game speed"
+msgstr "Spielgeschwindigkeit folgen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Freeze environment cycles while paused"
+msgstr "Umgebungszyklen bei Pause anhalten"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Night strength"
+msgstr "Nachtstärke"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Night ambient light"
+msgstr "Nächtliches Umgebungslicht"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Lights and brightmaps"
+msgstr "Lichter und Lichtmasken"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Keep lights on during daytime"
+msgstr "Lichter auch tagsüber einschalten"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Night light strength"
+msgstr "Nächtliche Lichtstärke"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Light glow strength"
+msgstr "Stärke des Lichtscheins"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Street and junction lighting"
+msgstr "Straßen- und Kreuzungsbeleuchtung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Detail lights from zoom"
+msgstr "Detaillichter ab Zoomstufe"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "10% (all zoom levels)"
+msgstr "10% (alle Zoomstufen)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Brightmap folder"
+msgstr "Ordner für Lichtmasken"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Optional color LUT (PNG strip)"
+msgstr "Optionaler Farbfilter (PNG-LUT)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Custom LUT profile folder (empty = built-in)"
+msgstr "Eigener Farbprofilordner (leer = mitgeliefert)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Season source"
+msgstr "Jahreszeitensteuerung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "City calendar"
+msgstr "Stadtkalender"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Visual cycle"
+msgstr "Visueller Zyklus"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fixed season"
+msgstr "Feste Jahreszeit"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Spring"
+msgstr "Frühling"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Summer"
+msgstr "Sommer"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Autumn"
+msgstr "Herbst"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Winter"
+msgstr "Winter"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Full year (seconds at Turtle)"
+msgstr "Vollständiges Jahr (Sekunden bei Schildkrötentempo)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Season transition (fraction)"
+msgstr "Jahreszeitenübergang (Anteil)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Season LUT strength"
+msgstr "Stärke des Jahreszeiten-Farbfilters"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Seasonal water color strength"
+msgstr "Stärke der saisonalen Wasserfarbe"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather source"
+msgstr "Wettersteuerung"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Game weather"
+msgstr "Spielwetter"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Fixed weather"
+msgstr "Festes Wetter"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Sunny"
+msgstr "Sonnig"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Light rain"
+msgstr "Leichter Regen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Heavy rain"
+msgstr "Starker Regen"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Rain and thunderstorm"
+msgstr "Regen und Gewitter"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Dry thunderstorm"
+msgstr "Trockengewitter"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Light snow"
+msgstr "Leichter Schneefall"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Heavy snow"
+msgstr "Starker Schneefall"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather interval (seconds at Turtle)"
+msgstr "Wetterintervall (Sekunden bei Schildkrötentempo)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather transition (seconds)"
+msgstr "Wetterübergang (Sekunden)"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather strength"
+msgstr "Wetterstärke"
+
+#. Visual Enhancements settings (available in combined builds).
+msgid "Weather LUT strength"
+msgstr "Stärke des Wetter-Farbfilters"
