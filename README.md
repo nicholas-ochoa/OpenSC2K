@@ -1,36 +1,42 @@
 # OpenSC2K
 
-An open-source remake of SimCity 2000, built with Godot.
+An open-source remake of SimCity 2000, built with Rust and Godot.
 
 Join our [Discord community](https://discord.gg/k9S6c3AqcX).
 
-[![OpenSC2K main menu over a waterfront city](.github/screenshots/image1-preview.png)](.github/screenshots/image1.png)
+[![OpenSC2K main menu over a city](.github/screenshots/image1-preview.webp)](.github/screenshots/image1.webp)
 
 ## Screenshots
 
 Click a thumbnail to view the full screenshot.
 
 <p>
-  <a href=".github/screenshots/image1.png"><img src=".github/screenshots/thumbnails/image1.png" width="260" alt="Main menu" /></a>
-  <a href=".github/screenshots/image2.png"><img src=".github/screenshots/thumbnails/image2.png" width="260" alt="City and terrain overview" /></a>
-  <a href=".github/screenshots/image3.png"><img src=".github/screenshots/thumbnails/image3.png" width="260" alt="Waterfront city with bridges and a seaport" /></a>
+  <a href=".github/screenshots/image1.webp"><img src=".github/screenshots/thumbnails/image1.webp" width="260" alt="Main menu" /></a>
+  <a href=".github/screenshots/image2.webp"><img src=".github/screenshots/thumbnails/image2.webp" width="260" alt="Waterfront city with bridges and a seaport" /></a>
+  <a href=".github/screenshots/image3.webp"><img src=".github/screenshots/thumbnails/image3.webp" width="260" alt="Underground view with water pipes, subways, and tunnels" /></a>
   <br />
-  <a href=".github/screenshots/image4.png"><img src=".github/screenshots/thumbnails/image4.png" width="260" alt="Water supply data view" /></a>
-  <a href=".github/screenshots/image5.png"><img src=".github/screenshots/thumbnails/image5.png" width="260" alt="Transport routes in the trip query view" /></a>
-  <a href=".github/screenshots/image6.png"><img src=".github/screenshots/thumbnails/image6.png" width="260" alt="SCURK sprite editor" /></a>
+  <a href=".github/screenshots/image4.webp"><img src=".github/screenshots/thumbnails/image4.webp" width="260" alt="Large map zoomed out to 10%, with neighbor city signs" /></a>
+  <a href=".github/screenshots/image5.webp"><img src=".github/screenshots/thumbnails/image5.webp" width="260" alt="SCURK sprite editor" /></a>
+  <a href=".github/screenshots/image6.webp"><img src=".github/screenshots/thumbnails/image6.webp" width="260" alt="Trip Query with the reachable destinations from one origin" /></a>
+  <br />
+  <a href=".github/screenshots/image7.webp"><img src=".github/screenshots/thumbnails/image7.webp" width="260" alt="Power supply data view" /></a>
+  <a href=".github/screenshots/image8.webp"><img src=".github/screenshots/thumbnails/image8.webp" width="260" alt="Water supply data view" /></a>
+  <a href=".github/screenshots/image9.webp"><img src=".github/screenshots/thumbnails/image9.webp" width="260" alt="Debug window with simulation timings" /></a>
 </p>
 
 ## Run
 
 Download a package from [GitHub Releases](https://github.com/nicholas-ochoa/OpenSC2K/releases).
+There are packages for Windows x64 and arm64, Linux x64 and arm64, and macOS (one app for Intel and Apple Silicon).
 See the [installation instructions](docs/install.md) for Windows, Linux, and macOS.
 The packages include the engine. You do not need to install Godot.
 
+You also need your own copy of SimCity 2000. See [Game files](#game-files).
+
 To run from source:
 
-Use Godot 4.7 and provide your own copy of SimCity 2000 Special Edition for Windows 95 (1996).
-The simulation is a native library written in Rust. Install Rust with [rustup](https://rustup.rs).
-`rust-toolchain.toml` selects the Rust version.
+Use Godot 4.7. The simulation, file formats, rendering, audio, and scripting are native libraries
+written in Rust. Install Rust with [rustup](https://rustup.rs). `rust-toolchain.toml` selects the Rust version.
 
 Before the first run of a fresh checkout, build the native simulation from the repository root:
 
@@ -54,21 +60,34 @@ Then start the game:
 godot --path game
 ```
 
-At the import prompt, navigate to the location where your copy of SimCity 2000 is stored, then select `SIMCITY.EXE`.
-The app checks the supported version and imports the game files. These files supply the original graphics, text,
-sound, and music.
+## Game files
+
+OpenSC2K does not include the original game files. They supply the original graphics, text, sound, and music.
+
+Select **Import Assets** on the main menu, or **Settings > Import Data**. Then choose an installed game folder,
+a macOS `.app`, extracted game files, or a mounted game CD-ROM. Install a GOG download before you import it.
+To use a disc image file, such as an `.iso` file, mount it first.
+
+The importer reads the Windows 95, Windows 3.x, Network Edition, DOS, and Macintosh versions, and the demos.
+SimCity 2000 Special Edition for Windows 95 (1996) gives the most complete import. Some interface graphics
+and the SCURK artwork come only from a complete Windows installation.
+See [Import original game files](docs/media-pack-format.md#import-original-game-files).
 
 ## Extensions
 
-- Larger cities: 256, 384, and 512 tiles per side, alongside the original 128
+- Larger cities: 256, 384, 512, 640, 1024, 2048, and 4096 tiles per side, alongside the original 128
 - Smaller cities: 16, 32 and 64 tiles per side
 - Updated coverage, land value, pollution, crime, and other data maps to be 1:1 resolution with the map, instead of lower resolution
 - Massively increased the amount of MicroSims (XMIC) and movable objects (XTHG) that are available to be used in each city
 - Improved terrain generator with configurable terrain features supported
 - New isometric data views, height map, service coverage, and transport-trip overlays
 - More zoom levels, layer controls, and optional dark underground views
-- Detailed simulation data available including simulation timings, inspection tools
-- Support for external graphics, sound, and music packs
+- Debug tools: debug layers, simulation timings, and a Tile Inspector. See [Debug tools](docs/debug-tools.md)
+- Support for external graphics, sound, and music packs, including an HD graphics pack. See [HD sprite packs](docs/hd-sprite-pack-format.md)
+- MIDI music through FluidSynth, with the system General MIDI sound set or a SoundFont that you choose. See [FluidSynth music](docs/fluidsynth.md)
+- Rebindable keyboard and mouse controls in the Controls tab of Settings
+- Translated interface. Korean is the first translation
+- Recent autosaves: while a changed city is open, a copy is saved each minute and kept for ten minutes
 - A JavaScript runtime for mods and developer scripts, with game events, a game API, example mods in `examples/mods`, and a Chrome DevTools console. Mods load from the `mods` folder, each in its own sandbox, and the Mods tab of Settings turns them on and off. See [Scripting](docs/scripting.md) and [Mods](docs/mods.md)
 
 Larger cities and per-tile data maps use `.sc2x` saves: ZIP archives with one raw entry per
@@ -76,6 +95,7 @@ city structure, city names of up to 64 characters, and signs that can share a ti
 building. See [the SC2X format](docs/sc2x-format.md). The original game cannot open these
 files. Original `.sc2` cities keep their separate compatibility mode until you choose
 **Upgrade City to SC2X**. Older `.sc2x` files load as version 4 cities and save as a new copy.
+OpenSC2K also opens and saves the `.sc2x` files that sc2kfix writes for original 128 by 128 cities.
 
 ## sc2kfix
 
