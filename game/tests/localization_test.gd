@@ -68,6 +68,15 @@ func _run() -> void:
 	await process_frame
 	assert(TranslationServer.get_locale() == "de")
 	_check_original_texts()
+	_check_multiline_and_formatted_dialogs(dialog)
+	for language in ["es", "fr", "it", "pt_BR"]:
+		AppLocalization.select(language)
+		_check_original_texts()
+		_check_multiline_and_formatted_dialogs(dialog)
+		for font in fonts:
+			for character in "àâçèéêëìîïòôùûüÿñ¿¡œ":
+				assert(_has_char(font, character.unicode_at(0)), "%s has no localized glyph %s" % [font, character])
+	AppLocalization.select("de")
 	await _check_toolbar_layout()
 	assert(tr("Water Pipes") != "Water Pipes")
 	assert(button.text.begins_with(tr("Water Pipes")), "The existing palette updates to German")
@@ -139,6 +148,20 @@ func _check_placeholders() -> void:
 			assert(expected == actual, "%s: %s has other placeholders than %s" % [code, translated, source])
 
 
+func _check_multiline_and_formatted_dialogs(dialog: AppSettingsDialog) -> void:
+	for control: Control in dialog.find_children("*", "Control", true, false):
+		var source := control.tooltip_text
+		if source.contains("\n"):
+			assert(tr(source) != source, "Multiline tooltip is untranslated: %s" % source)
+	var prompt := SaveChangesDialog.new()
+	root.add_child(prompt)
+	prompt.set_city("São Paulo")
+	assert(prompt.dialog_text.contains("São Paulo"), "The city name is preserved")
+	assert(prompt.dialog_text != "Save changes to São Paulo before you continue?",
+		"The save prompt is translated before the city name is substituted")
+	prompt.free()
+
+
 func _has_char(font: Font, character: int) -> bool:
 	if font.has_char(character):
 		return true
@@ -150,8 +173,9 @@ func _has_char(font: Font, character: int) -> bool:
 	return false
 
 
-# German prose works without German assets; translated choices never enter saves.
+# Localized prose works without language assets; translated choices never enter saves.
 func _check_original_texts() -> void:
+	var language := TranslationServer.get_locale()
 	assert(not OriginalTextLocalization.text(1000).is_empty())
 	assert(OriginalTextLocalization.library_texts({}).size() == 4)
 	var imported := DataUsaResource.new()
@@ -188,10 +212,10 @@ func _check_original_texts() -> void:
 			assert(localized.ok, localized.error)
 			assert(localized.argument == plain.argument and localized.auxiliary == plain.auxiliary)
 			assert(localized.random_state == plain.random_state)
-			assert(localized.headline != plain.headline, "German story %d must not fall back to English" % story_type)
+			assert(localized.headline != plain.headline, "%s story %d must not fall back to English" % [language, story_type])
 			assert(not (localized.headline + localized.article).contains("�"))
 			var independent := LocalizedNewspaperText.render_story(null, record, seed_value, "Köln", "Bürgermeister", PackedStringArray(["Löwen"]))
-			assert(independent.ok, "German story %d needs no imported data: %s" % [story_type, independent.error])
+			assert(independent.ok, "%s story %d needs no imported data: %s" % [language, story_type, independent.error])
 			assert(independent.argument == record.argument and independent.auxiliary == record.auxiliary)
 	assert(imported.grammar == original_grammar)
 	var baseline := EmptyCityTemplate.create()
@@ -207,13 +231,13 @@ func _check_original_texts() -> void:
 	AppLocalization.select("en")
 	paper.open_reports(english_city, english_document, imported, {}, 1234, 0)
 	paper.hide()
-	AppLocalization.select("de")
+	AppLocalization.select(language)
 	paper.open_reports(german_city, german_document, imported, {}, 1234, 0)
 	assert(english_document.serialize().data == german_document.serialize().data,
 		"German newspaper display must preserve the English substitution/save behavior")
 	var before_switch := german_document.serialize().data
 	AppLocalization.select("en")
-	AppLocalization.select("de")
+	AppLocalization.select(language)
 	assert(german_document.serialize().data == before_switch)
 	paper.hide()
 	paper.free()
@@ -228,7 +252,7 @@ func _check_original_texts() -> void:
 	assert(not LocalizedNewspaperText.has_data(null))
 	var english := LocalizedNewspaperText.render_story(imported, literal_record, 1, "Town", "Mayor", PackedStringArray())
 	assert(english.ok and english.headline == "English Headline")
-	AppLocalization.select("de")
+	AppLocalization.select(language)
 
 
 # Long translations and artwork must stay inside the toolbar at each UI scale.
@@ -250,7 +274,7 @@ func _check_toolbar_layout() -> void:
 	var provider := func(_group: int, _tool: int) -> Texture2D: return icon
 	for theme_name in ["light", "dark"]:
 		row.theme = AppUiThemeDefinitions.build(theme_name)
-		for language in ["en", "de", "ko"]:
+		for language in AppLocalization.codes():
 			AppLocalization.select(language)
 			for ui_scale in AppUiScale.OPTIONS:
 				AppUiScale.apply(root, ui_scale)

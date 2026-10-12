@@ -287,9 +287,9 @@ func finish_capture(binding: ControlBinding) -> void:
 	var names := PackedStringArray()
 
 	for other in conflicts:
-		names.append(ControlActions.find(other).label)
+		names.append(tr(ControlActions.find(other).label))
 
-	conflict_dialog.dialog_text = "%s is already bound to %s. Reassign it?" % [binding.display_text(), ", ".join(names)]
+	conflict_dialog.dialog_text = tr("%s is already bound to %s. Reassign it?") % [binding.display_text(), ", ".join(names)]
 	conflict_dialog.popup_centered()
 
 

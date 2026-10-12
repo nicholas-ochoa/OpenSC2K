@@ -76,22 +76,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 bbcode_enabled = true
 selection_enabled = true
-text = "[b]OpenSC2K[/b]
-An open-source reimplementation and modernization of SimCity 2000.
-
-[b]Copyright © 2026 Nicholas Ochoa[/b]
-
-OpenSC2K code is available under the MIT License. See Licenses and Credits for full license terms and third-party notices.
-
-OpenSC2K incorporates fixes and implementation details adapted from the [url=https://github.com/sc2kfix/sc2kfix]sc2kfix project[/url], licensed under the [url=https://github.com/sc2kfix/sc2kfix/blob/main/LICENSE]MIT License[/url].
-
-Built with Godot Engine.
-Title typography: Rajdhani by Indian Type Foundry.
-
-[b]This project is unofficial and independent.[/b]
-Not affiliated with, sponsored by, or endorsed by Electronic Arts or Maxis.
-
-SimCity and SimCity 2000 are trademarks of their respective owners. Original game assets remain the property of their respective owners."
+text = "[b]OpenSC2K[/b]\nAn open-source reimplementation and modernization of SimCity 2000.\n\n[b]Copyright © 2026 Nicholas Ochoa[/b]\n\nOpenSC2K code is available under the MIT License. See Licenses and Credits for full license terms and third-party notices.\n\nOpenSC2K incorporates fixes and implementation details adapted from the [url=https://github.com/sc2kfix/sc2kfix]sc2kfix project[/url], licensed under the [url=https://github.com/sc2kfix/sc2kfix/blob/main/LICENSE]MIT License[/url].\n\nBuilt with Godot Engine.\nTitle typography: Rajdhani by Indian Type Foundry.\n\n[b]This project is unofficial and independent.[/b]\nNot affiliated with, sponsored by, or endorsed by Electronic Arts or Maxis.\n\nSimCity and SimCity 2000 are trademarks of their respective owners. Original game assets remain the property of their respective owners."
 
 [node name="Licenses" type="VBoxContainer" parent="Content/Tabs"]
 layout_mode = 2

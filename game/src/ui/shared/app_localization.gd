@@ -11,12 +11,25 @@ extends RefCounted
 const DEFAULT := "en"
 # language code -> name in that language. Each code other than English has a
 # translation in res://assets/localization
-const LANGUAGES: Dictionary[String, String] = { "en": "English", "de": "Deutsch", "ko": "한국어" }
+const LANGUAGES: Dictionary[String, String] = {
+	"en": "English", "de": "Deutsch", "es": "Español", "fr": "Français", "it": "Italiano", "ko": "한국어",
+	"pt_BR": "Português (Brasil)",
+}
 const TRANSLATIONS: Dictionary[String, String] = {
 	"de": "res://assets/localization/de.po",
+	"es": "res://assets/localization/es.po",
+	"fr": "res://assets/localization/fr.po",
+	"it": "res://assets/localization/it.po",
 	"ko": "res://assets/localization/ko.po",
+	"pt_BR": "res://assets/localization/pt_BR.po",
 }
-const ORIGINAL_TRANSLATIONS: Dictionary[String, String] = { "de": "res://assets/localization/de_original.po" }
+const ORIGINAL_TRANSLATIONS: Dictionary[String, String] = {
+	"de": "res://assets/localization/de_original.po",
+	"es": "res://assets/localization/es_original.po",
+	"fr": "res://assets/localization/fr_original.po",
+	"it": "res://assets/localization/it_original.po",
+	"pt_BR": "res://assets/localization/pt_BR_original.po",
+}
 const REGULAR_FONT = preload("res://assets/fonts/pretendard/Pretendard-Regular.otf")
 const BOLD_FONT = preload("res://assets/fonts/pretendard/Pretendard-Bold.otf")
 

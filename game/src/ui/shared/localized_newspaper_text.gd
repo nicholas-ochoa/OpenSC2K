@@ -12,7 +12,7 @@ const GERMAN_OEM := {196: 142, 214: 153, 220: 154, 228: 132, 246: 148, 252: 129}
 const CITY_MARKER := "918273645001"
 const MAYOR_MARKER := "918273645002"
 const TEAM_MARKER := "918273645003"
-static var _german: DataUsaResource
+static var _localized: Dictionary[String, DataUsaResource] = {}
 static var _literal_markers: Dictionary[String, String] = {}
 
 
@@ -67,11 +67,14 @@ static func _restore_literals(value: String, city: String, mayor: String, team: 
 
 
 static func _translated_data() -> DataUsaResource:
-	if TranslationServer.get_locale().get_slice("_", 0) != "de":
+	var locale := TranslationServer.get_locale()
+	var language := locale if OriginalNewspaperTables.LANGUAGES.has(locale) else locale.get_slice("_", 0)
+	var tables: Dictionary = TABLES if language == "de" else OriginalNewspaperTables.LANGUAGES.get(language, {})
+	if tables.is_empty():
 		return null
-	if _german != null:
-		return _german
-	var first := "SC2K newspaper phrase 1"
+	if _localized.has(language):
+		return _localized[language]
+	var first := "SC2K newspaper phrase %d" % tables[0].x
 	if TranslationServer.translate(first, "original") == first:
 		return null
 	var data := DataUsaResource.new()
@@ -79,9 +82,9 @@ static func _translated_data() -> DataUsaResource:
 	data.counts.resize(DataUsaResource.TABLE_ENTRY_COUNT)
 	data.offsets.resize(DataUsaResource.PHRASE_COUNT)
 	data.grammar.append(0)
-	for table: int in TABLES:
-		data.bases[table] = TABLES[table].x
-		data.counts[table] = TABLES[table].y
+	for table: int in tables:
+		data.bases[table] = tables[table].x
+		data.counts[table] = tables[table].y
 	for phrase in DataUsaResource.PHRASE_COUNT:
 		var key := "SC2K newspaper phrase %d" % phrase
 		var value := String(TranslationServer.translate(key, "original"))
@@ -91,8 +94,8 @@ static func _translated_data() -> DataUsaResource:
 		data.offsets[phrase] = data.grammar.size()
 		data.grammar.append_array(compiled)
 		data.grammar.append(0)
-	_german = data
-	return _german
+	_localized[language] = data
+	return data
 
 
 static func _compile(value: String) -> PackedByteArray:
@@ -112,8 +115,8 @@ static func _compile(value: String) -> PackedByteArray:
 			else:
 				assert(kind == "phrase", "Unknown newspaper substitution")
 				var phrase := int(marker.get_slice(":", 1))
-				assert(phrase > 0 and phrase < 32)
-				bytes.append(phrase)
+				assert(phrase > 0 and phrase < 32 + Original.EXTENDED_TOKEN_BYTES.size())
+				bytes.append(phrase if phrase < 32 else Original.EXTENDED_TOKEN_BYTES[phrase - 32])
 			cursor = end + 2
 		else:
 			var code := value.unicode_at(cursor)
@@ -121,7 +124,7 @@ static func _compile(value: String) -> PackedByteArray:
 				bytes.append(92)
 				bytes.append(GERMAN_OEM[code])
 			elif code >= 128:
-				# The existing OEM renderer cannot represent every German glyph.
+				# The existing OEM renderer cannot represent every localized glyph.
 				# ASCII markers let its formatting run before Unicode is restored.
 				var marker := "909%03d909" % code
 				_literal_markers[marker] = String.chr(code)
@@ -135,7 +138,8 @@ static func _compile(value: String) -> PackedByteArray:
 
 
 # The text tables address alternative phrases; these are not news priorities,
-# simulation parameters, or story queues. All prose lives in de_original.po.
+# simulation parameters, or story queues. German prose lives in de_original.po;
+# the other editions use OriginalNewspaperTables and their original-text catalogs.
 const TABLES := {
 	0: Vector2i(8, 1),
 	1: Vector2i(9, 7),

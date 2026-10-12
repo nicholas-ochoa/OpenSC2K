@@ -56,7 +56,7 @@ text = "Language"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-tooltip_text = "The language of menus and windows. Original game text, such as newspapers, uses the language of the imported game."
+tooltip_text = "The language of menus, windows and bundled original-game text. Custom text stays as entered."
 
 [node name="RecentAutosavesSpacer" type="Control" parent="Tabs/General/Fields"]
 custom_minimum_size = Vector2(150, 32)
@@ -66,9 +66,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-tooltip_text = "Save a copy of the open city each minute to the OpenSC2K Autosaves folder
-in the temporary folder, and keep the copies of the last 10 minutes.
-File > Open Autosave Folder shows them. The city file does not change."
+tooltip_text = "Save a copy of the open city each minute to the OpenSC2K Autosaves folder\nin the temporary folder, and keep the copies of the last 10 minutes.\nFile > Open Autosave Folder shows them. The city file does not change."
 text = "Keep autosaves of the last 10 minutes"
 
 [node name="UpdatesSpacer" type="Control" parent="Tabs/General/Fields"]
@@ -83,9 +81,7 @@ theme_override_constants/separation = 14
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-tooltip_text = "When OpenSC2K starts, not more than one time each day, it sends a request to GitHub
-to find a newer release of the OpenSC2K project. The request contains only the data
-that is necessary to make the request. OpenSC2K shares no other information."
+tooltip_text = "When OpenSC2K starts, not more than one time each day, it sends a request to GitHub\nto find a newer release of the OpenSC2K project. The request contains only the data\nthat is necessary to make the request. OpenSC2K shares no other information."
 text = "Check for updates periodically"
 
 [node name="CheckUpdatesNowButton" type="Button" parent="Tabs/General/Fields/UpdatesRow"]
@@ -236,9 +232,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 size_flags_horizontal = 0
-tooltip_text = "How often the city plays vehicle sounds such as trains, aircraft, ships, and boats.
-Reduced plays no more than one vehicle sound every 30 seconds. Off plays none.
-Disaster sounds always play."
+tooltip_text = "How often the city plays vehicle sounds such as trains, aircraft, ships, and boats.\nReduced plays no more than one vehicle sound every 30 seconds. Off plays none.\nDisaster sounds always play."
 selected = 0
 item_count = 3
 popup/item_0/text = "Default"
@@ -301,8 +295,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 32)
 layout_mode = 2
 size_flags_horizontal = 0
-tooltip_text = "The General MIDI SoundFont that plays the MIDI music.
-A custom SoundFont that fails to load falls back to the system sound set."
+tooltip_text = "The General MIDI SoundFont that plays the MIDI music.\nA custom SoundFont that fails to load falls back to the system sound set."
 
 [node name="SoundFontRow" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/SoundFontControls"]
 unique_name_in_owner = true
@@ -385,8 +378,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
-tooltip_text = "The graphics size at 10% zoom. Larger graphics show more detail.
-Higher zoom levels cannot use a smaller size."
+tooltip_text = "The graphics size at 10% zoom. Larger graphics show more detail.\nHigher zoom levels cannot use a smaller size."
 selected = 0
 item_count = 3
 popup/item_0/text = "Small"
@@ -408,8 +400,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
-tooltip_text = "The graphics size at 200% zoom. Larger graphics show more detail.
-This size cannot be smaller than the size at 100% zoom."
+tooltip_text = "The graphics size at 200% zoom. Larger graphics show more detail.\nThis size cannot be smaller than the size at 100% zoom."
 selected = 0
 item_count = 3
 popup/item_0/text = "Small"
@@ -431,8 +422,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
-tooltip_text = "The graphics size at 25% zoom. Larger graphics show more detail.
-This size cannot be smaller than the size at 10% zoom."
+tooltip_text = "The graphics size at 25% zoom. Larger graphics show more detail.\nThis size cannot be smaller than the size at 10% zoom."
 selected = 0
 item_count = 3
 popup/item_0/text = "Small"
@@ -454,8 +444,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
-tooltip_text = "The graphics size at 300% zoom. Larger graphics show more detail.
-This size cannot be smaller than the size at 200% zoom."
+tooltip_text = "The graphics size at 300% zoom. Larger graphics show more detail.\nThis size cannot be smaller than the size at 200% zoom."
 selected = 0
 item_count = 3
 popup/item_0/text = "Small"
@@ -477,8 +466,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
-tooltip_text = "The graphics size at 50% zoom. Larger graphics show more detail.
-This size cannot be smaller than the size at 25% zoom."
+tooltip_text = "The graphics size at 50% zoom. Larger graphics show more detail.\nThis size cannot be smaller than the size at 25% zoom."
 selected = 0
 item_count = 3
 popup/item_0/text = "Small"
@@ -500,8 +488,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
-tooltip_text = "The graphics size at 400% zoom. Larger graphics show more detail.
-This size cannot be smaller than the size at 300% zoom."
+tooltip_text = "The graphics size at 400% zoom. Larger graphics show more detail.\nThis size cannot be smaller than the size at 300% zoom."
 selected = 0
 item_count = 3
 popup/item_0/text = "Small"
@@ -523,8 +510,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
-tooltip_text = "The graphics size at 100% zoom. Larger graphics show more detail.
-This size cannot be smaller than the size at 50% zoom."
+tooltip_text = "The graphics size at 100% zoom. Larger graphics show more detail.\nThis size cannot be smaller than the size at 50% zoom."
 selected = 0
 item_count = 3
 popup/item_0/text = "Small"
@@ -570,9 +556,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-tooltip_text = "Use the sc2kfix corrections of the original Windows sprites:
-aligned buildings and the animated colours of the DOS and Macintosh versions.
-They do not apply while a SCURK tile set is loaded or HD graphics show."
+tooltip_text = "Use the sc2kfix corrections of the original Windows sprites:\naligned buildings and the animated colours of the DOS and Macintosh versions.\nThey do not apply while a SCURK tile set is loaded or HD graphics show."
 text = "sc2kfix sprite corrections"
 
 [node name="DarkUndergroundSpacer" type="Control" parent="Tabs/Graphics/Content/PackFields"]
@@ -583,8 +567,7 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-tooltip_text = "Show the underground view on a dark background,
-with brighter lines for pipes, water mains, and subways."
+tooltip_text = "Show the underground view on a dark background,\nwith brighter lines for pipes, water mains, and subways."
 text = "Dark underground view"
 
 [node name="Controls" type="ScrollContainer" parent="Tabs"]

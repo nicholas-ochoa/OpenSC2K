@@ -1,34 +1,38 @@
-# OpenSC2K — German Translation
+# OpenSC2K — Localization
 
 OpenSC2K is an open-source remake of SimCity 2000, built with Godot. This fork's
-**`feature/german-translation`** branch adds German text and adapts the interface
-to translated labels. It is based directly on upstream OpenSC2K 0.3.0.
+**`feature/german-translation`** branch adds German, Spanish, Italian, French,
+and Brazilian Portuguese text and adapts the interface to translated labels.
+The branch name is retained for PR continuity. This is now a general localization
+fork, based directly on upstream OpenSC2K 0.3.0.
 
 ## What this branch adds
 
-- German menus, settings, tool names, tooltips, city dialogs, budget labels,
-  ordinances and month names.
-- German newspaper templates, original text resources, matched scenario
+- Menus, settings, tool names, tooltips, city dialogs, budget labels,
+  ordinances and month names in all five languages (1,486 UI entries each).
+- Localized newspaper templates, original text resources, matched scenario
   briefings and library text, available from the bundled text catalogs.
-- Terminology and wording from the original German SimCity 2000 and SCURK
-  editions. New OpenSC2K functions use German translations where the original
-  has no corresponding text.
+- Terminology and wording from the supplied original SimCity 2000 editions.
+  New OpenSC2K functions and missing original text use supplementary translations,
+  identified separately in catalog comments.
 - Toolbar sizing that accommodates long translated names and the original
   artwork, plus localized formatted labels and dialog updates.
 
-The catalogs are [de.po](game/assets/localization/de.po) for the interface and
-[de_original.po](game/assets/localization/de_original.po) for original-game text.
+The [language catalogs](game/assets/localization) separate interface text
+(`LANGUAGE.po`) from original-game text and its supplements (`LANGUAGE_original.po`).
+See the [source and coverage overview](docs/localization-sources.md).
 Historical spelling and original newspaper price labels are retained. Displayed
 Pf/DM labels are text; they do not change the city's economy or numeric values.
 
-## Enable German
+## Select a language
 
 1. Open **Settings > General > Language**.
-2. Select **Deutsch**. In German, the path is **Einstellungen > Allgemein > Sprache**.
+2. Select **Deutsch**, **Español**, **Français**, **Italiano**, or **Português (Brasil)**.
+   The existing English and Korean options remain available.
 3. Open the city, newspaper or dialog you want to use. The language preference is
    local to your installation; cities do not need conversion.
 
-The bundled German text does **not** require a separate German graphics or data
+The bundled translations do **not** require a language-specific graphics or data
 pack. You still need the supported original game for artwork, sound and music,
 as described below. User-written city names and signs remain as entered.
 
@@ -42,7 +46,7 @@ Simulation rules, balancing and city file formats are unchanged by the translati
 
 ## Screenshots
 
-Real application captures. Click an image to open it at full size.
+German examples from the application. Click an image to open it at full size.
 
 **German budget dialog and localized financial labels**
 

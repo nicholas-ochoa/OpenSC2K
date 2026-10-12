@@ -13,7 +13,7 @@ func _ready() -> void:
 
 
 func set_city(city_name: String) -> void:
-	dialog_text = "Save changes to %s before you continue?" % city_name
+	dialog_text = tr("Save changes to %s before you continue?") % city_name
 
 
 func show_city(city_name: String) -> void:

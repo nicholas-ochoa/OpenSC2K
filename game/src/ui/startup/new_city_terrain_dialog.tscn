@@ -143,8 +143,7 @@ vertical_alignment = 1
 
 [node name="SizeInput" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
 layout_mode = 2
-tooltip_text = "The number of tiles on each side of the map.
-SimCity 2000 compatibility uses only 128 × 128."
+tooltip_text = "The number of tiles on each side of the map.\nSimCity 2000 compatibility uses only 128 × 128."
 selected = 3
 item_count = 11
 popup/item_0/text = "16 × 16"
@@ -360,12 +359,7 @@ theme_override_constants/separation = 8
 
 [node name="CompatibilityInput" type="CheckBox" parent="Center/NewCityDialog/Content/Buttons"]
 layout_mode = 2
-tooltip_text = "On: make an SC2 city that the original SimCity 2000 can open.
-The map is 128 × 128.
-
-Off: make an SC2X city. The map can use other sizes, and data maps
-such as land value and pollution have one value for each tile.
-The original SimCity 2000 cannot open SC2X cities."
+tooltip_text = "On: make an SC2 city that the original SimCity 2000 can open.\nThe map is 128 × 128.\n\nOff: make an SC2X city. The map can use other sizes, and data maps\nsuch as land value and pollution have one value for each tile.\nThe original SimCity 2000 cannot open SC2X cities."
 text = "Maintain SimCity 2000 Compatibility"
 
 [node name="ActionSpacer" type="Control" parent="Center/NewCityDialog/Content/Buttons"]

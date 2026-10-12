@@ -4721,3 +4721,285 @@ msgstr "Wetterstärke"
 #. Visual Enhancements settings (available in combined builds).
 msgid "Weather LUT strength"
 msgstr "Stärke des Wetter-Farbfilters"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"Return to the main menu? You can use Continue City to resume this city."
+msgstr ""
+"Zum Hauptmenü zurückkehren? Mit „Stadt fortsetzen“ kannst du diese Stadt "
+"weiterspielen."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Discard the unsaved SCURK changes?"
+msgstr "Nicht gespeicherte SCURK-Änderungen verwerfen?"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Discard the unsaved SCURK changes and open another tile set?"
+msgstr ""
+"Nicht gespeicherte SCURK-Änderungen verwerfen und einen anderen Grafiksatz "
+"öffnen?"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Close SCURK and return to the main menu?"
+msgstr "SCURK schließen und zum Hauptmenü zurückkehren?"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Discard the unsaved changes and recover another project?"
+msgstr ""
+"Nicht gespeicherte Änderungen verwerfen und ein anderes Projekt "
+"wiederherstellen?"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "An autosaved SCURK project is available."
+msgstr "Ein automatisch gespeichertes SCURK-Projekt ist verfügbar."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Pond, Lake, or River"
+msgstr "Teich, See oder Fluss"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Seaport Zone"
+msgstr "Hafengebiet"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Airport Zone"
+msgstr "Flughafengebiet"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Military Zone"
+msgstr "Militärgebiet"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Power Line"
+msgstr "Stromleitung"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Subway-to-Rail Connector"
+msgstr "U-Bahn-Eisenbahn-Verbindung"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"OpenSC2K is an open-source reimplementation of SimCity 2000 for Windows 95."
+msgstr ""
+"OpenSC2K ist eine quelloffene Neuimplementierung von SimCity 2000 für "
+"Windows 95."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"Save a copy of the open city each minute to the OpenSC2K Autosaves folder\n"
+"in the temporary folder, and keep the copies of the last 10 minutes.\n"
+"File > Open Autosave Folder shows them. The city file does not change."
+msgstr ""
+"Speichert jede Minute eine Kopie der geöffneten Stadt im Ordner „OpenSC2K Autosaves“\n"
+"im temporären Verzeichnis und behält die Kopien der letzten 10 Minuten.\n"
+"Datei > Automatische Speicherungen öffnen zeigt sie an. Die Stadtdatei bleibt unverändert."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"When OpenSC2K starts, not more than one time each day, it sends a request to GitHub\n"
+"to find a newer release of the OpenSC2K project. The request contains only the data\n"
+"that is necessary to make the request. OpenSC2K shares no other information."
+msgstr ""
+"Beim Start sucht OpenSC2K höchstens einmal täglich mit einer Anfrage an GitHub\n"
+"nach einer neueren Programmversion. Die Anfrage enthält nur die dafür\n"
+"notwendigen Daten. OpenSC2K übermittelt keine weiteren Informationen."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"How often the city plays vehicle sounds such as trains, aircraft, ships, and boats.\n"
+"Reduced plays no more than one vehicle sound every 30 seconds. Off plays none.\n"
+"Disaster sounds always play."
+msgstr ""
+"Häufigkeit von Fahrzeuggeräuschen wie Zügen, Flugzeugen, Schiffen und Booten.\n"
+"„Reduziert“ spielt höchstens alle 30 Sekunden ein Fahrzeuggeräusch ab, „Aus“ keines.\n"
+"Katastrophengeräusche werden immer abgespielt."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The General MIDI SoundFont that plays the MIDI music.\n"
+"A custom SoundFont that fails to load falls back to the system sound set."
+msgstr ""
+"General-MIDI-SoundFont zur Wiedergabe der MIDI-Musik.\n"
+"Kann ein eigener SoundFont nicht geladen werden, wird der Systemklangsatz verwendet."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"Use the sc2kfix corrections of the original Windows sprites:\n"
+"aligned buildings and the animated colours of the DOS and Macintosh versions.\n"
+"They do not apply while a SCURK tile set is loaded or HD graphics show."
+msgstr ""
+"Verwendet die sc2kfix-Korrekturen für die ursprünglichen Windows-Grafiken:\n"
+"ausgerichtete Gebäude und animierte Farben der DOS- und Macintosh-Versionen.\n"
+"Bei geladenem SCURK-Grafiksatz oder angezeigter HD-Grafik sind sie nicht aktiv."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"Show the underground view on a dark background,\n"
+"with brighter lines for pipes, water mains, and subways."
+msgstr ""
+"Zeigt die Untergrundansicht auf dunklem Hintergrund\n"
+"mit helleren Linien für Rohre, Hauptwasserleitungen und U-Bahnen."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "%s is already bound to %s. Reassign it?"
+msgstr "%s ist bereits %s zugewiesen. Neu zuweisen?"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid "Save changes to %s before you continue?"
+msgstr "Änderungen an %s vor dem Fortfahren speichern?"
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The number of tiles on each side of the map.\n"
+"SimCity 2000 compatibility uses only 128 × 128."
+msgstr ""
+"Anzahl der Felder entlang jeder Kartenseite.\n"
+"Für SimCity-2000-Kompatibilität sind nur 128 × 128 möglich."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"On: make an SC2 city that the original SimCity 2000 can open.\n"
+"The map is 128 × 128.\n"
+"\n"
+"Off: make an SC2X city. The map can use other sizes, and data maps\n"
+"such as land value and pollution have one value for each tile.\n"
+"The original SimCity 2000 cannot open SC2X cities."
+msgstr ""
+"Ein: Erstellt eine SC2-Stadt, die das ursprüngliche SimCity 2000 öffnen kann.\n"
+"Die Karte ist 128 × 128 Felder groß.\n"
+"\n"
+"Aus: Erstellt eine SC2X-Stadt. Andere Kartengrößen sind möglich. Datenkarten\n"
+"wie Grundstückswert und Verschmutzung enthalten einen Wert je Feld.\n"
+"Das ursprüngliche SimCity 2000 kann SC2X-Städte nicht öffnen."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The language of menus, windows and bundled original-game text. Custom text "
+"stays as entered."
+msgstr ""
+"Sprache der Menüs, Fenster und mitgelieferten Originalspieltexte. Eigene "
+"Texte bleiben wie eingegeben."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The graphics size at 10% zoom. Larger graphics show more detail.\n"
+"Higher zoom levels cannot use a smaller size."
+msgstr ""
+"Grafikgröße bei 10% Zoom. Größere Grafiken zeigen mehr Details.\n"
+"Höhere Zoomstufen dürfen keine kleinere Größe verwenden."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The graphics size at 200% zoom. Larger graphics show more detail.\n"
+"This size cannot be smaller than the size at 100% zoom."
+msgstr ""
+"Grafikgröße bei 200% Zoom. Größere Grafiken zeigen mehr Details.\n"
+"Diese Größe darf nicht kleiner sein als bei 100% Zoom."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The graphics size at 25% zoom. Larger graphics show more detail.\n"
+"This size cannot be smaller than the size at 10% zoom."
+msgstr ""
+"Grafikgröße bei 25% Zoom. Größere Grafiken zeigen mehr Details.\n"
+"Diese Größe darf nicht kleiner sein als bei 10% Zoom."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The graphics size at 300% zoom. Larger graphics show more detail.\n"
+"This size cannot be smaller than the size at 200% zoom."
+msgstr ""
+"Grafikgröße bei 300% Zoom. Größere Grafiken zeigen mehr Details.\n"
+"Diese Größe darf nicht kleiner sein als bei 200% Zoom."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The graphics size at 50% zoom. Larger graphics show more detail.\n"
+"This size cannot be smaller than the size at 25% zoom."
+msgstr ""
+"Grafikgröße bei 50% Zoom. Größere Grafiken zeigen mehr Details.\n"
+"Diese Größe darf nicht kleiner sein als bei 25% Zoom."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The graphics size at 400% zoom. Larger graphics show more detail.\n"
+"This size cannot be smaller than the size at 300% zoom."
+msgstr ""
+"Grafikgröße bei 400% Zoom. Größere Grafiken zeigen mehr Details.\n"
+"Diese Größe darf nicht kleiner sein als bei 300% Zoom."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"The graphics size at 100% zoom. Larger graphics show more detail.\n"
+"This size cannot be smaller than the size at 50% zoom."
+msgstr ""
+"Grafikgröße bei 100% Zoom. Größere Grafiken zeigen mehr Details.\n"
+"Diese Größe darf nicht kleiner sein als bei 50% Zoom."
+
+#. Supplementary OpenSC2K translation; includes multiline tooltips and
+#. confirmation messages.
+msgid ""
+"[b]OpenSC2K[/b]\n"
+"An open-source reimplementation and modernization of SimCity 2000.\n"
+"\n"
+"[b]Copyright © 2026 Nicholas Ochoa[/b]\n"
+"\n"
+"OpenSC2K code is available under the MIT License. See Licenses and Credits for full license terms and third-party notices.\n"
+"\n"
+"OpenSC2K incorporates fixes and implementation details adapted from the [url=https://github.com/sc2kfix/sc2kfix]sc2kfix project[/url], licensed under the [url=https://github.com/sc2kfix/sc2kfix/blob/main/LICENSE]MIT License[/url].\n"
+"\n"
+"Built with Godot Engine.\n"
+"Title typography: Rajdhani by Indian Type Foundry.\n"
+"\n"
+"[b]This project is unofficial and independent.[/b]\n"
+"Not affiliated with, sponsored by, or endorsed by Electronic Arts or Maxis.\n"
+"\n"
+"SimCity and SimCity 2000 are trademarks of their respective owners. Original game assets remain the property of their respective owners."
+msgstr ""
+"[b]OpenSC2K[/b]\n"
+"Eine quelloffene Neuimplementierung und Modernisierung von SimCity 2000.\n"
+"\n"
+"[b]Copyright © 2026 Nicholas Ochoa[/b]\n"
+"\n"
+"Der OpenSC2K-Code steht unter der MIT-Lizenz. Vollständige Lizenztexte und Hinweise zu Drittanbietern findest du unter Lizenzen und Mitwirkende.\n"
+"\n"
+"OpenSC2K enthält Korrekturen und Implementierungsdetails aus dem [url=https://github.com/sc2kfix/sc2kfix]sc2kfix-Projekt[/url], das unter der [url=https://github.com/sc2kfix/sc2kfix/blob/main/LICENSE]MIT-Lizenz[/url] steht.\n"
+"\n"
+"Entwickelt mit Godot Engine.\n"
+"Titelschrift: Rajdhani von Indian Type Foundry.\n"
+"\n"
+"[b]Dieses Projekt ist inoffiziell und unabhängig.[/b]\n"
+"Es ist weder mit Electronic Arts oder Maxis verbunden noch wird es von ihnen unterstützt oder empfohlen.\n"
+"\n"
+"SimCity und SimCity 2000 sind Marken ihrer jeweiligen Inhaber. Die Originalspielinhalte bleiben Eigentum ihrer jeweiligen Inhaber."
