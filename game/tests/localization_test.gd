@@ -68,11 +68,11 @@ func _run() -> void:
 	await process_frame
 	assert(TranslationServer.get_locale() == "de")
 	_check_original_texts()
-	_check_multiline_and_formatted_dialogs(dialog)
+	_check_multiline_and_formatted_dialogs()
 	for language in ["es", "fr", "it", "pt_BR"]:
 		AppLocalization.select(language)
 		_check_original_texts()
-		_check_multiline_and_formatted_dialogs(dialog)
+		_check_multiline_and_formatted_dialogs()
 		for font in fonts:
 			for character in "àâçèéêëìîïòôùûüÿñ¿¡œ":
 				assert(_has_char(font, character.unicode_at(0)), "%s has no localized glyph %s" % [font, character])
@@ -148,11 +148,18 @@ func _check_placeholders() -> void:
 			assert(expected == actual, "%s: %s has other placeholders than %s" % [code, translated, source])
 
 
-func _check_multiline_and_formatted_dialogs(dialog: AppSettingsDialog) -> void:
-	for control: Control in dialog.find_children("*", "Control", true, false):
-		var source := control.tooltip_text
-		if source.contains("\n"):
-			assert(tr(source) != source, "Multiline tooltip is untranslated: %s" % source)
+func _check_multiline_and_formatted_dialogs() -> void:
+	# Read source keys, not live tooltips that may already contain translated values.
+	for path in ["res://src/ui/settings/app_settings_dialog.tscn",
+		"res://src/ui/settings/about_dialog.tscn", "res://src/ui/startup/new_city_terrain_dialog.tscn"]:
+		var scene := (load(path) as PackedScene).get_state()
+		for node in scene.get_node_count():
+			for property in scene.get_node_property_count(node):
+				if scene.get_node_property_name(node, property) not in ["text", "tooltip_text"]:
+					continue
+				var source := str(scene.get_node_property_value(node, property))
+				if source.contains("\n"):
+					assert(tr(source) != source, "Multiline scene text is untranslated: %s" % source)
 	var prompt := SaveChangesDialog.new()
 	root.add_child(prompt)
 	prompt.set_city("São Paulo")
