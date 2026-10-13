@@ -6,6 +6,7 @@ use super::elevation;
 use super::gd::{Vector2, closest_point_to_segment, lerpf, maxf, minf, signf, smoothstep};
 use super::heights::EDGE;
 use super::noise::Noise;
+use crate::sim::ids::sc2tile_flags::SALT_WATER;
 use crate::sim::random::GameLcgRandom;
 use std::f64::consts::{PI, TAU};
 
@@ -26,6 +27,16 @@ impl Carve<'_> {
 }
 
 pub type Path = Vec<Vector2>;
+
+/// What covers a landform tile.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Cover {
+    Land,
+    /// The ocean, a bay, or the sea around an island. This is salt water.
+    Sea,
+    /// A river channel. This is fresh water, as the river of the original landform.
+    Channel,
+}
 
 /// The sample of a map tile in the unit square, turned by `-angle`.
 pub fn map_point(x: i64, y: i64, angle: f64) -> Vector2 {
@@ -110,22 +121,25 @@ pub fn carve(heights: &mut [i32], flags: &mut [u8], options: &Carve, random: &mu
             let point = map_point(x, y, angle);
             let rough = f64::from(noise.get_2d(point.x, point.y));
 
-            let wet = if islands {
-                island_wet(options, point, rough, scale, phase, x, y)
+            let cover = if islands {
+                if island_wet(options, point, rough, scale, phase, x, y) {
+                    Cover::Sea
+                } else {
+                    Cover::Land
+                }
             } else {
-                mainland_wet(options, point, rough, wetness, delta, width, phase, &paths, &bounds)
+                mainland_cover(options, point, rough, wetness, delta, width, phase, &paths, &bounds)
             };
 
             let at = index(x, y);
 
-            if wet {
-                heights[at] = (sea - 2).max(0) as i32;
-
-                if options.ocean || islands || options.has("bay") {
-                    flags[at] |= 1;
+            match cover {
+                Cover::Land => heights[at] = i64::from(heights[at]).max(sea + 1) as i32,
+                Cover::Sea => {
+                    heights[at] = (sea - 2).max(0) as i32;
+                    flags[at] |= SALT_WATER as u8;
                 }
-            } else {
-                heights[at] = i64::from(heights[at]).max(sea + 1) as i32;
+                Cover::Channel => heights[at] = (sea - 2).max(0) as i32,
             }
         }
     }
@@ -195,7 +209,7 @@ fn island_wet(options: &Carve, point: Vector2, rough: f64, scale: f64, phase: f6
 }
 
 #[allow(clippy::too_many_arguments)]
-fn mainland_wet(
+fn mainland_cover(
     options: &Carve,
     point: Vector2,
     rough: f64,
@@ -205,7 +219,7 @@ fn mainland_wet(
     phase: f64,
     paths: &[Path],
     bounds: &[(Vector2, Vector2)],
-) -> bool {
+) -> Cover {
     let (px, py) = (point.fx(), point.fy());
     let mut wet = false;
 
@@ -237,7 +251,7 @@ fn mainland_wet(
     }
 
     if wet {
-        return true;
+        return Cover::Sea;
     }
 
     let mut local_width = width * (1.0 + rough * 0.50 + 0.12 * (py * 31.0 + phase).sin());
@@ -252,11 +266,11 @@ fn mainland_wet(
         }
 
         if near_channel(point, path, local_width) {
-            return true;
+            return Cover::Channel;
         }
     }
 
-    false
+    Cover::Land
 }
 
 pub(super) fn meander_channels(paths: &mut [Path], width: f64, angle: f64, phase: f64, random: &mut GameLcgRandom) -> Vec<Path> {

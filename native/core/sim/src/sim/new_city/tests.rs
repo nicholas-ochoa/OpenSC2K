@@ -98,6 +98,7 @@ mod rules {
     use super::super::gd::Vector2;
     use super::super::heights::EDGE;
     use super::super::noise::Noise;
+    use crate::sim::ids::sc2tile_flags::SALT_WATER;
     use crate::sim::random::GameLcgRandom;
 
     fn landform(height: i32) -> Vec<i32> {
@@ -261,6 +262,52 @@ mod rules {
                 if *height <= 4 {
                     assert!(city[index] <= 4, "a feature outlet is disconnected from the ocean: {names:?}");
                 }
+            }
+        }
+    }
+
+    /// The water tiles and the XBIT flags of a carved landform.
+    fn carved_water(names: &[&str], ocean: bool, river: bool, seed: i64) -> (Vec<bool>, Vec<u8>) {
+        let mut heights = landform(6);
+        let mut flags = vec![0_u8; heights.len()];
+        let selected = strings(names);
+        let options = Carve {
+            sea: 4,
+            features: &selected,
+            ocean,
+            river,
+            water: 10,
+            hills: 30,
+        };
+
+        features::carve(&mut heights, &mut flags, &options, &mut GameLcgRandom::new(seed));
+
+        (heights.iter().map(|&height| height < 4).collect(), flags)
+    }
+
+    /// The ocean and a bay are salt water. A river channel that is not in the sea
+    /// is fresh water, as the river of the original landform.
+    #[test]
+    fn only_the_sea_is_salt_water() {
+        let salt = SALT_WATER as u8;
+
+        for seed in [1, 29, 719] {
+            for (names, ocean) in [(&[][..], true), (&["bay"][..], false)] {
+                let (sea, _) = carved_water(names, ocean, false, seed);
+                let (channels, _) = carved_water(&[], false, true, seed);
+                let (water, flags) = carved_water(names, ocean, true, seed);
+                let mut fresh = 0;
+
+                for index in 0..water.len() {
+                    if sea[index] {
+                        assert!(water[index] && flags[index] & salt != 0, "the sea is salt water: {names:?} {seed}");
+                    } else if channels[index] && water[index] {
+                        assert_eq!(flags[index] & salt, 0, "the river is fresh water: {names:?} {seed}");
+                        fresh += 1;
+                    }
+                }
+
+                assert!(fresh > 0, "the river reaches inland: {names:?} {seed}");
             }
         }
     }
