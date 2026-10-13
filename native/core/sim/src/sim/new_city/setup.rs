@@ -2,12 +2,12 @@
 //! years, founding newspaper and graph history. This is NewCitySetup.create of
 //! the scripts.
 
-use super::template::{NEIGHBOR_COUNT, NEIGHBOR_FAME, NEIGHBOR_POPULATION, NEIGHBOR_STRIDE, NEIGHBOR_VALUE, draw_neighbors};
+use super::template::{NEIGHBOR_FAME, NEIGHBOR_POPULATION, NEIGHBOR_STRIDE, NEIGHBOR_VALUE, draw_neighbors};
 use super::{Generated, Options, generate_document, is_island};
 use crate::formats::document::{Document, ascii_byte};
 use crate::formats::sc2x::labels;
 use crate::sim::bytes::{read_u32_be, write_u32_be};
-use crate::sim::ids::sc2tile_flags::SALT_WATER;
+use crate::sim::civic::neighbors;
 use crate::sim::ids::{sc2budget_layout as budget, sc2graph_layout as graph, sc2label_layout, sc2misc_layout as misc};
 use crate::sim::random::{GameLcgRandom, SimRandom};
 use crate::sim::reports::news;
@@ -241,62 +241,24 @@ fn set_mayor_label(document: &mut Document, name: &str) -> bool {
 }
 
 /// FUN_0042e460 makes the first neighbor the ocean on an ocean map, because
-/// the original ocean is always on the high-x edge. An extended landform can
-/// put the ocean on any edge. The neighbor of each edge that is at least half
-/// salt water is the ocean. If no edge is, the first edge with the most salt
-/// water has the ocean. An island map has the ocean on all sides.
+/// the original ocean is always on the high-x side. An extended landform can
+/// put the ocean on any side, so the ocean neighbors follow the salt water of
+/// the map sides. See `neighbors::ocean_sides`.
 fn set_ocean_neighbors(data: &mut [u8], tile_flags: &[u8], map_size: i64, island: bool) {
     if read_u32_be(data, misc::HAS_OCEAN) == 0 {
         return;
     }
 
-    let shores = shore_lengths(tile_flags, map_size);
-    let mut sides: Vec<i64> = (0..NEIGHBOR_COUNT)
-        .filter(|&side| island || shores[side as usize] * 2 >= map_size)
-        .collect();
-
-    if sides.is_empty() {
-        // max_by_key keeps the last maximum. Search from the last edge
-        let most = (0..NEIGHBOR_COUNT).rev().max_by_key(|&side| shores[side as usize]);
-        sides.extend(most);
-    }
-
+    let shores = neighbors::shore_lengths(tile_flags, map_size);
     let compass = read_u32_be(data, misc::COMPASS) & 3;
 
-    for side in sides {
-        let slot = (compass + side) & 3;
-        let offset = misc::NEIGHBORS + slot * NEIGHBOR_STRIDE;
+    for side in neighbors::ocean_sides(&shores, map_size, island) {
+        let offset = misc::NEIGHBORS + neighbors::slot_of_side(side, compass) * NEIGHBOR_STRIDE;
 
         for field in [0, NEIGHBOR_POPULATION, NEIGHBOR_VALUE, NEIGHBOR_FAME] {
             write_u32_be(data, offset + field, 0);
         }
     }
-}
-
-/// The salt-water tiles along each map edge, in the order of the neighbor
-/// slots at compass rotation 0: high x, high y, low x, low y. CityNeighbors of
-/// the scripts uses this order for the connection signs.
-fn shore_lengths(tile_flags: &[u8], map_size: i64) -> [i64; 4] {
-    let edge = map_size as usize;
-    let mut lengths = [0; 4];
-
-    if edge == 0 || tile_flags.len() < edge * edge {
-        return lengths;
-    }
-
-    let last = edge - 1;
-
-    for along in 0..edge {
-        let tiles = [(last, along), (along, last), (0, along), (along, 0)];
-
-        for (side, (x, y)) in tiles.into_iter().enumerate() {
-            if i64::from(tile_flags[x * edge + y]) & SALT_WATER != 0 {
-                lengths[side] += 1;
-            }
-        }
-    }
-
-    lengths
 }
 
 fn write_graph_value(data: &mut [u8], series: i64, index: i64, value: i64) {

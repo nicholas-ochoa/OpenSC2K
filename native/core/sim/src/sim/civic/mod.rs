@@ -6,4 +6,5 @@ pub mod mayor;
 pub mod milestones;
 pub mod military;
 pub mod nation;
+pub mod neighbors;
 pub mod scenario;

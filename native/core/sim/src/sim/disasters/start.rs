@@ -6,6 +6,7 @@ use super::damage::{self, append_damage_events, burn_structure};
 use super::{DisasterStartResult, RuntimeEvents, START_CHUNKS, Snapshot, index, sounds};
 use crate::sim::bytes::read_u32_be;
 use crate::sim::city::City;
+use crate::sim::civic::neighbors;
 use crate::sim::events::{EffectEvent, SoundEvent};
 use crate::sim::geom::Vec2i;
 use crate::sim::growth::special::replace_special_building;
@@ -52,6 +53,8 @@ pub const SOUND_HURRICANE: i64 = 502;
 /// Presentation preference: the port plays it three times.
 pub const SIREN_PLAYS: i64 = 3;
 const VOLCANO_BUDGET: i64 = 25000;
+/// The hurricane direction of each map side: high x, high y, low x, low y.
+const HURRICANE_DIRECTIONS: [i64; 4] = [1, 0, 3, 2];
 const FIRE_SPIRAL: [Vec2i; 4] = [Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1), Vec2i::new(-1, 0)];
 const EIGHT_DIRECTIONS: [Vec2i; 8] = [
     Vec2i::new(0, -1),
@@ -924,7 +927,7 @@ fn start_hurricane(
     };
 
     let edge = city.map_size;
-    let direction = (city.compass_rotation() + 1) & 3;
+    let direction = hurricane_direction(city);
     let mut maps = city.disaster_maps();
     let mut damage_points = Vec::new();
     let mut flood_points = Vec::new();
@@ -1052,6 +1055,17 @@ fn start_hurricane(
     result.flood_points = flood_points;
     result.map_changed = map_changed;
     result
+}
+
+/// The side that a hurricane comes from, in the order of its scans: high y,
+/// high x, low y, low x. The original takes the side of neighbor slot 0,
+/// `(compass + 1) & 3`, because its ocean always borders that slot. A new city
+/// can have the ocean on another side, so the hurricane comes from the side of
+/// the first ocean neighbor.
+fn hurricane_direction(city: &City) -> i64 {
+    let side = neighbors::side_of_slot(neighbors::ocean_slot(city), city.compass_rotation());
+
+    HURRICANE_DIRECTIONS[side as usize]
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1764,6 +1778,33 @@ fn start_volcano(city: &mut City, center: Vec2i, random: Option<&mut SimRandom>)
 mod rule_tests {
     use super::*;
     use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
+
+    /// The original hurricane comes from the side of neighbor slot 0. With the
+    /// ocean in another slot, it comes from the side of that slot.
+    #[test]
+    fn a_hurricane_comes_from_the_side_of_the_ocean() {
+        use crate::sim::civic::neighbors::STRIDE;
+
+        let mut city = empty_city(16);
+
+        for compass in 0..4 {
+            city.set_misc_u32(misc_layout::COMPASS, compass);
+
+            for slot in 0..4 {
+                city.set_misc_u32(misc_layout::NEIGHBORS + slot * STRIDE, slot + 1);
+            }
+
+            assert_eq!(hurricane_direction(&city), (compass + 1) & 3, "no ocean, compass {compass}");
+
+            city.set_misc_u32(misc_layout::NEIGHBORS, 0);
+            assert_eq!(hurricane_direction(&city), (compass + 1) & 3, "ocean in slot 0, compass {compass}");
+
+            // slot 2 borders the low-x side at compass 0, and a turn moves it
+            city.set_misc_u32(misc_layout::NEIGHBORS, 1);
+            city.set_misc_u32(misc_layout::NEIGHBORS + 2 * STRIDE, 0);
+            assert_eq!(hurricane_direction(&city), (compass + 3) & 3, "ocean in slot 2, compass {compass}");
+        }
+    }
 
     /// 0x0045ee10 gives a monster no goal in a scenario and draws no random
     /// numbers for it. Outside a scenario, half the monsters get a goal.
