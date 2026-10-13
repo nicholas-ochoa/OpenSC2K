@@ -42,6 +42,7 @@ func test_reference_corpus(reference_root: String) -> void:
 				"%s month is in range" % path.get_file()
 			)
 			_check(city.label(0).length() <= 23, "%s mayor label is bounded" % path.get_file())
+			_check(not CityNeighbors.repair_ocean_side(city), "%s keeps its neighbors on load" % path.get_file())
 			_check(city.microsim(149) != null, "%s has 150 microsim records" % path.get_file())
 			_check(city.thing(39) != null, "%s has 40 thing records" % path.get_file())
 			var graph := city.graph_series(15)

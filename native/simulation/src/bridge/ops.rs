@@ -13,7 +13,7 @@ use godot::prelude::*;
 
 use super::convert;
 use sc2k_sim::sim::city::City;
-use sc2k_sim::sim::civic::{annual, education, milestones, nation, scenario};
+use sc2k_sim::sim::civic::{annual, education, milestones, nation, neighbors, scenario};
 use sc2k_sim::sim::data_maps;
 use sc2k_sim::sim::disasters::{end as disaster_end, map as disaster_map, start as disaster_start, weather};
 use sc2k_sim::sim::economy::{self, budget, city_value};
@@ -53,6 +53,7 @@ pub const OPERATIONS: &[&str] = &[
     "rci_aftermath",
     "industry",
     "simnation",
+    "neighbors.repair_ocean_side",
     "education_health",
     "graphs",
     "milestones",
@@ -249,6 +250,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             .to_value(),
         ),
         "simnation" => Outcome::value(nation::run(city, &mut randoms.random).to_value()),
+        "neighbors.repair_ocean_side" => Outcome::value(Value::Bool(neighbors::repair_ocean_side(city))),
         "education_health" => Outcome::value(education::run(city, &mut randoms.random).to_value()),
         "graphs" => Outcome::value(
             graphs::run(

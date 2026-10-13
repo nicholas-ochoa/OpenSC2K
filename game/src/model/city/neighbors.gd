@@ -48,6 +48,17 @@ static func name_index(city: CityState, slot: int) -> int:
 	return low - 0x10000 if low & 0x8000 else low
 
 
+# Move the ocean neighbor of a city from an earlier New City to the side of the
+# map with the ocean. See repair_ocean_side in native/core/sim/src/sim/civic/neighbors.rs
+static func repair_ocean_side(city: CityState) -> bool:
+	if city == null or not city.is_valid():
+		return false
+
+	var response := NativeSimulationBridge.run("neighbors.repair_ocean_side", city, null, null, null)
+
+	return response.failed_chunk.is_empty() and response.result is bool and response.result
+
+
 # tile index -> sign text of every connection marker
 static func connection_sign_texts(city: CityState) -> Dictionary[int, String]:
 	var result: Dictionary[int, String] = {}

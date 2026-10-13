@@ -67,6 +67,7 @@ func activate_document(
 	# a large city computes its snapshot while it loads
 	document_state.saved_city_snapshot = content_snapshot if not content_snapshot.is_empty() else document.content_snapshot()
 	var facility_repair := FacilityRecordRepair.apply(app.document_state.city)
+	var ocean_repaired := loaded_from_file and CityNeighbors.repair_ocean_side(app.document_state.city)
 
 	if not facility_repair.ok:
 		status_text += " " + str(facility_repair.error)
@@ -75,6 +76,9 @@ func activate_document(
 
 		if facility_repair.unfilled > 0:
 			status_text += tr(" %d buildings still need records; the table is full.") % facility_repair.unfilled
+
+	if ocean_repaired:
+		status_text += tr(" Moved the Ocean neighbor to the side of the map with the ocean.")
 
 	document_state.current_city_saved_once = not document_state.current_document.source_path.is_empty()
 	var source_path := document_state.current_document.source_path.simplify_path()
@@ -171,7 +175,7 @@ func activate_document(
 	if loaded_scenario != null:
 		app.budget.open_scenario_intro(loaded_scenario)
 
-	if not facility_repair.ok or facility_repair.linked > 0 or facility_repair.unfilled > 0:
+	if not facility_repair.ok or facility_repair.linked > 0 or facility_repair.unfilled > 0 or ocean_repaired:
 		app.status_label.text = status_text
 
 	app.scripting.on_city_opened()

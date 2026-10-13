@@ -157,6 +157,7 @@ func test_new_city_terrain(_reference_root: String) -> void:
 
 	_test_preview_random_cursors(options)
 	_test_new_city_neighbors(template)
+	_test_ocean_side_repair(template)
 
 	var ocean_options := NewCityTerrain.Options.new()
 	ocean_options.ocean = true
@@ -483,6 +484,46 @@ func _test_new_city_neighbors(template: Sc2File) -> void:
 		and _neighbor_records(founded.document) == ocean_records
 		and founded.invention_years == ocean.invention_years,
 		"The New City dialog keeps the original random order for neighbors, terrain, and inventions",
+	)
+
+
+# an earlier New City put the ocean in slot 0 when its coast was on another side
+func _test_ocean_side_repair(template: Sc2File) -> void:
+	var document := template.duplicate_document()
+	var flags := document.find_chunk("XBIT").decoded_payload.duplicate()
+
+	# the low-x side borders neighbor slot 2 at compass rotation 0
+	for y in CityState.MAP_SIZE:
+		flags[y] = Sc2TileFlags.SALT_WATER
+
+	document.find_chunk("XBIT").set_decoded_payload(flags)
+	document.set_misc_u32(Sc2MiscLayout.HAS_OCEAN, 1)
+	var drawn := _neighbor_records(document)
+
+	for field in [0, 4, 8, 12]:
+		document.set_misc_u32(Sc2MiscLayout.NEIGHBORS + field, 0)
+
+	# the original hurricane comes from the side of slot 0
+	var old_hurricane := DisasterStartPhase.start(CityModel.from_document(document.duplicate_document()),
+		DisasterStartPhase.DISASTER_HURRICANE, Vector2i(64, 64), Random.new(1), SimLfsrRandom.new(1))
+	var city := CityModel.from_document(document)
+	var repaired := CityNeighbors.repair_ocean_side(city)
+	var records := _neighbor_records(city.document)
+	_check(
+		repaired
+		and records[2] == [0, 0, 0]
+		and records[0] == drawn[2]
+		and records[1] == drawn[1]
+		and records[3] == drawn[3]
+		and not CityNeighbors.repair_ocean_side(city),
+		"Loading moves a misplaced ocean neighbor to the salt-water side once: %s" % [records],
+	)
+
+	var hurricane := DisasterStartPhase.start(city, DisasterStartPhase.DISASTER_HURRICANE, Vector2i(64, 64),
+		Random.new(1), SimLfsrRandom.new(1))
+	_check(
+		old_hurricane.ok and old_hurricane.direction == 1 and hurricane.ok and hurricane.direction == 3,
+		"A hurricane comes from the side of the ocean neighbor",
 	)
 
 

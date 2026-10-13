@@ -14,6 +14,9 @@ msgstr " SC2X에서 표현할 수 없는 연결 또는 기록 %d개는 그대로
 msgid " (oldest)"
 msgstr " (가장 오래됨)"
 
+msgid " Moved the Ocean neighbor to the side of the map with the ocean."
+msgstr " 바다 인접도시를 바다가 있는 지도 쪽으로 옮겼습니다."
+
 msgid " Restored facility records for %d buildings."
 msgstr " 건물 %d개의 시설 기록을 복원했습니다."
 
