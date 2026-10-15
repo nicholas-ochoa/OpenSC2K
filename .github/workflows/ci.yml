@@ -25,7 +25,7 @@ jobs:
     name: Test
     # GitHub gives fork pull requests no secrets, so they only build packages.
     if: >-
-      github.repository == 'nicholas-ochoa/OpenSC2K' &&
+      github.repository == 'OpenSC2K/OpenSC2K' &&
       (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
     uses: ./.github/workflows/test.yml
     secrets: inherit
@@ -44,7 +44,7 @@ jobs:
     name: Replace the nightly release
     needs: [test, build]
     if: >-
-      github.repository == 'nicholas-ochoa/OpenSC2K' && github.ref == 'refs/heads/main' &&
+      github.repository == 'OpenSC2K/OpenSC2K' && github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_nightly))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
