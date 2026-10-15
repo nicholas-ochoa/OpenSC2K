@@ -234,6 +234,26 @@ def submit_for_notarization(path, notary):
         raise ValueError(f'Notarization of {path.name} ended with {submission.get("status")}:\n{log.stdout}{log.stderr}')
 
 
+# stapler fetches the ticket from Apple's CloudKit service. On GitHub runners the
+# connection sometimes drops (NSURLErrorDomain -1005, stapler exit status 68),
+# and a new ticket can take a short time to reach the service. A later attempt usually succeeds
+STAPLER_ATTEMPTS = 5
+STAPLER_RETRY_SECONDS = 30
+
+
+def run_stapler(action, item):
+    """Run `xcrun stapler <action>` on `item`, and retry a failure with a longer wait each time."""
+    for attempt in range(1, STAPLER_ATTEMPTS + 1):
+        result = subprocess.run(['xcrun', 'stapler', action, str(item)])
+        if result.returncode == 0:
+            return
+        if attempt == STAPLER_ATTEMPTS:
+            result.check_returncode()
+        delay = STAPLER_RETRY_SECONDS * attempt
+        print(f'stapler {action} attempt {attempt} failed. Retry in {delay} seconds.')
+        time.sleep(delay)
+
+
 def notarize(item, notary):
     """Notarize an app or a disk image, staple the ticket to it, and check it as
     Gatekeeper does. An app goes to the notary service in a zip archive. Its own
@@ -247,8 +267,8 @@ def notarize(item, notary):
     else:
         submit_for_notarization(item, notary)
         assessment = ['--type', 'open', '--context', 'context:primary-signature']
-    subprocess.run(['xcrun', 'stapler', 'staple', str(item)], check=True)
-    subprocess.run(['xcrun', 'stapler', 'validate', str(item)], check=True)
+    run_stapler('staple', item)
+    run_stapler('validate', item)
     subprocess.run(['spctl', '--assess', *assessment, '--verbose', str(item)], check=True)
 
 

@@ -319,6 +319,25 @@ class DiskImageTest(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             self.make_image(self.MACOS_15, failures=packages.DISK_IMAGE_ATTEMPTS)
 
+    def staple(self, failures):
+        """Run run_stapler with `failures` failed attempts. Return the commands and the waits."""
+        commands = []
+
+        def run(command, **_):
+            commands.append(command)
+            return subprocess.CompletedProcess(command, 68 if len(commands) <= failures else 0)
+
+        with patch.object(packages.subprocess, 'run', run), patch.object(packages.time, 'sleep') as sleep:
+            packages.run_stapler('staple', Path('OpenSC2K.dmg'))
+        return commands, [call.args[0] for call in sleep.call_args_list]
+
+    def test_lost_stapler_connection_is_retried_then_fails(self):
+        commands, waits = self.staple(failures=2)
+        self.assertEqual(commands, [['xcrun', 'stapler', 'staple', 'OpenSC2K.dmg']] * 3)
+        self.assertEqual(waits, [packages.STAPLER_RETRY_SECONDS, 2 * packages.STAPLER_RETRY_SECONDS])
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.staple(failures=packages.STAPLER_ATTEMPTS)
+
 
 class SigningTest(unittest.TestCase):
     LISTING = ('  1) 0123456789ABCDEF0123456789ABCDEF01234567 "Apple Development: A B (TEAM1)"\n'
