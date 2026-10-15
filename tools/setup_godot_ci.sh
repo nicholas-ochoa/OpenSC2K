@@ -5,8 +5,8 @@ version=4.7.2
 base="https://github.com/godotengine/godot/releases/download/${version}-stable"
 staging="${RUNNER_TEMP:?}/godot-${version}"
 mkdir -p "$staging/bin"
-curl --fail --location --retry 3 "$base/Godot_v${version}-stable_macos.universal.zip" -o "$staging/engine.zip"
-curl --fail --location --retry 3 "$base/Godot_v${version}-stable_export_templates.tpz" -o "$staging/templates.tpz"
+curl --fail --location --retry 5 --retry-all-errors "$base/Godot_v${version}-stable_macos.universal.zip" -o "$staging/engine.zip"
+curl --fail --location --retry 5 --retry-all-errors "$base/Godot_v${version}-stable_export_templates.tpz" -o "$staging/templates.tpz"
 (
   cd "$staging"
   shasum -a 256 --check <<'SUMS'

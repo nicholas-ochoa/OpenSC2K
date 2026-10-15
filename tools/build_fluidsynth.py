@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import time
 import urllib.request
 from pathlib import Path
 
@@ -130,13 +131,32 @@ def recipe_hash():
     return digest.hexdigest()
 
 
+# CI runners sometimes lose a connection during a download. A later attempt usually succeeds
+DOWNLOAD_ATTEMPTS = 4
+DOWNLOAD_RETRY_SECONDS = 10
+
+
+def fetch(url, staged):
+    """Copy `url` to `staged`, and retry a network failure with a longer wait each time."""
+    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as response, staged.open('wb') as stream:
+                shutil.copyfileobj(response, stream)
+            return
+        except OSError as error:
+            if attempt == DOWNLOAD_ATTEMPTS:
+                raise
+            delay = DOWNLOAD_RETRY_SECONDS * attempt
+            print(f'Download of {url} failed ({error}). Retry in {delay} seconds.')
+            time.sleep(delay)
+
+
 def download(url, sha256, name):
     DOWNLOADS.mkdir(parents=True, exist_ok=True)
     target = DOWNLOADS / name
     if not target.is_file() or hashlib.sha256(target.read_bytes()).hexdigest() != sha256:
         staged = target.with_name(name + '.part')
-        with urllib.request.urlopen(url) as response, staged.open('wb') as stream:
-            shutil.copyfileobj(response, stream)
+        fetch(url, staged)
         actual = hashlib.sha256(staged.read_bytes()).hexdigest()
         if actual != sha256:
             staged.unlink()
